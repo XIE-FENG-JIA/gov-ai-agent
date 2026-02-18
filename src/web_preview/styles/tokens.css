@@ -1,0 +1,25 @@
+/**
+ * Do not edit directly, this file was auto-generated.
+ */
+
+:root {
+  --typography-font-family-official-serif: MingLiU;
+  --typography-font-family-official-kai: DFKai-SB;
+  --typography-font-size-title-main: 16;
+  --typography-font-size-title-sub: 14;
+  --typography-font-size-body-standard: 12;
+  --typography-font-size-annotation: 10;
+  --typography-line-height-standard: 20;
+  --typography-line-height-relaxed: 25;
+  --spacing-margin-page-top: 2.54;
+  --spacing-margin-page-bottom: 2.54;
+  --spacing-margin-page-left: 3.17;
+  --spacing-margin-page-right: 3.17;
+  --spacing-indent-paragraph: 2;
+  --color-text-primary: #000000;
+  --color-text-seal: #FF0000;
+  --color-cli-info: #3498db;
+  --color-cli-success: #2ecc71;
+  --color-cli-warning: #f1c40f;
+  --color-cli-error: #e74c3c;
+}

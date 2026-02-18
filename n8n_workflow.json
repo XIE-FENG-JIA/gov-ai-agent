@@ -1,0 +1,226 @@
+{
+  "name": "公文 AI Agent 開會流程",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-document",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook 觸發",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "gov-doc-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/agent/writer",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic: $json.body.topic, doc_type: $json.body.doc_type || '函', context: $json.body.context || null }) }}",
+        "options": {}
+      },
+      "id": "writer-agent",
+      "name": "1️⃣ Writer Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { draft: $json.draft, review_count: 0 } }}",
+        "options": {}
+      },
+      "id": "prepare-review",
+      "name": "準備審查資料",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/agent/parallel-review",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ draft: $json.draft }) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "parallel-review",
+      "name": "2️⃣ 並行審查 (5 Agents)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [950, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-passed",
+              "leftValue": "={{ $json.passed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-quality",
+      "name": "品質達標？",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/agent/editor",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ draft: $('準備審查資料').item.json.draft, issues: Object.values($json.reviews).flatMap(r => r.issues || []) }) }}",
+        "options": {}
+      },
+      "id": "editor-agent",
+      "name": "3️⃣ Editor Agent 修改",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1450, 450]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "max-rounds",
+              "leftValue": "={{ $('準備審查資料').item.json.review_count }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-rounds",
+      "name": "未達最大輪數？",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1700, 450]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { draft: $json.revised_draft, review_count: $('準備審查資料').item.json.review_count + 1 } }}",
+        "options": {}
+      },
+      "id": "update-draft",
+      "name": "更新草稿",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1950, 350]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, status: 'approved', final_draft: $('準備審查資料').item.json.draft, score: $json.weighted_score, rounds: $('準備審查資料').item.json.review_count + 1 }) }}",
+        "options": {}
+      },
+      "id": "success-response",
+      "name": "✅ 審核通過",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1450, 150]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, status: 'max_rounds_reached', final_draft: $('Editor Agent 修改').item.json.revised_draft || $('準備審查資料').item.json.draft, score: $('並行審查 (5 Agents)').item.json.weighted_score, rounds: 3, warning: '已達最大修改輪數，請人工審閱' }) }}",
+        "options": {}
+      },
+      "id": "max-rounds-response",
+      "name": "⚠️ 達最大輪數",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1950, 550]
+    }
+  ],
+  "connections": {
+    "Webhook 觸發": {
+      "main": [
+        [{ "node": "1️⃣ Writer Agent", "type": "main", "index": 0 }]
+      ]
+    },
+    "1️⃣ Writer Agent": {
+      "main": [
+        [{ "node": "準備審查資料", "type": "main", "index": 0 }]
+      ]
+    },
+    "準備審查資料": {
+      "main": [
+        [{ "node": "2️⃣ 並行審查 (5 Agents)", "type": "main", "index": 0 }]
+      ]
+    },
+    "2️⃣ 並行審查 (5 Agents)": {
+      "main": [
+        [{ "node": "品質達標？", "type": "main", "index": 0 }]
+      ]
+    },
+    "品質達標？": {
+      "main": [
+        [{ "node": "✅ 審核通過", "type": "main", "index": 0 }],
+        [{ "node": "3️⃣ Editor Agent 修改", "type": "main", "index": 0 }]
+      ]
+    },
+    "3️⃣ Editor Agent 修改": {
+      "main": [
+        [{ "node": "未達最大輪數？", "type": "main", "index": 0 }]
+      ]
+    },
+    "未達最大輪數？": {
+      "main": [
+        [{ "node": "更新草稿", "type": "main", "index": 0 }],
+        [{ "node": "⚠️ 達最大輪數", "type": "main", "index": 0 }]
+      ]
+    },
+    "更新草稿": {
+      "main": [
+        [{ "node": "2️⃣ 並行審查 (5 Agents)", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "公文AI", "createdAt": "2024-01-01T00:00:00.000Z", "updatedAt": "2024-01-01T00:00:00.000Z" }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

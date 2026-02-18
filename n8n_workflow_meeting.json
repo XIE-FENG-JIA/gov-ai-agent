@@ -1,0 +1,450 @@
+{
+  "name": "公文 AI Agent 開會流程",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gov-doc-meeting",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook 觸發",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "gov-doc-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/v1/agent/requirement",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ user_input: $json.body.user_input }) }}",
+        "options": {}
+      },
+      "id": "requirement-agent",
+      "name": "1. 需求分析",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.success }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-requirement",
+      "name": "需求分析成功?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/v1/agent/writer",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ requirement: $('1. 需求分析').item.json.requirement }) }}",
+        "options": {}
+      },
+      "id": "writer-agent",
+      "name": "2. 撰寫草稿",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [910, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.success }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-writer",
+      "name": "撰寫成功?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1130, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "draft",
+              "name": "draft",
+              "value": "={{ $('2. 撰寫草稿').item.json.formatted_draft }}",
+              "type": "string"
+            },
+            {
+              "id": "doc_type",
+              "name": "doc_type",
+              "value": "={{ $('1. 需求分析').item.json.requirement.doc_type || '函' }}",
+              "type": "string"
+            },
+            {
+              "id": "round",
+              "name": "round",
+              "value": 1,
+              "type": "number"
+            },
+            {
+              "id": "max_rounds",
+              "name": "max_rounds",
+              "value": "={{ $('Webhook 觸發').item.json.body.max_rounds || 3 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "init-review-loop",
+      "name": "初始化審查變數",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1350, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/v1/agent/review/parallel",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ draft: $json.draft, doc_type: $json.doc_type, agents: ['format', 'style', 'fact', 'consistency', 'compliance'] }) }}",
+        "options": {}
+      },
+      "id": "parallel-review",
+      "name": "3. 並行審查",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1570, 100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.risk_summary }}",
+              "operation": "notEquals",
+              "value2": "Safe"
+            },
+            {
+              "value1": "={{ $json.risk_summary }}",
+              "operation": "notEquals",
+              "value2": "Low"
+            }
+          ],
+          "number": [
+            {
+              "value1": "={{ $('初始化審查變數').item.json.round }}",
+              "operation": "smallerEqual",
+              "value2": "={{ $('初始化審查變數').item.json.max_rounds }}"
+            }
+          ]
+        },
+        "combineConditions": "all"
+      },
+      "id": "need-refinement",
+      "name": "需要修改?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1790, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 從審查結果中提取有問題的 feedback\nconst reviewResults = $input.item.json.results;\nconst feedback = [];\n\nfor (const [agentName, result] of Object.entries(reviewResults)) {\n  if (result.issues && result.issues.length > 0) {\n    feedback.push({\n      agent_name: result.agent_name,\n      issues: result.issues.filter(i => i.severity !== 'info')\n    });\n  }\n}\n\nreturn {\n  json: {\n    draft: $('初始化審查變數').item.json.draft,\n    feedback: feedback\n  }\n};"
+      },
+      "id": "prepare-feedback",
+      "name": "準備修改意見",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2010, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/v1/agent/refine",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ draft: $json.draft, feedback: $json.feedback }) }}",
+        "options": {}
+      },
+      "id": "refine-agent",
+      "name": "4. Editor 修改",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2230, 0]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "draft",
+              "name": "draft",
+              "value": "={{ $json.refined_draft }}",
+              "type": "string"
+            },
+            {
+              "id": "doc_type",
+              "name": "doc_type",
+              "value": "={{ $('初始化審查變數').item.json.doc_type }}",
+              "type": "string"
+            },
+            {
+              "id": "round",
+              "name": "round",
+              "value": "={{ $('初始化審查變數').item.json.round + 1 }}",
+              "type": "number"
+            },
+            {
+              "id": "max_rounds",
+              "name": "max_rounds",
+              "value": "={{ $('初始化審查變數').item.json.max_rounds }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "update-round",
+      "name": "更新輪數",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2450, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 組合最終結果\nconst requirement = $('1. 需求分析').item.json.requirement;\nconst draft = $('初始化審查變數').item.json.draft;\nconst reviewResult = $('3. 並行審查').item.json;\nconst round = $('初始化審查變數').item.json.round;\n\nreturn {\n  json: {\n    success: true,\n    requirement: requirement,\n    final_draft: draft,\n    qa_summary: {\n      aggregated_score: reviewResult.aggregated_score,\n      risk_summary: reviewResult.risk_summary,\n      rounds_used: round\n    },\n    review_details: reviewResult.results\n  }\n};"
+      },
+      "id": "compose-result",
+      "name": "組合結果",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2010, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-success",
+      "name": "回傳成功",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2230, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: $json.error || '需求分析失敗' }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "respond-error-req",
+      "name": "回傳錯誤 (需求)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [910, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: $json.error || '撰寫失敗' }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "respond-error-writer",
+      "name": "回傳錯誤 (撰寫)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1350, 300]
+    }
+  ],
+  "connections": {
+    "Webhook 觸發": {
+      "main": [
+        [
+          {
+            "node": "1. 需求分析",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. 需求分析": {
+      "main": [
+        [
+          {
+            "node": "需求分析成功?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "需求分析成功?": {
+      "main": [
+        [
+          {
+            "node": "2. 撰寫草稿",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "回傳錯誤 (需求)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. 撰寫草稿": {
+      "main": [
+        [
+          {
+            "node": "撰寫成功?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "撰寫成功?": {
+      "main": [
+        [
+          {
+            "node": "初始化審查變數",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "回傳錯誤 (撰寫)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "初始化審查變數": {
+      "main": [
+        [
+          {
+            "node": "3. 並行審查",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. 並行審查": {
+      "main": [
+        [
+          {
+            "node": "需要修改?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "需要修改?": {
+      "main": [
+        [
+          {
+            "node": "準備修改意見",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "組合結果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "準備修改意見": {
+      "main": [
+        [
+          {
+            "node": "4. Editor 修改",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Editor 修改": {
+      "main": [
+        [
+          {
+            "node": "更新輪數",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "更新輪數": {
+      "main": [
+        [
+          {
+            "node": "3. 並行審查",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "組合結果": {
+      "main": [
+        [
+          {
+            "node": "回傳成功",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "gov-ai-agent-n8n"
+  },
+  "tags": [
+    {
+      "name": "公文AI",
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z"
+    }
+  ]
+}

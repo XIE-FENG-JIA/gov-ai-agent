@@ -1,0 +1,95 @@
+{
+  "typography": {
+    "fontFamily": {
+      "official_serif": {
+        "value": "MingLiU",
+        "unit": null,
+        "description": "細明體 - 用於一般公文說明"
+      },
+      "official_kai": {
+        "value": "DFKai-SB",
+        "unit": null,
+        "description": "標楷體 - 用於標題與署名"
+      }
+    },
+    "fontSize": {
+      "title_main": {
+        "value": "16",
+        "unit": "pt",
+        "description": "大標題字級"
+      },
+      "title_sub": {
+        "value": "14",
+        "unit": "pt",
+        "description": "次標題字級"
+      },
+      "body_standard": {
+        "value": "12",
+        "unit": "pt",
+        "description": "內文標準字級"
+      },
+      "annotation": {
+        "value": "10",
+        "unit": "pt",
+        "description": "註解或頁碼"
+      }
+    },
+    "lineHeight": {
+      "standard": {
+        "value": "20",
+        "unit": "pt",
+        "description": "標準行距 (固定行高)"
+      },
+      "relaxed": {
+        "value": "25",
+        "unit": "pt",
+        "description": "寬鬆行距"
+      }
+    }
+  },
+  "spacing": {
+    "margin": {
+      "page_top": {
+        "value": "2.54",
+        "unit": "cm",
+        "description": "頁面邊界-上"
+      },
+      "page_bottom": {
+        "value": "2.54",
+        "unit": "cm",
+        "description": "頁面邊界-下"
+      },
+      "page_left": {
+        "value": "3.17",
+        "unit": "cm",
+        "description": "頁面邊界-左"
+      },
+      "page_right": {
+        "value": "3.17",
+        "unit": "cm",
+        "description": "頁面邊界-右"
+      }
+    },
+    "indent": {
+      "paragraph": {
+        "value": "2",
+        "unit": "em",
+        "description": "段落縮排 (2字元)"
+      }
+    }
+  },
+  "color": {
+    "text": {
+      "primary": {
+        "value": "#000000",
+        "unit": null,
+        "description": "標準文字黑"
+      },
+      "seal": {
+        "value": "#FF0000",
+        "unit": null,
+        "description": "關防/印信紅"
+      }
+    }
+  }
+}

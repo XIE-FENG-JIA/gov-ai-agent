@@ -1,0 +1,13 @@
+# 由 pyproject.toml 同步生成，請勿單獨修改此檔案
+# 若需更新依賴，請先修改 pyproject.toml 再重新同步
+typer[all]>=0.9.0
+litellm>=1.0.0
+chromadb>=0.4.0
+python-docx>=1.1.0
+pydantic>=2.0.0
+rich>=13.0.0
+pyyaml>=6.0
+jinja2>=3.1.0
+requests>=2.31.0
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0

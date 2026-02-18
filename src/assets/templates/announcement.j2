@@ -1,0 +1,30 @@
+# {{ doc_type }}
+
+**機關**：{{ sender }}
+**發文日期**：中華民國 {{ year }} 年 {{ month }} 月 {{ day }} 日
+**發文字號**：{{ doc_number }}
+
+---
+
+### 主旨
+{{ subject }}
+
+### 依據
+{{ basis }}
+
+### 公告事項
+{% if provision_points %}
+{% for item in provision_points %}
+{{ loop.index|cn }}、{{ item }}
+{% endfor %}
+{% else %}
+{{ provision_text }}
+{% endif %}
+
+---
+{% if attachments %}
+附件：
+{% for att in attachments %}
+- {{ att }}
+{% endfor %}
+{% endif %}

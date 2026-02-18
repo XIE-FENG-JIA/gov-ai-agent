@@ -1,0 +1,37 @@
+# {{ doc_type }}
+
+**機關**：{{ sender }}
+**日期**：中華民國 {{ year }} 年 {{ month }} 月 {{ day }} 日
+**速別**：{{ urgency }}
+**密等及解密條件或保密期限**：普通
+
+---
+
+### 主旨
+{{ subject }}
+
+### 說明
+{% if explanation_points %}
+{% for item in explanation_points %}
+{{ loop.index|cn }}、{{ item }}
+{% endfor %}
+{% else %}
+{{ explanation_text }}
+{% endif %}
+
+### 擬辦
+{% if action_points %}
+{% for item in action_points %}
+{{ loop.index|cn }}、{{ item }}
+{% endfor %}
+{% else %}
+{{ action_text }}
+{% endif %}
+
+---
+{% if attachments %}
+附件：
+{% for att in attachments %}
+- {{ att }}
+{% endfor %}
+{% endif %}
