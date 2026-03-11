@@ -125,6 +125,18 @@ def _chinese_index(value: int) -> str:
     return str(value)
 
 
+def _build_attachment_ref(attachments: list[str] | None) -> str:
+    """根據附件清單生成檔頭附件引用文字。
+
+    單一附件直接使用附件名，多附件使用「如說明」引用。
+    """
+    if not attachments:
+        return ""
+    if len(attachments) == 1:
+        return attachments[0]
+    return "如說明"
+
+
 def _normalize_urgency(urgency: str) -> str:
     """將速別標準化為含「件」後綴的正式格式。
 
@@ -500,6 +512,7 @@ class TemplateEngine:
             "action_points": self._parse_list_items(sections.get("provisions") or ""),
             "basis": sections.get("basis") or "",
             "attachments": requirement.attachments or [],
+            "attachment_ref": _build_attachment_ref(requirement.attachments),
             # 開會通知單專用欄位
             "meeting_time": sections.get("meeting_time") or "",
             "meeting_location": sections.get("meeting_location") or "",
