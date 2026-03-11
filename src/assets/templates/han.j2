@@ -1,5 +1,4 @@
 # {{ doc_type }}
-
 **機關**：{{ sender }}
 **受文者**：{{ receiver }}
 **速別**：{{ urgency }}
@@ -9,7 +8,6 @@
 {%- if attachment_ref %}
 **附件**：{{ attachment_ref }}
 {%- endif %}
-
 ---
 
 ### 主旨
@@ -36,7 +34,6 @@
 {{ provision_text }}
 {%- endif %}
 {%- endif %}
-
 ---
 {%- if copies_to %}
 正本：{{ copies_to }}
@@ -45,7 +42,6 @@
 副本：{{ cc_copies }}
 {%- endif %}
 {%- if attachments %}
-
 附件：
 {%- for att in attachments %}
 - {{ att }}

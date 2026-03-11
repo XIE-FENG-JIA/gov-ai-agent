@@ -1,10 +1,8 @@
 # {{ doc_type }}
-
 **機關**：{{ sender }}
 **日期**：中華民國 {{ year }} 年 {{ month }} 月 {{ day }} 日
 **速別**：{{ urgency }}
 **密等及解密條件或保密期限**：普通
-
 ---
 
 ### 主旨
@@ -31,10 +29,8 @@
 {{ action_text }}
 {%- endif %}
 {%- endif %}
-
 ---
 {%- if attachments %}
-
 附件：
 {%- for att in attachments %}
 - {{ att }}
