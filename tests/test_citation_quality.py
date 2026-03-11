@@ -261,7 +261,7 @@ class TestFormatConsistency:
         ref_section = draft_with_citations.split("### 參考來源")[1]
 
         # 每個引用應符合格式
-        ref_lines = [l for l in ref_section.strip().split("\n") if l.strip().startswith("[^")]
+        ref_lines = [line for line in ref_section.strip().split("\n") if line.strip().startswith("[^")]
         assert len(ref_lines) >= 1
 
         for line in ref_lines:

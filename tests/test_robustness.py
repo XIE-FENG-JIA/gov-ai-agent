@@ -2669,7 +2669,7 @@ class TestProductionReadinessIteration1:
         from pathlib import Path
         lock_file = Path(__file__).parent.parent / "requirements-lock.txt"
         with open(lock_file) as f:
-            lines = [l.strip() for l in f if l.strip() and not l.startswith("#")]
+            lines = [ln.strip() for ln in f if ln.strip() and not ln.startswith("#")]
         assert len(lines) > 0, "Lock file 不應為空"
         for line in lines:
             assert "==" in line, f"依賴 '{line}' 缺少版本鎖定（應使用 ==）"

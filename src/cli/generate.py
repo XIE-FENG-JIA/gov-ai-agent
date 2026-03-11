@@ -25,11 +25,10 @@ from src.utils.tw_check import detect_simplified
 from src.utils.lang_check import check_language
 from src.cli.history import append_record
 from src.core.error_analyzer import ErrorAnalyzer
+from src.core.constants import MAX_USER_INPUT_LENGTH
 
 console = Console()
 app = typer.Typer()
-
-from src.core.constants import MAX_USER_INPUT_LENGTH
 
 _INPUT_MIN_LENGTH = 5
 _INPUT_MAX_LENGTH = MAX_USER_INPUT_LENGTH

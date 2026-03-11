@@ -4765,10 +4765,10 @@ class TestHistoryClear:
         assert "尚無歷史記錄" in result.stdout
 
 
-# ==================== Merge Command ====================
+# ==================== Merge Command (Extended) ====================
 
-class TestMergeCommand:
-    """gov-ai merge 指令測試"""
+class TestMergeCommandExtended:
+    """gov-ai merge 指令延伸測試"""
 
     def test_merge_insufficient_files(self, tmp_path):
         """只提供一個檔案時回傳 exit_code=1"""
