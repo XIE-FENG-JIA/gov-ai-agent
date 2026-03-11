@@ -49,3 +49,5 @@ kb_data/
 .chroma/
 output/
 experiments.log
+.gov-ai-history.json
+test_kb_temp/
