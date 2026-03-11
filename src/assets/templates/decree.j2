@@ -8,27 +8,28 @@
 
 ### 主旨
 {{ subject }}
+{%- if basis %}
 
-{% if basis %}
 ### 依據
 {{ basis }}
-{% endif %}
+{%- endif %}
+{%- if provision_points or provision_text %}
 
-{% if provision_points or provision_text %}
 ### 令文
-{% if provision_points|length > 1 %}
-{% for item in provision_points %}
+{%- if provision_points|length > 1 %}
+{%- for item in provision_points %}
 {{ loop.index|cn }}、{{ item }}
-{% endfor %}
-{% else %}
+{%- endfor %}
+{%- else %}
 {{ provision_text }}
-{% endif %}
-{% endif %}
+{%- endif %}
+{%- endif %}
 
 ---
-{% if attachments %}
+{%- if attachments %}
+
 附件：
-{% for att in attachments %}
+{%- for att in attachments %}
 - {{ att }}
-{% endfor %}
-{% endif %}
+{%- endfor %}
+{%- endif %}
