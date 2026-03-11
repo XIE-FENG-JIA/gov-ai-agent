@@ -551,7 +551,7 @@ class TemplateEngine:
             return self._fallback_apply(requirement, sections)
 
         if sections.get("references"):
-            output += "\n\n### 參考來源\n" + sections["references"]
+            output += "\n\n**參考來源**：\n" + sections["references"]
 
         return output
 
@@ -568,28 +568,28 @@ class TemplateEngine:
         if requirement.attachments:
             att_text = "附件：\n" + "\n".join([f"- {item}" for item in requirement.attachments])
 
-        template = f"""# {requirement.doc_type}
+        from datetime import date as _date
+        _today = _date.today()
+        _roc = _today.year - 1911
 
-**機關**：{requirement.sender}
+        template = f"""**機關**：{requirement.sender}
+**發文日期**：中華民國{_roc}年{_today.month}月{_today.day}日
+**發文字號**：______號
+**速別**：{_normalize_urgency(requirement.urgency or "普通")}
+**密等及解密條件或保密期限**：
+
 **受文者**：{requirement.receiver}
-**速別**：{requirement.urgency}
-**密等及解密條件或保密期限**：普通
 
----
+**主旨**：{subject}
 
-### 主旨
-{subject}
-
-### 說明
+**說明**：
 {explanation}
 
-### 辦法
+**辦法**：
 {provisions}
-
----
 {att_text}
 """
         # 移除空白段落（說明或辦法為空時不應渲染空標題）
-        result = template.replace("### 辦法\n\n", "")
-        result = result.replace("### 說明\n\n", "")
+        result = template.replace("**辦法**：\n\n", "")
+        result = result.replace("**說明**：\n\n", "")
         return result
