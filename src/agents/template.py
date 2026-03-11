@@ -125,6 +125,18 @@ def _chinese_index(value: int) -> str:
     return str(value)
 
 
+def _normalize_urgency(urgency: str) -> str:
+    """將速別標準化為含「件」後綴的正式格式。
+
+    例如：「普通」→「普通件」，「最速件」維持不變。
+    """
+    if not urgency:
+        return "普通件"
+    if urgency.endswith("件"):
+        return urgency
+    return urgency + "件"
+
+
 class TemplateEngine:
     """
     模板引擎：使用 Jinja2 模板結構化並標準化公文內容。
@@ -474,7 +486,7 @@ class TemplateEngine:
             "doc_type": requirement.doc_type or "函",
             "sender": requirement.sender or "（未指定）",
             "receiver": requirement.receiver or "（未指定）",
-            "urgency": requirement.urgency or "普通",
+            "urgency": _normalize_urgency(requirement.urgency or "普通"),
             "year": roc_year,
             "month": today.month,
             "day": today.day,
