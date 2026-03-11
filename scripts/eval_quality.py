@@ -19,16 +19,16 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock  # noqa: E402
 
-from src.agents.writer import WriterAgent
-from src.agents.validators import ValidatorRegistry
-from src.agents.template import (
+from src.agents.writer import WriterAgent  # noqa: E402
+from src.agents.validators import ValidatorRegistry  # noqa: E402
+from src.agents.template import (  # noqa: E402
     TemplateEngine,
     clean_markdown_artifacts,
     renumber_provisions,
 )
-from src.core.models import PublicDocRequirement
+from src.core.models import PublicDocRequirement  # noqa: E402
 
 
 # ─────────────────── 輔助工具 ───────────────────
