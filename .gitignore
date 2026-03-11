@@ -51,3 +51,4 @@ output/
 experiments.log
 .gov-ai-history.json
 test_kb_temp/
+scripts/eval_template.py
