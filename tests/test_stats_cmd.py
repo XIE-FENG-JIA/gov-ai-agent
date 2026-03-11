@@ -1,7 +1,6 @@
 """stats_cmd.py 的單元測試。"""
 import json
-import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from src.cli.stats_cmd import stats
 

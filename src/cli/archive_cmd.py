@@ -58,5 +58,5 @@ def archive(
     if tag:
         console.print(f"  標籤：[bold]{tag}[/bold]")
     if password:
-        console.print(f"  [yellow]密碼保護：已啟用（請妥善保管密碼）[/yellow]")
+        console.print("  [yellow]密碼保護：已啟用（請妥善保管密碼）[/yellow]")
     console.print(f"\n[green]已封存 {len(files)} 個檔案至 {output}（{zip_size:,} bytes）[/green]")

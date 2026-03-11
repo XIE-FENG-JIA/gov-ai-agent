@@ -11,17 +11,16 @@
 """
 
 import gc
-import json
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
 from src.core.llm import LLMProvider
-from src.core.review_models import ReviewResult, ReviewIssue, QAReport
+from src.core.review_models import ReviewResult, ReviewIssue
 
 
 # ==================== 共用 Fixtures ====================

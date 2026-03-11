@@ -9,7 +9,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.prompt import Confirm, Prompt
 from src.core.config import ConfigManager
-from src.core.llm import LiteLLMProvider, get_llm_factory
+from src.core.llm import LiteLLMProvider
 
 logger = logging.getLogger(__name__)
 
@@ -354,7 +354,7 @@ def init():
 
     # 2. 如需要 API Key，引導設定
     if provider in ("gemini", "openrouter"):
-        console.print(f"\n[bold]2. 設定 API Key[/bold]")
+        console.print("\n[bold]2. 設定 API Key[/bold]")
         if provider == "gemini":
             console.print("  [dim]請至 https://aistudio.google.com/apikey 取得 API Key[/dim]")
             env_var = "GEMINI_API_KEY"

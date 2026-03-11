@@ -68,7 +68,7 @@ def compare(
     removed = sum(1 for line in diff if line.startswith("-") and not line.startswith("---"))
 
     if stats_only:
-        console.print(f"[bold]差異統計：[/bold]")
+        console.print("[bold]差異統計：[/bold]")
         console.print(f"  [green]+{added} 行新增[/green]")
         console.print(f"  [red]-{removed} 行刪除[/red]")
         console.print(f"  [dim]共 {added + removed} 處變更[/dim]")

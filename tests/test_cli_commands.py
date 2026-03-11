@@ -4,7 +4,6 @@ src/cli/ 的命令行介面測試
 """
 import asyncio
 import json
-import logging
 import os
 from pathlib import Path
 import yaml
@@ -2099,7 +2098,6 @@ class TestConfigEnvVarWarningNoise:
     def test_providers_env_var_uses_debug(self):
         """providers 子層級未設定的環境變數應使用 debug 而非 warning"""
         from src.core.config import ConfigManager
-        import logging
 
         cm = ConfigManager.__new__(ConfigManager)
         with patch.dict(os.environ, {}, clear=False):
@@ -6967,7 +6965,9 @@ class TestHistoryArchive:
         assert result.exit_code == 0
 
     def test_archive_with_yes(self, tmp_path, monkeypatch):
-        import time, os, json
+        import time
+        import os
+        import json
         monkeypatch.chdir(tmp_path)
         hist = tmp_path / ".history"
         hist.mkdir()
@@ -6982,7 +6982,9 @@ class TestHistoryArchive:
         assert "已封存" in result.stdout
 
     def test_archive_dry_run(self, tmp_path, monkeypatch):
-        import time, os, json
+        import time
+        import os
+        import json
         monkeypatch.chdir(tmp_path)
         hist = tmp_path / ".history"
         hist.mkdir()
@@ -9342,7 +9344,8 @@ class TestArchivePassword:
         out = tmp_path / "archive.zip"
         from src.cli.main import app
         runner.invoke(app, ["archive", str(doc), "-o", str(out), "--password", "abc"])
-        import zipfile, json
+        import zipfile
+        import json
         with zipfile.ZipFile(str(out)) as zf:
             meta = json.loads(zf.read("metadata.json"))
         assert meta["password_protected"] is True

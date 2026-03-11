@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 from unittest.mock import MagicMock, patch
 
-from src.core.llm import MockLLMProvider, LiteLLMProvider, LLMError, LLMConnectionError, LLMAuthError
+from src.core.llm import MockLLMProvider, LiteLLMProvider, LLMConnectionError, LLMAuthError
 from src.core.config import ConfigManager
 from src.core.models import PublicDocRequirement
 from src.core.review_models import ReviewResult
@@ -2047,8 +2047,6 @@ class TestIteration2AIWorkflowReliability:
 
     def test_api_refine_prompt_preserves_citation_markers(self):
         """API refine endpoint 的 prompt 應包含保留【待補依據】的指令"""
-        from api_server import app
-        from starlette.testclient import TestClient
 
         # 讀取 refine endpoint 的原始碼以驗證 prompt 內容
         import inspect
@@ -2512,7 +2510,7 @@ class TestIteration2StabilityHardening:
         with caplog.at_level(logging.WARNING):
             # 直接測試日期解析邏輯
             from datetime import datetime, timedelta
-            cutoff = datetime.now() - timedelta(days=30)
+            datetime.now() - timedelta(days=30)
             date_str = records[0]["Date_Published"]
             try:
                 datetime.strptime(date_str, "%Y-%m-%d")
@@ -2788,7 +2786,7 @@ class TestProductionReadinessIteration2:
         client = TestClient(app)
         with caplog.at_level(logging.INFO):
             # POST 到不存在的 endpoint 會回 422/404，但仍應記錄日誌
-            resp = client.post(
+            client.post(
                 "/api/v1/agent/requirement",
                 json={"user_input": "測試用的需求描述"},
             )
@@ -3372,7 +3370,6 @@ class TestCoverageImprovement:
         mem = OrganizationalMemory(storage_path=str(tmp_path / "prefs.json"))
         mem.preferences = {"test": {"usage_count": 1}}
 
-        original_mkstemp = tempfile.mkstemp
 
         def failing_fdopen(fd, *args, **kwargs):
             os.close(fd)
@@ -3597,7 +3594,7 @@ class TestCoverageImprovement:
         with patch("builtins.open", side_effect=failing_open):
             with caplog.at_level(logging.WARNING):
                 try:
-                    with open(env_file, "r") as f:
+                    with open(env_file, "r"):
                         pass
                 except OSError:
                     pass  # 預期的錯誤
@@ -3704,8 +3701,6 @@ class TestCoverageImprovement:
 
         # 備份並替換 load_dotenv 中的 env_path 解析
         # 直接重新定義函式以使用我們的路徑
-        original_fn = cfg_mod.load_dotenv
-        env_path_backup = None
 
         def patched_load():
             env_path = env_file  # 使用我們的臨時 .env
@@ -3763,7 +3758,6 @@ class TestCoverageImprovement:
         monkeypatch.delenv("COV_REAL_C", raising=False)
 
         # Monkeypatch 模組的 __file__ 讓 Path(__file__).parent.parent.parent 指向 tmp_path
-        original_file = cfg_mod.__file__
         monkeypatch.setattr(cfg_mod, "__file__", str(fake_core / "config.py"))
 
         # 呼叫真正的 load_dotenv

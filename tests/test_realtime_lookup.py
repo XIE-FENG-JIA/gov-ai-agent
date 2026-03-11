@@ -1,10 +1,9 @@
 """即時法規驗證與政策查詢服務測試。"""
 import json
 import io
-import time
 import zipfile
 import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 from src.knowledge.realtime_lookup import (
     Citation,
@@ -412,7 +411,7 @@ class TestFactCheckerWithVerifier:
         mock_llm.generate.return_value = '{"issues": [], "score": 0.9}'
 
         checker = FactChecker(mock_llm, law_verifier=None)
-        result = checker.check("依據行政程序法第100條辦理。")
+        checker.check("依據行政程序法第100條辦理。")
 
         # 確認 prompt 中有降級訊息
         call_args = mock_llm.generate.call_args

@@ -76,11 +76,11 @@ def toc(
         for e in filtered:
             writer.writerow([e["no"], e["file"], e["subject"], e["type"], e["depth"]])
         console.print(buf.getvalue())
-        console.print(f"\n[dim]格式：CSV[/dim]")
+        console.print("\n[dim]格式：CSV[/dim]")
     elif fmt_val == "list":
         for e in filtered:
             console.print(f"  {e['no']}. {e['file']} — {e['subject']}（{e['type']}）")
-        console.print(f"\n[dim]格式：清單[/dim]")
+        console.print("\n[dim]格式：清單[/dim]")
     elif fmt_val == "table":
         table = Table(title="公文目錄")
         table.add_column("序號", style="cyan", justify="right", width=6)

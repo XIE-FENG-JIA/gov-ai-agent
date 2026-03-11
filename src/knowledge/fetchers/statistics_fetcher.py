@@ -11,7 +11,7 @@ from pathlib import Path
 
 import requests
 
-from src.knowledge.fetchers.base import BaseFetcher, FetchResult, html_to_markdown
+from src.knowledge.fetchers.base import BaseFetcher, FetchResult
 from src.knowledge.fetchers.constants import (
     SOURCE_LEVEL_B,
 )

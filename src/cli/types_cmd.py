@@ -1,5 +1,4 @@
 """列出支援的公文類型。"""
-import typer
 from rich.console import Console
 from rich.table import Table
 

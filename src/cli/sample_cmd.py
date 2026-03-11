@@ -109,4 +109,4 @@ def sample(
         padding=(1, 2),
     ))
     console.print("[dim]此為格式範例，非 LLM 生成內容。[/dim]")
-    console.print(f'[dim]欲 AI 產生公文，請使用：gov-ai generate -i "您的需求"[/dim]')
+    console.print('[dim]欲 AI 產生公文，請使用：gov-ai generate -i "您的需求"[/dim]')

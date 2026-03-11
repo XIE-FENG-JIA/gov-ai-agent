@@ -1,7 +1,9 @@
 """
 真實文本對照檢查：生成 DOCX → 提取文字 → 對照 kb_data 範例
 """
-import os, sys, glob
+import os
+import sys
+import glob
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -111,7 +113,7 @@ def main():
                 print(f"  出| {p}")
 
         # 5. 對照檢查
-        print(f"\n  ── 格式對照檢查 ──")
+        print("\n  ── 格式對照檢查 ──")
         issues = []
 
         # 5a. 標題是否正確
@@ -223,11 +225,11 @@ def main():
             all_issues.append((doc_type, issues))
             print(f"\n  評等：{'C（需修改）' if len(issues) > 2 else 'B（小瑕疵）'}")
         else:
-            print(f"\n  評等：A（與範例格式一致）")
+            print("\n  評等：A（與範例格式一致）")
 
     # ── 總結 ──
     print(f"\n{'═' * 70}")
-    print(f"  總結")
+    print("  總結")
     print(f"{'═' * 70}")
 
     if not all_issues:

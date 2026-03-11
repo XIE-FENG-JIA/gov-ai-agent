@@ -674,7 +674,7 @@ def generate(
                 final_draft = _re.sub(r"副本[：:].*", cc_text, final_draft, count=1)
             elif "正本" in final_draft:
                 # 在正本之後加入
-                final_draft = final_draft.replace("正本", f"正本", 1)
+                final_draft = final_draft.replace("正本", "正本", 1)
                 # 找到正本行尾加入副本
                 lines = final_draft.split("\n")
                 new_lines = []
@@ -893,7 +893,7 @@ def generate(
         disclaimer_text = disclaimer.strip()
         if disclaimer_text:
             final_draft = final_draft.rstrip() + f"\n\n免責聲明：{disclaimer_text}"
-            console.print(f"  [dim]已加入免責聲明[/dim]")
+            console.print("  [dim]已加入免責聲明[/dim]")
 
     # 5. 匯出（驗證輸出路徑安全性）
     console.rule("[bold blue]步驟 5/5 · 匯出文件[/bold blue]")
@@ -1000,7 +1000,7 @@ def generate(
             padding=(1, 2),
         ))
     else:
-        console.print(f"\n[bold]統計摘要[/bold]")
+        console.print("\n[bold]統計摘要[/bold]")
         console.print(f"  類型：{requirement.doc_type}  速別：{requirement.urgency}")
         console.print(f"  處理時間：{gen_elapsed:.1f} 秒")
         if qa_report:

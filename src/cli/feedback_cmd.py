@@ -119,7 +119,7 @@ def summary():
     total = len(scores)
     avg = sum(scores) / total
 
-    console.print(f"\n[bold]回饋統計[/bold]")
+    console.print("\n[bold]回饋統計[/bold]")
     console.print(f"  總筆數：{total}")
     avg_color = _score_color(round(avg))
     console.print(f"  平均分數：[{avg_color}]{avg:.1f}[/{avg_color}]")

@@ -3,7 +3,6 @@
 為首次使用者提供 step-by-step 的環境檢查與設置引導。
 """
 import os
-import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table

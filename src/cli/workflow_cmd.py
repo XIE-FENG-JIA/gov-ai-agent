@@ -129,7 +129,7 @@ def list_workflows(
 
     console.print(table)
     if verbose:
-        console.print(f"  [dim]詳細模式已啟用[/dim]")
+        console.print("  [dim]詳細模式已啟用[/dim]")
 
 
 @app.command()
@@ -310,7 +310,7 @@ def detail(
         table.add_row(key, tmpl["description"], str(len(tmpl["steps"])), tmpl["created"])
 
     console.print(table)
-    console.print(f"\n[dim]使用 gov-ai workflow detail <name> 查看詳情。[/dim]")
+    console.print("\n[dim]使用 gov-ai workflow detail <name> 查看詳情。[/dim]")
 
 
 @app.command(name="validate")

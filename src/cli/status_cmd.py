@@ -6,7 +6,6 @@
 import json
 import os
 
-import typer
 import yaml
 from rich.console import Console
 from rich.panel import Panel

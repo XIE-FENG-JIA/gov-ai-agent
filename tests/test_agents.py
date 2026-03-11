@@ -1,6 +1,5 @@
 import json
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from src.agents.requirement import RequirementAgent
 from src.agents.template import TemplateEngine, clean_markdown_artifacts, renumber_provisions

@@ -1,5 +1,4 @@
 """quickstart.py 的單元測試。"""
-import os
 from unittest.mock import patch, MagicMock
 
 from src.cli.quickstart import quickstart, _print_llm_fix_hint
@@ -38,9 +37,8 @@ class TestQuickstart:
         mock_kb = MagicMock()
         mock_kb.get_stats.return_value = {"examples_count": 10}
 
-        from src.core.llm import LiteLLMProvider
 
-        with patch("src.cli.quickstart.console") as mock_console:
+        with patch("src.cli.quickstart.console"):
             with patch("src.core.config.ConfigManager") as mock_cm:
                 mock_cm.return_value.config = {
                     "llm": {"provider": "test", "model": "m"},

@@ -287,7 +287,7 @@ def template(
         padding=(1, 2),
     ))
     console.print("[dim]修改佔位符後可直接用作需求描述。[/dim]")
-    console.print(f'[dim]填寫完成後可使用：gov-ai generate -i "填寫後的內容"[/dim]')
+    console.print('[dim]填寫完成後可使用：gov-ai generate -i "填寫後的內容"[/dim]')
 
     if output:
         with open(output, "w", encoding="utf-8") as f:

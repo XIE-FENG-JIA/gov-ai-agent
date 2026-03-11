@@ -1,5 +1,4 @@
 """分層收斂迭代機制的單元測試。"""
-import pytest
 from unittest.mock import MagicMock, patch
 
 from src.core.review_models import (
@@ -7,9 +6,8 @@ from src.core.review_models import (
     IterationState,
     ReviewIssue,
     ReviewResult,
-    QAReport,
 )
-from src.core.constants import CONVERGENCE_STALE_ROUNDS, CONVERGENCE_MAX_FIX_ATTEMPTS
+from src.core.constants import CONVERGENCE_STALE_ROUNDS
 
 
 # ============================================================
@@ -264,7 +262,7 @@ class TestEditorConvergenceMode:
     @patch("src.agents.editor.EditorInChief._layered_refine")
     def test_convergence_advances_phase(self, mock_refine, mock_targeted, mock_review):
         """error Phase 無問題後應進入 warning Phase。"""
-        error_issue = self._make_issue("error")
+        self._make_issue("error")
         warn_issue = self._make_issue("warning")
 
         # 第 1 輪：只有 warning，沒有 error → 應跳到 warning Phase

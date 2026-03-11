@@ -147,8 +147,8 @@ class ProcurementFetcher(BaseFetcher):
             unit_name = rec.get("unit_name", "") or ""
             date = rec.get("date", "")
             job_number = rec.get("job_number", "")
-            unit_id = rec.get("unit_id", "")
-            tender_api_url = rec.get("tender_api_url", "")
+            rec.get("unit_id", "")
+            rec.get("tender_api_url", "")
             source_url = rec.get("url", "")
             if source_url and not source_url.startswith("http"):
                 source_url = f"{PCC_API_URL}{source_url}"

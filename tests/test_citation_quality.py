@@ -2,7 +2,7 @@
 自動化評估測試套件：引用正確率、可追溯性、幻覺率、格式一致率
 """
 import re
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 

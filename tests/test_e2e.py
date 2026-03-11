@@ -2501,7 +2501,6 @@ class TestUserSimulation:
 
     def test_scenario_llm_timeout(self, mock_llm, mock_kb):
         """LLM 回應超慢時，EditorInChief 應能在逾時後回傳部分已完成的審查結果"""
-        import time
 
         call_count = [0]
 

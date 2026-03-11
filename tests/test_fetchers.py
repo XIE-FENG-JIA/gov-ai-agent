@@ -10,11 +10,9 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 from xml.etree.ElementTree import Element, SubElement, tostring
 
-import pytest
 from typer.testing import CliRunner
 
 from src.knowledge.fetchers.base import BaseFetcher, FetchResult, html_to_markdown
-from src.knowledge.fetchers.constants import DEFAULT_LAW_PCODES
 
 
 runner = CliRunner()
@@ -275,7 +273,7 @@ class TestLawFetcher:
     @patch("src.knowledge.fetchers.law_fetcher.requests.get")
     def test_fetch_large_law_chunked(self, mock_get, tmp_path):
         """測試大型法規（超過字數上限）會被分割"""
-        from src.knowledge.fetchers.law_fetcher import LawFetcher, CHUNK_ARTICLES
+        from src.knowledge.fetchers.law_fetcher import LawFetcher
 
         # 建立一部有 50 條的法規，每條 300 字
         articles = [
@@ -928,7 +926,7 @@ class TestContentHash:
         results = fetcher.fetch()
 
         for r in results:
-            assert r.content_hash, f"GazetteFetcher 結果缺少 hash"
+            assert r.content_hash, "GazetteFetcher 結果缺少 hash"
             assert len(r.content_hash) == 16
             assert r.metadata.get("content_hash") == r.content_hash
 
@@ -947,7 +945,7 @@ class TestContentHash:
         results = fetcher.fetch()
 
         for r in results:
-            assert r.content_hash, f"LawFetcher 結果缺少 hash"
+            assert r.content_hash, "LawFetcher 結果缺少 hash"
             assert len(r.content_hash) == 16
             assert r.metadata.get("content_hash") == r.content_hash
 
@@ -967,7 +965,7 @@ class TestContentHash:
         results = fetcher.fetch()
 
         for r in results:
-            assert r.content_hash, f"OpenDataFetcher 結果缺少 hash"
+            assert r.content_hash, "OpenDataFetcher 結果缺少 hash"
             assert len(r.content_hash) == 16
             assert r.metadata.get("content_hash") == r.content_hash
 

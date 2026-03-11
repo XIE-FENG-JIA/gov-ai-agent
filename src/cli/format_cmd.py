@@ -69,4 +69,4 @@ def format_doc(
         console.print(f"[green]已格式化：{path}[/green]")
     else:
         console.print(formatted)
-        console.print(f"\n[green]已格式化[/green]")
+        console.print("\n[green]已格式化[/green]")

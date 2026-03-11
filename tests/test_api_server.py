@@ -2393,7 +2393,7 @@ class TestDownloadEndpoint:
 
         # 模擬一個合法正則但 resolve 後逃逸的檔名（理論情境）
         # 正常情況下正則已攔截，此測試確認 resolve 防護層存在
-        output_dir = Path(api_server.__file__).parent / "output"
+        Path(api_server.__file__).parent / "output"
         # 合法檔名不應觸發 resolve 防護
         response = client.get("/api/v1/download/valid_test.docx")
         # 因為檔案不存在，應該是 404 而非 400
@@ -3218,7 +3218,6 @@ class TestWebUIGenerate:
 
     def test_generate_post_returns_result(self, mock_api_deps):
         """Mock LLM 和 KB 後，POST /ui/generate 回傳包含生成內容的 HTML"""
-        import api_server
 
         call_count = [0]
         def side_effect(prompt, **kwargs):
@@ -3249,7 +3248,6 @@ class TestWebUIGenerate:
 
     def test_generate_post_with_doc_type(self, mock_api_deps):
         """指定公文類型時，effective_input 應包含類型前綴"""
-        import api_server
 
         call_count = [0]
         def side_effect(prompt, **kwargs):

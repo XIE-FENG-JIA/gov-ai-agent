@@ -373,7 +373,7 @@ def format_verification_results(checks: list[CitationCheck]) -> str:
     for chk in checks:
         c = chk.citation
         if chk.law_exists:
-            law_url = LAW_DETAIL_URL.format(pcode=chk.pcode) if chk.pcode else ""
+            LAW_DETAIL_URL.format(pcode=chk.pcode) if chk.pcode else ""
             pcode_note = f"（PCode: {chk.pcode}）" if chk.pcode else ""
 
             if chk.closest_match and chk.closest_match != c.law_name:

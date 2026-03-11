@@ -97,7 +97,7 @@ class LegislativeFetcher(BaseFetcher):
             session = str(bill.get("會期", ""))
             proposer = bill.get("提案單位/提案委員", bill.get("提案人", ""))
             status = bill.get("議案狀態", "")
-            bill_no = bill.get("議案編號", "")
+            bill.get("議案編號", "")
             category = bill.get("議案類別", "")
             meeting_desc = bill.get("會議代碼:str", "")
             latest_date = bill.get("最新進度日期", "")

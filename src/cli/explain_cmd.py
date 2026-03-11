@@ -147,7 +147,7 @@ def explain(
         }
         console.print(json.dumps(result, ensure_ascii=False, indent=2))
     elif output_format == "markdown":
-        md_lines = [f"# 公文解析結果", "", f"**推測公文類型：** {doc_type}", ""]
+        md_lines = ["# 公文解析結果", "", f"**推測公文類型：** {doc_type}", ""]
         if section_list:
             md_lines.append("## 段落結構")
             md_lines.append("")

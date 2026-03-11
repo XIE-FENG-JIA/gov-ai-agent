@@ -88,8 +88,8 @@ class LegislativeDebateFetcher(BaseFetcher):
             legislator = ", ".join(legislators) if isinstance(legislators, list) else str(legislators)
             date = item.get("刊登日期", item.get("date", ""))
             content = item.get("說明", item.get("content", ""))
-            term = item.get("屆", "")
-            session = item.get("會期", "")
+            item.get("屆", "")
+            item.get("會期", "")
             meeting_desc = item.get("會議代碼:str", "")
             source_url = item.get("url", "")
 

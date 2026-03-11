@@ -180,7 +180,7 @@ def search(
         excerpt = content[:100].replace('\n', ' ') + "..." if content else "（無內容）"
 
         level = metadata.get("source_level", "B") if isinstance(metadata, dict) else "B"
-        level_display = f"[green]A[/green]" if level == "A" else f"[dim]B[/dim]"
+        level_display = "[green]A[/green]" if level == "A" else "[dim]B[/dim]"
 
         table.add_row(
             score,

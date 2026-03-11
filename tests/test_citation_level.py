@@ -17,8 +17,6 @@ from src.knowledge.fetchers.constants import (
     GAZETTE_DETAIL_URL,
     LAW_DETAIL_URL,
     OPENDATA_DETAIL_URL,
-    SOURCE_LEVEL_A,
-    SOURCE_LEVEL_B,
 )
 from src.core.models import Citation
 

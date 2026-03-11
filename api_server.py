@@ -32,7 +32,7 @@ from pydantic import BaseModel, Field, field_validator
 import hmac
 
 from src.core.config import ConfigManager
-from src.core.llm import get_llm_factory, LLMError, LLMConnectionError, LLMAuthError
+from src.core.llm import get_llm_factory
 from src.core.logging_config import setup_logging as _shared_setup_logging
 from src.core.models import DocTypeLiteral, PublicDocRequirement
 from src.core.review_models import ReviewResult

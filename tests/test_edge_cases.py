@@ -6,12 +6,10 @@ ValidatorRegistry 及 KnowledgeBaseManager 的邊界情況。
 所有測試使用 MagicMock，不需要真實 LLM。
 """
 import json
-import math
 import os
 import threading
 import tempfile
-from concurrent.futures import TimeoutError
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
@@ -23,7 +21,7 @@ from src.document.exporter import DocxExporter
 from src.agents.validators import ValidatorRegistry
 from src.knowledge.manager import KnowledgeBaseManager
 from src.core.models import PublicDocRequirement
-from src.core.review_models import ReviewResult, ReviewIssue, QAReport
+from src.core.review_models import ReviewResult, ReviewIssue
 from src.core.constants import MAX_USER_INPUT_LENGTH
 
 
