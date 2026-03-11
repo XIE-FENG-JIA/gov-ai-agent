@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<List>
+  <item>
+    <subject>警察機關辦理刑事案件統計</subject>
+    <pubUnitName>刑事警察局</pubUnitName>
+    <posterDate>2025-12-01</posterDate>
+    <updateDate>2026-01-15</updateDate>
+    <resources>
+      <resources>
+        <relateURL>https://data.gov.tw/dataset/12345</relateURL>
+      </resources>
+    </resources>
+  </item>
+  <item>
+    <subject>交通事故統計資料</subject>
+    <pubUnitName>交通組</pubUnitName>
+    <posterDate>2025-11-20</posterDate>
+    <updateDate>2026-01-10</updateDate>
+    <resources>
+      <resources>
+        <relateURL>https://data.gov.tw/dataset/67890</relateURL>
+      </resources>
+    </resources>
+  </item>
+  <item>
+    <subject>失蹤人口查尋系統</subject>
+    <pubUnitName>戶口組</pubUnitName>
+    <posterDate>2025-10-15</posterDate>
+    <updateDate>2025-12-20</updateDate>
+    <resources>
+      <resources>
+        <relateURL>https://example.com/other-link</relateURL>
+      </resources>
+    </resources>
+  </item>
+</List>

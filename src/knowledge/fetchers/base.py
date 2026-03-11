@@ -1,0 +1,214 @@
+"""BaseFetcher 抽象基底類別與共用工具。"""
+from __future__ import annotations
+
+import re
+import time
+import logging
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from pathlib import Path
+
+import urllib3
+import requests
+import yaml
+
+# 台灣政府 API 憑證配置不完整，需關閉 SSL 驗證警告
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+logger = logging.getLogger(__name__)
+
+# 政府 API 已知 SSL 問題的域名
+_GOV_SSL_DOMAINS = frozenset({
+    "law.moj.gov.tw",
+    "gazette.nat.gov.tw",
+    "data.gov.tw",
+    "www.npa.gov.tw",
+    # 新增爬蟲域名
+    "data.ly.gov.tw",
+    "v2.ly.govapi.tw",
+    "data.judicial.gov.tw",
+    "judgment.judicial.gov.tw",
+    "lawsearch.judicial.gov.tw",
+    "mojlaw.moj.gov.tw",
+    "www.laws.taipei.gov.tw",
+    "law.exam.gov.tw",
+    "weblaw.exam.gov.tw",
+    "nstatdb.dgbas.gov.tw",
+    "www.stat.gov.tw",
+    "www.cy.gov.tw",
+    "pcc-api.openfun.app",
+})
+
+# 共用 HTTP retry 設定
+_DEFAULT_MAX_RETRIES = 3
+_DEFAULT_BACKOFF_BASE = 2  # 指數退避基數（秒）
+_RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
+
+
+@dataclass
+class FetchResult:
+    """單一擷取結果。"""
+    file_path: Path
+    metadata: dict
+    collection: str
+    source_level: str = "B"
+    source_url: str | None = None
+    content_hash: str = ""
+
+
+class BaseFetcher(ABC):
+    """所有政府 API fetcher 的抽象基底類別。"""
+
+    def __init__(self, output_dir: Path, rate_limit: float = 1.0) -> None:
+        self.output_dir = output_dir
+        self.rate_limit = rate_limit
+        self._last_request_time: float = 0.0
+
+    def _throttle(self) -> None:
+        """速率限制：確保兩次請求之間至少間隔 rate_limit 秒。"""
+        now = time.time()
+        elapsed = now - self._last_request_time
+        if elapsed < self.rate_limit:
+            time.sleep(self.rate_limit - elapsed)
+        self._last_request_time = time.time()
+
+    def _request_with_retry(
+        self,
+        method: str,
+        url: str,
+        *,
+        max_retries: int = _DEFAULT_MAX_RETRIES,
+        **kwargs,
+    ) -> requests.Response:
+        """帶指數退避重試的 HTTP 請求。
+
+        Args:
+            method: HTTP 方法（"get" 或 "post"）
+            url: 請求 URL
+            max_retries: 最大重試次數
+            **kwargs: 傳遞給 requests.request() 的額外參數
+
+        Returns:
+            requests.Response
+
+        Raises:
+            requests.RequestException: 所有重試皆失敗後拋出
+        """
+        # 台灣政府 API 自動關閉 SSL 驗證
+        from urllib.parse import urlparse
+        host = urlparse(url).hostname or ""
+        if host in _GOV_SSL_DOMAINS:
+            kwargs.setdefault("verify", False)
+
+        last_exc: Exception | None = None
+        for attempt in range(max_retries + 1):
+            self._throttle()
+            try:
+                http_func = getattr(requests, method)
+                resp = http_func(url, **kwargs)
+                if resp.status_code not in _RETRYABLE_STATUS_CODES:
+                    resp.raise_for_status()
+                    return resp
+                # 可重試的狀態碼
+                logger.warning(
+                    "%s 回傳 %d，第 %d/%d 次重試",
+                    url, resp.status_code, attempt + 1, max_retries,
+                )
+                last_exc = requests.HTTPError(
+                    f"HTTP {resp.status_code}", response=resp,
+                )
+            except requests.ConnectionError as e:
+                logger.warning("連線失敗 %s（第 %d/%d 次）: %s", url, attempt + 1, max_retries, e)
+                last_exc = e
+            except requests.Timeout as e:
+                logger.warning("請求逾時 %s（第 %d/%d 次）: %s", url, attempt + 1, max_retries, e)
+                last_exc = e
+            except requests.HTTPError:
+                raise  # 非可重試的 HTTP 錯誤直接拋出
+
+            if attempt < max_retries:
+                wait = _DEFAULT_BACKOFF_BASE ** attempt
+                logger.info("等待 %d 秒後重試...", wait)
+                time.sleep(wait)
+
+        raise last_exc  # type: ignore[misc]
+
+    def _write_markdown(self, file_path: Path, metadata: dict, body: str) -> Path:
+        """輸出含 YAML frontmatter 的 Markdown 檔案。
+
+        格式與 parse_markdown_with_metadata 完全相容。
+        寫入失敗時記錄警告但不中斷流程。
+        """
+        try:
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+
+            frontmatter = yaml.dump(
+                metadata, allow_unicode=True, default_flow_style=False
+            ).strip()
+
+            content = f"---\n{frontmatter}\n---\n{body}"
+            file_path.write_text(content, encoding="utf-8")
+        except OSError as exc:
+            logger.warning("寫入檔案失敗 '%s': %s", file_path, exc)
+        return file_path
+
+    @staticmethod
+    def _compute_hash(text: str) -> str:
+        """計算文本的 SHA-256 hash（前 16 字元）。"""
+        import hashlib
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+    @abstractmethod
+    def fetch(self) -> list[FetchResult]:
+        """執行擷取，回傳所有產生的結果。"""
+        ...
+
+    @abstractmethod
+    def name(self) -> str:
+        """回傳 fetcher 名稱（用於日誌和 CLI 顯示）。"""
+        ...
+
+
+def html_to_markdown(html: str) -> str:
+    """將簡單 HTML 轉換為 Markdown（regex 實作，零外部依賴）。"""
+    if not html:
+        return ""
+
+    text = html
+
+    # 移除 CDATA 包裝
+    text = re.sub(r'<!\[CDATA\[', '', text)
+    text = re.sub(r'\]\]>', '', text)
+
+    # 標題轉換
+    for i in range(1, 7):
+        text = re.sub(rf'<h{i}[^>]*>(.*?)</h{i}>', rf'{"#" * i} \1', text, flags=re.DOTALL | re.IGNORECASE)
+
+    # 段落和換行
+    text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
+    text = re.sub(r'<p[^>]*>(.*?)</p>', r'\1\n\n', text, flags=re.DOTALL | re.IGNORECASE)
+
+    # 粗體和斜體
+    text = re.sub(r'<(?:b|strong)[^>]*>(.*?)</(?:b|strong)>', r'**\1**', text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'<(?:i|em)[^>]*>(.*?)</(?:i|em)>', r'*\1*', text, flags=re.DOTALL | re.IGNORECASE)
+
+    # 清單
+    text = re.sub(r'<li[^>]*>(.*?)</li>', r'- \1\n', text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'</?(?:ul|ol)[^>]*>', '', text, flags=re.IGNORECASE)
+
+    # 表格簡化：移除標籤但保留文字
+    text = re.sub(r'</?(?:table|thead|tbody|tr|th|td)[^>]*>', ' ', text, flags=re.IGNORECASE)
+
+    # 移除所有其餘 HTML 標籤
+    text = re.sub(r'<[^>]+>', '', text)
+
+    # HTML 實體
+    text = text.replace('&amp;', '&')
+    text = text.replace('&lt;', '<')
+    text = text.replace('&gt;', '>')
+    text = text.replace('&nbsp;', ' ')
+    text = text.replace('&quot;', '"')
+
+    # 清理多餘空白行
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()

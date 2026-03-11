@@ -1,36 +1,38 @@
 [project]
 name = "gov-ai-agent"
 version = "0.1.0"
-description = "Real-world Government Document AI Agent for Taiwan"
+description = "台灣政府公文 AI 智慧助理 — 多 Agent 審查與自動生成系統"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<4.0"
 license = {text = "MIT"}
 authors = [
     {name = "Gov AI Team", email = "contact@example.com"}
 ]
 dependencies = [
-    "typer[all]>=0.9.0",
-    "litellm>=1.0.0",
-    "chromadb>=0.4.0",
-    "python-docx>=1.1.0",
-    "pydantic>=2.0.0",
-    "rich>=13.0.0",
-    "pyyaml>=6.0",
-    "jinja2>=3.1.0",
-    "requests>=2.31.0",
-    "fastapi>=0.109.0",
-    "uvicorn[standard]>=0.27.0"
+    "typer[all]>=0.9.0,<1.0.0",
+    "litellm>=1.0.0,<2.0.0",
+    "chromadb>=0.4.0,<2.0.0",
+    "python-docx>=1.1.0,<2.0.0",
+    "pydantic>=2.0.0,<3.0.0",
+    "rich>=13.0.0,<15.0.0",
+    "pyyaml>=6.0,<7.0",
+    "jinja2>=3.1.0,<4.0.0",
+    "requests>=2.31.0,<3.0.0",
+    "fastapi>=0.109.0,<1.0.0",
+    "uvicorn[standard]>=0.27.0,<1.0.0"
 ]
 
 [project.optional-dependencies]
+pdf = ["pdfplumber>=0.9.0,<1.0.0"]
 dev = [
-    "pytest>=7.0.0",
-    "httpx>=0.25.0",
-    "black>=23.0.0",
-    "ruff>=0.1.0",
-    "mypy>=1.0.0",
-    "types-PyYAML",
-    "types-requests"
+    "pytest>=7.0.0,<9.0.0",
+    "pytest-cov>=4.0.0,<8.0.0",
+    "httpx>=0.25.0,<1.0.0",
+    "ruff>=0.1.0,<1.0.0",
+    "mypy>=1.0.0,<2.0.0",
+    "types-PyYAML>=6.0",
+    "types-requests>=2.31",
+    "pdfplumber>=0.9.0,<1.0.0"
 ]
 
 [project.scripts]
@@ -39,6 +41,12 @@ gov-ai = "src.cli.main:app"
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

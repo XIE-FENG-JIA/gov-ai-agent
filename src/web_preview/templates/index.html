@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}公文 AI Agent - 首頁{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h2>公文生成</h2>
+  <p>輸入一句話需求，系統將自動分析、撰寫並審查公文草稿。</p>
+
+  <form action="/ui/generate" method="post" id="generateForm">
+    <div class="form-content">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="doc_type">公文類型</label>
+          <select id="doc_type" name="doc_type">
+            <option value="">自動偵測</option>
+            <option value="函">函</option>
+            <option value="公告">公告</option>
+            <option value="簽">簽</option>
+            <option value="令">令</option>
+            <option value="書函">書函</option>
+            <option value="開會通知單">開會通知單</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <div class="checkbox-group">
+            <label>
+              <input type="checkbox" name="skip_review" value="true">
+              跳過多 Agent 審查（加速生成）
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="user_input">需求描述</label>
+        <textarea
+          id="user_input"
+          name="user_input"
+          rows="4"
+          placeholder="例如：台北市環保局發函給各區公所，關於春節期間垃圾清運時間調整"
+          required
+          minlength="5"
+          maxlength="5000"
+        ></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary">生成公文</button>
+    </div>
+  </form>
+</section>
+
+<section class="card">
+  <h2>使用說明</h2>
+  <ul>
+    <li>在需求描述中盡量包含：<strong>發文機關</strong>、<strong>受文者</strong>、<strong>主旨</strong>。</li>
+    <li>可手動選擇公文類型，或讓系統自動偵測。</li>
+    <li>勾選「跳過審查」可加速生成，但不會進行品質檢查。</li>
+    <li>生成過程可能需要 30 秒至 2 分鐘，視 LLM 回應速度而定。</li>
+  </ul>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // 根據公文類型自動調整 placeholder
+  const docTypeHints = {
+    '': '例如：台北市環保局發函給各區公所，關於春節期間垃圾清運時間調整',
+    '函': '例如：台北市環保局發函給各區公所，通知春節期間垃圾清運時間變更',
+    '公告': '例如：台北市政府公告修正公園管理自治條例部分條文',
+    '簽': '例如：簽請核准出席 3 月份跨部門會議',
+    '令': '例如：發布修正某某辦法第三條條文',
+    '書函': '例如：書函通知各學校配合辦理防災演練',
+    '開會通知單': '例如：召開 114 年度第一次業務協調會議',
+  };
+  document.getElementById('doc_type').addEventListener('change', function() {
+    const textarea = document.getElementById('user_input');
+    textarea.placeholder = docTypeHints[this.value] || docTypeHints[''];
+  });
+</script>
+{% endblock %}

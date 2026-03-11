@@ -253,3 +253,121 @@ class TestResetDBEdgeCases:
         kb.reset_db()
         assert mock_client.delete_collection.call_count == 3
         kb.client = original_client
+
+
+# ==================== ChromaDB 操作異常處理 ====================
+
+class TestChromaDBExceptionHandling:
+    """ChromaDB 操作的例外處理測試"""
+
+    def test_add_document_chromadb_write_failure(self, kb):
+        """測試 add_document 寫入 ChromaDB 失敗時回傳 None"""
+        from unittest.mock import MagicMock
+        # Mock the collection's add method to raise
+        original_collection = kb.examples_collection
+        mock_collection = MagicMock()
+        mock_collection.add.side_effect = Exception("Disk full")
+        kb.examples_collection = mock_collection
+        try:
+            result = kb.add_document("測試內容", {"title": "Test"}, "examples")
+            assert result is None
+        finally:
+            kb.examples_collection = original_collection
+
+    def test_search_examples_query_failure(self, kb):
+        """測試 search_examples 查詢 ChromaDB 失敗時回傳空列表"""
+        from unittest.mock import MagicMock
+        # 先加入一筆資料以確保 count > 0
+        kb.add_document("測試", {"title": "Test"}, "examples")
+        original_collection = kb.examples_collection
+        mock_collection = MagicMock()
+        mock_collection.count.side_effect = Exception("SQLite locked")
+        kb.examples_collection = mock_collection
+        try:
+            results = kb.search_examples("測試查詢")
+            assert results == []
+        finally:
+            kb.examples_collection = original_collection
+
+    def test_search_regulations_query_failure(self, kb):
+        """測試 search_regulations 查詢失敗時回傳空列表"""
+        from unittest.mock import MagicMock
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 5
+        mock_collection.query.side_effect = Exception("Index corrupted")
+        original = kb.regulations_collection
+        kb.regulations_collection = mock_collection
+        try:
+            results = kb.search_regulations("法規查詢")
+            assert results == []
+        finally:
+            kb.regulations_collection = original
+
+    def test_search_policies_query_failure(self, kb):
+        """測試 search_policies 查詢失敗時回傳空列表"""
+        from unittest.mock import MagicMock
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 3
+        mock_collection.query.side_effect = Exception("Connection lost")
+        original = kb.policies_collection
+        kb.policies_collection = mock_collection
+        try:
+            results = kb.search_policies("政策查詢")
+            assert results == []
+        finally:
+            kb.policies_collection = original
+
+
+# ==================== BUG-004: 空字典 filter_metadata 防護 ====================
+
+class TestEmptyFilterMetadata:
+    """search_examples 傳入空字典 filter_metadata 應等同 None。"""
+
+    def test_empty_dict_filter_returns_results(self, kb):
+        """傳入 filter_metadata={} 不應靜默失敗，應返回結果"""
+        kb.add_document("測試範例內容", {"title": "Test", "doc_type": "函"})
+        # 空字典應等同 None（無過濾條件）
+        results = kb.search_examples("測試", filter_metadata={})
+        assert isinstance(results, list)
+        # 應返回結果（因為有一筆文件）
+        assert len(results) >= 1
+
+    def test_none_filter_returns_results(self, kb):
+        """傳入 filter_metadata=None 應正常返回結果"""
+        kb.add_document("另一個測試", {"title": "Test2", "doc_type": "公告"})
+        results = kb.search_examples("測試", filter_metadata=None)
+        assert isinstance(results, list)
+        assert len(results) >= 1
+
+
+# ==================== BUG-013: n_results > count 防護 ====================
+
+class TestNResultsClamp:
+    """搜尋方法應將 n_results 限制在集合實際數量內。"""
+
+    def test_search_examples_n_results_exceeds_count(self, kb):
+        """n_results 超過集合數量時不應拋出異常"""
+        kb.add_document("唯一文件", {"title": "Solo", "doc_type": "函"})
+        # 集合只有 1 筆，要求 10 筆
+        results = kb.search_examples("唯一", n_results=10)
+        assert isinstance(results, list)
+        assert len(results) == 1
+
+    def test_search_policies_n_results_exceeds_count(self, kb):
+        """policies 搜尋中 n_results 超過集合數量時不應拋出異常"""
+        kb.add_document(
+            "政策文件", {"title": "Policy1"}, collection_name="policies"
+        )
+        results = kb.search_policies("政策", n_results=10)
+        assert isinstance(results, list)
+        assert len(results) == 1
+
+    def test_search_regulations_n_results_exceeds_count(self, kb):
+        """regulations 搜尋中 n_results 超過集合數量時不應拋出異常"""
+        kb.add_document(
+            "法規文件", {"title": "Reg1", "doc_type": "函"},
+            collection_name="regulations",
+        )
+        results = kb.search_regulations("法規", n_results=10)
+        assert isinstance(results, list)
+        assert len(results) == 1

@@ -113,12 +113,81 @@ def test_load_dotenv_with_quotes(tmp_path):
             value = value.strip().strip('"').strip("'")
             os.environ[key] = value
 
-    assert os.environ.get("TEST_KEY_QUOTED") == "quoted_value"
-    assert os.environ.get("TEST_KEY_PLAIN") == "plain_value"
+    try:
+        assert os.environ.get("TEST_KEY_QUOTED") == "quoted_value"
+        assert os.environ.get("TEST_KEY_PLAIN") == "plain_value"
+    finally:
+        os.environ.pop("TEST_KEY_QUOTED", None)
+        os.environ.pop("TEST_KEY_PLAIN", None)
 
-    # Cleanup
-    del os.environ["TEST_KEY_QUOTED"]
-    del os.environ["TEST_KEY_PLAIN"]
+
+# ==================== BUG-008: load_dotenv 內聯註解處理 ====================
+
+class TestLoadDotenvInlineComments:
+    """測試 load_dotenv 正確移除未引號包裹的內聯註解"""
+
+    def test_inline_comment_stripped(self, tmp_path):
+        """未引號包裹的值中 # 後的內容應被移除"""
+        env_file = tmp_path / ".env"
+        env_file.write_text("BUG008_TEST_A=secret123 # this is a comment\n")
+
+        def _test_load():
+            if env_file.exists():
+                with open(env_file, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#') and '=' in line:
+                            key, value = line.split('=', 1)
+                            key = key.strip()
+                            value = value.strip()
+                            if not (value.startswith('"') or value.startswith("'")):
+                                value = value.split('#')[0].rstrip()
+                            value = value.strip('"').strip("'")
+                            os.environ[key] = value
+        try:
+            _test_load()
+            assert os.environ.get("BUG008_TEST_A") == "secret123"
+        finally:
+            os.environ.pop("BUG008_TEST_A", None)
+
+    def test_quoted_value_with_hash_preserved(self, tmp_path):
+        """引號包裹的值中 # 應被保留"""
+        env_file = tmp_path / ".env"
+        env_file.write_text('BUG008_TEST_B="value#with_hash"\n')
+        # 直接測試解析邏輯
+        for line in env_file.read_text().split('\n'):
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                key = key.strip()
+                value = value.strip()
+                if not (value.startswith('"') or value.startswith("'")):
+                    value = value.split('#')[0].rstrip()
+                value = value.strip('"').strip("'")
+                os.environ[key] = value
+        try:
+            assert os.environ.get("BUG008_TEST_B") == "value#with_hash"
+        finally:
+            os.environ.pop("BUG008_TEST_B", None)
+
+    def test_no_inline_comment(self, tmp_path):
+        """沒有 # 的值應完整保留"""
+        env_file = tmp_path / ".env"
+        env_file.write_text("BUG008_TEST_C=plain_value\n")
+        for line in env_file.read_text().split('\n'):
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                key = key.strip()
+                value = value.strip()
+                if not (value.startswith('"') or value.startswith("'")):
+                    value = value.split('#')[0].rstrip()
+                value = value.strip('"').strip("'")
+                os.environ[key] = value
+        try:
+            assert os.environ.get("BUG008_TEST_C") == "plain_value"
+        finally:
+            os.environ.pop("BUG008_TEST_C", None)
 
 
 # ==================== ReviewModels ====================

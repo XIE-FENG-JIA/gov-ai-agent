@@ -2,14 +2,13 @@ import logging
 import re
 import os
 from datetime import date
-from typing import Dict, List, Optional
 from jinja2 import Environment, FileSystemLoader
 from src.core.models import PublicDocRequirement
 from src.core.constants import CHINESE_NUMBERS, MAX_CHINESE_NUMBER
 
 logger = logging.getLogger(__name__)
 
-def clean_markdown_artifacts(text: Optional[str]) -> str:
+def clean_markdown_artifacts(text: str | None) -> str:
     """清除 markdown 格式標記和其他不應出現在公文中的符號"""
     if not text:
         return ""
@@ -17,40 +16,49 @@ def clean_markdown_artifacts(text: Optional[str]) -> str:
     # 移除 markdown 程式碼區塊標記
     text = re.sub(r'```\w*\n?', '', text)
     text = re.sub(r'```', '', text)
-    
+
     # 移除 markdown 標題標記 (# ## ###)
     text = re.sub(r'^#+\s*', '', text, flags=re.MULTILINE)
-    
+
     # 移除 markdown 粗體/斜體標記
     text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)
     text = re.sub(r'\*([^*]+)\*', r'\1', text)
     text = re.sub(r'__([^_]+)__', r'\1', text)
     text = re.sub(r'_([^_]+)_', r'\1', text)
-    
+
+    # 移除 markdown 行內程式碼標記 `code` -> code
+    text = re.sub(r'`([^`]+)`', r'\1', text)
+
+    # 移除 markdown 刪除線 ~~text~~ -> text
+    text = re.sub(r'~~([^~]+)~~', r'\1', text)
+
     # 移除 markdown 連結標記 [text](url) -> text
     text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
-    
+
+    # 移除 markdown blockquote 標記 (> text -> text)
+    text = re.sub(r'^>\s?', '', text, flags=re.MULTILINE)
+
     # 移除多餘的分隔線
     text = re.sub(r'^---+\s*$', '', text, flags=re.MULTILINE)
-    
+
     # 移除「捺印處」等不應出現的文字
     text = re.sub(r'捺印處', '', text)
-    
+
     # 清理多餘空行
     text = re.sub(r'\n{3,}', '\n\n', text)
-    
+
     return text.strip()
 
-def renumber_provisions(text: Optional[str]) -> str:
+def renumber_provisions(text: str | None) -> str:
     """重新編排辦法段落的編號，使用標準中文編號格式"""
     if not text:
         return ""
-    
+
     lines = text.split('\n')
     result = []
     main_counter = 0
     sub_counter = 0
-    
+
     # 定義不應被編號的項目（簽署區相關）
     skip_patterns = [
         r'^正本[：:]',
@@ -65,15 +73,16 @@ def renumber_provisions(text: Optional[str]) -> str:
         r'蓋章',
         r'（蓋章）',
     ]
-    
+
     for line in lines:
         stripped = line.strip()
         if not stripped:
             result.append('')
             continue
-        
+
         # 先移除原有編號，再檢查是否為不應被重新編號的項目（簽署區相關）
-        stripped_no_num = re.sub(r'^[\d一二三四五六七八九十]+[、.)\.]?\s*', '', stripped)
+        # 要求分隔符號為必填（[、.).]），避免將「三民主義」等以中文數字開頭的普通文字誤判為編號
+        stripped_no_num = re.sub(r'^[\d一二三四五六七八九十]+[、.)]\s*', '', stripped)
         should_skip = False
         for pattern in skip_patterns:
             if re.match(pattern, stripped_no_num):
@@ -83,27 +92,29 @@ def renumber_provisions(text: Optional[str]) -> str:
 
         if should_skip:
             continue
-        
-        # 檢測是否為主編號項目（數字、中文數字開頭）
-        main_match = re.match(r'^[\d一二三四五六七八九十]+[、.)\.]?\s*(.+)', stripped)
+
+        # 檢測是否為主編號項目（數字或中文數字 + 必填分隔符號）
+        main_match = re.match(r'^[\d一二三四五六七八九十]+[、.)]\s*(.+)', stripped)
         # 檢測是否為子編號項目（括號數字開頭）
         sub_match = re.match(r'^[\(（][\d一二三四五六七八九十]+[\)）][、.]?\s*(.+)', stripped)
-        
+
         if sub_match:
             # 子項目
             sub_counter += 1
             content = sub_match.group(1)
-            result.append(f"（{CHINESE_NUMBERS[sub_counter-1] if sub_counter <= MAX_CHINESE_NUMBER else sub_counter}）{content}")
+            cn = CHINESE_NUMBERS[sub_counter - 1] if sub_counter <= MAX_CHINESE_NUMBER else sub_counter
+            result.append(f"（{cn}）{content}")
         elif main_match:
             # 主項目
             main_counter += 1
             sub_counter = 0  # 重置子編號
             content = main_match.group(1)
-            result.append(f"{CHINESE_NUMBERS[main_counter-1] if main_counter <= MAX_CHINESE_NUMBER else main_counter}、{content}")
+            cn = CHINESE_NUMBERS[main_counter - 1] if main_counter <= MAX_CHINESE_NUMBER else main_counter
+            result.append(f"{cn}、{content}")
         else:
             # 普通文字，保持原樣
             result.append(stripped)
-    
+
     return '\n'.join(result)
 
 def _chinese_index(value: int) -> str:
@@ -119,7 +130,7 @@ class TemplateEngine:
     模板引擎：使用 Jinja2 模板結構化並標準化公文內容。
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         template_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "templates")
         # keep_trailing_newline=True 保留結尾換行
         # autoescape=False 公文不需要 HTML 轉義，避免特殊字元被意外轉義
@@ -131,7 +142,7 @@ class TemplateEngine:
         # 註冊自訂過濾器：將 loop.index 轉為中文數字
         self.env.filters["cn"] = _chinese_index
 
-    def parse_draft(self, draft_text: str) -> Dict[str, str]:
+    def parse_draft(self, draft_text: str) -> dict[str, str]:
         """
         使用逐行狀態機將原始 Markdown 草稿解析為結構化段落。
         會自動清理 Markdown 標記並重新編排編號。
@@ -149,16 +160,41 @@ class TemplateEngine:
 
         # 首先清理 markdown 標記
         draft_text = clean_markdown_artifacts(draft_text)
-        
+
         sections = {
             "subject": "",
             "explanation": "",
             "basis": "",
             "provisions": "",
             "attachments": "",
-            "references": ""
+            "references": "",
+            # 開會通知單專用
+            "meeting_time": "",
+            "meeting_location": "",
+            "agenda": "",
+            # 會勘通知單專用
+            "inspection_time": "",
+            "inspection_location": "",
+            "inspection_items": "",
+            "required_documents": "",
+            "attendees": "",
+            # 公務電話紀錄專用
+            "call_time": "",
+            "call_summary": "",
+            "caller": "",
+            "callee": "",
+            "follow_up_items": "",
+            "recorder": "",
+            "reviewer": "",
+            # 手令專用
+            "directive_content": "",
+            "deadline": "",
+            "cc_list": "",
+            # 通用
+            "copies_to": "",
+            "cc_copies": "",
         }
-        
+
         # Internal state
         current_section = None
         buffer = {
@@ -167,44 +203,148 @@ class TemplateEngine:
             "basis": [], # 依據
             "provisions": [],
             "attachments": [],
-            "references": []
+            "references": [],
+            # 開會通知單專用
+            "meeting_time": [],
+            "meeting_location": [],
+            "agenda": [],
+            # 會勘通知單專用
+            "inspection_time": [],
+            "inspection_location": [],
+            "inspection_items": [],
+            "required_documents": [],
+            "attendees": [],
+            # 公務電話紀錄專用
+            "call_time": [],
+            "caller": [],
+            "callee": [],
+            "call_summary": [],
+            "follow_up_items": [],
+            "recorder": [],
+            "reviewer": [],
+            # 手令專用
+            "directive_content": [],
+            "deadline": [],
+            "cc_list": [],
+            # 通用
+            "copies_to": [],
+            "cc_copies": [],
         }
-        
+
         # Normalize
         lines = draft_text.replace('\r\n', '\n').split('\n')
-        
+
         # 辨識段落標題的輔助函式
-        def detect_header(line: str) -> Optional[str]:
+        def _is_section_header(text: str, keyword: str) -> bool:
+            """檢查 text 是否精確以 keyword 作為段落標題。
+
+            標題詞後必須接冒號、空白或直接結尾，
+            避免「說明書」「主旨演講」等非標題文字誤判。
+            """
+            if not text.startswith(keyword):
+                return False
+            if len(text) == len(keyword):
+                return True
+            next_char = text[len(keyword)]
+            return next_char in ("：", ":", " ", "\t", "\u3000")
+
+        def detect_header(line: str) -> str | None:
             """偵測公文段落標題，回傳對應的 section 鍵值。"""
             clean = line.strip().replace('#', '').strip()
-            if clean.startswith("主旨"):
+            if _is_section_header(clean, "主旨"):
                 return "subject"
-            if clean.startswith("說明"):
+            if _is_section_header(clean, "說明"):
                 return "explanation"
-            if clean.startswith("依據"):
+            if _is_section_header(clean, "依據"):
                 return "basis"
-            if (clean.startswith("辦法")
-                    or clean.startswith("公告事項")
-                    or "辦法/公告事項" in clean
-                    or clean.startswith("擬辦")):
+            if (_is_section_header(clean, "辦法")
+                    or _is_section_header(clean, "公告事項")
+                    or _is_section_header(clean, "辦法/公告事項")
+                    or _is_section_header(clean, "擬辦")):
                 return "provisions"
-            if clean.startswith("附件"):
+            if _is_section_header(clean, "附件"):
                 return "attachments"
-            if clean.startswith("參考來源"):
+            if _is_section_header(clean, "參考來源"):
                 return "references"
+            # 開會通知單
+            if _is_section_header(clean, "開會時間"):
+                return "meeting_time"
+            if _is_section_header(clean, "開會地點"):
+                return "meeting_location"
+            if _is_section_header(clean, "議程"):
+                return "agenda"
+            # 會勘通知單
+            if _is_section_header(clean, "會勘時間"):
+                return "inspection_time"
+            if _is_section_header(clean, "會勘地點"):
+                return "inspection_location"
+            if _is_section_header(clean, "會勘事項"):
+                return "inspection_items"
+            if _is_section_header(clean, "應攜文件"):
+                return "required_documents"
+            if _is_section_header(clean, "應出席單位"):
+                return "attendees"
+            # 公務電話紀錄
+            if _is_section_header(clean, "通話時間"):
+                return "call_time"
+            if _is_section_header(clean, "發話人"):
+                return "caller"
+            if _is_section_header(clean, "受話人"):
+                return "callee"
+            if _is_section_header(clean, "通話摘要"):
+                return "call_summary"
+            if _is_section_header(clean, "追蹤事項"):
+                return "follow_up_items"
+            if _is_section_header(clean, "紀錄人"):
+                return "recorder"
+            if _is_section_header(clean, "核閱"):
+                return "reviewer"
+            # 手令
+            if _is_section_header(clean, "指示事項"):
+                return "directive_content"
+            if _is_section_header(clean, "完成期限"):
+                return "deadline"
+            # 通用
+            if _is_section_header(clean, "副知"):
+                return "cc_list"
+            if _is_section_header(clean, "正本"):
+                return "copies_to"
+            if _is_section_header(clean, "副本"):
+                return "cc_copies"
             return None
+
+        # 所有段落標題關鍵字（按長度降序，避免短字串優先匹配）
+        _HEADER_KEYWORDS = [
+            "辦法/公告事項", "應出席單位", "參考來源", "公告事項",
+            "開會時間", "開會地點",
+            "會勘時間", "會勘地點", "會勘事項", "應攜文件",
+            "通話時間", "通話摘要", "追蹤事項", "指示事項", "完成期限",
+            "發話人", "受話人", "紀錄人",
+            "主旨", "說明", "依據", "辦法", "擬辦", "附件", "議程", "核閱",
+            "副知", "正本", "副本",
+        ]
 
         for line in lines:
             new_section = detect_header(line)
             if new_section:
                 current_section = new_section
+                # 嘗試提取同行內容：先用冒號分割，再嘗試空格分割
                 parts = line.split('：', 1) if '：' in line else line.split(':', 1)
                 if len(parts) > 1 and parts[1].strip():
-                     buffer[current_section].append(parts[1].strip())
+                    buffer[current_section].append(parts[1].strip())
+                else:
+                    # 冒號分割無效時，根據關鍵字長度截取剩餘內容
+                    clean = line.strip().replace('#', '').strip()
+                    for kw in _HEADER_KEYWORDS:
+                        if clean.startswith(kw) and len(clean) > len(kw):
+                            rest = clean[len(kw):].lstrip(" \t\u3000：:")
+                            if rest:
+                                buffer[current_section].append(rest)
+                            break
                 continue
-            
+
             if current_section:
-                if line.strip(): 
+                if line.strip():
                     buffer[current_section].append(line.strip())
 
         # Post-process
@@ -227,40 +367,102 @@ class TemplateEngine:
         # 重新編排辦法段落編號
         raw_provisions = "\n".join(buffer["provisions"]).strip()
         sections["provisions"] = renumber_provisions(raw_provisions)
-        
+
         sections["attachments"] = "\n".join(buffer["attachments"]).strip()
         sections["references"] = "\n".join(buffer["references"]).strip()
+        # 開會通知單
+        sections["meeting_time"] = "\n".join(buffer["meeting_time"]).strip()
+        sections["meeting_location"] = "\n".join(buffer["meeting_location"]).strip()
+        sections["agenda"] = "\n".join(buffer["agenda"]).strip()
+        # 會勘通知單
+        sections["inspection_time"] = "\n".join(buffer["inspection_time"]).strip()
+        sections["inspection_location"] = "\n".join(buffer["inspection_location"]).strip()
+        sections["inspection_items"] = "\n".join(buffer["inspection_items"]).strip()
+        sections["required_documents"] = "\n".join(buffer["required_documents"]).strip()
+        sections["attendees"] = "\n".join(buffer["attendees"]).strip()
+        # 公務電話紀錄
+        sections["call_time"] = "\n".join(buffer["call_time"]).strip()
+        sections["caller"] = "\n".join(buffer["caller"]).strip()
+        sections["callee"] = "\n".join(buffer["callee"]).strip()
+        sections["call_summary"] = "\n".join(buffer["call_summary"]).strip()
+        sections["follow_up_items"] = "\n".join(buffer["follow_up_items"]).strip()
+        sections["recorder"] = "\n".join(buffer["recorder"]).strip()
+        sections["reviewer"] = "\n".join(buffer["reviewer"]).strip()
+        # 手令
+        sections["directive_content"] = "\n".join(buffer["directive_content"]).strip()
+        sections["deadline"] = "\n".join(buffer["deadline"]).strip()
+        sections["cc_list"] = "\n".join(buffer["cc_list"]).strip()
+        # 通用
+        sections["copies_to"] = "\n".join(buffer["copies_to"]).strip()
+        sections["cc_copies"] = "\n".join(buffer["cc_copies"]).strip()
 
         return sections
 
-    def _parse_list_items(self, text: str) -> List[str]:
-        """將文字區塊轉換為清單項目，並移除既有的編號。"""
-        items = []
+    def _parse_list_items(self, text: str) -> list[str]:
+        """將文字區塊轉換為清單項目，並移除主編號但保留子編號。
+
+        主項（一、二、三、）的編號會被移除（模板會重新編號），
+        子項（（一）（二）等括號編號項目）保留原始格式並附加到父項中。
+        """
+        items: list[str] = []
         if not text:
             return items
-            
+
+        # 子項模式：以 （一） 或 (1) 開頭（括號包裹的編號）
+        sub_item_re = re.compile(
+            r"^[（\(][\d一二三四五六七八九十]+[）\)][、.]?\s*"
+        )
+        # 主項模式：行首中文/阿拉伯數字 + 必填分隔符號（一、二. 3）等）
+        main_item_re = re.compile(r"^[\d一二三四五六七八九十]+[、.)]\s*(.+)")
+
         for line in text.split('\n'):
-            clean = line.strip()
-            if not clean:
+            stripped = line.strip()
+            if not stripped:
                 continue
-            clean = re.sub(r"^\s*(?:\(?[\d\u4e00-\u9fa5]+[.)、])\s*", "", clean)
-            items.append(clean)
+
+            # 子項：保留原始格式，附加到最後一個主項
+            if sub_item_re.match(stripped):
+                if items:
+                    items[-1] += "\n" + stripped
+                else:
+                    items.append(stripped)
+                continue
+
+            # 主項：移除編號
+            main_match = main_item_re.match(stripped)
+            if main_match:
+                items.append(main_match.group(1))
+            else:
+                items.append(stripped)
+
         return items
 
-    def apply_template(self, requirement: PublicDocRequirement, sections: Dict[str, str]) -> str:
+    def apply_template(self, requirement: PublicDocRequirement, sections: dict[str, str]) -> str:
         """
         使用 Jinja2 將內容渲染為標準 Markdown 模板格式。
         """
         today = date.today()
         roc_year = today.year - 1911
-        
-        if requirement.doc_type == "公告":
-            template_name = "announcement.j2"
-        elif requirement.doc_type == "簽":
-            template_name = "sign.j2"
-        else:
-            template_name = "han.j2" # Default
-            
+
+        _DOC_TYPE_TEMPLATE_MAP = {
+            "函": "han.j2",
+            "書函": "han.j2",
+            "呈": "han.j2",
+            "咨": "han.j2",
+            "公告": "announcement.j2",
+            "簽": "sign.j2",
+            "令": "decree.j2",
+            "開會通知單": "meeting_notice.j2",
+            "會勘通知單": "site_inspection.j2",
+            "公務電話紀錄": "phone_record.j2",
+            "手令": "directive.j2",
+            "箋函": "memo.j2",
+        }
+        template_name = _DOC_TYPE_TEMPLATE_MAP.get(requirement.doc_type)
+        if template_name is None:
+            logger.warning("未知公文類型 '%s'，使用預設函模板", requirement.doc_type)
+            template_name = "han.j2"
+
         try:
             template = self.env.get_template(template_name)
         except Exception as e:
@@ -286,6 +488,35 @@ class TemplateEngine:
             "action_points": self._parse_list_items(sections.get("provisions") or ""),
             "basis": sections.get("basis") or "",
             "attachments": requirement.attachments or [],
+            # 開會通知單專用欄位
+            "meeting_time": sections.get("meeting_time") or "",
+            "meeting_location": sections.get("meeting_location") or "",
+            "agenda_text": sections.get("agenda") or "",
+            "agenda_points": self._parse_list_items(sections.get("agenda") or ""),
+            # 會勘通知單專用欄位
+            "inspection_time": sections.get("inspection_time") or "",
+            "inspection_location": sections.get("inspection_location") or "",
+            "inspection_items": sections.get("inspection_items") or "",
+            "required_documents": sections.get("required_documents") or "",
+            # 公務電話紀錄專用欄位
+            "call_time": sections.get("call_time") or "",
+            "caller": sections.get("caller") or "",
+            "callee": sections.get("callee") or "",
+            "call_summary": sections.get("call_summary") or "",
+            "follow_up_items": sections.get("follow_up_items") or "",
+            # 手令專用欄位
+            "directive_content": sections.get("directive_content") or "",
+            "deadline": sections.get("deadline") or "",
+            # 會勘通知單：應出席單位
+            "attendees": sections.get("attendees") or "",
+            # 公務電話紀錄：紀錄人、核閱
+            "recorder": sections.get("recorder") or "",
+            "reviewer": sections.get("reviewer") or "",
+            # 手令：副知
+            "cc_list": sections.get("cc_list") or "",
+            # 通用：正本、副本
+            "copies_to": sections.get("copies_to") or "",
+            "cc_copies": sections.get("cc_copies") or "",
         }
 
         try:
@@ -299,15 +530,15 @@ class TemplateEngine:
 
         return output
 
-    def _fallback_apply(self, requirement: PublicDocRequirement, sections: Dict[str, str]) -> str:
+    def _fallback_apply(self, requirement: PublicDocRequirement, sections: dict[str, str]) -> str:
         """備用的簡易字串格式化方法。"""
         subject = sections.get("subject") or requirement.subject
         explanation = sections.get("explanation") or requirement.reason or ""
         provisions = sections.get("provisions") or ""
-        
+
         if requirement.action_items and not explanation:
             explanation = "\n".join([f"{i+1}、{item}" for i, item in enumerate(requirement.action_items)])
-        
+
         att_text = ""
         if requirement.attachments:
             att_text = "附件：\n" + "\n".join([f"- {item}" for item in requirement.attachments])
@@ -333,4 +564,7 @@ class TemplateEngine:
 ---
 {att_text}
 """
-        return template.replace("### 辦法\n\n", "")
+        # 移除空白段落（說明或辦法為空時不應渲染空標題）
+        result = template.replace("### 辦法\n\n", "")
+        result = result.replace("### 說明\n\n", "")
+        return result

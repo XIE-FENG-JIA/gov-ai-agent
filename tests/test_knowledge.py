@@ -4,7 +4,7 @@ def test_kb_add_and_search(tmp_path, mock_llm):
     """Test adding and searching documents in KB."""
     kb_dir = tmp_path / "kb_test"
     kb = KnowledgeBaseManager(str(kb_dir), mock_llm)
-    
+
     # Test Stats (Empty)
     stats = kb.get_stats()
     assert stats["examples_count"] == 0

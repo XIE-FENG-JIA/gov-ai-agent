@@ -213,3 +213,264 @@ class TestCheckDateLogicEdgeCases:
         draft = "本案訂於115年6月15日辦理。"
         errors = registry.check_date_logic(draft)
         assert len(errors) == 0
+
+    def test_roc_year_zero(self, registry):
+        """測試民國 0 年（不存在的年份，轉換為西元 1911）會被標記過舊"""
+        # 注意: regex 要求 2-3 位數字，所以 "0年" 不會被匹配到
+        # 但 "00年" 會匹配 → AD 1911，距今超過 2 年
+        draft = "本案訂於00年1月1日辦理。"
+        errors = registry.check_date_logic(draft)
+        if errors:
+            assert any("過舊" in e for e in errors)
+
+    def test_roc_year_one(self, registry):
+        """測試民國 01 年（西元 1912 年）會被標記過舊"""
+        draft = "本案訂於01年6月15日辦理。"
+        errors = registry.check_date_logic(draft)
+        assert len(errors) == 1
+        assert "過舊" in errors[0]
+
+    def test_roc_year_999_far_future(self, registry):
+        """測試民國 999 年（西元 2910 年）會被標記有誤"""
+        draft = "本案訂於999年1月1日辦理。"
+        errors = registry.check_date_logic(draft)
+        assert len(errors) == 1
+        assert "有誤" in errors[0]
+
+    def test_invalid_month_zero(self, registry):
+        """測試月份為 0 產生無效日期錯誤"""
+        draft = "本案訂於114年0月15日辦理。"
+        errors = registry.check_date_logic(draft)
+        assert len(errors) == 1
+        assert "無效日期" in errors[0]
+
+    def test_invalid_day_zero(self, registry):
+        """測試日期為 0 產生無效日期錯誤"""
+        draft = "本案訂於114年3月0日辦理。"
+        errors = registry.check_date_logic(draft)
+        assert len(errors) == 1
+        assert "無效日期" in errors[0]
+
+    def test_leap_year_feb_29_valid(self, registry):
+        """測試閏年 2 月 29 日不產生錯誤（民國 113 年 = 2024 閏年）"""
+        draft = "本案訂於113年2月29日辦理。"
+        errors = registry.check_date_logic(draft)
+        # 2024 年距今 2 年，可能觸發「過舊」但不應觸發「無效日期」
+        invalid_errors = [e for e in errors if "無效日期" in e]
+        assert len(invalid_errors) == 0
+
+    def test_non_leap_year_feb_29_invalid(self, registry):
+        """測試非閏年 2 月 29 日產生無效日期（民國 114 年 = 2025 非閏年）"""
+        draft = "本案訂於114年2月29日辦理。"
+        errors = registry.check_date_logic(draft)
+        assert any("無效日期" in e for e in errors)
+
+    def test_multiple_dates_mixed_validity(self, registry):
+        """測試多個日期中有合法和不合法的混合"""
+        draft = "本案訂於115年3月15日至115年13月1日辦理。"
+        errors = registry.check_date_logic(draft)
+        # 第二個日期月份 13 不合法
+        assert any("無效日期" in e for e in errors)
+
+
+# ==================== BUG-007: 西元年份不應被誤匹配為 ROC 年份 ====================
+
+class TestCheckDateLogicADYearFilter:
+    """確保 4 位數西元年份不被誤匹配為 ROC 年份"""
+
+    def test_ad_year_not_matched(self, registry):
+        """4 位數西元年份（如 2025年1月1日）不應被匹配為 ROC 年份"""
+        draft = "西元2025年1月1日辦理。"
+        errors = registry.check_date_logic(draft)
+        # 2025 的最後 3 位 "025" 不應被匹配（前面有數字 2）
+        assert len(errors) == 0
+
+    def test_ad_year_full_context(self, registry):
+        """混合包含西元年份和 ROC 年份時只匹配 ROC"""
+        draft = "2024年已過去，本案訂於114年3月15日辦理。"
+        errors = registry.check_date_logic(draft)
+        # 只有 "114年3月15日" 是合法 ROC 日期，"2024年" 不應被匹配
+        # 114年3月15日 = 2025年3月15日，近期日期不應有錯誤
+        assert len(errors) == 0
+
+    def test_roc_year_still_works(self, registry):
+        """正常的 2-3 位 ROC 年份仍然被正確匹配"""
+        draft = "本案訂於114年6月15日辦理。"
+        errors = registry.check_date_logic(draft)
+        assert len(errors) == 0
+
+    def test_roc_year_at_line_start(self, registry):
+        """行首的 ROC 年份仍然被匹配"""
+        draft = "114年3月15日辦理。"
+        errors = registry.check_date_logic(draft)
+        assert len(errors) == 0
+
+
+# ==================== check_citation_integrity ====================
+
+class TestCheckCitationIntegrity:
+    """引用完整性檢查器的測試"""
+
+    def test_orphan_reference(self, registry):
+        """測試孤兒引用：文中引用了 [^1] 但無定義"""
+        draft = "依據相關法規辦理[^1]。\n### 參考來源\n（無定義）"
+        errors = registry.check_citation_integrity(draft)
+        assert any("孤兒引用" in e and "[^1]" in e for e in errors)
+
+    def test_unused_definition(self, registry):
+        """測試未使用定義：定義了 [^2] 但文中未引用"""
+        draft = "依據相關法規辦理[^1]。\n### 參考來源\n[^1]: 來源一\n[^2]: 來源二"
+        errors = registry.check_citation_integrity(draft)
+        assert any("未使用定義" in e and "[^2]" in e for e in errors)
+
+    def test_all_matched(self, registry):
+        """測試所有引用都有對應定義，不產生錯誤"""
+        draft = "依據法規[^1]及規定[^2]辦理。\n### 參考來源\n[^1]: 來源一\n[^2]: 來源二"
+        errors = registry.check_citation_integrity(draft)
+        assert len(errors) == 0
+
+    def test_no_references(self, registry):
+        """測試無任何引用標記時不產生錯誤"""
+        draft = "本案請查照辦理。"
+        errors = registry.check_citation_integrity(draft)
+        assert len(errors) == 0
+
+    def test_multiple_orphans_and_unused(self, registry):
+        """測試同時有多個孤兒引用和未使用定義"""
+        draft = "引用[^1]和[^3]。\n### 參考來源\n[^1]: 來源一\n[^2]: 來源二\n[^4]: 來源四"
+        errors = registry.check_citation_integrity(draft)
+        orphans = [e for e in errors if "孤兒引用" in e]
+        unused = [e for e in errors if "未使用定義" in e]
+        assert len(orphans) == 1  # [^3] 是孤兒
+        assert len(unused) == 2  # [^2] 和 [^4] 未使用
+
+    def test_definition_not_counted_as_inline(self, registry):
+        """測試定義行的 [^n]: 不被計為行內引用"""
+        draft = "### 參考來源\n[^1]: 某法規公報\n[^2]: 某行政命令"
+        errors = registry.check_citation_integrity(draft)
+        # 兩個定義都未在文中引用
+        unused = [e for e in errors if "未使用定義" in e]
+        assert len(unused) == 2
+
+
+# ==================== check_terminology ====================
+
+class TestCheckTerminology:
+    """術語（機關名稱）檢查器的測試"""
+
+    def test_outdated_epa(self, registry):
+        """測試偵測過時的「環保署」"""
+        draft = "依據環保署公告辦理。"
+        errors = registry.check_terminology(draft)
+        assert any("環保署" in e and "環境部" in e for e in errors)
+
+    def test_outdated_council_of_agriculture(self, registry):
+        """測試偵測過時的「農委會」"""
+        draft = "農委會已於日前發布通知。"
+        errors = registry.check_terminology(draft)
+        assert any("農委會" in e and "農業部" in e for e in errors)
+
+    def test_outdated_tourism_bureau(self, registry):
+        """測試偵測過時的「觀光局」"""
+        draft = "交通部觀光局辦理觀光推廣活動。"
+        errors = registry.check_terminology(draft)
+        assert any("觀光局" in e or "交通部觀光局" in e for e in errors)
+
+    def test_no_outdated_terms(self, registry):
+        """測試無過時名稱時不產生警告"""
+        draft = "依據環境部公告辦理。"
+        errors = registry.check_terminology(draft)
+        assert len(errors) == 0
+
+    def test_multiple_outdated_terms(self, registry):
+        """測試同時出現多個過時名稱"""
+        draft = "環保署與農委會聯合辦理。"
+        errors = registry.check_terminology(draft)
+        assert len(errors) >= 2
+
+    def test_outdated_most(self, registry):
+        """測試偵測過時的「科技部」"""
+        draft = "科技部補助研究計畫。"
+        errors = registry.check_terminology(draft)
+        assert any("科技部" in e and "國家科學及技術委員會" in e for e in errors)
+
+    def test_outdated_highway_bureau(self, registry):
+        """測試偵測過時的「公路總局」"""
+        draft = "交通部公路總局核發牌照。"
+        errors = registry.check_terminology(draft)
+        assert any("公路總局" in e or "交通部公路總局" in e for e in errors)
+
+
+# ==================== check_attachment_consistency 增強測試 ====================
+
+class TestCheckAttachmentConsistencyEnhanced:
+    """附件一致性檢查器增強功能的測試"""
+
+    def test_variant_ru_fu_jian(self, registry):
+        """測試「如附件」變體被偵測"""
+        draft = "相關資料如附件，請查照。"
+        errors = registry.check_attachment_consistency(draft)
+        assert any("附件" in e for e in errors)
+
+    def test_variant_ru_fu_biao(self, registry):
+        """測試「如附表」變體被偵測"""
+        draft = "統計數據如附表所示。"
+        errors = registry.check_attachment_consistency(draft)
+        assert any("附件" in e or "附表" in e for e in errors)
+
+    def test_attachment_numbering_skip(self, registry):
+        """測試附件編號跳號偵測"""
+        draft = "附件一、附件三\n附件：相關資料"
+        errors = registry.check_attachment_consistency(draft)
+        assert any("不連續" in e for e in errors)
+
+    def test_attachment_numbering_continuous(self, registry):
+        """測試附件編號連續不產生錯誤"""
+        draft = "附件一、附件二、附件三\n附件：相關資料"
+        errors = registry.check_attachment_consistency(draft)
+        numbering_errors = [e for e in errors if "不連續" in e]
+        assert len(numbering_errors) == 0
+
+    def test_attachment_with_section_no_error(self, registry):
+        """測試有附件段落且「檢附如附件」不產生缺段落錯誤"""
+        draft = "檢附如附件，請查照。\n附件：會議紀錄"
+        errors = registry.check_attachment_consistency(draft)
+        section_errors = [e for e in errors if "缺少" in e]
+        assert len(section_errors) == 0
+
+
+# ==================== check_citation_format 增強測試 ====================
+
+class TestCheckCitationFormatEnhanced:
+    """法規引用格式檢查器增強功能的測試"""
+
+    def test_rule_suffix_detected(self, registry):
+        """測試「規則」後綴被偵測"""
+        draft = "依據海關進口貨物查驗規則辦理。"
+        errors = registry.check_citation_format(draft)
+        assert any("書名號" in e for e in errors)
+
+    def test_incomplete_book_title(self, registry):
+        """測試書名號內容過短被警告"""
+        draft = "依據《法》辦理。"
+        errors = registry.check_citation_format(draft)
+        # "法" 只有 1 個字且不以法規後綴結尾（太短），應提示
+        assert any("可能不完整" in e for e in errors)
+
+    def test_proper_book_title_no_warning(self, registry):
+        """測試正確的書名號引用不產生警告"""
+        draft = "依據《勞動基準法》辦理。"
+        errors = registry.check_citation_format(draft)
+        assert len(errors) == 0
+
+    def test_guideline_suffix(self, registry):
+        """測試「綱要」後綴被偵測"""
+        draft = "依據國家發展綱要辦理。"
+        errors = registry.check_citation_format(draft)
+        assert any("書名號" in e for e in errors)
+
+    def test_procedure_suffix(self, registry):
+        """測試「規程」後綴被偵測"""
+        draft = "依據船員服務規程辦理。"
+        errors = registry.check_citation_format(draft)
+        assert any("書名號" in e for e in errors)

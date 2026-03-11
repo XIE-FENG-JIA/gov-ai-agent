@@ -1,0 +1,26 @@
+{
+  "success": true,
+  "payload": {
+    "search_result": [
+      {
+        "nid": "15221",
+        "title": "警廣即時路況",
+        "content": "提供全國各地即時路況資訊，由警察廣播電臺彙整。",
+        "agency_name": "內政部警政署",
+        "category_name": "交通及通訊",
+        "topic_name": "交通",
+        "updatefreq_desc": "即時"
+      },
+      {
+        "nid": "15222",
+        "title": "失蹤人口統計",
+        "content": "歷年失蹤人口統計資料。",
+        "agency_name": "內政部警政署",
+        "category_name": "公共安全",
+        "topic_name": "警政",
+        "updatefreq_desc": "每年"
+      }
+    ],
+    "search_count": 2
+  }
+}

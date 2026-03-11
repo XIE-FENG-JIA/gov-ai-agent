@@ -47,3 +47,4 @@ kb_data/
 *.docx
 *.pdf
 .chroma/
+output/

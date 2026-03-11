@@ -1,13 +1,35 @@
+api:
+  auth_enabled: false
+  api_keys: []
 knowledge_base:
   path: ./kb_data
 llm:
-  api_key: ${LLM_API_KEY}
-  base_url: https://openrouter.ai/api/v1
+  api_key: ''
+  base_url: http://localhost:11434
   embedding_base_url: http://localhost:11434
   embedding_model: llama3.1:8b
   embedding_provider: ollama
-  model: ${LLM_MODEL}
-  provider: openrouter
+  model: llama3.1:8b
+  provider: ollama
+organizational_memory:
+  default_agencies:
+    市政府:
+      formal_level: standard
+      preferred_terms: {}
+      signature_format: default
+    臺北市政府環境保護局:
+      formal_level: formal
+      preferred_terms:
+        考慮: 酌情考量
+        請: 惠請
+      signature_format: 局長 XXX
+    行政院:
+      formal_level: formal
+      preferred_terms:
+        請: 敬請
+      signature_format: 院長 XXX
+  enabled: true
+  storage_path: ./kb_data/agency_preferences.json
 providers:
   gemini:
     api_key: ${GEMINI_API_KEY}
@@ -19,29 +41,3 @@ providers:
     api_key: ${LLM_API_KEY}
     base_url: https://openrouter.ai/api/v1
     model: ${LLM_MODEL}
-
-# 機構記憶設定
-organizational_memory:
-  enabled: true
-  storage_path: ./kb_data/agency_preferences.json
-  
-  # 預設機關偏好範例
-  default_agencies:
-    臺北市政府環境保護局:
-      formal_level: formal
-      preferred_terms:
-        "請": "惠請"
-        "考慮": "酌情考量"
-      signature_format: "局長 XXX"
-    
-    行政院:
-      formal_level: formal
-      preferred_terms:
-        "請": "敬請"
-      signature_format: "院長 XXX"
-    
-    市政府:
-      formal_level: standard
-      preferred_terms: {}
-      signature_format: "default"
-

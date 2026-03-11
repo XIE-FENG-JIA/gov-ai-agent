@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}公文 AI Agent - 知識庫{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h2>知識庫狀態</h2>
+
+  {% if error %}
+  <div class="alert alert-error">
+    <strong>錯誤：</strong>{{ error }}
+  </div>
+  {% elif stats %}
+  <table class="info-table">
+    <tr>
+      <th>知識庫狀態</th>
+      <td>
+        {% if stats.kb_status == "available" %}
+        <span class="badge badge-ok">可用</span>
+        {% elif stats.kb_status == "degraded" %}
+        <span class="badge badge-warn">降級</span>
+        {% else %}
+        <span class="badge badge-err">不可用</span>
+        {% endif %}
+      </td>
+    </tr>
+    <tr>
+      <th>集合數量</th>
+      <td>{{ stats.kb_collections }}</td>
+    </tr>
+    <tr>
+      <th>LLM 提供者</th>
+      <td>{{ stats.llm_provider }}</td>
+    </tr>
+    <tr>
+      <th>LLM 模型</th>
+      <td>{{ stats.llm_model }}</td>
+    </tr>
+  </table>
+  {% else %}
+  <p>無法取得知識庫資訊。</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>語意搜尋</h2>
+  <p>輸入關鍵字或描述，在知識庫中搜尋相關的範例、法規與政策。</p>
+
+  <form class="kb-search-form"
+        hx-post="/ui/kb/search"
+        hx-target="#kb-search-results"
+        hx-indicator="#kb-loading">
+    <div class="form-group">
+      <label for="kb_query">搜尋內容</label>
+      <input type="text"
+             id="kb_query"
+             name="query"
+             placeholder="例如：資源回收、文書處理、會議通知"
+             required
+             minlength="2"
+             maxlength="200">
+    </div>
+    <div class="form-group" style="max-width: 140px;">
+      <label for="kb_n">結果數量</label>
+      <select id="kb_n" name="n_results">
+        <option value="5" selected>5 筆</option>
+        <option value="10">10 筆</option>
+        <option value="20">20 筆</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">搜尋</button>
+  </form>
+
+  <div id="kb-loading" class="htmx-indicator">
+    <div class="loading-overlay">
+      <div class="spinner"></div>
+      <div class="loading-text">正在搜尋知識庫...</div>
+    </div>
+  </div>
+
+  <div id="kb-search-results"></div>
+</section>
+
+<section class="card">
+  <h2>知識庫管理</h2>
+  <p>使用 CLI 命令管理知識庫：</p>
+  <pre class="code-block">
+# 匯入本地範例
+gov-ai kb ingest
+
+# 列出知識庫統計
+gov-ai kb list
+
+# 語意搜尋
+gov-ai kb search "資源回收"
+
+# 擷取法規並匯入
+gov-ai kb fetch-laws --ingest</pre>
+</section>
+{% endblock %}

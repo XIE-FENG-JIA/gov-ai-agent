@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}公文 AI Agent - 設定{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h2>系統設定</h2>
+
+  {% if error %}
+  <div class="alert alert-error">
+    <strong>錯誤：</strong>{{ error }}
+  </div>
+  {% elif health %}
+  <table class="info-table">
+    <tr>
+      <th>系統狀態</th>
+      <td><span class="badge badge-ok">{{ health.status }}</span></td>
+    </tr>
+    <tr>
+      <th>API 版本</th>
+      <td>{{ health.version }}</td>
+    </tr>
+    <tr>
+      <th>LLM 提供者</th>
+      <td>{{ health.llm_provider }}</td>
+    </tr>
+    <tr>
+      <th>LLM 模型</th>
+      <td>{{ health.llm_model }}</td>
+    </tr>
+    <tr>
+      <th>知識庫狀態</th>
+      <td>
+        {% if health.kb_status == "available" %}
+        <span class="badge badge-ok">可用</span>
+        {% elif health.kb_status == "degraded" %}
+        <span class="badge badge-warn">降級</span>
+        {% else %}
+        <span class="badge badge-err">不可用</span>
+        {% endif %}
+      </td>
+    </tr>
+    <tr>
+      <th>知識庫集合數</th>
+      <td>{{ health.kb_collections }}</td>
+    </tr>
+    <tr>
+      <th>限流設定</th>
+      <td>{{ health.rate_limit_rpm }} 次/分鐘</td>
+    </tr>
+  </table>
+  {% else %}
+  <p>無法取得系統設定資訊。</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>設定管理</h2>
+  <p>使用 CLI 命令管理設定：</p>
+  <pre class="code-block">
+# 顯示目前設定
+gov-ai config show
+
+# 驗證設定完整性
+gov-ai config validate
+
+# 切換至本地 Ollama
+gov-ai switch ollama
+
+# 切換至 OpenRouter
+gov-ai switch openrouter</pre>
+</section>
+{% endblock %}

@@ -130,6 +130,32 @@ class TestConfigManagerEdgeCases:
         manager2 = ConfigManager(str(config_file))
         assert manager2.config["custom"]["name"] == "臺北市政府"
 
+    def test_save_config_syncs_in_memory(self, tmp_path):
+        """測試 save_config 後 self.config 同步更新"""
+        config_file = tmp_path / "sync.yaml"
+        manager = ConfigManager(str(config_file))
+
+        new_config = {"llm": {"provider": "gemini", "model": "gemini-pro"}}
+        manager.save_config(new_config)
+
+        # 記憶體內的 config 應已更新，無需重新載入
+        assert manager.config["llm"]["provider"] == "gemini"
+        assert manager.get("llm.provider") == "gemini"
+
+    def test_create_default_config_oserror_graceful(self, tmp_path):
+        """測試建立預設設定檔時 OSError 被優雅處理（覆蓋 config.py:96-97）"""
+        from unittest.mock import patch
+
+        # 建立不存在的路徑
+        config_path = tmp_path / "new_dir" / "config.yaml"
+        # Mock save_config 拋出 OSError（模擬磁碟已滿等）
+        with patch.object(ConfigManager, 'save_config', side_effect=OSError("磁碟已滿")):
+            manager = ConfigManager(str(config_path))
+
+        # 應該仍然回傳預設設定，不崩潰
+        assert manager.config is not None
+        assert manager.config["llm"]["provider"] == "ollama"
+
 
 # ==================== load_dotenv 邊界測試 ====================
 
@@ -150,8 +176,10 @@ class TestLoadDotenv:
                 value = value.strip().strip('"').strip("'")
                 os.environ[key] = value
 
-        assert os.environ.get("TEST_DOTENV_KEY") == "value123"
-        del os.environ["TEST_DOTENV_KEY"]
+        try:
+            assert os.environ.get("TEST_DOTENV_KEY") == "value123"
+        finally:
+            os.environ.pop("TEST_DOTENV_KEY", None)
 
     def test_env_file_with_single_quotes(self, tmp_path):
         """測試單引號包裹的值"""
@@ -166,8 +194,10 @@ class TestLoadDotenv:
                 value = value.strip().strip('"').strip("'")
                 os.environ[key] = value
 
-        assert os.environ.get("TEST_SQ_KEY") == "single_quoted"
-        del os.environ["TEST_SQ_KEY"]
+        try:
+            assert os.environ.get("TEST_SQ_KEY") == "single_quoted"
+        finally:
+            os.environ.pop("TEST_SQ_KEY", None)
 
     def test_env_file_empty_lines(self, tmp_path):
         """測試空行被忽略"""
@@ -182,8 +212,10 @@ class TestLoadDotenv:
                 value = value.strip().strip('"').strip("'")
                 os.environ[key] = value
 
-        assert os.environ.get("TEST_EMPTY_LINE") == "ok"
-        del os.environ["TEST_EMPTY_LINE"]
+        try:
+            assert os.environ.get("TEST_EMPTY_LINE") == "ok"
+        finally:
+            os.environ.pop("TEST_EMPTY_LINE", None)
 
 
 # ==================== PublicDocRequirement 邊界測試 ====================
@@ -530,3 +562,83 @@ class TestExporterKnownDocTypes:
         output_path = str(tmp_path / "test_skip.docx")
         result_path = exporter.export(draft, output_path)
         assert os.path.exists(result_path)
+
+
+# ==================== VALID_DOC_TYPES 與 validate_doc_type ====================
+
+class TestValidDocTypes:
+    """驗證 VALID_DOC_TYPES 與 validate_doc_type 的一致性"""
+
+    def test_known_doc_types_accepted(self):
+        """測試所有已知公文類型都能通過驗證"""
+        from src.core.models import VALID_DOC_TYPES
+        for dt in VALID_DOC_TYPES:
+            req = PublicDocRequirement(
+                doc_type=dt, sender="A", receiver="B", subject="主旨"
+            )
+            assert req.doc_type == dt
+
+    def test_unknown_doc_type_accepted_with_warning(self, caplog):
+        """測試未知公文類型仍然接受，但會記錄警告"""
+        import logging
+        with caplog.at_level(logging.WARNING, logger="src.core.models"):
+            req = PublicDocRequirement(
+                doc_type="奇怪的類型", sender="A", receiver="B", subject="主旨"
+            )
+            assert req.doc_type == "奇怪的類型"
+        assert "未知的公文類型" in caplog.text
+
+    def test_empty_doc_type_rejected(self):
+        """測試空白公文類型被拒絕"""
+        with pytest.raises(ValidationError, match="公文類型不可為空白"):
+            PublicDocRequirement(
+                doc_type="  ", sender="A", receiver="B", subject="主旨"
+            )
+
+    def test_doc_type_literal_matches_valid_doc_types(self):
+        """測試 DocTypeLiteral 和 VALID_DOC_TYPES 包含相同的值"""
+        from typing import get_args
+        from src.core.models import DocTypeLiteral, VALID_DOC_TYPES
+        literal_values = set(get_args(DocTypeLiteral))
+        assert literal_values == set(VALID_DOC_TYPES), (
+            f"DocTypeLiteral {literal_values} 與 VALID_DOC_TYPES {set(VALID_DOC_TYPES)} 不一致"
+        )
+
+
+# ==================== PublicDocRequirement max_length ====================
+
+class TestPublicDocRequirementMaxLength:
+    """測試 PublicDocRequirement 欄位的 max_length 限制"""
+
+    def test_sender_max_length(self):
+        """測試 sender 超過 200 字元被拒絕"""
+        with pytest.raises(ValidationError):
+            PublicDocRequirement(
+                doc_type="函", sender="A" * 201, receiver="B", subject="主旨"
+            )
+
+    def test_receiver_max_length(self):
+        """測試 receiver 超過 500 字元被拒絕"""
+        with pytest.raises(ValidationError):
+            PublicDocRequirement(
+                doc_type="函", sender="A", receiver="B" * 501, subject="主旨"
+            )
+
+    def test_subject_max_length(self):
+        """測試 subject 超過 500 字元被拒絕"""
+        with pytest.raises(ValidationError):
+            PublicDocRequirement(
+                doc_type="函", sender="A", receiver="B", subject="字" * 501
+            )
+
+    def test_fields_at_max_length_accepted(self):
+        """測試欄位恰好在 max_length 邊界值時被接受"""
+        req = PublicDocRequirement(
+            doc_type="函",
+            sender="A" * 200,
+            receiver="B" * 500,
+            subject="字" * 500,
+        )
+        assert len(req.sender) == 200
+        assert len(req.receiver) == 500
+        assert len(req.subject) == 500

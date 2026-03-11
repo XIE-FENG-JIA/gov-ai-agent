@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}公文 AI Agent{% endblock %}</title>
+  <link rel="stylesheet" href="/ui/static/style.css">
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <h1 class="logo">公文 AI Agent</h1>
+      <nav>
+        <a href="/ui/">首頁</a>
+        <a href="/ui/kb">知識庫</a>
+        <a href="/ui/config">設定</a>
+        <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">深色模式</button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer>
+    <p>公文 AI Agent &copy; 2026 &mdash; 台灣政府公文智慧撰寫系統</p>
+  </footer>
+
+  <script>
+    // 深色模式切換
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      updateThemeButton(next);
+    }
+    function updateThemeButton(theme) {
+      const btn = document.getElementById('themeBtn');
+      if (btn) btn.textContent = theme === 'dark' ? '淺色模式' : '深色模式';
+    }
+    // 讀取儲存的主題偏好
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+        updateThemeButton(saved);
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        updateThemeButton('dark');
+      }
+    })();
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

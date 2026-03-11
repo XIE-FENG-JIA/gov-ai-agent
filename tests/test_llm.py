@@ -2,8 +2,12 @@
 src/core/llm.py 的單元測試
 測試 LLM 提供者的建構、模型名稱格式化和工廠函數
 """
+import pytest
 from unittest.mock import MagicMock, patch
-from src.core.llm import MockLLMProvider, LiteLLMProvider, get_llm_factory
+from src.core.llm import (
+    MockLLMProvider, LiteLLMProvider, get_llm_factory,
+    LLMError, LLMConnectionError, LLMAuthError,
+)
 
 
 # ==================== MockLLMProvider ====================
@@ -141,15 +145,32 @@ class TestLiteLLMProviderMethods:
         mock_litellm.completion.assert_called_once()
 
     @patch("src.core.llm.litellm")
-    def test_generate_failure_returns_error(self, mock_litellm):
-        """測試 generate 失敗時回傳錯誤訊息"""
+    def test_generate_failure_raises_llm_error(self, mock_litellm):
+        """測試 generate 失敗時拋出 LLMError"""
         mock_litellm.completion.side_effect = Exception("Connection refused")
 
         provider = LiteLLMProvider({"provider": "ollama", "model": "mistral"})
-        result = provider.generate("寫一份公文")
+        with pytest.raises(LLMError) as exc_info:
+            provider.generate("寫一份公文")
+        assert "Connection refused" in str(exc_info.value)
 
-        assert "Error" in result
-        assert "Connection refused" in result
+    @patch("src.core.llm.litellm")
+    def test_generate_connection_error_raises_llm_connection_error(self, mock_litellm):
+        """測試連線失敗時拋出 LLMConnectionError"""
+        mock_litellm.completion.side_effect = Exception("ConnectionError: [Errno 10061] 拒絕連線")
+
+        provider = LiteLLMProvider({"provider": "ollama", "model": "mistral"})
+        with pytest.raises(LLMConnectionError):
+            provider.generate("測試")
+
+    @patch("src.core.llm.litellm")
+    def test_generate_auth_error_raises_llm_auth_error(self, mock_litellm):
+        """測試認證失敗時拋出 LLMAuthError"""
+        mock_litellm.completion.side_effect = Exception("AuthenticationError: Invalid API Key")
+
+        provider = LiteLLMProvider({"provider": "gemini", "api_key": "bad-key"})
+        with pytest.raises(LLMAuthError):
+            provider.generate("測試")
 
     @patch("src.core.llm.litellm")
     def test_generate_null_content(self, mock_litellm):
@@ -181,13 +202,14 @@ class TestLiteLLMProviderMethods:
         """測試 embed 連線失敗時回傳空列表"""
         mock_litellm.embedding.side_effect = Exception("ConnectionError: 10061")
 
-        # 重設錯誤顯示旗標
-        LiteLLMProvider._embedding_error_shown = False
-
         provider = LiteLLMProvider({"provider": "ollama", "model": "mistral"})
+        # 確保錯誤旗標為 False（實例級，每次建構都是全新的）
+        assert not provider._embedding_error_shown
         result = provider.embed("測試")
 
         assert result == []
+        # 連線錯誤後旗標應被設為 True
+        assert provider._embedding_error_shown is True
 
     @patch("src.core.llm.litellm")
     def test_embed_other_error_returns_empty(self, mock_litellm):

@@ -1,11 +1,30 @@
 import random
 import logging
 import threading
-from typing import List, Optional
 import litellm
 from src.core.config import LLMProvider
+from src.core.constants import LLM_GENERATION_TIMEOUT, LLM_CHECK_TIMEOUT
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# LLM 自訂例外類別
+# ============================================================
+
+class LLMError(Exception):
+    """LLM 服務錯誤基礎類別。"""
+    pass
+
+
+class LLMConnectionError(LLMError):
+    """無法連線到 LLM 服務。"""
+    pass
+
+
+class LLMAuthError(LLMError):
+    """API Key 無效或認證失敗。"""
+    pass
 
 # 抑制 LiteLLM 的冗長錯誤訊息，只在真正需要除錯時開啟
 litellm.suppress_debug_info = True
@@ -15,7 +34,7 @@ logging.getLogger("LiteLLM").setLevel(logging.ERROR)
 class MockLLMProvider(LLMProvider):
     """模擬 LLM 提供者，用於不需要真實後端的測試。"""
 
-    def __init__(self, provider_config: dict):
+    def __init__(self, provider_config: dict) -> None:
         self.model = provider_config.get("model", "mock-model")
 
     def generate(self, prompt: str, **kwargs) -> str:
@@ -25,7 +44,7 @@ class MockLLMProvider(LLMProvider):
             return ""
         return f"[MOCK] Generated response for: {prompt[:20]}..."
 
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> list[float]:
         """產生固定的模擬嵌入向量（維度 384，執行緒安全）。"""
         # 防護空值輸入
         if not text or not text.strip():
@@ -36,23 +55,53 @@ class MockLLMProvider(LLMProvider):
 class LiteLLMProvider(LLMProvider):
     """使用 LiteLLM 的 LLM 提供者實作。"""
 
-    _embedding_error_shown: bool = False
-    _error_lock: threading.Lock = threading.Lock()
+    def check_connectivity(self, timeout: int = 5) -> tuple[bool, str]:
+        """快速測試 LLM 連線是否正常。
 
-    def __init__(self, provider_config: dict):
+        Args:
+            timeout: 連線逾時秒數（預設 5 秒）
+
+        Returns:
+            (成功與否, 錯誤訊息或空字串)
+        """
+        try:
+            litellm.completion(
+                model=self.model_name,
+                messages=[{"role": "user", "content": "Hi"}],
+                api_key=self.api_key,
+                base_url=self.base_url,
+                timeout=timeout,
+                max_tokens=1,
+            )
+            return True, ""
+        except Exception as e:
+            error_msg = str(e)
+            if "ConnectionError" in error_msg or "10061" in error_msg or "拒絕連線" in error_msg:
+                if self.provider == "ollama":
+                    return False, "無法連線到 Ollama 服務。請確認已啟動：ollama serve"
+                return False, "無法連線到 LLM 服務，請確認網路連線。"
+            if "AuthenticationError" in error_msg or "401" in error_msg or "Invalid API Key" in error_msg:
+                return False, "API Key 無效或已過期。請確認已設定：export LLM_API_KEY=your-key"
+            if "timeout" in error_msg.lower() or "Timeout" in error_msg:
+                return False, f"LLM 連線逾時（{timeout} 秒）。請確認服務是否正常運作。"
+            return False, f"LLM 連線失敗：{error_msg[:100]}"
+
+    def __init__(self, provider_config: dict) -> None:
+        self._embedding_error_shown: bool = False
+        self._error_lock: threading.Lock = threading.Lock()
         self.provider = provider_config.get("provider", "ollama")
         self.model = provider_config.get("model", "mistral")
         self.api_key = provider_config.get("api_key")
         self.base_url = provider_config.get("base_url")
-        
+
         # Embedding Config
         self.emb_provider = provider_config.get("embedding_provider", "ollama")
         self.emb_model = provider_config.get("embedding_model", "llama3.1:8b")
         self.emb_base_url = provider_config.get("embedding_base_url", "http://localhost:11434")
-        
+
         # Validate API Key for cloud providers
         if self.provider in ["gemini", "openrouter"] and not self.api_key:
-            logger.warning("No API Key found for %s. Requests might fail.", self.provider)
+            logger.warning("找不到 %s 的 API Key，請求可能失敗", self.provider)
 
         # Construct the full model name for litellm generation
         if self.provider == "ollama":
@@ -68,7 +117,7 @@ class LiteLLMProvider(LLMProvider):
             else:
                 self.model_name = self.model
         else:
-            self.model_name = self.model 
+            self.model_name = self.model
 
     def generate(self, prompt: str, **kwargs) -> str:
         # 防護空值輸入
@@ -81,25 +130,26 @@ class LiteLLMProvider(LLMProvider):
                 messages=[{"role": "user", "content": prompt}],
                 api_key=self.api_key,
                 base_url=self.base_url,
+                timeout=LLM_GENERATION_TIMEOUT,
                 **kwargs
             )
             return response.choices[0].message.content or ""
         except Exception as e:
             error_msg = str(e)
-            # 提供更清楚的錯誤訊息
+            # 提供更清楚的錯誤訊息並拋出對應的自訂例外
             if "ConnectionError" in error_msg or "10061" in error_msg or "拒絕連線" in error_msg:
                 logger.error(
                     "無法連線到 LLM 服務。若使用 Ollama，請確認已執行 'ollama serve'；"
                     "若使用雲端服務，請檢查網路連線。"
                 )
-                return "Error: 無法連線到 LLM 服務，請確認服務已啟動。"
+                raise LLMConnectionError("無法連線到 LLM 服務，請確認服務已啟動。") from e
             if "AuthenticationError" in error_msg or "401" in error_msg or "Invalid API Key" in error_msg:
                 logger.error("API Key 無效或已過期，請檢查設定檔中的 api_key。")
-                return "Error: API Key 無效，請檢查設定檔。"
-            logger.error("LLM generation failed: %s", e)
-            return f"Error generating response: {error_msg}"
+                raise LLMAuthError("API Key 無效，請檢查設定檔。") from e
+            logger.error("LLM 生成失敗: %s", e)
+            raise LLMError(f"LLM 生成失敗 — {error_msg}") from e
 
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> list[float]:
         # 防護空值輸入
         if not text or not text.strip():
             logger.warning("LLM embed 收到空的文字，回傳空列表")
@@ -125,6 +175,7 @@ class LiteLLMProvider(LLMProvider):
                 input=[text],
                 api_key=api_key,
                 base_url=base_url,
+                timeout=LLM_CHECK_TIMEOUT,
             )
             if not response.data:
                 logger.warning("Embedding 回應中無資料")
@@ -133,15 +184,15 @@ class LiteLLMProvider(LLMProvider):
         except Exception as e:
             error_msg = str(e)
             if "ConnectionError" in error_msg or "拒絕連線" in error_msg or "10061" in error_msg:
-                with LiteLLMProvider._error_lock:
-                    if not LiteLLMProvider._embedding_error_shown:
+                with self._error_lock:
+                    if not self._embedding_error_shown:
                         logger.warning("Ollama 服務未啟動，請執行 'ollama serve' 或切換至雲端 embedding")
-                        LiteLLMProvider._embedding_error_shown = True
+                        self._embedding_error_shown = True
             else:
                 logger.warning("Embedding 錯誤: %s", error_msg[:80])
             return []
 
-def get_llm_factory(config: dict, full_config: Optional[dict] = None) -> LLMProvider:
+def get_llm_factory(config: dict, full_config: dict | None = None) -> LLMProvider:
     """
     取得 LLM 提供者實例的工廠函式。
 

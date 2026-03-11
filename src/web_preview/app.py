@@ -1,0 +1,245 @@
+# -*- coding: utf-8 -*-
+"""
+Web UI 預覽 — FastAPI + Jinja2 + HTMX
+======================================
+
+掛載在主 API 的 /ui 路徑下，透過呼叫 API 端點實現功能，
+避免重複初始化 agents。
+"""
+
+import logging
+import os
+from pathlib import Path
+from urllib.parse import urlparse
+
+import httpx
+from fastapi import FastAPI, Form, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
+from src.core.constants import MAX_USER_INPUT_LENGTH
+
+logger = logging.getLogger(__name__)
+
+_DIR = Path(__file__).resolve().parent
+
+web_app = FastAPI(docs_url=None, redoc_url=None)
+
+# 靜態檔案與模板
+web_app.mount("/static", StaticFiles(directory=str(_DIR / "static")), name="web_static")
+templates = Jinja2Templates(directory=str(_DIR / "templates"))
+
+# 後端 API 基底 URL（透過環境變數可覆蓋）
+_API_BASE = os.environ.get("WEB_UI_API_BASE", "http://127.0.0.1:8000")
+
+# SSRF 防護：僅允許本機地址與安全協議
+_parsed = urlparse(_API_BASE)
+if _parsed.scheme not in ("http", "https"):
+    raise ValueError(f"WEB_UI_API_BASE 只允許 http/https 協議，不允許: {_parsed.scheme}")
+if _parsed.hostname not in ("localhost", "127.0.0.1", "::1"):
+    raise ValueError(f"WEB_UI_API_BASE 只允許本機地址，不允許: {_parsed.hostname}")
+
+
+def _sanitize_web_error(exc: Exception) -> str:
+    """將例外轉為使用者友善的錯誤訊息，避免洩漏內部資訊。"""
+    _SAFE = {
+        "ConnectError": "無法連線至後端 API，請確認伺服器已啟動。",
+        "TimeoutException": "請求逾時，請稍後再試。",
+        "HTTPStatusError": "後端 API 回傳錯誤，請稍後再試。",
+    }
+    return _SAFE.get(type(exc).__name__, "發生內部錯誤，請稍後再試或聯繫管理員。")
+
+
+# ── 首頁 ─────────────────────────────────────────────
+@web_app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    """首頁：輸入需求表單"""
+    return templates.TemplateResponse(request, "index.html")
+
+
+# ── 生成公文 ──────────────────────────────────────────
+@web_app.post("/generate", response_class=HTMLResponse)
+async def generate(
+    request: Request,
+    user_input: str = Form(...),
+    doc_type: str = Form(""),
+    skip_review: bool = Form(False),
+):
+    """呼叫 /api/v1/meeting 端點生成公文，回傳結果頁"""
+    error = None
+    result = None
+
+    # 輸入長度驗證
+    stripped = user_input.strip()
+    if len(stripped) < 5:
+        return templates.TemplateResponse(
+            request, "generate.html",
+            {"user_input": user_input, "result": None, "error": "需求描述至少需要 5 個字。"},
+        )
+    if len(stripped) > MAX_USER_INPUT_LENGTH:
+        return templates.TemplateResponse(
+            request, "generate.html",
+            {"user_input": user_input, "result": None,
+             "error": f"需求描述不可超過 {MAX_USER_INPUT_LENGTH} 字（目前 {len(stripped)} 字）。"},
+        )
+
+    # 若使用者指定了公文類型，附加到 user_input 提示中
+    effective_input = stripped
+    if doc_type:
+        effective_input = f"[公文類型：{doc_type}] {user_input}"
+
+    try:
+        async with httpx.AsyncClient(timeout=180.0) as client:
+            resp = await client.post(
+                f"{_API_BASE}/api/v1/meeting",
+                json={
+                    "user_input": effective_input,
+                    "skip_review": skip_review,
+                    "output_docx": True,
+                },
+            )
+            data = resp.json()
+            if resp.status_code == 200 and data.get("success"):
+                result = data
+            else:
+                error = data.get("error") or data.get("detail") or f"HTTP {resp.status_code}"
+    except Exception as e:
+        logger.exception("生成公文時發生錯誤")
+        error = _sanitize_web_error(e)
+
+    return templates.TemplateResponse(
+        request,
+        "generate.html",
+        {
+            "user_input": user_input,
+            "result": result,
+            "error": error,
+        },
+    )
+
+
+# ── 知識庫 ────────────────────────────────────────────
+@web_app.get("/kb", response_class=HTMLResponse)
+async def kb_page(request: Request):
+    """知識庫統計與搜尋"""
+    stats = None
+    error = None
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(f"{_API_BASE}/api/v1/health")
+            if resp.status_code == 200:
+                data = resp.json()
+                stats = {
+                    "kb_status": data.get("kb_status", "unknown"),
+                    "kb_collections": data.get("kb_collections", 0),
+                    "llm_provider": data.get("llm_provider", "unknown"),
+                    "llm_model": data.get("llm_model", "unknown"),
+                }
+    except Exception as e:
+        logger.exception("取得知識庫狀態時發生錯誤")
+        error = _sanitize_web_error(e)
+
+    return templates.TemplateResponse(
+        request,
+        "kb.html",
+        {"stats": stats, "error": error},
+    )
+
+
+# ── 知識庫搜尋（HTMX 局部回應） ─────────────────────
+@web_app.post("/kb/search", response_class=HTMLResponse)
+async def kb_search(
+    request: Request,
+    query: str = Form(...),
+    n_results: int = Form(5),
+):
+    """語意搜尋知識庫，回傳 HTMX 局部 HTML"""
+    error = None
+    results = None
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                f"{_API_BASE}/api/v1/kb/search",
+                json={
+                    "query": query,
+                    "n_results": n_results,
+                },
+            )
+            data = resp.json()
+            if resp.status_code == 200 and data.get("success"):
+                results = data.get("results", [])
+            else:
+                error = data.get("error") or data.get("detail") or f"HTTP {resp.status_code}"
+    except Exception as e:
+        logger.exception("知識庫搜尋時發生錯誤")
+        error = _sanitize_web_error(e)
+
+    return templates.TemplateResponse(
+        request,
+        "kb_results.html",
+        {"results": results, "error": error},
+    )
+
+
+# ── 設定 ──────────────────────────────────────────────
+@web_app.get("/config", response_class=HTMLResponse)
+async def config_page(request: Request):
+    """顯示目前系統設定"""
+    health = None
+    error = None
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(f"{_API_BASE}/api/v1/health")
+            if resp.status_code == 200:
+                health = resp.json()
+    except Exception as e:
+        logger.exception("取得設定頁資料時發生錯誤")
+        error = _sanitize_web_error(e)
+
+    return templates.TemplateResponse(
+        request,
+        "config.html",
+        {"health": health, "error": error},
+    )
+
+
+# ── 詳細審查報告 API ──────────────────────────────────
+@web_app.get("/api/v1/detailed-review", response_class=JSONResponse)
+async def detailed_review(session_id: str = ""):
+    """
+    代理轉發至後端 API 取得完整 QA 報告 JSON。
+    此端點供前端 HTMX 或外部系統使用。
+    """
+    if not session_id:
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "error": "缺少 session_id 參數"},
+        )
+    # session_id 格式驗證：僅允許英數字與連字號
+    import re as _re
+    if not _re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", session_id):
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "error": "session_id 格式無效"},
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(
+                f"{_API_BASE}/api/v1/detailed-review",
+                params={"session_id": session_id},
+            )
+            return JSONResponse(
+                status_code=resp.status_code,
+                content=resp.json(),
+            )
+    except Exception as e:
+        logger.exception("取得詳細審查報告時發生錯誤")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": _sanitize_web_error(e)},
+        )

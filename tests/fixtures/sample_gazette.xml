@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Gazette>
+  <Record>
+    <MetaId>162666</MetaId>
+    <Title>修正「藥品分類」</Title>
+    <PubGov>行政院</PubGov>
+    <Date_Published>2026-02-13</Date_Published>
+    <HTMLContent><![CDATA[<p>主旨：修正「藥品分類」。</p><p>依據：藥事法第三十九條。</p>]]></HTMLContent>
+    <Category>法規命令</Category>
+  </Record>
+  <Record>
+    <MetaId>162667</MetaId>
+    <Title>核定施政計畫</Title>
+    <PubGov>國發會</PubGov>
+    <Date_Published>2026-02-12</Date_Published>
+    <HTMLContent><![CDATA[<h2>施政計畫</h2><p>本年度重點施政計畫如下：</p><ul><li>數位轉型</li><li>綠色能源</li></ul>]]></HTMLContent>
+    <Category>施政計畫</Category>
+  </Record>
+  <Record>
+    <MetaId>162668</MetaId>
+    <Title>一般公告事項</Title>
+    <PubGov>內政部</PubGov>
+    <Date_Published>2025-01-01</Date_Published>
+    <HTMLContent><![CDATA[<p>一般公告內容。</p>]]></HTMLContent>
+    <Category>一般公告</Category>
+  </Record>
+</Gazette>

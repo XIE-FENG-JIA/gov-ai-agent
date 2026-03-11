@@ -1,0 +1,56 @@
+{% if error %}
+<div class="alert alert-error" style="margin-top: 1rem;">
+  <strong>搜尋失敗：</strong>{{ error }}
+</div>
+
+{% elif results is not none %}
+  {% if results | length == 0 %}
+  <div style="text-align: center; padding: 2rem 0; color: var(--text-muted);">
+    未找到相關結果，請嘗試不同的搜尋詞。
+  </div>
+  {% else %}
+  <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+    找到 {{ results | length }} 筆相關結果
+  </div>
+  <div class="kb-results">
+    {% for item in results %}
+    {% set meta = item.metadata or {} %}
+    {% set distance = item.distance %}
+    {% set similarity = ((1.0 - (distance or 0)) * 100) | int %}
+    {% set sim_class = 'risk-safe' if similarity >= 70 else ('risk-moderate' if similarity >= 40 else 'risk-critical') %}
+    <div class="kb-card">
+      <div class="kb-card-header">
+        <div class="kb-card-title">
+          {{ meta.get('title', meta.get('doc_type', '未知文件')) }}
+        </div>
+        <div class="kb-card-meta">
+          {% if meta.get('source_level') %}
+          <span class="badge {% if meta.source_level == 'A' %}badge-ok{% else %}badge-warn{% endif %}">
+            等級 {{ meta.source_level }}
+          </span>
+          {% endif %}
+          <span class="similarity-bar {{ sim_class }}">
+            {{ similarity }}% 相似
+          </span>
+        </div>
+      </div>
+      <div class="kb-card-body">
+        {{ item.content[:300] }}{% if item.content | length > 300 %}...{% endif %}
+      </div>
+      <div class="kb-card-footer">
+        {% if meta.get('doc_type') %}
+        <span>類型：{{ meta.doc_type }}</span>
+        {% endif %}
+        {% if meta.get('source') %}
+        <span>來源：{{ meta.source }}</span>
+        {% endif %}
+        {% if meta.get('sender') %}
+        <span>發文機關：{{ meta.sender }}</span>
+        {% endif %}
+        <span>ID: {{ item.id[:16] }}{% if item.id | length > 16 %}...{% endif %}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endif %}

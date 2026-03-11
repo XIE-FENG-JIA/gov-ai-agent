@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}公文 AI Agent - 生成結果{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h2>生成結果</h2>
+
+  <div class="form-group">
+    <label>需求描述</label>
+    <p class="input-echo">{{ user_input }}</p>
+  </div>
+
+  {% if error %}
+  <div class="alert alert-error">
+    <strong>錯誤：</strong>{{ error }}
+  </div>
+
+  {% elif result %}
+  <div class="alert alert-success">
+    生成成功（共 {{ result.rounds_used }} 輪修改）
+  </div>
+
+  {# ── 需求分析 ── #}
+  {% if result.requirement %}
+  <h3>需求分析</h3>
+  <table class="info-table">
+    {% for key, value in result.requirement.items() %}
+    <tr>
+      <th>{{ key }}</th>
+      <td>{% if value is iterable and value is not string %}{{ value | join(', ') }}{% else %}{{ value }}{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  {# ── 公文草稿 ── #}
+  {% if result.final_draft %}
+  <h3>公文草稿</h3>
+  <pre class="draft-content">{{ result.final_draft }}</pre>
+  {% endif %}
+
+  {# ── QA 審查報告 ── #}
+  {% if result.qa_report %}
+  <h3>審查報告</h3>
+
+  {# 總評分區 #}
+  {% set score = result.qa_report.overall_score %}
+  {% set risk = result.qa_report.risk_summary %}
+  {% set risk_lower = risk | lower %}
+  <div class="qa-summary">
+    <div>
+      <div class="qa-score {% if score >= 0.8 %}risk-safe{% elif score >= 0.6 %}risk-moderate{% else %}risk-critical{% endif %}">
+        {{ "%.0f" | format(score * 100) }}
+      </div>
+      <div class="qa-score-label">品質分數</div>
+    </div>
+    <div class="qa-meta">
+      <div>
+        風險等級：
+        <span class="risk-badge risk-badge-{{ risk_lower }}">{{ risk }}</span>
+      </div>
+      <div style="color: var(--text-muted); font-size: 0.85rem;">
+        共 {{ result.qa_report.agent_results | length }} 個審查 Agent
+      </div>
+    </div>
+  </div>
+
+  {# 各 Agent 折疊面板 #}
+  {% for agent in result.qa_report.agent_results %}
+  {% set a_score = agent.score %}
+  {% set score_class = 'score-high' if a_score >= 0.8 else ('score-mid' if a_score >= 0.6 else 'score-low') %}
+  {% set score_color = 'risk-safe' if a_score >= 0.8 else ('risk-moderate' if a_score >= 0.6 else 'risk-critical') %}
+  <details class="agent-details" {% if agent.issues %}open{% endif %}>
+    <summary>
+      <span class="agent-summary-left">
+        <strong>{{ agent.agent_name }}</strong>
+        <span class="agent-score {{ score_color }}">{{ "%.0f" | format(a_score * 100) }} 分</span>
+        {% if agent.issues %}
+          <span style="font-size: 0.8rem; color: var(--text-muted);">
+            {{ agent.issues | length }} 個問題
+          </span>
+        {% else %}
+          <span class="badge badge-ok" style="font-size: 0.75rem;">通過</span>
+        {% endif %}
+      </span>
+      <span class="agent-summary-right">
+        <span style="color: var(--text-muted); font-size: 0.8rem;">
+          信心度 {{ "%.0f" | format(agent.confidence * 100) }}%
+        </span>
+        <div style="width: 80px;">
+          <div class="score-bar">
+            <div class="score-bar-fill {{ score_class }}" style="width: {{ (a_score * 100) | int }}%"></div>
+          </div>
+        </div>
+      </span>
+    </summary>
+    <div class="agent-details-body">
+      {% if agent.issues %}
+      <ul class="issue-list">
+        {% for issue in agent.issues %}
+        <li class="issue-item">
+          <span class="issue-severity severity-{{ issue.severity }}">
+            {% if issue.severity == 'error' %}E{% elif issue.severity == 'warning' %}W{% else %}I{% endif %}
+          </span>
+          <div class="issue-content">
+            <div>
+              <span class="issue-risk-tag issue-risk-{{ issue.risk_level }}">{{ issue.risk_level | upper }}</span>
+              <span class="issue-location">{{ issue.location }}</span>
+            </div>
+            <div class="issue-desc">{{ issue.description }}</div>
+            {% if issue.suggestion %}
+            <div class="issue-suggestion">建議：{{ issue.suggestion }}</div>
+            {% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="no-issues">未發現問題，此項審查通過。</div>
+      {% endif %}
+    </div>
+  </details>
+  {% endfor %}
+
+  {% endif %} {# end qa_report #}
+
+  {# ── 下載按鈕 ── #}
+  {% if result.output_path %}
+  <p style="margin-top: 1rem;">
+    <a href="/api/v1/download/{{ result.output_path.split('/')[-1] }}" class="btn btn-primary">下載 DOCX</a>
+  </p>
+  {% endif %}
+
+  {# ── 詳細報告 API 連結 ── #}
+  {% if result.session_id and result.qa_report %}
+  <div style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">
+    Session ID: {{ result.session_id }}
+  </div>
+  {% endif %}
+
+  {% endif %} {# end result #}
+
+  <div style="margin-top: 1.5rem;">
+    <a href="/ui/" class="btn">返回首頁</a>
+  </div>
+</section>
+{% endblock %}
