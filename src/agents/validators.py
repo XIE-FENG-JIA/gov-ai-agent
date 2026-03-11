@@ -214,6 +214,42 @@ class ValidatorRegistry:
         "教育部體育署": "體育部",
     }
 
+    # 口語化用詞清單（不應出現在正式公文中）
+    _COLLOQUIAL_PATTERNS: list[tuple[str, str]] = [
+        ("幫我", "請協助"),
+        ("沒問題", "可行"),
+        ("超棒", "甚佳"),
+        ("超讚", "甚佳"),
+        ("好的", "遵辦"),
+        ("OK", "可"),
+        ("沒辦法", "無法"),
+        ("搞定", "完成"),
+        ("趕快", "儘速"),
+        ("拜託", "惠請"),
+        ("啦", ""),
+        ("喔", ""),
+        ("嗎", ""),
+        ("吧", ""),
+        ("耶", ""),
+        ("欸", ""),
+        ("哦", ""),
+    ]
+
+    def check_colloquial_language(self, draft_text: str, **kwargs) -> list[str]:
+        """檢查草稿中是否含有口語化用詞，公文應使用正式書面語。"""
+        errors = []
+        for pattern, suggestion in self._COLLOQUIAL_PATTERNS:
+            if pattern in draft_text:
+                if suggestion:
+                    errors.append(
+                        f"口語化用詞：「{pattern}」建議改為「{suggestion}」。"
+                    )
+                else:
+                    errors.append(
+                        f"口語化語氣詞：「{pattern}」不應出現在正式公文中。"
+                    )
+        return errors
+
     def check_terminology(self, draft_text: str, **kwargs) -> list[str]:
         """檢查草稿中是否使用了過時的機關名稱，提供更正建議。"""
         errors = []
