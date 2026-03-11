@@ -48,3 +48,4 @@ kb_data/
 *.pdf
 .chroma/
 output/
+experiments.log
