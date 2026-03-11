@@ -295,7 +295,10 @@ def detail(
             console.print(f"[dim]可用流程：{', '.join(templates.keys())}[/dim]")
             raise typer.Exit(1)
         steps_text = "\n".join(f"  {i}. {s}" for i, s in enumerate(tmpl["steps"], 1))
-        content = f"[bold]{tmpl['name']}[/bold]\n\n{tmpl['description']}\n\n步驟：\n{steps_text}\n\n來源：{tmpl['created']}"
+        content = (
+            f"[bold]{tmpl['name']}[/bold]\n\n{tmpl['description']}"
+            f"\n\n步驟：\n{steps_text}\n\n來源：{tmpl['created']}"
+        )
         console.print(Panel(content, title=f"[cyan]{name}[/cyan]", border_style="cyan"))
         return
 

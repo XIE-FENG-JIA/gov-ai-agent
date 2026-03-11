@@ -42,7 +42,10 @@ def test_connectivity(model_id: str, api_key: str) -> bool:
 @app.command()
 def show(
     format: str = typer.Option("yaml", "--format", help="輸出格式（yaml 或 json）"),
-    section: str = typer.Option("", "--section", "-s", help="僅顯示特定區段（llm/knowledge_base/api/organizational_memory）"),
+    section: str = typer.Option(
+        "", "--section", "-s",
+        help="僅顯示特定區段（llm/knowledge_base/api/organizational_memory）",
+    ),
 ):
     """
     顯示目前的組態設定。

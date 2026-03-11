@@ -109,7 +109,10 @@ def _load_batch_csv(batch_file: str) -> list[dict]:
         return items
 
 
-def _run_batch(batch_file: str, skip_review: bool, max_rounds: int = 3, convergence: bool = False, skip_info: bool = False):
+def _run_batch(
+    batch_file: str, skip_review: bool, max_rounds: int = 3,
+    convergence: bool = False, skip_info: bool = False,
+):
     """批次處理 JSON 或 CSV 檔案中的多筆公文需求。
 
     JSON 格式：[{"input": "需求描述", "output": "輸出路徑"}, ...]
@@ -344,7 +347,10 @@ def generate(
     auto_sender: bool = typer.Option(False, "--auto-sender", help="從 config 自動填入發文者資訊"),
     estimate: bool = typer.Option(False, "--estimate", help="預估 LLM 使用量和耗時（不實際生成）"),
     summary: bool = typer.Option(False, "--summary", help="生成後顯示視覺化摘要卡片"),
-    priority_tag: str = typer.Option("", "--priority-tag", help="優先標記（urgent=急件 / confidential=密 / normal=無）"),
+    priority_tag: str = typer.Option(
+        "", "--priority-tag",
+        help="優先標記（urgent=急件 / confidential=密 / normal=無）",
+    ),
     cc: str = typer.Option("", "--cc", help="副本收受者（逗號分隔，如 --cc '教育局,衛生局'）"),
     watermark: str = typer.Option("", "--watermark", help="浮水印文字（如 --watermark '草稿'）"),
     header: str = typer.Option("", "--header", help="自訂公文頁首（如 --header '台北市政府'）"),
@@ -353,7 +359,10 @@ def generate(
     encoding: str = typer.Option("utf-8", "--encoding", help="Markdown 匯出編碼（utf-8/big5/utf-8-sig）"),
     date: str = typer.Option("", "--date", help="自訂發文日期（如 --date '114年3月9日'）"),
     sign: str = typer.Option("", "--sign", help="署名（如 --sign '局長 王小明'）"),
-    attachment: str = typer.Option("", "--attachment", help="附件清單（逗號分隔，如 --attachment '實施計畫,經費概算表'）"),
+    attachment: str = typer.Option(
+        "", "--attachment",
+        help="附件清單（逗號分隔，如 --attachment '實施計畫,經費概算表'）",
+    ),
     classification: str = typer.Option("", "--classification", help="公文密等（密/機密/極機密/限閱）"),
     template_name: str = typer.Option("", "--template-name", help="指定範本名稱（如 --template-name '正式函'）"),
     receiver_title: str = typer.Option("", "--receiver-title", help="受文者敬稱（如 --receiver-title '鈞鑒'）"),
@@ -815,7 +824,10 @@ def generate(
         console.print(f"[yellow]未知的紙張方向：{orientation}（可用：portrait/landscape）[/yellow]")
 
     # 4r. 紙張大小設定
-    _PAPER_SIZES = {"A4": "A4 (210×297mm)", "B4": "B4 (257×364mm)", "A3": "A3 (297×420mm)", "Letter": "Letter (216×279mm)"}
+    _PAPER_SIZES = {
+        "A4": "A4 (210×297mm)", "B4": "B4 (257×364mm)",
+        "A3": "A3 (297×420mm)", "Letter": "Letter (216×279mm)",
+    }
     ps = paper_size.strip().upper() if paper_size.strip().upper() != "LETTER" else "Letter"
     if paper_size.strip().lower() == "letter":
         ps = "Letter"
@@ -930,7 +942,11 @@ def generate(
         _VALID_ENCODINGS = {"utf-8", "big5", "utf-8-sig"}
         md_enc = encoding.lower().strip() if encoding else "utf-8"
         if md_enc not in _VALID_ENCODINGS:
-            console.print(f"[yellow]不支援的編碼 '{encoding}'，改用 utf-8。可用：{', '.join(sorted(_VALID_ENCODINGS))}[/yellow]")
+            valid_list = ', '.join(sorted(_VALID_ENCODINGS))
+            console.print(
+                f"[yellow]不支援的編碼 '{encoding}'，"
+                f"改用 utf-8。可用：{valid_list}[/yellow]"
+            )
             md_enc = "utf-8"
         md_path = os.path.splitext(full_output_path)[0] + ".md"
         try:
@@ -983,7 +999,11 @@ def generate(
     if summary:
         score_str = f"{qa_report.overall_score:.2f}" if qa_report else "N/A"
         risk_str = qa_report.risk_summary if qa_report else "未審查"
-        risk_color = {"Safe": "green", "Low": "green", "Moderate": "yellow", "High": "red", "Critical": "red"}.get(risk_str, "white")
+        _risk_colors = {
+            "Safe": "green", "Low": "green", "Moderate": "yellow",
+            "High": "red", "Critical": "red",
+        }
+        risk_color = _risk_colors.get(risk_str, "white")
         card_lines = [
             f"[bold]{requirement.doc_type}[/bold]",
             f"主旨：{requirement.subject}",

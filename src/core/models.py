@@ -6,9 +6,15 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 logger = logging.getLogger(__name__)
 
 # 已知公文類型（用於驗證與 API Literal 類型）
-VALID_DOC_TYPES = ("函", "公告", "簽", "書函", "令", "開會通知單", "呈", "咨", "會勘通知單", "公務電話紀錄", "手令", "箋函")
+VALID_DOC_TYPES = (
+    "函", "公告", "簽", "書函", "令", "開會通知單",
+    "呈", "咨", "會勘通知單", "公務電話紀錄", "手令", "箋函",
+)
 # Literal 型別別名：供 API 模型使用，確保與 VALID_DOC_TYPES 同步
-DocTypeLiteral = Literal["函", "公告", "簽", "書函", "令", "開會通知單", "呈", "咨", "會勘通知單", "公務電話紀錄", "手令", "箋函"]
+DocTypeLiteral = Literal[
+    "函", "公告", "簽", "書函", "令", "開會通知單",
+    "呈", "咨", "會勘通知單", "公務電話紀錄", "手令", "箋函",
+]
 # 合法速別
 VALID_URGENCY_LEVELS = ("普通", "速件", "最速件")
 

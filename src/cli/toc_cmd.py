@@ -44,7 +44,11 @@ def toc(
             with open(f, "r", encoding="utf-8-sig") as fh:
                 text = fh.read()
         except UnicodeDecodeError:
-            entries.append({"no": i, "file": os.path.basename(f), "subject": "（編碼錯誤）", "type": "—", "depth": file_depth})
+            entries.append({
+                "no": i, "file": os.path.basename(f),
+                "subject": "（編碼錯誤）", "type": "—",
+                "depth": file_depth,
+            })
             continue
 
         subject = "（無主旨）"
@@ -61,7 +65,11 @@ def toc(
                 doc_type = dt
                 break
 
-        entries.append({"no": i, "file": os.path.basename(f), "subject": subject, "type": doc_type, "depth": file_depth})
+        entries.append({
+            "no": i, "file": os.path.basename(f),
+            "subject": subject, "type": doc_type,
+            "depth": file_depth,
+        })
 
     # 只顯示層級 <= depth 的檔案
     filtered = [e for e in entries if e["depth"] <= depth]

@@ -148,7 +148,11 @@ class KnowledgeBaseManager:
                 })
         return formatted
 
-    def search_examples(self, query: str, n_results: int = 3, filter_metadata: dict | None = None, source_level: str | None = None) -> list[dict]:
+    def search_examples(
+        self, query: str, n_results: int = 3,
+        filter_metadata: dict | None = None,
+        source_level: str | None = None,
+    ) -> list[dict]:
         """搜尋相似的範例文件。"""
         if not self._available:
             logger.warning("知識庫不可用，無法搜尋範例。")
@@ -199,7 +203,11 @@ class KnowledgeBaseManager:
 
         return formatted_results
 
-    def search_regulations(self, query: str, doc_type: str | None = None, n_results: int = 3, source_level: str | None = None) -> list[dict]:
+    def search_regulations(
+        self, query: str, doc_type: str | None = None,
+        n_results: int = 3,
+        source_level: str | None = None,
+    ) -> list[dict]:
         """在法規集合中搜尋，可依公文類型或來源等級篩選。"""
         if not self._available:
             logger.warning("知識庫不可用，無法搜尋法規。")

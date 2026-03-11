@@ -124,10 +124,16 @@ class ComplianceChecker:
 
         # 根據是否有政策文件，使用不同的檢查策略
         if policy_context:
-            check_points = """# Check Points
-1. **Policy Alignment**: Does the content contradict Executive Yuan or superior agency directives (e.g., net-zero emissions, cybersecurity priority, digital transformation)?
-2. **Terminology**: Are there outdated or inappropriate policy terms?
-3. **Policy Direction**: Is the content aligned with current policy trends (e.g., environmental sustainability, innovative economy, cybersecurity as national security)?"""
+            check_points = (
+                "# Check Points\n"
+                "1. **Policy Alignment**: Does the content contradict Executive Yuan or superior "
+                "agency directives (e.g., net-zero emissions, cybersecurity priority, digital "
+                "transformation)?\n"
+                "2. **Terminology**: Are there outdated or inappropriate policy terms?\n"
+                "3. **Policy Direction**: Is the content aligned with current policy trends (e.g., "
+                "environmental sustainability, innovative economy, cybersecurity as national "
+                "security)?"
+            )
             confidence_note = ""
         else:
             check_points = """# Check Points (Limited Mode - No Policy Documents Available)

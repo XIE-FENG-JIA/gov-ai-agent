@@ -33,18 +33,66 @@ TYPE_EXAMPLE_MAP = {
 }
 
 MOCK_REQUIREMENTS = {
-    "函": PublicDocRequirement(doc_type="函", sender="臺北市政府環境保護局", receiver="臺北市各級學校", subject="加強資源回收", urgency="普通", action_items=[], attachments=[]),
-    "公告": PublicDocRequirement(doc_type="公告", sender="內政部", receiver="（公告）", subject="修正建築法", urgency="普通", action_items=[], attachments=[]),
-    "簽": PublicDocRequirement(doc_type="簽", sender="臺北市政府秘書處", receiver="（內部）", subject="在職訓練", urgency="速件", action_items=[], attachments=[]),
-    "書函": PublicDocRequirement(doc_type="書函", sender="臺北市政府", receiver="某基金會", subject="資料函送", urgency="普通", action_items=[], attachments=[]),
-    "令": PublicDocRequirement(doc_type="令", sender="行政院", receiver="（令）", subject="修正要點", urgency="普通", action_items=[], attachments=[]),
-    "開會通知單": PublicDocRequirement(doc_type="開會通知單", sender="臺北市政府工務局", receiver="各局處", subject="協調會議", urgency="普通", action_items=[], attachments=[]),
-    "呈": PublicDocRequirement(doc_type="呈", sender="行政院", receiver="總統府", subject="施政報告", urgency="速件", action_items=[], attachments=[]),
-    "咨": PublicDocRequirement(doc_type="咨", sender="總統府", receiver="立法院", subject="法律案", urgency="普通", action_items=[], attachments=[]),
-    "會勘通知單": PublicDocRequirement(doc_type="會勘通知單", sender="臺北市政府工務局", receiver="相關單位", subject="路面會勘", urgency="速件", action_items=[], attachments=[]),
-    "公務電話紀錄": PublicDocRequirement(doc_type="公務電話紀錄", sender="臺北市政府秘書處", receiver="環保局", subject="協調事項", urgency="普通", action_items=[], attachments=[]),
-    "手令": PublicDocRequirement(doc_type="手令", sender="臺北市市長", receiver="都發局局長", subject="社宅檢討", urgency="普通", action_items=[], attachments=[]),
-    "箋函": PublicDocRequirement(doc_type="箋函", sender="臺北市政府秘書處", receiver="人事處", subject="設備報廢", urgency="普通", action_items=[], attachments=[]),
+    "函": PublicDocRequirement(
+        doc_type="函", sender="臺北市政府環境保護局",
+        receiver="臺北市各級學校", subject="加強資源回收",
+        urgency="普通", action_items=[], attachments=[],
+    ),
+    "公告": PublicDocRequirement(
+        doc_type="公告", sender="內政部", receiver="（公告）",
+        subject="修正建築法", urgency="普通",
+        action_items=[], attachments=[],
+    ),
+    "簽": PublicDocRequirement(
+        doc_type="簽", sender="臺北市政府秘書處",
+        receiver="（內部）", subject="在職訓練",
+        urgency="速件", action_items=[], attachments=[],
+    ),
+    "書函": PublicDocRequirement(
+        doc_type="書函", sender="臺北市政府", receiver="某基金會",
+        subject="資料函送", urgency="普通",
+        action_items=[], attachments=[],
+    ),
+    "令": PublicDocRequirement(
+        doc_type="令", sender="行政院", receiver="（令）",
+        subject="修正要點", urgency="普通",
+        action_items=[], attachments=[],
+    ),
+    "開會通知單": PublicDocRequirement(
+        doc_type="開會通知單", sender="臺北市政府工務局",
+        receiver="各局處", subject="協調會議",
+        urgency="普通", action_items=[], attachments=[],
+    ),
+    "呈": PublicDocRequirement(
+        doc_type="呈", sender="行政院", receiver="總統府",
+        subject="施政報告", urgency="速件",
+        action_items=[], attachments=[],
+    ),
+    "咨": PublicDocRequirement(
+        doc_type="咨", sender="總統府", receiver="立法院",
+        subject="法律案", urgency="普通",
+        action_items=[], attachments=[],
+    ),
+    "會勘通知單": PublicDocRequirement(
+        doc_type="會勘通知單", sender="臺北市政府工務局",
+        receiver="相關單位", subject="路面會勘",
+        urgency="速件", action_items=[], attachments=[],
+    ),
+    "公務電話紀錄": PublicDocRequirement(
+        doc_type="公務電話紀錄", sender="臺北市政府秘書處",
+        receiver="環保局", subject="協調事項",
+        urgency="普通", action_items=[], attachments=[],
+    ),
+    "手令": PublicDocRequirement(
+        doc_type="手令", sender="臺北市市長",
+        receiver="都發局局長", subject="社宅檢討",
+        urgency="普通", action_items=[], attachments=[],
+    ),
+    "箋函": PublicDocRequirement(
+        doc_type="箋函", sender="臺北市政府秘書處",
+        receiver="人事處", subject="設備報廢",
+        urgency="普通", action_items=[], attachments=[],
+    ),
 }
 
 

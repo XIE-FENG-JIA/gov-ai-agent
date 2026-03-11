@@ -1874,7 +1874,9 @@ class TestJudicialFetcher:
         list_json = {
             "status": "200",
             "li_list": [
-                '<a href="https://judgment.judicial.gov.tw/FJUD/data.aspx?ty=JD&id=TPAA,114,test,1,20260226,1" target="_blank">115.02.26 最高行政法院114年test字第1號裁定</a>',
+                '<a href="https://judgment.judicial.gov.tw/FJUD/data.aspx'
+                '?ty=JD&id=TPAA,114,test,1,20260226,1" target="_blank">'
+                '115.02.26 最高行政法院114年test字第1號裁定</a>',
             ],
         }
         detail_html = '''
@@ -1929,7 +1931,11 @@ class TestJudicialFetcher:
     def test_parse_link(self, tmp_path):
         """測試 _parse_link 解析"""
         from src.knowledge.fetchers.judicial_fetcher import JudicialFetcher
-        link_html = '<a href="https://judgment.judicial.gov.tw/FJUD/data.aspx?ty=JD&id=TPAA,114,test,1,20260226,1" target="_blank">115.02.26 最高行政法院裁定</a>'
+        link_html = (
+            '<a href="https://judgment.judicial.gov.tw/FJUD/data.aspx'
+            '?ty=JD&id=TPAA,114,test,1,20260226,1" target="_blank">'
+            '115.02.26 最高行政法院裁定</a>'
+        )
         result = JudicialFetcher._parse_link(link_html, "最高行政法院")
         assert result is not None
         assert result["title"] == "115.02.26 最高行政法院裁定"

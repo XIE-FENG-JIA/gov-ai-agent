@@ -87,12 +87,28 @@ class FormatAuditor:
         if not rule_context:
             console.print("[yellow]知識庫中找不到特定規則，使用通用安全規則。[/yellow]")
             _type_rules = {
-                "會勘通知單": "- [Warning] Should have '會勘時間', '會勘地點', '會勘事項' sections.",
-                "公務電話紀錄": "- [Warning] Should have '通話時間', '發話人', '受話人', '通話摘要' sections.\n- [Warning] Should have '紀錄人' and '核閱' fields.",
-                "手令": "- [Warning] Should have '指示事項' section.\n- [Warning] Should have '完成期限' if applicable.",
-                "箋函": "- [Info] 箋函 is a simplified format; '說明' section is sufficient.",
-                "呈": "- [Warning] '呈' is used from subordinate to President; tone must be highly respectful (敬請鑒核).",
-                "咨": "- [Warning] '咨' is used between President and Legislature; use constitutional terminology.",
+                "會勘通知單": (
+                    "- [Warning] Should have '會勘時間', '會勘地點', '會勘事項' sections."
+                ),
+                "公務電話紀錄": (
+                    "- [Warning] Should have '通話時間', '發話人', '受話人', '通話摘要' sections.\n"
+                    "- [Warning] Should have '紀錄人' and '核閱' fields."
+                ),
+                "手令": (
+                    "- [Warning] Should have '指示事項' section.\n"
+                    "- [Warning] Should have '完成期限' if applicable."
+                ),
+                "箋函": (
+                    "- [Info] 箋函 is a simplified format; '說明' section is sufficient."
+                ),
+                "呈": (
+                    "- [Warning] '呈' is used from subordinate to President;"
+                    " tone must be highly respectful (敬請鑒核)."
+                ),
+                "咨": (
+                    "- [Warning] '咨' is used between President and Legislature;"
+                    " use constitutional terminology."
+                ),
             }
             extra_rule = _type_rules.get(doc_type, "")
             rule_context = f"""### Generic Safety Rules

@@ -54,7 +54,10 @@ def validate(
         checks.append(("文件長度", True, f"{len(paragraphs)} 段"))
 
     # 2. 公文類型識別
-    known_types = {"函", "公告", "簽", "書函", "令", "開會通知單", "呈", "咨", "會勘通知單", "公務電話紀錄", "手令", "箋函"}
+    known_types = {
+        "函", "公告", "簽", "書函", "令", "開會通知單",
+        "呈", "咨", "會勘通知單", "公務電話紀錄", "手令", "箋函",
+    }
     full_text = "\n".join(paragraphs)
     found_type = None
     for dt in known_types:

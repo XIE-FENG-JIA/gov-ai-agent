@@ -235,7 +235,12 @@ def batch_lint(
 
         if issue_count > 0:
             has_issues = True
-        results.append({"file": os.path.basename(f), "issues": issue_count, "detail": "；".join(details) if details else "通過"})
+        detail_text = "；".join(details) if details else "通過"
+        results.append({
+            "file": os.path.basename(f),
+            "issues": issue_count,
+            "detail": detail_text,
+        })
 
     table = Table(title="批次 Lint 結果")
     table.add_column("檔案", style="cyan")

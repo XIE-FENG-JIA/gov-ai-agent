@@ -88,7 +88,11 @@ def _make_requirement_payload(suffix: str = "") -> dict:
 def _make_review_payload(draft_text: str | None = None) -> dict:
     """產生一個有效的 review 請求 payload。"""
     return {
-        "draft": draft_text or "# 函\n\n**機關**：測試機關\n**受文者**：測試單位\n\n### 主旨\n關於加強辦理某項業務一案，請查照。\n\n### 說明\n一、依據某法規辦理。\n二、為落實相關政策。",
+        "draft": draft_text or (
+            "# 函\n\n**機關**：測試機關\n**受文者**：測試單位\n\n"
+            "### 主旨\n關於加強辦理某項業務一案，請查照。\n\n"
+            "### 說明\n一、依據某法規辦理。\n二、為落實相關政策。"
+        ),
         "doc_type": "函",
         "agents": ["format", "style", "fact", "consistency", "compliance"],
     }

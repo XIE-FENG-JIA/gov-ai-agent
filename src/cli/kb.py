@@ -162,7 +162,10 @@ def search(
 
     if not results:
         console.print("[yellow]找不到符合的文件。[/yellow]")
-        console.print("[dim]提示：知識庫可能尚無資料，請先執行 'gov-ai kb ingest' 或 'gov-ai kb fetch-laws --ingest'。[/dim]")
+        console.print(
+            "[dim]提示：知識庫可能尚無資料，請先執行 "
+            "'gov-ai kb ingest' 或 'gov-ai kb fetch-laws --ingest'。[/dim]"
+        )
         return
 
     table = Table(title=f"搜尋結果（前 {len(results)} 筆）", show_lines=True)
@@ -835,7 +838,10 @@ def list_docs(
 @app.command("delete")
 def delete_doc(
     doc_id: str = typer.Option(..., "--id", help="要刪除的文件 ID"),
-    collection: str = typer.Option("examples", "--collection", "-c", help="文件所在集合（examples/regulations/policies）"),
+    collection: str = typer.Option(
+        "examples", "--collection", "-c",
+        help="文件所在集合（examples/regulations/policies）",
+    ),
 ):
     """
     從知識庫刪除單筆文件。

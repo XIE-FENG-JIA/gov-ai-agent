@@ -38,7 +38,11 @@ def stamp(
     _POS_MAP = {"top-right": "右上角", "bottom-right": "右下角", "bottom-center": "下方置中"}
     pos_label = _POS_MAP.get(position.lower().strip(), "")
     if not pos_label:
-        console.print(f"[yellow]未知的位置：{position}（可用：top-right/bottom-right/bottom-center），使用預設 bottom-right[/yellow]")
+        console.print(
+            f"[yellow]未知的位置：{position}"
+            "（可用：top-right/bottom-right/bottom-center），"
+            "使用預設 bottom-right[/yellow]"
+        )
         pos_label = "右下角"
 
     stamp_line = f"\n---\n[戳記] {text}"

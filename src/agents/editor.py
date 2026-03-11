@@ -963,14 +963,22 @@ Return ONLY the new draft markdown.
                         diff_text.append(stripped + "\n")
                 console.print(Panel(
                     diff_text,
-                    title=f"[bold cyan]第 {round_num} 輪差異對比（Phase: {phase.upper()}, score={score:.2f}, risk={risk}）[/bold cyan]",
+                    title=(
+                        f"[bold cyan]第 {round_num} 輪差異對比"
+                        f"（Phase: {phase.upper()}, score={score:.2f}, "
+                        f"risk={risk}）[/bold cyan]"
+                    ),
                     border_style="yellow",
                 ))
 
         # 草稿全文
         console.print(Panel(
             Markdown(draft),
-            title=f"[bold cyan]第 {round_num} 輪草稿全文（Phase: {phase.upper()}, score={score:.2f}, risk={risk}）[/bold cyan]",
+            title=(
+                f"[bold cyan]第 {round_num} 輪草稿全文"
+                f"（Phase: {phase.upper()}, score={score:.2f}, "
+                f"risk={risk}）[/bold cyan]"
+            ),
             border_style="cyan",
             padding=(1, 2),
         ))

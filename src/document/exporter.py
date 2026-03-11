@@ -25,7 +25,10 @@ from src.core.constants import (
 logger = logging.getLogger(__name__)
 
 # 所有已知的公文類型（用於識別標題行）
-KNOWN_DOC_TYPES = frozenset(["函", "公告", "簽", "書函", "令", "開會通知單", "呈", "咨", "會勘通知單", "公務電話紀錄", "手令", "箋函"])
+KNOWN_DOC_TYPES = frozenset([
+    "函", "公告", "簽", "書函", "令", "開會通知單",
+    "呈", "咨", "會勘通知單", "公務電話紀錄", "手令", "箋函",
+])
 
 
 class DocxExporter:

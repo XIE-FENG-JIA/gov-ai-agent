@@ -5572,7 +5572,11 @@ class TestHistoryExportCSV:
         monkeypatch.chdir(tmp_path)
         import json
         records = [
-            {"timestamp": "2026-03-01T10:00:00", "input": "測試", "doc_type": "函", "output": "o.docx", "score": 0.85, "risk": "Safe"},
+            {
+                "timestamp": "2026-03-01T10:00:00", "input": "測試",
+                "doc_type": "函", "output": "o.docx",
+                "score": 0.85, "risk": "Safe",
+            },
         ]
         (tmp_path / ".gov-ai-history.json").write_text(json.dumps(records), encoding="utf-8")
         out = tmp_path / "export.csv"
@@ -7485,7 +7489,10 @@ class TestSpeedParameter:
         from src.cli.main import app
         self._setup(mock_cm, mock_llm, mock_kb, mock_req, mock_writer,
                     mock_tmpl, mock_editor, mock_exporter, mock_sc, mock_history)
-        result = runner.invoke(app, ["generate", "-i", "台北市環保局函請各校加強回收", "--skip-review", "--speed", "fast"])
+        result = runner.invoke(app, [
+            "generate", "-i", "台北市環保局函請各校加強回收",
+            "--skip-review", "--speed", "fast",
+        ])
         assert result.exit_code == 0
         assert "快速模式" in result.output
 
@@ -7505,7 +7512,10 @@ class TestSpeedParameter:
         from src.cli.main import app
         self._setup(mock_cm, mock_llm, mock_kb, mock_req, mock_writer,
                     mock_tmpl, mock_editor, mock_exporter, mock_sc, mock_history)
-        result = runner.invoke(app, ["generate", "-i", "台北市環保局函請各校加強回收", "--skip-review", "--speed", "careful"])
+        result = runner.invoke(app, [
+            "generate", "-i", "台北市環保局函請各校加強回收",
+            "--skip-review", "--speed", "careful",
+        ])
         assert result.exit_code == 0
         assert "謹慎模式" in result.output
 
@@ -7525,7 +7535,10 @@ class TestSpeedParameter:
         from src.cli.main import app
         self._setup(mock_cm, mock_llm, mock_kb, mock_req, mock_writer,
                     mock_tmpl, mock_editor, mock_exporter, mock_sc, mock_history)
-        result = runner.invoke(app, ["generate", "-i", "台北市環保局函請各校加強回收", "--skip-review", "--speed", "turbo"])
+        result = runner.invoke(app, [
+            "generate", "-i", "台北市環保局函請各校加強回收",
+            "--skip-review", "--speed", "turbo",
+        ])
         assert result.exit_code == 0
         assert "未知的速度模式" in result.output
 
@@ -7870,7 +7883,10 @@ class TestMarginParameter:
         from src.cli.main import app
         self._setup(mock_cm, mock_llm, mock_kb, mock_req, mock_writer,
                     mock_tmpl, mock_editor, mock_exporter, mock_sc, mock_history)
-        result = runner.invoke(app, ["generate", "-i", "台北市環保局函請各校加強回收", "--skip-review", "--margin", "narrow"])
+        result = runner.invoke(app, [
+            "generate", "-i", "台北市環保局函請各校加強回收",
+            "--skip-review", "--margin", "narrow",
+        ])
         assert result.exit_code == 0
         assert "窄邊距" in result.output
 
@@ -7890,7 +7906,10 @@ class TestMarginParameter:
         from src.cli.main import app
         self._setup(mock_cm, mock_llm, mock_kb, mock_req, mock_writer,
                     mock_tmpl, mock_editor, mock_exporter, mock_sc, mock_history)
-        result = runner.invoke(app, ["generate", "-i", "台北市環保局函請各校加強回收", "--skip-review", "--margin", "wide"])
+        result = runner.invoke(app, [
+            "generate", "-i", "台北市環保局函請各校加強回收",
+            "--skip-review", "--margin", "wide",
+        ])
         assert result.exit_code == 0
         assert "寬邊距" in result.output
 
@@ -7910,7 +7929,10 @@ class TestMarginParameter:
         from src.cli.main import app
         self._setup(mock_cm, mock_llm, mock_kb, mock_req, mock_writer,
                     mock_tmpl, mock_editor, mock_exporter, mock_sc, mock_history)
-        result = runner.invoke(app, ["generate", "-i", "台北市環保局函請各校加強回收", "--skip-review", "--margin", "huge"])
+        result = runner.invoke(app, [
+            "generate", "-i", "台北市環保局函請各校加強回收",
+            "--skip-review", "--margin", "huge",
+        ])
         assert result.exit_code == 0
         assert "未知的頁邊距" in result.output
 
@@ -8072,7 +8094,10 @@ class TestLineSpacingParameter:
         from src.cli.main import app
         self._setup(mock_cm, mock_llm, mock_kb, mock_req, mock_writer,
                     mock_tmpl, mock_editor, mock_exporter, mock_sc, mock_history)
-        result = runner.invoke(app, ["generate", "-i", "台北市環保局函請各校加強回收", "--skip-review", "--line-spacing", "1.0"])
+        result = runner.invoke(app, [
+            "generate", "-i", "台北市環保局函請各校加強回收",
+            "--skip-review", "--line-spacing", "1.0",
+        ])
         assert result.exit_code == 0
         assert "單行距" in result.output
 
@@ -8092,7 +8117,10 @@ class TestLineSpacingParameter:
         from src.cli.main import app
         self._setup(mock_cm, mock_llm, mock_kb, mock_req, mock_writer,
                     mock_tmpl, mock_editor, mock_exporter, mock_sc, mock_history)
-        result = runner.invoke(app, ["generate", "-i", "台北市環保局函請各校加強回收", "--skip-review", "--line-spacing", "2.0"])
+        result = runner.invoke(app, [
+            "generate", "-i", "台北市環保局函請各校加強回收",
+            "--skip-review", "--line-spacing", "2.0",
+        ])
         assert result.exit_code == 0
         assert "雙倍行距" in result.output
 
@@ -8112,7 +8140,10 @@ class TestLineSpacingParameter:
         from src.cli.main import app
         self._setup(mock_cm, mock_llm, mock_kb, mock_req, mock_writer,
                     mock_tmpl, mock_editor, mock_exporter, mock_sc, mock_history)
-        result = runner.invoke(app, ["generate", "-i", "台北市環保局函請各校加強回收", "--skip-review", "--line-spacing", "3.0"])
+        result = runner.invoke(app, [
+            "generate", "-i", "台北市環保局函請各校加強回收",
+            "--skip-review", "--line-spacing", "3.0",
+        ])
         assert result.exit_code == 0
         assert "未知的行距" in result.output
 
@@ -8270,7 +8301,10 @@ class TestFontSizeParameter:
         from src.cli.main import app
         self._setup(mock_cm, mock_llm, mock_kb, mock_req, mock_writer,
                     mock_tmpl, mock_editor, mock_exporter, mock_sc, mock_history)
-        result = runner.invoke(app, ["generate", "-i", "台北市環保局函請各校加強回收", "--skip-review", "--font-size", "14"])
+        result = runner.invoke(app, [
+            "generate", "-i", "台北市環保局函請各校加強回收",
+            "--skip-review", "--font-size", "14",
+        ])
         assert result.exit_code == 0
         assert "14pt" in result.output
 
@@ -8290,7 +8324,10 @@ class TestFontSizeParameter:
         from src.cli.main import app
         self._setup(mock_cm, mock_llm, mock_kb, mock_req, mock_writer,
                     mock_tmpl, mock_editor, mock_exporter, mock_sc, mock_history)
-        result = runner.invoke(app, ["generate", "-i", "台北市環保局函請各校加強回收", "--skip-review", "--font-size", "20"])
+        result = runner.invoke(app, [
+            "generate", "-i", "台北市環保局函請各校加強回收",
+            "--skip-review", "--font-size", "20",
+        ])
         assert result.exit_code == 0
         assert "未知的字型大小" in result.output
 
@@ -8896,8 +8933,16 @@ class TestSearchExport:
     def test_search_export(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         history = [
-            {"input": "台北市環保局函請各校加強回收", "doc_type": "函", "timestamp": "2024-01-01T12:00:00", "output": "output.docx", "score": 0.85},
-            {"input": "內政部公告修正建築法", "doc_type": "公告", "timestamp": "2024-01-02T12:00:00", "output": "output2.docx", "score": 0.9},
+            {
+                "input": "台北市環保局函請各校加強回收",
+                "doc_type": "函", "timestamp": "2024-01-01T12:00:00",
+                "output": "output.docx", "score": 0.85,
+            },
+            {
+                "input": "內政部公告修正建築法",
+                "doc_type": "公告", "timestamp": "2024-01-02T12:00:00",
+                "output": "output2.docx", "score": 0.9,
+            },
         ]
         (tmp_path / ".gov-ai-history.json").write_text(json.dumps(history), encoding="utf-8")
         out = tmp_path / "results.json"
@@ -9120,7 +9165,12 @@ class TestChecklistCustom:
     def test_custom_check_pass(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         doc = tmp_path / "doc.txt"
-        doc.write_text("主旨：加強回收\n受文者：各校\n發文日期：中華民國114年3月9日\n發文字號：字第001號\n局長\n正本：各校\n附件：計畫書", encoding="utf-8")
+        doc.write_text(
+            "主旨：加強回收\n受文者：各校\n"
+            "發文日期：中華民國114年3月9日\n發文字號：字第001號\n"
+            "局長\n正本：各校\n附件：計畫書",
+            encoding="utf-8",
+        )
         from src.cli.main import app
         result = runner.invoke(app, ["checklist", str(doc), "--custom", "附件"])
         assert result.exit_code == 0
@@ -9129,7 +9179,12 @@ class TestChecklistCustom:
     def test_custom_check_fail(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         doc = tmp_path / "doc.txt"
-        doc.write_text("主旨：加強回收\n受文者：各校\n發文日期：中華民國114年3月9日\n發文字號：字第001號\n局長\n正本：各校", encoding="utf-8")
+        doc.write_text(
+            "主旨：加強回收\n受文者：各校\n"
+            "發文日期：中華民國114年3月9日\n發文字號：字第001號\n"
+            "局長\n正本：各校",
+            encoding="utf-8",
+        )
         from src.cli.main import app
         result = runner.invoke(app, ["checklist", str(doc), "--custom", "聯絡人"])
         assert result.exit_code == 1
@@ -9137,7 +9192,12 @@ class TestChecklistCustom:
     def test_no_custom(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         doc = tmp_path / "doc.txt"
-        doc.write_text("主旨：測試\n受文者：各校\n發文日期：中華民國114年3月9日\n發文字號：字第001號\n局長\n正本", encoding="utf-8")
+        doc.write_text(
+            "主旨：測試\n受文者：各校\n"
+            "發文日期：中華民國114年3月9日\n發文字號：字第001號\n"
+            "局長\n正本",
+            encoding="utf-8",
+        )
         from src.cli.main import app
         result = runner.invoke(app, ["checklist", str(doc)])
         assert result.exit_code == 0
@@ -10020,7 +10080,10 @@ class TestOrgMemoryCategory:
     @patch("src.cli.org_memory_cmd._get_org_memory")
     def test_list_no_category(self, mock_om):
         mock_om.return_value.preferences = {
-            "台北市環保局": {"formal_level": "standard", "usage_count": 5, "preferred_terms": {}, "signature_format": "default"},
+            "台北市環保局": {
+                "formal_level": "standard", "usage_count": 5,
+                "preferred_terms": {}, "signature_format": "default",
+            },
         }
         from src.cli.main import app
         result = runner.invoke(app, ["org-memory", "list"])
@@ -10030,8 +10093,14 @@ class TestOrgMemoryCategory:
     @patch("src.cli.org_memory_cmd._get_org_memory")
     def test_list_with_category(self, mock_om):
         mock_om.return_value.preferences = {
-            "台北市環保局": {"formal_level": "standard", "usage_count": 5, "preferred_terms": {}, "signature_format": "default"},
-            "內政部": {"formal_level": "formal", "usage_count": 3, "preferred_terms": {}, "signature_format": "default"},
+            "台北市環保局": {
+                "formal_level": "standard", "usage_count": 5,
+                "preferred_terms": {}, "signature_format": "default",
+            },
+            "內政部": {
+                "formal_level": "formal", "usage_count": 3,
+                "preferred_terms": {}, "signature_format": "default",
+            },
         }
         from src.cli.main import app
         result = runner.invoke(app, ["org-memory", "list", "--category", "formal"])
@@ -10041,7 +10110,10 @@ class TestOrgMemoryCategory:
     @patch("src.cli.org_memory_cmd._get_org_memory")
     def test_list_empty_category(self, mock_om):
         mock_om.return_value.preferences = {
-            "台北市環保局": {"formal_level": "standard", "usage_count": 5, "preferred_terms": {}, "signature_format": "default"},
+            "台北市環保局": {
+                "formal_level": "standard", "usage_count": 5,
+                "preferred_terms": {}, "signature_format": "default",
+            },
         }
         from src.cli.main import app
         result = runner.invoke(app, ["org-memory", "list", "--category", "concise"])
@@ -10301,7 +10373,11 @@ class TestHistoryListJson:
     def test_history_list_json(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         records = [
-            {"input": "測試", "doc_type": "函", "timestamp": "2024-01-01T12:00:00", "output": "a.docx", "status": "success"},
+            {
+                "input": "測試", "doc_type": "函",
+                "timestamp": "2024-01-01T12:00:00",
+                "output": "a.docx", "status": "success",
+            },
         ]
         (tmp_path / ".gov-ai-history.json").write_text(json.dumps(records), encoding="utf-8")
         from src.cli.main import app
@@ -10314,7 +10390,11 @@ class TestHistoryListJson:
     def test_history_list_table(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         records = [
-            {"input": "測試", "doc_type": "函", "timestamp": "2024-01-01T12:00:00", "output": "a.docx", "status": "success"},
+            {
+                "input": "測試", "doc_type": "函",
+                "timestamp": "2024-01-01T12:00:00",
+                "output": "a.docx", "status": "success",
+            },
         ]
         (tmp_path / ".gov-ai-history.json").write_text(json.dumps(records), encoding="utf-8")
         from src.cli.main import app
