@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}公文 AI Agent - 效能監控{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h2>效能監控儀表板</h2>
+  <p>即時監控系統效能指標，資料每 10 秒自動更新。</p>
+
+  <div id="metrics-container"
+       hx-get="/ui/metrics/data"
+       hx-trigger="load, every 10s"
+       hx-swap="innerHTML">
+    <!-- metric-card 數據可視化區域（含 progress 進度條） -->
+    <p>載入中...</p>
+  </div>
+</section>
+{% endblock %}

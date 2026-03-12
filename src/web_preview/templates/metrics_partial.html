@@ -1,0 +1,34 @@
+{% if error %}
+<div class="alert alert-error">
+  <strong>錯誤：</strong>{{ error }}
+</div>
+{% else %}
+<div class="metric-card-grid">
+  <div class="metric-card">
+    <div class="stat-label">總請求數</div>
+    <div class="stat-value">{{ metrics.total_requests }}</div>
+  </div>
+  <div class="metric-card">
+    <div class="stat-label">平均回應時間</div>
+    <div class="stat-value">{{ metrics.avg_response_time_ms }} ms</div>
+    <div class="stat-detail">
+      <progress value="{{ [metrics.avg_response_time_ms / 2000, 1.0] | min }}" max="1"></progress>
+    </div>
+  </div>
+  <div class="metric-card">
+    <div class="stat-label">活躍請求數</div>
+    <div class="stat-value">{{ metrics.active_requests }}</div>
+  </div>
+  <div class="metric-card">
+    <div class="stat-label">快取命中率</div>
+    <div class="stat-value">{{ "%.1f" | format(metrics.cache_hit_rate * 100) }}%</div>
+    <div class="stat-detail">
+      <progress value="{{ metrics.cache_hit_rate }}" max="1"></progress>
+    </div>
+  </div>
+  <div class="metric-card">
+    <div class="stat-label">最大工作執行緒</div>
+    <div class="stat-value">{{ metrics.executor_max_workers }}</div>
+  </div>
+</div>
+{% endif %}

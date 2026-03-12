@@ -247,6 +247,37 @@ async def config_page(request: Request):
     )
 
 
+# ── 效能監控 ──────────────────────────────────────────
+@web_app.get("/metrics", response_class=HTMLResponse)
+async def metrics_page(request: Request):
+    """效能監控頁面"""
+    return templates.TemplateResponse(request, "metrics.html")
+
+
+@web_app.get("/metrics/data", response_class=HTMLResponse)
+async def metrics_data(request: Request):
+    """效能監控 HTMX 局部回應"""
+    metrics = None
+    error = None
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(f"{_API_BASE}/api/v1/metrics")
+            if resp.status_code == 200:
+                metrics = resp.json()
+            else:
+                error = f"API 回傳 HTTP {resp.status_code}"
+    except Exception as e:
+        logger.exception("取得效能指標時發生錯誤")
+        error = _sanitize_web_error(e)
+
+    return templates.TemplateResponse(
+        request,
+        "metrics_partial.html",
+        {"metrics": metrics, "error": error},
+    )
+
+
 # ── 詳細審查報告 API ──────────────────────────────────
 @web_app.get("/api/v1/detailed-review", response_class=JSONResponse)
 async def detailed_review(session_id: str = ""):
