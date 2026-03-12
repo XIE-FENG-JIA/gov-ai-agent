@@ -45,6 +45,13 @@
 {{ provision_text }}
 {%- endif %}
 {%- endif %}
+{%- if copies_to %}
+
+正本：{{ copies_to }}
+{%- endif %}
+{%- if cc_copies %}
+副本：{{ cc_copies }}
+{%- endif %}
 {%- if attachments %}
 
 附件：{{ attachments | join('、') }}

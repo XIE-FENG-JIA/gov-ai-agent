@@ -258,6 +258,17 @@ class TemplateEngine:
         # Normalize
         lines = draft_text.replace('\r\n', '\n').split('\n')
 
+        # 檔頭欄位：不會收集內容，僅作為段落邊界
+        _HEADER_FIELDS = [
+            "密等及解密條件或保密期限", "密等",
+            "機關", "受文者", "發文日期", "發文字號", "速別",
+            "發令人", "受令人", "發令日期", "發令字號",
+            "發信人", "收信人",
+            "紀錄日期", "紀錄字號",
+            "日期", "字號",
+            "會銜機關",
+        ]
+
         # 辨識段落標題的輔助函式
         def _is_section_header(text: str, keyword: str) -> bool:
             """檢查 text 是否精確以 keyword 作為段落標題。
@@ -335,6 +346,10 @@ class TemplateEngine:
                 return "copies_to"
             if _is_section_header(clean, "副本"):
                 return "cc_copies"
+            # 檔頭欄位：視為段落邊界但不收集內容（避免誤歸前段）
+            for hf in _HEADER_FIELDS:
+                if _is_section_header(clean, hf):
+                    return "_skip"
             return None
 
         # 所有段落標題關鍵字（按長度降序，避免短字串優先匹配）
@@ -351,6 +366,10 @@ class TemplateEngine:
         for line in lines:
             new_section = detect_header(line)
             if new_section:
+                if new_section == "_skip":
+                    # 檔頭欄位：中斷當前段落收集但不開啟新段落
+                    current_section = None
+                    continue
                 current_section = new_section
                 # 嘗試提取同行內容：先用冒號分割，再嘗試空格分割
                 parts = line.split('：', 1) if '：' in line else line.split(':', 1)
@@ -421,6 +440,17 @@ class TemplateEngine:
         sections["cc_copies"] = "\n".join(buffer["cc_copies"]).strip()
 
         return sections
+
+    @staticmethod
+    def _resolve_attachments(
+        sections: dict[str, str],
+        requirement: PublicDocRequirement,
+    ) -> list[str]:
+        """優先使用 sections 解析到的附件文字（更詳細），否則回退到 requirement。"""
+        section_att = sections.get("attachments", "").strip()
+        if section_att:
+            return [a.strip() for a in section_att.split("\n") if a.strip()]
+        return requirement.attachments or []
 
     def _parse_list_items(self, text: str) -> list[str]:
         """將文字區塊轉換為清單項目，並移除主編號但保留子編號。
@@ -511,7 +541,7 @@ class TemplateEngine:
             "action_text": sections.get("provisions") or "",
             "action_points": self._parse_list_items(sections.get("provisions") or ""),
             "basis": sections.get("basis") or "",
-            "attachments": requirement.attachments or [],
+            "attachments": self._resolve_attachments(sections, requirement),
             "attachment_ref": _build_attachment_ref(requirement.attachments),
             # 開會通知單專用欄位
             "meeting_time": sections.get("meeting_time") or "",
