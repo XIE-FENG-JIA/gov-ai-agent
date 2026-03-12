@@ -54,3 +54,4 @@ test_kb_temp/
 scripts/eval_template.py
 scripts/autoresearch_eval.py
 .autoresearch_memory.json
+.autoresearch_checkpoint.json
