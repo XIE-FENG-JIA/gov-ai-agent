@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}公文 AI Agent - 歷史紀錄{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h2>生成歷史紀錄</h2>
+
+  {% if error %}
+  <div class="alert alert-error">
+    <strong>錯誤：</strong>{{ error }}
+  </div>
+  {% elif not records %}
+  <p>目前沒有生成紀錄。前往<a href="/ui/">首頁</a>開始生成公文。</p>
+  {% else %}
+  <p>共 {{ records|length }} 筆紀錄（最新在前）</p>
+
+  <table class="info-table">
+    <thead>
+      <tr>
+        <th>時間</th>
+        <th>需求描述</th>
+        <th>公文類型</th>
+        <th>狀態</th>
+        <th>評分</th>
+        <th>風險</th>
+        <th>檔案</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in records %}
+      <tr>
+        <td>{{ r.timestamp[:19] | replace("T", " ") }}</td>
+        <td title="{{ r.input }}">{{ r.input[:40] }}{% if r.input|length > 40 %}...{% endif %}</td>
+        <td>{{ r.doc_type or "—" }}</td>
+        <td>
+          {% if r.status == "success" %}
+          <span class="badge badge-ok">成功</span>
+          {% else %}
+          <span class="badge badge-err">失敗</span>
+          {% endif %}
+        </td>
+        <td>{% if r.score is not none %}{{ "%.0f"|format(r.score * 100) }}%{% else %}—{% endif %}</td>
+        <td>
+          {% if r.risk %}
+          <span class="badge {% if r.risk == 'Safe' %}badge-ok{% elif r.risk in ('Low', 'Moderate') %}badge-warn{% else %}badge-err{% endif %}">{{ r.risk }}</span>
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          {% if r.output and r.status == "success" %}
+          <a href="/api/v1/download/{{ r.output }}" class="btn-sm btn-primary">下載</a>
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>
+{% endblock %}

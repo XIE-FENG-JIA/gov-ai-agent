@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}公文 AI Agent - 操作指南{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h2>操作指南</h2>
+  <p>歡迎使用公文 AI Agent！以下說明如何快速開始撰寫公文。</p>
+</section>
+
+<section class="card">
+  <h2>一、公文生成</h2>
+  <ol>
+    <li>前往<a href="/ui/">首頁</a>。</li>
+    <li>在「公文類型」下拉選單中，選擇要撰寫的公文類型（函、公告、簽、令等），或選擇「自動偵測」讓系統判斷。</li>
+    <li>在「需求描述」欄位中，用自然語言描述公文的目的、發文機關、受文者及主要內容。</li>
+    <li>如需加速生成，可勾選「跳過審查」。</li>
+    <li>點擊「生成公文」，等待系統完成需求分析、草稿撰寫、品質審查。</li>
+    <li>生成完成後可檢視 QA 審查報告，並下載 DOCX 檔案。</li>
+  </ol>
+</section>
+
+<section class="card">
+  <h2>二、品質審查報告</h2>
+  <p>系統會自動執行五個面向的品質審查：</p>
+  <table class="info-table">
+    <thead>
+      <tr><th>審查面向</th><th>說明</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>格式審查</td><td>檢查主旨、說明、辦法等段落結構是否符合公文規範</td></tr>
+      <tr><td>文風審查</td><td>檢查用字遣詞是否正式、語氣是否得當</td></tr>
+      <tr><td>事實審查</td><td>檢查引用法規、日期、機關名稱是否正確</td></tr>
+      <tr><td>一致性審查</td><td>檢查前後文邏輯是否連貫、數據是否矛盾</td></tr>
+      <tr><td>合規審查</td><td>檢查內容是否符合相關法規與政策</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>三、知識庫搜尋</h2>
+  <p>前往<a href="/ui/kb">知識庫</a>頁面，可使用語意搜尋功能查詢政府法規、公報、判例等參考資料。搜尋結果依相似度排序，可協助撰寫公文時引用正確的法規依據。</p>
+</section>
+
+<section class="card">
+  <h2>四、批次處理</h2>
+  <p>前往<a href="/ui/batch">批次處理</a>頁面，可一次提交多筆公文需求，系統會依序生成。適用於需要同時發出多份公文的場景。</p>
+</section>
+
+<section class="card">
+  <h2>五、常見問題</h2>
+  <details>
+    <summary>生成速度慢怎麼辦？</summary>
+    <p>可勾選「跳過審查」以加速生成，或檢查<a href="/ui/config">系統設定</a>確認 LLM 模型狀態。</p>
+  </details>
+  <details>
+    <summary>如何選擇公文類型？</summary>
+    <p>如果不確定，選擇「自動偵測」，系統會根據需求描述自動判斷最適合的公文類型。</p>
+  </details>
+  <details>
+    <summary>生成的公文可以修改嗎？</summary>
+    <p>下載 DOCX 檔案後，可使用 Microsoft Word 或 LibreOffice 進行進一步修改。</p>
+  </details>
+</section>
+{% endblock %}

@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}公文 AI Agent - 批次處理{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h2>批次處理</h2>
+  <p>一次提交多筆公文需求，系統會依序生成。每筆需求獨立處理，個別失敗不影響其他項目。</p>
+
+  <form id="batchForm" onsubmit="return submitBatch(event)">
+    <div id="batchItems">
+      <div class="batch-item card" data-index="0">
+        <h3>需求 1</h3>
+        <label for="item_0_type">公文類型</label>
+        <select name="doc_type" id="item_0_type">
+          <option value="">自動偵測</option>
+          <option value="函">函</option>
+          <option value="公告">公告</option>
+          <option value="簽">簽</option>
+          <option value="令">令</option>
+          <option value="書函">書函</option>
+          <option value="開會通知單">開會通知單</option>
+        </select>
+        <label for="item_0_input">需求描述</label>
+        <textarea name="user_input" id="item_0_input" rows="3" required minlength="5" maxlength="5000" placeholder="請描述公文需求..."></textarea>
+      </div>
+    </div>
+
+    <div class="batch-actions">
+      <button type="button" class="btn btn-secondary" onclick="addBatchItem()">新增一筆需求</button>
+      <button type="submit" class="btn btn-primary">開始批次生成</button>
+    </div>
+  </form>
+</section>
+
+<section id="batchResults" class="card" style="display:none;">
+  <h2>批次結果</h2>
+  <div id="batchProgress" class="batch-progress"></div>
+  <div id="batchResultList"></div>
+</section>
+
+{% if error %}
+<div class="alert alert-error">
+  <strong>錯誤：</strong>{{ error }}
+</div>
+{% endif %}
+
+{% if results %}
+<section class="card">
+  <h2>批次結果</h2>
+  <p>完成: {{ results.summary.success }}/{{ results.summary.total }}，耗時: {{ "%.1f"|format(results.total_duration_ms / 1000) }} 秒</p>
+
+  {% for item in results.results %}
+  <div class="card batch-result-item">
+    <h3>
+      第 {{ loop.index }} 筆
+      {% if item.status == "success" %}
+      <span class="badge badge-ok">成功</span>
+      {% else %}
+      <span class="badge badge-err">失敗</span>
+      {% endif %}
+    </h3>
+    {% if item.status == "success" and item.final_draft %}
+    <pre class="code-block">{{ item.final_draft[:500] }}{% if item.final_draft|length > 500 %}...{% endif %}</pre>
+    {% elif item.error_message %}
+    <p class="text-error">{{ item.error_message }}</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+let itemCount = 1;
+
+function addBatchItem() {
+  const container = document.getElementById('batchItems');
+  const idx = itemCount++;
+  const div = document.createElement('div');
+  div.className = 'batch-item card';
+
+  const h3 = document.createElement('h3');
+  h3.textContent = '需求 ' + (idx + 1) + ' ';
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'btn-sm btn-danger';
+  removeBtn.textContent = '移除';
+  removeBtn.addEventListener('click', function() { div.remove(); });
+  h3.appendChild(removeBtn);
+  div.appendChild(h3);
+
+  const typeLabel = document.createElement('label');
+  typeLabel.setAttribute('for', 'item_' + idx + '_type');
+  typeLabel.textContent = '公文類型';
+  div.appendChild(typeLabel);
+
+  const select = document.createElement('select');
+  select.name = 'doc_type';
+  select.id = 'item_' + idx + '_type';
+  var opts = [['','自動偵測'],['函','函'],['公告','公告'],['簽','簽'],['令','令'],['書函','書函'],['開會通知單','開會通知單']];
+  opts.forEach(function(o) {
+    var opt = document.createElement('option');
+    opt.value = o[0];
+    opt.textContent = o[1];
+    select.appendChild(opt);
+  });
+  div.appendChild(select);
+
+  const inputLabel = document.createElement('label');
+  inputLabel.setAttribute('for', 'item_' + idx + '_input');
+  inputLabel.textContent = '需求描述';
+  div.appendChild(inputLabel);
+
+  const textarea = document.createElement('textarea');
+  textarea.name = 'user_input';
+  textarea.id = 'item_' + idx + '_input';
+  textarea.rows = 3;
+  textarea.required = true;
+  textarea.minLength = 5;
+  textarea.maxLength = 5000;
+  textarea.placeholder = '請描述公文需求...';
+  div.appendChild(textarea);
+
+  container.appendChild(div);
+}
+
+async function submitBatch(e) {
+  e.preventDefault();
+  var items = [];
+  document.querySelectorAll('.batch-item').forEach(function(el) {
+    var input = el.querySelector('textarea[name="user_input"]').value.trim();
+    var docType = el.querySelector('select[name="doc_type"]').value;
+    if (input.length >= 5) {
+      var userInput = docType ? ('[公文類型：' + docType + '] ' + input) : input;
+      items.push({user_input: userInput, skip_review: false, output_docx: true});
+    }
+  });
+  if (items.length === 0) { alert('請至少填寫一筆需求'); return false; }
+
+  var resultsSection = document.getElementById('batchResults');
+  var progress = document.getElementById('batchProgress');
+  var resultList = document.getElementById('batchResultList');
+  resultsSection.style.display = 'block';
+  progress.textContent = '正在批次處理中，請稍候...';
+  while (resultList.firstChild) resultList.removeChild(resultList.firstChild);
+
+  try {
+    var resp = await fetch('/api/v1/batch', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({items: items})
+    });
+    var data = await resp.json();
+    if (data.results) {
+      var successCount = (data.summary && data.summary.success) || 0;
+      var totalCount = (data.summary && data.summary.total) || items.length;
+      progress.textContent = '完成: ' + successCount + '/' + totalCount;
+
+      data.results.forEach(function(r, i) {
+        var card = document.createElement('div');
+        card.className = 'card';
+        var title = document.createElement('h3');
+        title.textContent = '第 ' + (i + 1) + ' 筆 ';
+        var badge = document.createElement('span');
+        badge.className = r.status === 'success' ? 'badge badge-ok' : 'badge badge-err';
+        badge.textContent = r.status === 'success' ? '成功' : '失敗';
+        title.appendChild(badge);
+        card.appendChild(title);
+
+        if (r.status === 'success' && r.final_draft) {
+          var pre = document.createElement('pre');
+          pre.className = 'code-block';
+          pre.textContent = r.final_draft.substring(0, 500);
+          card.appendChild(pre);
+        } else if (r.error_message) {
+          var errP = document.createElement('p');
+          errP.className = 'text-error';
+          errP.textContent = r.error_message;
+          card.appendChild(errP);
+        }
+        resultList.appendChild(card);
+      });
+    }
+  } catch(err) {
+    progress.textContent = '';
+    var errDiv = document.createElement('div');
+    errDiv.className = 'alert alert-error';
+    errDiv.textContent = '批次處理失敗：' + err.message;
+    resultList.appendChild(errDiv);
+  }
+  return false;
+}
+</script>
+{% endblock %}

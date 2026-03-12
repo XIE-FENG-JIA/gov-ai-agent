@@ -184,6 +184,46 @@ async def kb_search(
     )
 
 
+# ── 歷史紀錄 ──────────────────────────────────────────
+@web_app.get("/history", response_class=HTMLResponse)
+async def history_page(request: Request):
+    """生成歷史紀錄頁面"""
+    import json
+
+    records = []
+    error = None
+    history_path = Path(__file__).resolve().parent.parent.parent / ".gov-ai-history.json"
+
+    try:
+        if history_path.exists():
+            data = json.loads(history_path.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                records = list(reversed(data))[:100]
+    except Exception as e:
+        logger.exception("讀取歷史紀錄時發生錯誤")
+        error = _sanitize_web_error(e)
+
+    return templates.TemplateResponse(
+        request,
+        "history.html",
+        {"records": records, "error": error},
+    )
+
+
+# ── 批次處理 ──────────────────────────────────────────
+@web_app.get("/batch", response_class=HTMLResponse)
+async def batch_page(request: Request):
+    """批次處理頁面"""
+    return templates.TemplateResponse(request, "batch.html")
+
+
+# ── 操作指南 ──────────────────────────────────────────
+@web_app.get("/guide", response_class=HTMLResponse)
+async def guide_page(request: Request):
+    """操作指南頁面"""
+    return templates.TemplateResponse(request, "guide.html")
+
+
 # ── 設定 ──────────────────────────────────────────────
 @web_app.get("/config", response_class=HTMLResponse)
 async def config_page(request: Request):
