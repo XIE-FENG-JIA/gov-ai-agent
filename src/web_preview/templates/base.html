@@ -12,10 +12,13 @@
     <div class="header-inner">
       <h1 class="logo">公文 AI Agent</h1>
       <nav>
-        <a href="/ui/">首頁</a>
-        <a href="/ui/kb">知識庫</a>
-        <a href="/ui/config">設定</a>
-        <a href="/ui/guide">操作指南</a>
+        <a href="/ui/" title="首頁 — 生成公文" {% if request.url.path == '/ui/' %}aria-current="page"{% endif %}>首頁</a>
+        <a href="/ui/kb" title="知識庫搜尋" {% if '/kb' in request.url.path %}aria-current="page"{% endif %}>知識庫</a>
+        <a href="/ui/config" title="系統設定" {% if '/config' in request.url.path %}aria-current="page"{% endif %}>設定</a>
+        <a href="/ui/guide" title="操作指南" {% if '/guide' in request.url.path %}aria-current="page"{% endif %}>操作指南</a>
+        <a href="/ui/batch" title="批次處理公文" {% if '/batch' in request.url.path %}aria-current="page"{% endif %}>批次處理</a>
+        <a href="/ui/history" title="生成歷史紀錄" {% if '/history' in request.url.path %}aria-current="page"{% endif %}>歷史紀錄</a>
+        <a href="/ui/metrics" title="效能監控儀表板" {% if '/metrics' in request.url.path %}aria-current="page"{% endif %}>效能監控</a>
         <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">深色模式</button>
       </nav>
     </div>
@@ -26,6 +29,15 @@
   </main>
 
   <footer>
+    <nav class="footer-nav">
+      <a href="/ui/">首頁</a>
+      <a href="/ui/kb">知識庫</a>
+      <a href="/ui/batch">批次處理</a>
+      <a href="/ui/history">歷史紀錄</a>
+      <a href="/ui/metrics">效能監控</a>
+      <a href="/ui/guide">操作指南</a>
+      <a href="/ui/config">設定</a>
+    </nav>
     <p>公文 AI Agent &copy; 2026 &mdash; 台灣政府公文智慧撰寫系統</p>
   </footer>
 

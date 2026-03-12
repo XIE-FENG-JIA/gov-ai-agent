@@ -93,6 +93,12 @@ nav a {
   font-size: 0.95rem;
 }
 nav a:hover { color: #fff; }
+nav a[aria-current="page"] {
+  color: #fff;
+  font-weight: 600;
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 2px;
+}
 
 /* ── 深色模式切換按鈕 ─────────────── */
 .theme-toggle {
@@ -303,6 +309,20 @@ select {
 }
 
 /* ── Footer ─────────────────────────── */
+.footer-nav {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+.footer-nav a {
+  color: var(--text-light);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: color 0.2s;
+}
+.footer-nav a:hover { color: var(--primary); }
 footer {
   text-align: center;
   padding: 1rem;
