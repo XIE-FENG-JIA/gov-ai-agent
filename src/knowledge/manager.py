@@ -485,8 +485,8 @@ class KnowledgeBaseManager:
         for name in collection_names:
             try:
                 self.client.delete_collection(name)
-            except Exception:
-                logger.debug("集合 %s 不存在，跳過刪除", name)
+            except Exception as e:
+                logger.debug("集合 %s 不存在，跳過刪除: %s", name, e)
         # 重建集合（使用臨時變數，全部成功才原子替換）
         new_examples = self.client.get_or_create_collection(
             name="public_doc_examples", metadata={"hnsw:space": "cosine"}

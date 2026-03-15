@@ -313,8 +313,8 @@ def get_config() -> dict[str, Any]:
         if _config is None:
             try:
                 _config = ConfigManager().config
-            except Exception:
-                logger.exception("設定檔載入失敗，使用預設設定")
+            except Exception as e:
+                logger.exception("設定檔載入失敗，使用預設設定: %s", e)
                 _config = {
                     "llm": {"provider": "ollama", "model": "mistral"},
                     "knowledge_base": {"path": "./kb_data"},

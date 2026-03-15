@@ -476,8 +476,8 @@ def generate(
                 "`gov-ai kb ingest` 匯入範例。[/yellow]"
             )
             console.print("[dim]系統仍可繼續產生公文，但品質可能受限。[/dim]")
-    except Exception:
-        pass  # 知識庫檢查失敗不影響主流程
+    except Exception as e:
+        console.print(f"[dim]知識庫檢查時發生例外：{e}[/dim]")  # 不影響主流程
 
     # 0b. LLM 連線快速診斷（僅對 LiteLLMProvider 執行）
     if isinstance(llm, LiteLLMProvider):
@@ -1037,8 +1037,8 @@ def generate(
             rounds_used=qa_report.rounds_used if qa_report else None,
             elapsed=gen_elapsed,
         )
-    except Exception:
-        pass  # 記錄失敗不影響主流程
+    except Exception as e:
+        console.print(f"[dim]歷史記錄寫入失敗：{e}[/dim]")  # 不影響主流程
 
 if __name__ == "__main__":
     app()

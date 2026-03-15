@@ -1009,7 +1009,8 @@ def export_data(
                 meta = metadatas[i] if i < len(metadatas) else {}
                 docs_list.append({"id": doc_id, "title": meta.get("title", "無標題")})
             collections_info[name] = {"count": len(ids), "documents": docs_list}
-        except Exception:
+        except Exception as e:
+            console.print(f"[dim]讀取集合 {name} 失敗：{e}[/dim]")
             collections_info[name] = {"count": 0, "documents": []}
 
     export = {
@@ -1034,7 +1035,8 @@ def kb_export(
         from src.core.config import ConfigManager
         cm = ConfigManager()
         kb_path = cm.config.get("knowledge_base", {}).get("path", "./kb_data")
-    except Exception:
+    except Exception as e:
+        console.print(f"[dim]設定檔載入失敗，使用預設路徑：{e}[/dim]")
         kb_path = "./kb_data"
 
     if not os.path.isdir(kb_path):
@@ -1072,7 +1074,8 @@ def info():
         from src.core.config import ConfigManager
         cm = ConfigManager()
         kb_path = cm.config.get("knowledge_base", {}).get("path", "./kb_data")
-    except Exception:
+    except Exception as e:
+        console.print(f"[dim]設定檔載入失敗，使用預設路徑：{e}[/dim]")
         kb_path = "./kb_data"
 
     if not os.path.isdir(kb_path):
