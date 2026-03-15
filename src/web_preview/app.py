@@ -41,6 +41,20 @@ if _parsed.hostname not in ("localhost", "127.0.0.1", "::1"):
     raise ValueError(f"WEB_UI_API_BASE 只允許本機地址，不允許: {_parsed.hostname}")
 
 
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+
+@web_app.exception_handler(StarletteHTTPException)
+async def web_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """Web UI 的 HTTP 錯誤頁面，避免使用者看到 JSON raw data。"""
+    return templates.TemplateResponse(
+        request,
+        "error.html",
+        {"status_code": exc.status_code, "detail": exc.detail or "頁面未找到"},
+        status_code=exc.status_code,
+    )
+
+
 def _sanitize_web_error(exc: Exception) -> str:
     """將例外轉為使用者友善的錯誤訊息，避免洩漏內部資訊。"""
     _SAFE = {

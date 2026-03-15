@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}公文 AI Agent - 錯誤 {{ status_code }}{% endblock %}
+
+{% block content %}
+<section class="card" style="text-align:center; padding:3rem 1rem;">
+  <h2 style="font-size:3rem; color:var(--text-muted); margin-bottom:0.5rem;">{{ status_code }}</h2>
+  <p style="font-size:1.1rem; margin-bottom:1.5rem;">{{ detail }}</p>
+  <a href="/ui/" class="btn btn-primary">回到首頁</a>
+</section>
+{% endblock %}
