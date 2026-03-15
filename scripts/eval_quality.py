@@ -282,8 +282,8 @@ def eval_language_template_quality() -> tuple[float, list[str]]:
         try:
             engine.apply_template(req, sections)
             mapped += 1
-        except Exception as e:
-            pass  # 模板不支援此公文類型: %s % e
+        except Exception:
+            pass  # 模板不支援此公文類型，跳過計數
     pts = _pts_ratio(mapped, len(all_types))
     score += pts
     details.append(f"模板覆蓋: {mapped}/{len(all_types)} 種公文 ({pts:.1f}/4)")
