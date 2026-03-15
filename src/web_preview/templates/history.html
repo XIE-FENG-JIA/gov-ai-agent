@@ -28,6 +28,7 @@
         <th>狀態</th>
         <th>評分</th>
         <th>風險</th>
+        <th>耗時</th>
         <th>檔案</th>
       </tr>
     </thead>
@@ -35,7 +36,12 @@
       {% for r in records %}
       <tr>
         <td>{{ r.timestamp[:19] | replace("T", " ") }}</td>
-        <td title="{{ r.input }}">{{ r.input[:40] }}{% if r.input|length > 40 %}...{% endif %}</td>
+        <td>
+          <details>
+            <summary>{{ r.input[:40] }}{% if r.input|length > 40 %}...{% endif %}</summary>
+            <p style="margin:0.5rem 0 0; white-space:pre-wrap; font-size:0.85rem; color:var(--text-light);">{{ r.input }}</p>
+          </details>
+        </td>
         <td>{{ r.doc_type or "—" }}</td>
         <td>
           {% if r.status == "success" %}
@@ -50,6 +56,7 @@
           <span class="badge {% if r.risk == 'Safe' %}badge-ok{% elif r.risk in ('Low', 'Moderate') %}badge-warn{% else %}badge-err{% endif %}">{{ r.risk }}</span>
           {% else %}—{% endif %}
         </td>
+        <td>{% if r.elapsed_sec %}{{ "%.1f"|format(r.elapsed_sec) }}s{% else %}—{% endif %}</td>
         <td>
           {% if r.output and r.status == "success" %}
           <a href="/api/v1/download/{{ r.output }}" class="btn-sm btn-primary">下載</a>
