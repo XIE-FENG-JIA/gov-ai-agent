@@ -143,8 +143,22 @@ async function submitBatch(e) {
   var progress = document.getElementById('batchProgress');
   var resultList = document.getElementById('batchResultList');
   resultsSection.style.display = 'block';
-  progress.textContent = '正在批次處理中，請稍候...';
+  // 建立 loading spinner（使用 DOM API 避免 innerHTML XSS 風險）
+  progress.textContent = '';
+  var spinnerWrap = document.createElement('div');
+  spinnerWrap.className = 'loading-overlay';
+  spinnerWrap.style.display = 'flex';
+  spinnerWrap.style.padding = '1rem';
+  var spinner = document.createElement('div');
+  spinner.className = 'loading-spinner';
+  spinnerWrap.appendChild(spinner);
+  var spinnerText = document.createElement('p');
+  spinnerText.className = 'loading-text';
+  spinnerText.textContent = '正在批次處理 ' + items.length + ' 筆公文，請稍候...';
+  spinnerWrap.appendChild(spinnerText);
+  progress.appendChild(spinnerWrap);
   while (resultList.firstChild) resultList.removeChild(resultList.firstChild);
+  document.querySelector('#batchForm button[type="submit"]').disabled = true;
 
   try {
     var resp = await fetch('/api/v1/batch', {
@@ -190,6 +204,7 @@ async function submitBatch(e) {
     errDiv.textContent = '批次處理失敗：' + err.message;
     resultList.appendChild(errDiv);
   }
+  document.querySelector('#batchForm button[type="submit"]').disabled = false;
   return false;
 }
 </script>
