@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 import httpx
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -39,9 +40,6 @@ if _parsed.scheme not in ("http", "https"):
     raise ValueError(f"WEB_UI_API_BASE 只允許 http/https 協議，不允許: {_parsed.scheme}")
 if _parsed.hostname not in ("localhost", "127.0.0.1", "::1"):
     raise ValueError(f"WEB_UI_API_BASE 只允許本機地址，不允許: {_parsed.hostname}")
-
-
-from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
 @web_app.exception_handler(StarletteHTTPException)

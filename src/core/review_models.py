@@ -4,8 +4,6 @@ import hashlib
 from pydantic import BaseModel, Field
 from typing import Literal
 
-# 從 constants 模組匯入權重（保持向後相容的再匯出）
-from src.core.constants import CATEGORY_WEIGHTS  # noqa: F401
 from src.core.constants import CONVERGENCE_MAX_FIX_ATTEMPTS, CONVERGENCE_STALE_ROUNDS
 
 class ReviewIssue(BaseModel):
