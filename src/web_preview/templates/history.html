@@ -13,9 +13,13 @@
   {% elif not records %}
   <p>目前沒有生成紀錄。前往<a href="/ui/">首頁</a>開始生成公文。</p>
   {% else %}
-  <p>共 {{ records|length }} 筆紀錄（最新在前）</p>
+  <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:0.75rem;">
+    <p id="historyCount" style="margin:0;">共 {{ records|length }} 筆紀錄（最新在前）</p>
+    <input type="text" id="historySearch" placeholder="搜尋需求描述或公文類型..."
+      style="flex:1; min-width:200px; padding:0.4rem 0.75rem; border:1px solid var(--border); border-radius:var(--radius); background:var(--card-bg); color:var(--text);">
+  </div>
 
-  <table class="info-table">
+  <table class="info-table" id="historyTable">
     <thead>
       <tr>
         <th>時間</th>
@@ -57,4 +61,31 @@
   </table>
   {% endif %}
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  var search = document.getElementById('historySearch');
+  if (!search) return;
+  var table = document.getElementById('historyTable');
+  var rows = table ? table.querySelectorAll('tbody tr') : [];
+  var countEl = document.getElementById('historyCount');
+  var total = rows.length;
+
+  search.addEventListener('input', function() {
+    var q = this.value.toLowerCase();
+    var visible = 0;
+    rows.forEach(function(row) {
+      var text = row.textContent.toLowerCase();
+      var show = !q || text.indexOf(q) !== -1;
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    countEl.textContent = q
+      ? '顯示 ' + visible + ' / ' + total + ' 筆'
+      : '共 ' + total + ' 筆紀錄（最新在前）';
+  });
+})();
+</script>
 {% endblock %}
