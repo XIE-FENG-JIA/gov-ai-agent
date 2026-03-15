@@ -580,6 +580,10 @@ class TemplateEngine:
             logger.warning("Jinja2 模板渲染失敗: %s，使用備用格式", e)
             return self._fallback_apply(requirement, sections)
 
+        # 在輸出前加入公文類型標題行，供 DocxExporter 辨識與測試驗證
+        doc_type_title = context["doc_type"]
+        output = f"{doc_type_title}\n\n{output}"
+
         if sections.get("references"):
             output += "\n\n**參考來源**：\n" + sections["references"]
 
@@ -602,7 +606,10 @@ class TemplateEngine:
         _today = _date.today()
         _roc = _today.year - 1911
 
-        template = f"""**機關**：{requirement.sender}
+        doc_type = requirement.doc_type or "函"
+        template = f"""{doc_type}
+
+**機關**：{requirement.sender}
 **發文日期**：中華民國{_roc}年{_today.month}月{_today.day}日
 **發文字號**：______號
 **速別**：{_normalize_urgency(requirement.urgency or "普通")}
