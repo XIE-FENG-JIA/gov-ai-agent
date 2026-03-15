@@ -46,9 +46,15 @@
         ></textarea>
       </div>
 
-      <button type="submit" class="btn btn-primary">生成公文</button>
+      <button type="submit" class="btn btn-primary" id="submitBtn">生成公文</button>
     </div>
   </form>
+
+  <div id="loadingOverlay" class="loading-overlay" style="display:none;">
+    <div class="loading-spinner"></div>
+    <p class="loading-text">正在生成公文，請稍候...</p>
+    <p class="loading-hint">視 LLM 回應速度，可能需要 30 秒至 2 分鐘</p>
+  </div>
 </section>
 
 <section class="card">
@@ -77,6 +83,15 @@
   document.getElementById('doc_type').addEventListener('change', function() {
     const textarea = document.getElementById('user_input');
     textarea.placeholder = docTypeHints[this.value] || docTypeHints[''];
+  });
+
+  // 表單提交時顯示 loading overlay
+  document.getElementById('generateForm').addEventListener('submit', function() {
+    const btn = document.getElementById('submitBtn');
+    const overlay = document.getElementById('loadingOverlay');
+    btn.disabled = true;
+    btn.textContent = '生成中...';
+    overlay.style.display = 'flex';
   });
 </script>
 {% endblock %}
