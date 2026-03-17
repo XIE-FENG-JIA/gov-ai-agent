@@ -613,9 +613,9 @@ class TestScenario5_APIEndpoints:
         from fastapi.testclient import TestClient
 
         # Mock 全域資源
-        with patch("api_server.get_config") as mock_config, \
-             patch("api_server.get_llm") as mock_llm_fn, \
-             patch("api_server.get_kb") as mock_kb_fn:
+        with patch("src.api.dependencies.get_config") as mock_config, \
+             patch("src.api.dependencies.get_llm") as mock_llm_fn, \
+             patch("src.api.dependencies.get_kb") as mock_kb_fn:
 
             mock_config.return_value = {
                 "llm": {"provider": "mock", "model": "test"},
@@ -1952,9 +1952,9 @@ class TestFullIntegrationFlow:
         """
         from fastapi.testclient import TestClient
 
-        with patch("api_server.get_config") as mock_config, \
-             patch("api_server.get_llm") as mock_llm_fn, \
-             patch("api_server.get_kb") as mock_kb_fn:
+        with patch("src.api.dependencies.get_config") as mock_config, \
+             patch("src.api.dependencies.get_llm") as mock_llm_fn, \
+             patch("src.api.dependencies.get_kb") as mock_kb_fn:
 
             mock_config.return_value = {
                 "llm": {"provider": "mock", "model": "test"},

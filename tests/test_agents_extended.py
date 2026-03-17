@@ -2751,9 +2751,9 @@ class TestMeetingExportFailure:
             "subject": "配合辦理事項",
         })
 
-        with patch("api_server.get_llm", return_value=mock_llm), \
-             patch("api_server.get_kb", return_value=MagicMock()), \
-             patch("api_server.DocxExporter") as mock_exporter_cls:
+        with patch("src.api.dependencies.get_llm", return_value=mock_llm), \
+             patch("src.api.dependencies.get_kb", return_value=MagicMock()), \
+             patch("src.api.routes.workflow.DocxExporter") as mock_exporter_cls:
             mock_exporter_cls.return_value.export.side_effect = IOError("磁碟已滿")
 
             loop = asyncio.new_event_loop()

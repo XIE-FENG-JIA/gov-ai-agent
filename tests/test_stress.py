@@ -119,7 +119,7 @@ class TestConcurrentAPIRequests:
         num_requests = 10
         results = []
 
-        with patch("api_server.RequirementAgent") as MockReqAgent:
+        with patch("src.api.routes.agents.RequirementAgent") as MockReqAgent:
             from src.core.models import PublicDocRequirement
             mock_instance = MagicMock()
             mock_instance.analyze.return_value = PublicDocRequirement(
@@ -155,11 +155,11 @@ class TestConcurrentAPIRequests:
         mock_review = _make_mock_review_result()
 
         with (
-            patch("api_server._run_format_audit", return_value=mock_review),
-            patch("api_server.StyleChecker") as MockStyle,
-            patch("api_server.FactChecker") as MockFact,
-            patch("api_server.ConsistencyChecker") as MockConsistency,
-            patch("api_server.ComplianceChecker") as MockCompliance,
+            patch("src.api.routes.agents._run_format_audit", return_value=mock_review),
+            patch("src.api.routes.agents.StyleChecker") as MockStyle,
+            patch("src.api.routes.agents.FactChecker") as MockFact,
+            patch("src.api.routes.agents.ConsistencyChecker") as MockConsistency,
+            patch("src.api.routes.agents.ComplianceChecker") as MockCompliance,
         ):
             for MockCls in [MockStyle, MockFact, MockConsistency, MockCompliance]:
                 MockCls.return_value.check.return_value = mock_review
@@ -185,7 +185,7 @@ class TestConcurrentAPIRequests:
         """混合讀寫（健康檢查 + 需求分析）同時進行應無錯誤。"""
         results = []
 
-        with patch("api_server.RequirementAgent") as MockReqAgent:
+        with patch("src.api.routes.agents.RequirementAgent") as MockReqAgent:
             from src.core.models import PublicDocRequirement
             mock_instance = MagicMock()
             mock_instance.analyze.return_value = PublicDocRequirement(
@@ -224,7 +224,7 @@ class TestConcurrentAPIRequests:
         # 設定極低的限流上限以觸發 429
         api_server._rate_limiter.max_requests = 3
 
-        with patch("api_server.RequirementAgent") as MockReqAgent:
+        with patch("src.api.routes.agents.RequirementAgent") as MockReqAgent:
             from src.core.models import PublicDocRequirement
             mock_instance = MagicMock()
             mock_instance.analyze.return_value = PublicDocRequirement(
@@ -289,7 +289,7 @@ class TestLargeDataHandling:
         # 確保不超過 5000 字上限
         large_text = large_text[:4990]
 
-        with patch("api_server.RequirementAgent") as MockReqAgent:
+        with patch("src.api.routes.agents.RequirementAgent") as MockReqAgent:
             from src.core.models import PublicDocRequirement
             mock_instance = MagicMock()
             mock_instance.analyze.return_value = PublicDocRequirement(
@@ -317,11 +317,11 @@ class TestLargeDataHandling:
         mock_review = _make_mock_review_result("Format Auditor")
 
         with (
-            patch("api_server._run_format_audit", return_value=mock_review),
-            patch("api_server.StyleChecker") as MockStyle,
-            patch("api_server.FactChecker") as MockFact,
-            patch("api_server.ConsistencyChecker") as MockConsistency,
-            patch("api_server.ComplianceChecker") as MockCompliance,
+            patch("src.api.routes.agents._run_format_audit", return_value=mock_review),
+            patch("src.api.routes.agents.StyleChecker") as MockStyle,
+            patch("src.api.routes.agents.FactChecker") as MockFact,
+            patch("src.api.routes.agents.ConsistencyChecker") as MockConsistency,
+            patch("src.api.routes.agents.ComplianceChecker") as MockCompliance,
         ):
             for MockCls in [MockStyle, MockFact, MockConsistency, MockCompliance]:
                 MockCls.return_value.check.return_value = mock_review
@@ -348,9 +348,9 @@ class TestLargeDataHandling:
             })
 
         with (
-            patch("api_server.RequirementAgent") as MockReqAgent,
-            patch("api_server.WriterAgent") as MockWriter,
-            patch("api_server.TemplateEngine") as MockTemplate,
+            patch("src.api.routes.workflow.RequirementAgent") as MockReqAgent,
+            patch("src.api.routes.workflow.WriterAgent") as MockWriter,
+            patch("src.api.routes.workflow.TemplateEngine") as MockTemplate,
         ):
             from src.core.models import PublicDocRequirement
             mock_req_instance = MagicMock()

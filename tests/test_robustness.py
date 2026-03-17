@@ -3023,13 +3023,13 @@ class TestProductionReadinessIteration4:
 
     def test_run_in_executor_has_timeout(self):
         """_run_in_executor 應包含 asyncio.wait_for 超時保護"""
-        with open("api_server.py") as f:
+        with open("src/api/helpers.py") as f:
             content = f.read()
         assert "wait_for" in content, "_run_in_executor 應使用 asyncio.wait_for"
 
     def test_endpoint_timeout_configurable(self):
         """endpoint timeout 應可透過環境變數配置"""
-        with open("api_server.py") as f:
+        with open("src/api/helpers.py") as f:
             content = f.read()
         assert "API_ENDPOINT_TIMEOUT" in content
         assert "API_MEETING_TIMEOUT" in content
@@ -3057,11 +3057,11 @@ class TestProductionReadinessIteration4:
         assert "逾時" in msg
 
     def test_meeting_endpoint_uses_longer_timeout(self):
-        """meeting endpoint 應使用 _MEETING_TIMEOUT 而非預設超時"""
-        with open("api_server.py") as f:
+        """meeting endpoint 應使用 MEETING_TIMEOUT 而非預設超時"""
+        with open("src/api/routes/workflow.py") as f:
             content = f.read()
-        assert "_MEETING_TIMEOUT" in content
-        assert "timeout=_MEETING_TIMEOUT" in content
+        assert "MEETING_TIMEOUT" in content
+        assert "timeout=MEETING_TIMEOUT" in content
 
 
 # ============================================================
@@ -3391,7 +3391,7 @@ class TestCoverageImprovement:
             "llm": {"provider": "ollama", "api_key": "", "model": ""},
             "knowledge_base": {"path": "."},
         }
-        with patch("api_server.get_config", return_value=mock_config):
+        with patch("src.api.dependencies.get_config", return_value=mock_config):
             from api_server import _preflight_check
             with caplog.at_level(logging.WARNING):
                 _preflight_check()

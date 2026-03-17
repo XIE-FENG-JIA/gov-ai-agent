@@ -939,14 +939,14 @@ class TestWriterExceptionHandling:
         """測試 writer 端點在 TemplateEngine 拋出異常時回傳 error"""
         mock_api_deps["llm"].generate.return_value = "### 主旨\n正常草稿"
 
-        import api_server
-        original_template_engine = api_server.TemplateEngine
+        import src.api.routes.agents as _agents_mod
+        original_template_engine = _agents_mod.TemplateEngine
 
         class BrokenTemplateEngine:
             def parse_draft(self, *a, **kw):
                 raise RuntimeError("Template parse failed")
 
-        api_server.TemplateEngine = BrokenTemplateEngine
+        _agents_mod.TemplateEngine = BrokenTemplateEngine
         try:
             response = client.post("/api/v1/agent/writer", json={
                 "requirement": {
@@ -963,7 +963,7 @@ class TestWriterExceptionHandling:
             # 不洩漏內部錯誤細節
             assert "Template parse failed" not in (data["error"] or "")
         finally:
-            api_server.TemplateEngine = original_template_engine
+            _agents_mod.TemplateEngine = original_template_engine
 
 
 # ==================== Review Endpoints Exception ====================
@@ -977,13 +977,13 @@ class TestReviewExceptionHandling:
         FormatAuditor 內部會捕捉 LLM 異常，因此需要讓端點層級的程式碼拋出異常。
         透過讓 get_kb() 拋出異常觸發端點的 except 塊。
         """
-        import api_server
-        original_get_kb = api_server.get_kb
+        import src.api.routes.agents as _agents_mod
+        original_get_kb = _agents_mod.get_kb
 
         def broken_get_kb():
             raise RuntimeError("KB 初始化失敗")
 
-        api_server.get_kb = broken_get_kb
+        _agents_mod.get_kb = broken_get_kb
 
         try:
             response = client.post("/api/v1/agent/review/format", json={
@@ -996,7 +996,7 @@ class TestReviewExceptionHandling:
             assert data["agent_name"] == "format"
             assert data["error"] is not None
         finally:
-            api_server.get_kb = original_get_kb
+            _agents_mod.get_kb = original_get_kb
 
     def test_review_style_exception(self, client, mock_api_deps):
         """測試文風審查端點 LLM 異常時優雅降級（回傳 score=0.0 而非失敗）"""
@@ -1049,13 +1049,13 @@ class TestReviewExceptionHandling:
         ComplianceChecker 內部會捕捉 LLM 異常，因此需要讓端點層級的程式碼拋出異常。
         透過讓 get_kb() 拋出異常觸發端點的 except 塊。
         """
-        import api_server
-        original_get_kb = api_server.get_kb
+        import src.api.routes.agents as _agents_mod
+        original_get_kb = _agents_mod.get_kb
 
         def broken_get_kb():
             raise RuntimeError("KB 初始化失敗")
 
-        api_server.get_kb = broken_get_kb
+        _agents_mod.get_kb = broken_get_kb
 
         try:
             response = client.post("/api/v1/agent/review/compliance", json={
@@ -1068,7 +1068,7 @@ class TestReviewExceptionHandling:
             assert data["agent_name"] == "compliance"
             assert data["error"] is not None
         finally:
-            api_server.get_kb = original_get_kb
+            _agents_mod.get_kb = original_get_kb
 
 
 # ==================== Parallel Review Exception ====================
@@ -1084,7 +1084,7 @@ class TestParallelReviewExceptionHandling:
         """
         mock_api_deps["llm"].generate.return_value = '{"issues": [], "score": 0.9}'
 
-        with patch("api_server.FactChecker") as MockFactChecker:
+        with patch("src.api.routes.agents.FactChecker") as MockFactChecker:
             mock_fact_instance = MagicMock()
             mock_fact_instance.check.side_effect = RuntimeError("模擬 fact 審查失敗")
             MockFactChecker.return_value = mock_fact_instance
@@ -1162,7 +1162,7 @@ class TestParallelReviewExceptionHandling:
         """
         mock_api_deps["llm"].generate.return_value = '{"issues": [], "score": 1.0, "confidence": 1.0}'
 
-        with patch("api_server.FactChecker") as MockFactChecker:
+        with patch("src.api.routes.agents.FactChecker") as MockFactChecker:
             mock_fact_instance = MagicMock()
             mock_fact_instance.check.side_effect = RuntimeError("fact 失敗")
             MockFactChecker.return_value = mock_fact_instance
@@ -1185,15 +1185,16 @@ class TestParallelReviewExceptionHandling:
     def test_parallel_review_overall_exception(self, client, mock_api_deps):
         """測試並行審查整體失敗（非 agent 層級的異常）"""
         import api_server
+        import src.api.routes.agents as _agents_mod
         # 讓 get_llm() 拋出異常，觸發外層 except
         original_llm = api_server._llm
         api_server._llm = None
-        original_get_llm = api_server.get_llm
+        original_get_llm = _agents_mod.get_llm
 
         def broken_get_llm():
             raise RuntimeError("LLM 初始化失敗")
 
-        api_server.get_llm = broken_get_llm
+        _agents_mod.get_llm = broken_get_llm
 
         try:
             response = client.post("/api/v1/agent/review/parallel", json={
@@ -1208,7 +1209,7 @@ class TestParallelReviewExceptionHandling:
             assert data["aggregated_score"] == 0.0
             assert data["error"] is not None
         finally:
-            api_server.get_llm = original_get_llm
+            _agents_mod.get_llm = original_get_llm
             api_server._llm = original_llm
 
     def test_parallel_review_agents_exceeds_max(self, client, mock_api_deps):
@@ -1849,7 +1850,7 @@ class TestLazyInit:
         api_server._config = None
 
         # mock ConfigManager 拋出異常
-        with patch("api_server.ConfigManager") as mock_cm:
+        with patch("src.api.dependencies.ConfigManager") as mock_cm:
             mock_cm.side_effect = FileNotFoundError("找不到設定檔")
             config = api_server.get_config()
 
@@ -2022,9 +2023,9 @@ class TestLifespan:
         api_server._kb = None
 
         # 設定 mock 讓初始化不會連線真實服務
-        with patch("api_server.ConfigManager") as mock_cm, \
-             patch("api_server.get_llm_factory") as mock_factory, \
-             patch("api_server.KnowledgeBaseManager") as mock_kb_class:
+        with patch("src.api.dependencies.ConfigManager") as mock_cm, \
+             patch("src.api.dependencies.get_llm_factory") as mock_factory, \
+             patch("src.api.dependencies.KnowledgeBaseManager") as mock_kb_class:
 
             mock_cm.return_value.config = {
                 "llm": {"provider": "mock", "model": "test"},
@@ -2054,7 +2055,7 @@ class TestOuterExceptionHandlers:
 
     def test_review_style_outer_exception(self, client, mock_api_deps):
         """測試 style 端點外層例外處理（agent 構造失敗）"""
-        with patch("api_server.StyleChecker", side_effect=RuntimeError("init failed")):
+        with patch("src.api.routes.agents.StyleChecker", side_effect=RuntimeError("init failed")):
             response = client.post("/api/v1/agent/review/style", json={
                 "draft": "### 主旨\n這是一份測試公文的草稿內容",
                 "doc_type": "函"
@@ -2067,7 +2068,7 @@ class TestOuterExceptionHandlers:
 
     def test_review_fact_outer_exception(self, client, mock_api_deps):
         """測試 fact 端點外層例外處理（agent 構造失敗）"""
-        with patch("api_server.FactChecker", side_effect=RuntimeError("init failed")):
+        with patch("src.api.routes.agents.FactChecker", side_effect=RuntimeError("init failed")):
             response = client.post("/api/v1/agent/review/fact", json={
                 "draft": "### 主旨\n這是一份測試公文的草稿內容",
                 "doc_type": "函"
@@ -2080,7 +2081,7 @@ class TestOuterExceptionHandlers:
 
     def test_review_consistency_outer_exception(self, client, mock_api_deps):
         """測試 consistency 端點外層例外處理（agent 構造失敗）"""
-        with patch("api_server.ConsistencyChecker", side_effect=RuntimeError("init failed")):
+        with patch("src.api.routes.agents.ConsistencyChecker", side_effect=RuntimeError("init failed")):
             response = client.post("/api/v1/agent/review/consistency", json={
                 "draft": "### 主旨\n測試\n### 說明\n一致的內容",
                 "doc_type": "函"
@@ -2106,9 +2107,9 @@ class TestThreadSafety:
 
     def test_global_init_lock_is_reentrant(self):
         """測試全域初始化鎖是可重入鎖（RLock），防止 get_llm→get_config 死鎖"""
-        import api_server
+        from src.api import dependencies
         import threading
-        assert isinstance(api_server._init_lock, type(threading.RLock()))
+        assert isinstance(dependencies._init_lock, type(threading.RLock()))
 
     def test_rate_limiter_concurrent_access(self):
         """測試限流器在多執行緒下不崩潰"""
@@ -2144,7 +2145,7 @@ class TestThreadSafety:
         import api_server
         api_server._config = None
         # 使用 mock 避免讀取實際設定檔
-        with patch("api_server.ConfigManager") as mock_cm:
+        with patch("src.api.dependencies.ConfigManager") as mock_cm:
             mock_cm.return_value.config = {"llm": {"provider": "mock"}, "knowledge_base": {"path": "."}}
             config = api_server.get_config()
             assert config is not None
@@ -2344,7 +2345,7 @@ class TestDownloadEndpoint:
         test_file.write_bytes(b"fake docx content")
 
         with patch("os.path.isfile", return_value=True), \
-             patch("api_server.FileResponse") as mock_fr:
+             patch("src.api.routes.workflow.FileResponse") as mock_fr:
             mock_fr.return_value = MagicMock(status_code=200)
             # 直接 mock os.path.join 太複雜，改用 isfile + FileResponse mock
             response = client.get("/api/v1/download/test_output.docx")

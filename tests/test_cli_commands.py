@@ -2118,44 +2118,44 @@ class TestGetClientIpEdgeCases:
 
     def test_invalid_octet_range_rejected(self):
         """超出範圍的八進位值應被拒絕（如 999.0.0.0）"""
-        import api_server
-        original = api_server._TRUST_PROXY
+        import src.api.helpers as _helpers
+        original = _helpers._TRUST_PROXY
         try:
-            api_server._TRUST_PROXY = True
+            _helpers._TRUST_PROXY = True
             mock_request = MagicMock()
             mock_request.client.host = "127.0.0.1"
             mock_request.headers = {"X-Forwarded-For": "999.0.0.0, 10.0.0.1"}
-            ip = api_server._get_client_ip(mock_request)
+            ip = _helpers._get_client_ip(mock_request)
             assert ip == "127.0.0.1"  # 應回退
         finally:
-            api_server._TRUST_PROXY = original
+            _helpers._TRUST_PROXY = original
 
     def test_ipv6_accepted(self):
         """IPv6 地址應被接受"""
-        import api_server
-        original = api_server._TRUST_PROXY
+        import src.api.helpers as _helpers
+        original = _helpers._TRUST_PROXY
         try:
-            api_server._TRUST_PROXY = True
+            _helpers._TRUST_PROXY = True
             mock_request = MagicMock()
             mock_request.client.host = "127.0.0.1"
             mock_request.headers = {"X-Forwarded-For": "::1"}
-            ip = api_server._get_client_ip(mock_request)
+            ip = _helpers._get_client_ip(mock_request)
             assert ip == "::1"
         finally:
-            api_server._TRUST_PROXY = original
+            _helpers._TRUST_PROXY = original
 
     def test_client_none_returns_unknown(self):
         """request.client 為 None 時回傳 unknown"""
-        import api_server
-        original = api_server._TRUST_PROXY
+        import src.api.helpers as _helpers
+        original = _helpers._TRUST_PROXY
         try:
-            api_server._TRUST_PROXY = False
+            _helpers._TRUST_PROXY = False
             mock_request = MagicMock()
             mock_request.client = None
-            ip = api_server._get_client_ip(mock_request)
+            ip = _helpers._get_client_ip(mock_request)
             assert ip == "unknown"
         finally:
-            api_server._TRUST_PROXY = original
+            _helpers._TRUST_PROXY = original
 
 
 class TestWriterErrorStringDetection:
