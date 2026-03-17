@@ -6,9 +6,9 @@ knowledge_base:
 llm:
   api_key: ''
   base_url: http://localhost:11434
-  embedding_base_url: http://localhost:11434
-  embedding_model: llama3.1:8b
-  embedding_provider: ollama
+  embedding_base_url: ''
+  embedding_model: all-MiniLM-L6-v2
+  embedding_provider: local
   model: llama3.1:8b
   provider: ollama
 organizational_memory:

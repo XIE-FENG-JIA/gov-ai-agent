@@ -52,6 +52,28 @@ class MockLLMProvider(LLMProvider):
         rng = random.Random(len(text))
         return [rng.random() for _ in range(384)]
 
+class _LocalEmbedder:
+    """使用 sentence-transformers 的本地 embedding 單例。"""
+    _instance = None
+    _lock = threading.Lock()
+
+    @classmethod
+    def get(cls, model_name: str = "all-MiniLM-L6-v2") -> "_LocalEmbedder":
+        with cls._lock:
+            if cls._instance is None or cls._instance._model_name != model_name:
+                cls._instance = cls(model_name)
+        return cls._instance
+
+    def __init__(self, model_name: str) -> None:
+        from sentence_transformers import SentenceTransformer
+        self._model_name = model_name
+        self._model = SentenceTransformer(model_name)
+        logger.info("本地 embedding 模型已載入: %s", model_name)
+
+    def embed(self, text: str) -> list[float]:
+        return self._model.encode(text, normalize_embeddings=True).tolist()
+
+
 class LiteLLMProvider(LLMProvider):
     """使用 LiteLLM 的 LLM 提供者實作。"""
 
@@ -154,6 +176,16 @@ class LiteLLMProvider(LLMProvider):
         if not text or not text.strip():
             logger.warning("LLM embed 收到空的文字，回傳空列表")
             return []
+
+        # 本地 sentence-transformers 模式（不需要 API key 或外部服務）
+        if self.emb_provider == "local":
+            try:
+                embedder = _LocalEmbedder.get(self.emb_model)
+                return embedder.embed(text)
+            except Exception as e:
+                logger.warning("本地 embedding 失敗: %s", e)
+                return []
+
         try:
             # Construct embedding model name
             if self.emb_provider == "ollama":
