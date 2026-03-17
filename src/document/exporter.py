@@ -3,7 +3,7 @@ import os
 import re
 
 from docx import Document
-from docx.shared import Pt, Cm
+from docx.shared import Pt, Cm, Emu
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from src.agents.template import TemplateEngine, clean_markdown_artifacts
@@ -13,12 +13,21 @@ from src.core.constants import (
     FONT_SIZE_BODY,
     FONT_SIZE_META,
     FONT_SIZE_LOG,
+    STRICT_FONT_SIZE_TITLE,
+    STRICT_FONT_SIZE_SECTION_LABEL,
+    STRICT_FONT_SIZE_BODY,
+    STRICT_FONT_SIZE_META,
+    STRICT_PAGE_MARGIN,
+    STRICT_LINE_SPACING,
+    STRICT_SPACE_BEFORE_LINES,
+    STRICT_SPACE_AFTER_LINES,
     PAGE_MARGIN_TOP,
     PAGE_MARGIN_BOTTOM,
     PAGE_MARGIN_LEFT,
     PAGE_MARGIN_RIGHT,
     FIRST_LINE_INDENT,
     FONT_LOG,
+    CHINESE_NUMBERS,
     get_platform_fonts,
 )
 
@@ -36,12 +45,24 @@ class DocxExporter:
     將 Markdown 草稿匯出為符合政府標準格式的 Microsoft Word 文件。
     """
 
-    def __init__(self) -> None:
+    def __init__(self, strict_format: bool = True) -> None:
         self.template_engine = TemplateEngine()
+        self.strict_format = strict_format
         # 跨平台字體：依據作業系統選擇適當的中文字體
         title_font, body_font = get_platform_fonts()
         self._font_title: str | None = title_font
         self._font_body: str | None = body_font
+        # 依嚴格模式選擇字型大小
+        if strict_format:
+            self._size_title = STRICT_FONT_SIZE_TITLE
+            self._size_section = STRICT_FONT_SIZE_SECTION_LABEL
+            self._size_body = STRICT_FONT_SIZE_BODY
+            self._size_meta = STRICT_FONT_SIZE_META
+        else:
+            self._size_title = FONT_SIZE_TITLE
+            self._size_section = FONT_SIZE_SECTION_LABEL
+            self._size_body = FONT_SIZE_BODY
+            self._size_meta = FONT_SIZE_META
 
     @staticmethod
     def _sanitize_text(text: str) -> str:
@@ -90,6 +111,16 @@ class DocxExporter:
         ]:
             text = text.replace(ch, '')
         return text
+
+    def _set_paragraph_spacing(self, paragraph) -> None:
+        """設定段落的行距與段前/段後間距（嚴格模式）。"""
+        if not self.strict_format:
+            return
+        pf = paragraph.paragraph_format
+        pf.line_spacing = STRICT_LINE_SPACING
+        # 段前 0.5 行：以 Pt 為單位，0.5 行 ≈ 0.5 × body_font_size
+        pf.space_before = Pt(self._size_body * STRICT_SPACE_BEFORE_LINES)
+        pf.space_after = Pt(STRICT_SPACE_AFTER_LINES)
 
     def _set_font(self, run, font_name: str | None = None, size: int = FONT_SIZE_META, bold: bool = False) -> None:
         """設定文字段落的字體、大小和粗體。
@@ -203,17 +234,24 @@ class DocxExporter:
     def _setup_page(self, doc: Document) -> None:
         """設定 A4 頁面邊距。"""
         section = doc.sections[0]
-        section.top_margin = Cm(PAGE_MARGIN_TOP)
-        section.bottom_margin = Cm(PAGE_MARGIN_BOTTOM)
-        section.left_margin = Cm(PAGE_MARGIN_LEFT)
-        section.right_margin = Cm(PAGE_MARGIN_RIGHT)
+        if self.strict_format:
+            section.top_margin = Cm(STRICT_PAGE_MARGIN)
+            section.bottom_margin = Cm(STRICT_PAGE_MARGIN)
+            section.left_margin = Cm(STRICT_PAGE_MARGIN)
+            section.right_margin = Cm(STRICT_PAGE_MARGIN)
+        else:
+            section.top_margin = Cm(PAGE_MARGIN_TOP)
+            section.bottom_margin = Cm(PAGE_MARGIN_BOTTOM)
+            section.left_margin = Cm(PAGE_MARGIN_LEFT)
+            section.right_margin = Cm(PAGE_MARGIN_RIGHT)
 
     def _write_title(self, doc: Document, doc_type: str) -> None:
         """寫入公文類型標題。"""
         p_title = doc.add_paragraph()
         p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        self._set_paragraph_spacing(p_title)
         run = p_title.add_run(doc_type)
-        self._set_font(run, self._font_title, FONT_SIZE_TITLE, bold=True)
+        self._set_font(run, self._font_title, self._size_title, bold=True)
 
     def _write_meta_info(self, doc: Document, draft_text: str) -> None:
         """寫入檔頭資訊區塊。"""
@@ -233,8 +271,9 @@ class DocxExporter:
                 continue
             if clean:
                 p = doc.add_paragraph()
+                self._set_paragraph_spacing(p)
                 run = p.add_run(clean)
-                self._set_font(run, self._font_body, FONT_SIZE_META)
+                self._set_font(run, self._font_body, self._size_meta)
 
         doc.add_paragraph()  # 間距
 
@@ -303,17 +342,103 @@ class DocxExporter:
 
             # 段落標籤
             p_label = doc.add_paragraph()
+            self._set_paragraph_spacing(p_label)
             run_label = p_label.add_run(f"{label}：")
-            self._set_font(run_label, self._font_title, FONT_SIZE_SECTION_LABEL, bold=True)
+            self._set_font(run_label, self._font_title, self._size_section, bold=True)
 
-            # 段落內容
-            for line in content.split("\n"):
+            # 段落內容（嚴格模式啟用自動編號）
+            lines = content.split("\n")
+            if self.strict_format:
+                lines = self._auto_number(lines)
+            for line in lines:
                 clean_content = self._clean_line(line)
                 if clean_content:
                     p_content = doc.add_paragraph()
+                    self._set_paragraph_spacing(p_content)
                     p_content.paragraph_format.first_line_indent = Pt(FIRST_LINE_INDENT)
                     run_content = p_content.add_run(clean_content)
-                    self._set_font(run_content, self._font_body, FONT_SIZE_BODY)
+                    self._set_font(run_content, self._font_body, self._size_body)
+
+    # ── 自動編號 ──────────────────────────────────────
+
+    # 用於偵測已有中文數字編號的正規式，例如 "一、" "二、"
+    _RE_CN_NUM = re.compile(r"^[一二三四五六七八九十]{1,3}、")
+    # 用於偵測已有次層級編號，例如 "(一)" "（一）"
+    _RE_CN_SUB = re.compile(r"^[（(][一二三四五六七八九十]{1,3}[）)]")
+    # 用於偵測阿拉伯數字編號，例如 "1." "2."
+    _RE_ARABIC = re.compile(r"^\d+[.、]")
+
+    def _auto_number(self, lines: list[str]) -> list[str]:
+        """自動編號：將多項說明轉換為「一、二、三」及多層級編號。
+
+        規則：
+        - 若行已有「一、」「(一)」「1.」等編號，保持原樣
+        - 若段落有多行實質內容（≥2 行），且都沒有編號，自動加上「一、二、三」
+        - 子層級（以空格或 Tab 縮排的行）自動加上「(一)(二)(三)」
+        - 三級（雙重縮排）自動加上「1. 2. 3.」
+        """
+        # 先清理得到非空行列表
+        cleaned = []
+        for line in lines:
+            stripped = line.rstrip()
+            if stripped:
+                cleaned.append(stripped)
+
+        if len(cleaned) < 2:
+            return lines  # 單行不需要編號
+
+        # 檢查是否已經有編號
+        has_existing_numbering = any(
+            self._RE_CN_NUM.match(self._clean_line(l))
+            or self._RE_CN_SUB.match(self._clean_line(l))
+            or self._RE_ARABIC.match(self._clean_line(l))
+            for l in cleaned
+        )
+        if has_existing_numbering:
+            return lines  # 已有編號，不覆蓋
+
+        # 分析縮排層級
+        result = []
+        level1_idx = 0  # 一級計數
+        level2_idx = 0  # 二級計數
+        level3_idx = 0  # 三級計數
+
+        for line in lines:
+            stripped = line.rstrip()
+            if not stripped:
+                result.append(line)
+                continue
+
+            # 判斷縮排深度
+            leading = len(line) - len(line.lstrip())
+            # Tab 視為 4 個空格
+            effective_indent = leading + line[:leading].count('\t') * 3
+
+            if effective_indent >= 8:
+                # 三級：1. 2. 3.
+                level3_idx += 1
+                result.append(f"{level3_idx}. {stripped.lstrip()}")
+            elif effective_indent >= 2:
+                # 二級：(一)(二)(三)
+                if level2_idx < len(CHINESE_NUMBERS):
+                    prefix = f"（{CHINESE_NUMBERS[level2_idx]}）"
+                else:
+                    prefix = f"（{level2_idx + 1}）"
+                level2_idx += 1
+                level3_idx = 0  # 重設三級計數
+                result.append(f"{prefix}{stripped.lstrip()}")
+            else:
+                # 一級：一、二、三
+                if level1_idx < len(CHINESE_NUMBERS):
+                    prefix = f"{CHINESE_NUMBERS[level1_idx]}、"
+                else:
+                    prefix = f"{level1_idx + 1}、"
+                level1_idx += 1
+                level2_idx = 0  # 重設二級計數
+                level3_idx = 0
+                result.append(f"{prefix}{stripped}")
+
+        return result
 
     def _write_attachments(self, doc: Document, sections: dict[str, str]) -> None:
         """寫入附件和參考來源。"""
@@ -329,8 +454,9 @@ class DocxExporter:
 
             doc.add_paragraph()
             p_att = doc.add_paragraph()
+            self._set_paragraph_spacing(p_att)
             run_att = p_att.add_run(label)
-            self._set_font(run_att, self._font_title, FONT_SIZE_BODY, bold=True)
+            self._set_font(run_att, self._font_title, self._size_body, bold=True)
 
             # 逐行處理，與 _write_body 一致，避免多行內容中
             # 後續行的 markdown 標記（如 "- "）無法被清除
@@ -338,15 +464,17 @@ class DocxExporter:
                 clean_content = self._clean_line(line)
                 if clean_content:
                     p_content = doc.add_paragraph(clean_content)
+                    self._set_paragraph_spacing(p_content)
                     for run in p_content.runs:
-                        self._set_font(run, self._font_body, FONT_SIZE_META)
+                        self._set_font(run, self._font_body, self._size_meta)
 
     def _write_qa_report(self, doc: Document, qa_report: str) -> None:
         """寫入 QA 報告附件頁。"""
         doc.add_page_break()
         p_qa_title = doc.add_paragraph()
+        self._set_paragraph_spacing(p_qa_title)
         run_qa = p_qa_title.add_run("附件：AI 品質保證報告 (QA Report)")
-        self._set_font(run_qa, self._font_title, FONT_SIZE_SECTION_LABEL, bold=True)
+        self._set_font(run_qa, self._font_title, self._size_section, bold=True)
 
         # 清理特殊字元和 Markdown 標記
         clean_qa = self._sanitize_text(qa_report)

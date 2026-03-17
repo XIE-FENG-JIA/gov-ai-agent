@@ -88,21 +88,33 @@ MAX_FEEDBACK_LENGTH = 5000            # 審查回饋彙整的最大字元數
 # 文件格式常數
 # ============================================================
 
-# 公文輸出字體大小（單位：pt）
-# 注意：document_standards.json 設計規範定義為 16/14/12/10，
-# 此處實際匯出值每級加大 4pt 以提升 DOCX 可讀性。
-# 若需嚴格符合設計規範，請改為 16/14/12/10。
-FONT_SIZE_TITLE = 20          # 公文類型標題（設計規範：16pt）
-FONT_SIZE_SECTION_LABEL = 16  # 段落標籤（設計規範：14pt）
-FONT_SIZE_BODY = 14           # 本文內容（設計規範：12pt）
-FONT_SIZE_META = 12           # 檔頭資訊（設計規範：10pt）
+# 公文輸出字體大小（單位：pt）— 寬鬆模式（向後相容）
+# 每級比《文書處理手冊》規範加大 4pt，提升螢幕可讀性。
+FONT_SIZE_TITLE = 20          # 公文類型標題
+FONT_SIZE_SECTION_LABEL = 16  # 段落標籤
+FONT_SIZE_BODY = 14           # 本文內容
+FONT_SIZE_META = 12           # 檔頭資訊
 FONT_SIZE_LOG = 10            # QA 報告
 
-# 頁面邊距（單位：cm）
+# 公文輸出字體大小（單位：pt）— 嚴格模式（《文書處理手冊》規範）
+STRICT_FONT_SIZE_TITLE = 16          # 公文類型標題
+STRICT_FONT_SIZE_SECTION_LABEL = 14  # 段落標籤
+STRICT_FONT_SIZE_BODY = 12           # 本文內容
+STRICT_FONT_SIZE_META = 10           # 檔頭資訊
+
+# 頁面邊距（單位：cm）— A4 標準
+STRICT_PAGE_MARGIN = 2.54            # 上下左右均 2.54cm
+
+# 頁面邊距（單位：cm）— 寬鬆模式
 PAGE_MARGIN_TOP = 2.54
 PAGE_MARGIN_BOTTOM = 2.54
 PAGE_MARGIN_LEFT = 3.17       # 傳統裝訂側加寬
 PAGE_MARGIN_RIGHT = 3.17
+
+# 行距與段距（嚴格模式）
+STRICT_LINE_SPACING = 1.5            # 1.5 倍行距
+STRICT_SPACE_BEFORE_LINES = 0.5      # 段前 0.5 行
+STRICT_SPACE_AFTER_LINES = 0         # 段後 0 行
 
 # 首行縮排（單位：pt）
 FIRST_LINE_INDENT = 24
