@@ -14,13 +14,12 @@ import logging
 import re
 import threading
 import time
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 import zipfile
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 
 import requests
-import urllib3
 
 from src.knowledge.fetchers.constants import (
     GAZETTE_API_URL,
@@ -29,15 +28,7 @@ from src.knowledge.fetchers.constants import (
 )
 from src.core.constants import HTTP_DEFAULT_TIMEOUT
 
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
 logger = logging.getLogger(__name__)
-
-# 台灣政府 API SSL 問題
-_GOV_SSL_DOMAINS = frozenset({
-    "law.moj.gov.tw",
-    "gazette.nat.gov.tw",
-})
 
 _HTTP_TIMEOUT = HTTP_DEFAULT_TIMEOUT
 _MAX_RETRIES = 2
@@ -75,17 +66,20 @@ class CitationCheck:
 
 def _request_with_retry(url: str, *, timeout: int = _HTTP_TIMEOUT) -> requests.Response:
     """帶重試的 HTTP GET（獨立於 BaseFetcher，供本模組使用）。"""
-    from urllib.parse import urlparse
-    host = urlparse(url).hostname or ""
-    verify = host not in _GOV_SSL_DOMAINS
-
     last_exc: Exception | None = None
+    ssl_fallback = False
     for attempt in range(_MAX_RETRIES + 1):
         try:
-            resp = requests.get(url, timeout=timeout, verify=verify)
+            resp = requests.get(url, timeout=timeout, verify=not ssl_fallback)
             resp.raise_for_status()
             return resp
         except (requests.ConnectionError, requests.Timeout, requests.HTTPError) as exc:
+            # SSL 憑證錯誤時自動降級
+            if not ssl_fallback and ("SSL" in str(exc) or "CERTIFICATE" in str(exc)):
+                ssl_fallback = True
+                last_exc = exc
+                logger.warning("SSL 憑證驗證失敗 %s，降級為不驗證模式", url)
+                continue  # 立即重試，不消耗重試次數
             last_exc = exc
             if attempt < _MAX_RETRIES:
                 time.sleep(_BACKOFF_BASE ** attempt)
