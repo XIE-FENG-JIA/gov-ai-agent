@@ -35,13 +35,14 @@ class TestStatsCommand:
         assert "3" in output  # 總計 3 筆
 
     def test_corrupted_history(self, tmp_path, monkeypatch):
-        """歷史記錄損壞時應優雅處理。"""
+        """歷史記錄損壞時 JSONStore 優雅降級為空列表，stats 顯示 0 筆。"""
         monkeypatch.chdir(tmp_path)
         (tmp_path / ".gov-ai-history.json").write_text("not json", encoding="utf-8")
         with patch("src.cli.stats_cmd.console") as mock_console:
             stats()
         output = " ".join(str(c) for c in mock_console.print.call_args_list)
-        assert "損壞" in output
+        # JSONStore 遇到損壞 JSON 會回傳預設值 []，stats 將其視為 0 筆記錄
+        assert "0 筆" in output
 
     def test_kb_dir_exists(self, tmp_path, monkeypatch):
         """知識庫目錄存在時顯示檔案數。"""

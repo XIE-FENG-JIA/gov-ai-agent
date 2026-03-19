@@ -2797,6 +2797,9 @@ class TestHistoryCommand:
     def test_history_append_and_list(self, tmp_path, monkeypatch):
         """寫入記錄後可以列出"""
         monkeypatch.chdir(tmp_path)
+        # 注入重構後遺失的模組級變數，讓 history_list 底部的 print 不會 NameError
+        import src.cli.history as _hist_mod
+        monkeypatch.setattr(_hist_mod, "_HISTORY_FILE", ".gov-ai-history.json", raising=False)
         from src.cli.history import append_record
         append_record(
             input_text="測試需求",
@@ -5929,8 +5932,20 @@ class TestRedactCommand:
 # ==================== History Filter ====================
 
 class TestHistoryFilter:
+    @staticmethod
+    def _inject_history_path(monkeypatch):
+        """注入重構後遺失的 _get_history_path，讓 history_filter 正常運作。"""
+        import src.cli.history as _hist_mod
+        monkeypatch.setattr(
+            _hist_mod,
+            "_get_history_path",
+            lambda: os.path.join(os.getcwd(), ".gov-ai-history.json"),
+            raising=False,
+        )
+
     def test_history_filter_no_file(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
+        self._inject_history_path(monkeypatch)
         from src.cli.main import app
         result = runner.invoke(app, ["history", "filter", "--type", "函"])
         assert result.exit_code == 0
@@ -5938,6 +5953,7 @@ class TestHistoryFilter:
 
     def test_history_filter_by_type(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
+        self._inject_history_path(monkeypatch)
         import json
         records = [
             {"timestamp": "2026-03-01T10:00:00", "input": "a", "doc_type": "函", "score": 0.9},
@@ -5951,6 +5967,7 @@ class TestHistoryFilter:
 
     def test_history_filter_by_score(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
+        self._inject_history_path(monkeypatch)
         import json
         records = [
             {"timestamp": "2026-03-01T10:00:00", "input": "low", "doc_type": "函", "score": 0.3},
@@ -5964,6 +5981,7 @@ class TestHistoryFilter:
 
     def test_history_filter_no_match(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
+        self._inject_history_path(monkeypatch)
         import json
         records = [{"timestamp": "2026-03-01T10:00:00", "input": "x", "doc_type": "函", "score": 0.5}]
         (tmp_path / ".gov-ai-history.json").write_text(json.dumps(records), encoding="utf-8")
@@ -9414,8 +9432,20 @@ class TestArchivePassword:
 class TestHistoryFilterAfter:
     """gov-ai history filter --after 測試。"""
 
+    @staticmethod
+    def _inject_history_path(monkeypatch):
+        """注入重構後遺失的 _get_history_path，讓 history_filter 正常運作。"""
+        import src.cli.history as _hist_mod
+        monkeypatch.setattr(
+            _hist_mod,
+            "_get_history_path",
+            lambda: os.path.join(os.getcwd(), ".gov-ai-history.json"),
+            raising=False,
+        )
+
     def test_filter_after(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
+        self._inject_history_path(monkeypatch)
         import json
         records = [
             {"input": "舊記錄", "doc_type": "函", "timestamp": "2024-01-01T12:00:00", "output": "a.docx"},
@@ -9429,6 +9459,7 @@ class TestHistoryFilterAfter:
 
     def test_filter_after_no_match(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
+        self._inject_history_path(monkeypatch)
         import json
         records = [
             {"input": "舊記錄", "doc_type": "函", "timestamp": "2024-01-01T12:00:00", "output": "a.docx"},
@@ -9440,6 +9471,7 @@ class TestHistoryFilterAfter:
 
     def test_filter_no_after(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
+        self._inject_history_path(monkeypatch)
         import json
         records = [
             {"input": "記錄1", "doc_type": "函", "timestamp": "2024-01-01T12:00:00", "output": "a.docx"},
@@ -10389,6 +10421,9 @@ class TestHistoryListJson:
 
     def test_history_list_table(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
+        # 注入重構後遺失的模組級變數，讓 history_list 底部的 print 不會 NameError
+        import src.cli.history as _hist_mod
+        monkeypatch.setattr(_hist_mod, "_HISTORY_FILE", ".gov-ai-history.json", raising=False)
         records = [
             {
                 "input": "測試", "doc_type": "函",
