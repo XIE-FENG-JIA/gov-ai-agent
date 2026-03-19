@@ -13,10 +13,17 @@ _MISSING = object()  # sentinel：區分「值為 None」和「key 不存在」
 
 # 載入 .env 檔案
 def load_dotenv() -> None:
-    """從專案目錄載入 .env 檔案。
+    """從專案目錄載入 .env 檔案（自製輕量解析器）。
 
     僅讀取專案根目錄的 .env，不讀取使用者 home 目錄（避免
     跨專案環境汙染與測試隔離問題）。已存在的環境變數不會被覆蓋。
+
+    **支援格式限制**:
+    - 每行一組 ``KEY=VALUE``，不支援 ``export`` 前綴
+    - 值可用成對的單引號或雙引號包裹（``KEY="val"``、``KEY='val'``）
+    - 未引號的值支援行尾 ``#`` 內聯註解
+    - 不支援多行值、跳脫字元（``\\n``、``\\"`` 等不會被展開）
+    - ``#`` 開頭的行視為註解
     """
     env_path = Path(__file__).parent.parent.parent / ".env"
     if not env_path.exists():

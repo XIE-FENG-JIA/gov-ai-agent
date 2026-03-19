@@ -36,7 +36,7 @@ ENV API_HOST=0.0.0.0 \
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-    CMD python -c "import requests; r=requests.get('http://localhost:8000/api/v1/health'); exit(0 if r.status_code==200 else 1)"
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"
 
 CMD ["python", "-m", "uvicorn", "api_server:app", \
      "--host", "0.0.0.0", "--port", "8000", \

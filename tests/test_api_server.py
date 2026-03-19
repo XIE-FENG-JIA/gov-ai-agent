@@ -153,33 +153,47 @@ class TestRootAndHealth:
         assert data["embedding_status"] == "available"
 
     def test_health_check_degraded_when_llm_fails(self, client, mock_api_deps):
-        """LLM 失敗時健康檢查應回傳 degraded + 503"""
-        mock_api_deps["llm"].generate.side_effect = RuntimeError("LLM down")
-        response = client.get("/api/v1/health")
-        assert response.status_code == 503
-        data = response.json()
-        assert data["status"] in ("degraded", "unhealthy")
-        assert data["llm_status"] == "unavailable"
+        """LLM 不可用時健康檢查應回傳 degraded + 503"""
+        import api_server
+        original_llm = api_server._llm
+        api_server._llm = None
+        try:
+            response = client.get("/api/v1/health")
+            assert response.status_code == 503
+            data = response.json()
+            assert data["status"] in ("degraded", "unhealthy")
+            assert data["llm_status"] == "unavailable"
+        finally:
+            api_server._llm = original_llm
 
     def test_health_check_degraded_when_embed_fails(self, client, mock_api_deps):
-        """Embedding 失敗時健康檢查應回傳 degraded + 503"""
-        mock_api_deps["llm"].embed.side_effect = RuntimeError("Embed down")
-        response = client.get("/api/v1/health")
-        assert response.status_code == 503
-        data = response.json()
-        assert data["status"] in ("degraded", "unhealthy")
-        assert data["embedding_status"] == "unavailable"
+        """Embedding 不可用時健康檢查應回傳 degraded + 503"""
+        original_embed = getattr(mock_api_deps["llm"], "embed", None)
+        if hasattr(mock_api_deps["llm"], "embed"):
+            del mock_api_deps["llm"].embed
+        try:
+            response = client.get("/api/v1/health")
+            assert response.status_code == 503
+            data = response.json()
+            assert data["status"] in ("degraded", "unhealthy")
+            assert data["embedding_status"] == "unavailable"
+        finally:
+            if original_embed is not None:
+                mock_api_deps["llm"].embed = original_embed
 
     def test_health_check_unhealthy_when_all_fail(self, client, mock_api_deps):
         """所有元件失敗時應回傳 unhealthy + 503"""
         import api_server
-        mock_api_deps["llm"].generate.side_effect = RuntimeError("LLM down")
-        mock_api_deps["llm"].embed.side_effect = RuntimeError("Embed down")
-        api_server._kb = None  # KB 不可用
-        response = client.get("/api/v1/health")
-        assert response.status_code == 503
-        data = response.json()
-        assert data["status"] == "unhealthy"
+        original_llm = api_server._llm
+        api_server._llm = None
+        api_server._kb = None
+        try:
+            response = client.get("/api/v1/health")
+            assert response.status_code == 503
+            data = response.json()
+            assert data["status"] == "unhealthy"
+        finally:
+            api_server._llm = original_llm
 
     def test_health_check_healthy_returns_200(self, client, mock_api_deps):
         """所有元件正常時應回傳 healthy + 200"""

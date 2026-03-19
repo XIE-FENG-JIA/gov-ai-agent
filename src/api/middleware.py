@@ -190,6 +190,37 @@ _auto_key_lock = threading.Lock()
 _auto_key_generated = False
 
 
+def ensure_api_key(config) -> None:
+    """確保 api_keys 非空：若為空且認證啟用，則自動產生臨時 key。
+
+    此函式為公用入口，供 lifespan 啟動與中介層 lazy 呼叫共用，
+    避免 key 生成邏輯重複。呼叫端不需自行加鎖。
+
+    Args:
+        config: ConfigManager 實例（需支援 .get()）。
+    """
+    global _auto_key_generated
+    api_config = config.get("api", {})
+    if not api_config.get("auth_enabled", True):
+        return
+    api_keys = api_config.get("api_keys", [])
+    if api_keys:
+        return
+    with _auto_key_lock:
+        # Double-check after acquiring lock
+        api_keys = api_config.get("api_keys", [])
+        if api_keys or _auto_key_generated:
+            return
+        generated_key = secrets.token_urlsafe(32)
+        api_config["api_keys"] = [generated_key]
+        _auto_key_generated = True
+        logger.warning(
+            "API 認證已啟用但 api_keys 為空，已自動產生臨時 API key: %s*** "
+            "（請儘速在 config.yaml 的 api.api_keys 中設定永久 key）",
+            generated_key[:8],
+        )
+
+
 def _check_api_key(request: Request) -> bool | None:
     """檢查 API Key 認證。
 
@@ -198,7 +229,6 @@ def _check_api_key(request: Request) -> bool | None:
         True  — 認證通過
         False — 認證失敗
     """
-    global _auto_key_generated
     config = get_config()
     api_config = config.get("api", {})
 
@@ -207,24 +237,13 @@ def _check_api_key(request: Request) -> bool | None:
         return None
 
     # 公開路徑免認證（含 Web UI）
-    if request.url.path in _PUBLIC_PATHS or request.url.path.startswith("/ui"):
+    if request.url.path in _PUBLIC_PATHS or request.url.path.startswith("/ui/") or request.url.path == "/ui":
         return None
 
     api_keys: list[str] = api_config.get("api_keys", [])
     if not api_keys:
-        with _auto_key_lock:
-            # Double-check after acquiring lock
-            api_keys = api_config.get("api_keys", [])
-            if not api_keys and not _auto_key_generated:
-                generated_key = secrets.token_urlsafe(32)
-                api_config["api_keys"] = [generated_key]
-                _auto_key_generated = True
-                logger.warning(
-                    "API 認證已啟用但 api_keys 為空，已自動產生臨時 API key: %s*** "
-                    "（請儘速在 config.yaml 的 api.api_keys 中設定永久 key）",
-                    generated_key[:8],
-                )
-            api_keys = api_config.get("api_keys", [])
+        ensure_api_key(config)
+        api_keys = api_config.get("api_keys", [])
 
     # 嘗試從 Authorization: Bearer <key> 取得
     auth_header = request.headers.get("Authorization", "")
@@ -315,7 +334,7 @@ async def security_middleware(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
-    if request.url.path.startswith("/ui"):
+    if request.url.path.startswith("/ui/") or request.url.path == "/ui":
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; script-src 'self' 'unsafe-inline'; "
             "style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'"

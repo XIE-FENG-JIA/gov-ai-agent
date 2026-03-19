@@ -42,6 +42,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# 批次處理並行度控制（模組級，避免每次請求重建）
+_BATCH_SEMAPHORE = asyncio.Semaphore(3)
+
 
 # ============================================================
 # 共用工作流程
@@ -245,13 +248,12 @@ async def run_batch(request: BatchRequest) -> BatchResponse:
     """
     batch_start = time.monotonic()
 
-    # 並行執行：Semaphore 控制同時最多 3 筆，避免 ThreadPoolExecutor 過載
-    semaphore = asyncio.Semaphore(3)
+    # 並行執行：模組級 Semaphore 控制同時最多 3 筆，避免 ThreadPoolExecutor 過載
 
     async def _process_item(item) -> BatchItemResult:
         session_id = str(uuid.uuid4())[:SESSION_ID_LENGTH]
         item_start = time.monotonic()
-        async with semaphore:
+        async with _BATCH_SEMAPHORE:
             try:
                 llm = get_llm()
                 kb = get_kb()

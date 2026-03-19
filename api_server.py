@@ -23,7 +23,6 @@ n8n 呼叫方式：
 
 import logging
 import os
-import secrets
 import sys
 import threading
 import types
@@ -203,26 +202,7 @@ def _preflight_check() -> None:
 
 def _ensure_api_key() -> None:
     """啟動時檢查 api_keys，若為空則提前生成，避免 Web UI 呼叫 API 時 401。"""
-    config = get_config()
-    api_config = config.get("api", {})
-    if not api_config.get("auth_enabled", True):
-        return
-    api_keys = api_config.get("api_keys", [])
-    if api_keys:
-        return
-    with _mw._auto_key_lock:
-        # Double-check after acquiring lock
-        api_keys = api_config.get("api_keys", [])
-        if api_keys or _mw._auto_key_generated:
-            return
-        generated_key = secrets.token_urlsafe(32)
-        api_config["api_keys"] = [generated_key]
-        _mw._auto_key_generated = True
-        logger.warning(
-            "LIFESPAN: API 認證已啟用但 api_keys 為空，已自動產生臨時 API key: %s*** "
-            "（請儘速在 config.yaml 的 api.api_keys 中設定永久 key）",
-            generated_key[:8],
-        )
+    _mw.ensure_api_key(get_config())
 
 
 def _warmup_law_cache() -> None:
@@ -236,11 +216,30 @@ def _warmup_law_cache() -> None:
         logger.warning("法規快取預熱失敗，將於首次使用時重試。", exc_info=True)
 
 
+def _cleanup_old_outputs() -> None:
+    """掃描 output/ 目錄，刪除超過 24 小時的 .docx 檔案。"""
+    import pathlib
+    import time as _time
+
+    output_dir = pathlib.Path("output")
+    if not output_dir.exists():
+        return
+    cutoff = _time.time() - 86400  # 24 hours
+    count = 0
+    for f in output_dir.glob("*.docx"):
+        if f.stat().st_mtime < cutoff:
+            f.unlink()
+            count += 1
+    if count:
+        logger.info("清理 %d 個超過 24 小時的輸出檔案", count)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """在啟動時初始化共享資源，關閉時清理。"""
     _setup_logging()
     logger.info("正在初始化 API 資源...")
+    _cleanup_old_outputs()
     _preflight_check()
     get_config()
     _ensure_api_key()
@@ -345,7 +344,11 @@ app.include_router(knowledge.router)
 
 
 class _BackwardCompatModule(types.ModuleType):
-    """包裝原始模組，讓全域狀態讀寫能透明代理到子模組。"""
+    """包裝原始模組，讓全域狀態讀寫能透明代理到子模組。
+
+    過渡方案：供舊測試直接 patch api_server._config 等全域狀態用。
+    長期應更新測試改為 import src.api.dependencies，屆時可移除此類別。
+    """
 
     # 需要代理到 dependencies 的狀態屬性
     _DEPS_ATTRS = frozenset({"_config", "_llm", "_kb", "_org_memory", "_init_lock"})

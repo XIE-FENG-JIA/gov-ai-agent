@@ -12,7 +12,6 @@ from fastapi.responses import JSONResponse
 
 from src.core.constants import API_VERSION, API_MAX_WORKERS
 from src.api.dependencies import get_config, get_raw_kb, get_raw_llm
-from src.api.helpers import run_in_executor
 import src.api.middleware as _mw
 from src.api.middleware import _RATE_LIMIT_RPM
 
@@ -64,30 +63,22 @@ async def health_check():
                 logger.warning("KB health check 失敗: %s", e)
                 kb_status = "degraded"
 
-    # 檢查 LLM 連線（5 秒逾時）
-    _HEALTH_TIMEOUT = 5
+    # 檢查 LLM 實例是否存在（不做實際呼叫，避免浪費 token）
     llm_status = "unavailable"
     if _llm is not None:
-        try:
-            llm_result = await run_in_executor(
-                lambda: _llm.generate("ping"), timeout=_HEALTH_TIMEOUT,
-            )
-            llm_status = "available" if llm_result else "degraded"
-        except Exception as e:
-            logger.warning("LLM health check 失敗: %s", e)
-            llm_status = "unavailable"
+        if hasattr(_llm, "check_connectivity"):
+            try:
+                llm_status = "available" if _llm.check_connectivity() else "degraded"
+            except Exception as e:
+                logger.warning("LLM connectivity check 失敗: %s", e)
+                llm_status = "degraded"
+        else:
+            llm_status = "available"
 
-    # 檢查 embedding 模型（5 秒逾時）
+    # 檢查 embedding 能力（僅檢查方法是否存在）
     embedding_status = "unavailable"
     if _llm is not None:
-        try:
-            embed_result = await run_in_executor(
-                lambda: _llm.embed("test"), timeout=_HEALTH_TIMEOUT,
-            )
-            embedding_status = "available" if embed_result else "degraded"
-        except Exception as e:
-            logger.warning("Embedding health check 失敗: %s", e)
-            embedding_status = "unavailable"
+        embedding_status = "available" if hasattr(_llm, "embed") else "unavailable"
 
     # 判定整體狀態
     component_statuses = [kb_status, llm_status, embedding_status]
@@ -108,7 +99,7 @@ async def health_check():
         "llm_status": llm_status,
         "embedding_status": embedding_status,
         "rate_limit_rpm": _RATE_LIMIT_RPM,
-        "auth_enabled": config.get("api", {}).get("auth_enabled", False),
+        "auth_enabled": config.get("api", {}).get("auth_enabled", True),
     }
 
     if overall_status != "healthy":
