@@ -135,7 +135,8 @@ class ConfigManager:
                 "base_url": "http://localhost:11434"
             },
             "knowledge_base": {
-                "path": "./kb_data"
+                "path": "./kb_data",
+                "contextual_retrieval": False,
             }
         }
         # Only save if it doesn't exist to avoid overwriting

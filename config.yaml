@@ -3,6 +3,7 @@ api:
   api_keys: []
 knowledge_base:
   path: ./kb_data
+  contextual_retrieval: false  # 啟用 Contextual Retrieval（匯入時為每個 chunk 加 LLM 生成的上下文摘要前綴）
 llm:
   api_key: ''
   base_url: http://localhost:11434

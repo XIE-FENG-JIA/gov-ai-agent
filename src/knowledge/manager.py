@@ -19,9 +19,15 @@ _CACHE_MAXSIZE = 256   # 最多快取 256 筆查詢
 class KnowledgeBaseManager:
     """管理本地 ChromaDB 知識庫。"""
 
-    def __init__(self, persist_path: str, llm_provider: LLMProvider) -> None:
+    def __init__(
+        self,
+        persist_path: str,
+        llm_provider: LLMProvider,
+        contextual_retrieval: bool = False,
+    ) -> None:
         self.persist_path = persist_path
         self.llm_provider = llm_provider
+        self.contextual_retrieval = contextual_retrieval
         self._available = True
         # 搜尋快取（TTL 5 分鐘，最多 256 筆）
         self._search_cache: TTLCache = TTLCache(maxsize=_CACHE_MAXSIZE, ttl=_CACHE_TTL)
@@ -56,8 +62,25 @@ class KnowledgeBaseManager:
             self.regulations_collection = None
             self.policies_collection = None
 
-    def add_document(self, content: str, metadata: dict[str, Any], collection_name: str = "examples") -> str | None:
-        """將文件新增至指定的集合。"""
+    def add_document(
+        self,
+        content: str,
+        metadata: dict[str, Any],
+        collection_name: str = "examples",
+        full_document: str | None = None,
+        chunk_index: int | None = None,
+        total_chunks: int | None = None,
+    ) -> str | None:
+        """將文件新增至指定的集合。
+
+        Args:
+            content: 要匯入的文字內容（單一 chunk）。
+            metadata: ChromaDB 相容的 metadata 字典。
+            collection_name: 目標集合名稱。
+            full_document: 完整原始文件內容（供 Contextual Retrieval 使用）。
+            chunk_index: 此 chunk 在原始文件中的索引（從 0 開始）。
+            total_chunks: 原始文件的 chunk 總數。
+        """
         if not self._available:
             logger.warning("知識庫不可用，無法新增文件。")
             return None
@@ -66,6 +89,12 @@ class KnowledgeBaseManager:
         if not content or not content.strip():
             logger.warning("無法新增空白內容的文件")
             return None
+
+        # Contextual Retrieval：為 chunk 加入上下文摘要前綴
+        if self.contextual_retrieval and full_document:
+            idx = chunk_index if chunk_index is not None else 0
+            total = total_chunks if total_chunks is not None else 1
+            content = self._enrich_with_context(content, full_document, idx, total)
 
         doc_id = str(uuid.uuid4())
 
@@ -96,6 +125,45 @@ class KnowledgeBaseManager:
         # 新增文件後清除快取，確保後續搜尋能看到新資料
         self.invalidate_cache()
         return doc_id
+
+    # ------------------------------------------------------------------
+    # Contextual Retrieval — 為每個 chunk 加入上下文摘要前綴
+    # ------------------------------------------------------------------
+
+    def _enrich_with_context(
+        self, chunk: str, full_doc: str, idx: int, total: int
+    ) -> str:
+        """為 chunk 加入上下文摘要前綴（Contextual Retrieval）。
+
+        使用 LLM 生成一段簡短描述，說明此 chunk 在完整文件中的角色，
+        然後以 ``[上下文: ...]`` 前綴的形式附加在 chunk 開頭。
+        這能讓 embedding 更準確地理解 chunk 的語境，降低檢索錯誤率。
+
+        若 LLM 呼叫失敗或回傳不合理內容，會 graceful fallback 到原始 chunk。
+        """
+        if not self.llm_provider:
+            return chunk
+
+        prompt = (
+            f"以下是一份完整公文的第 {idx + 1}/{total} 段。"
+            "請用一句話（30字內）描述這段內容在整份公文中的角色和上下文。"
+            "只輸出描述，不要任何其他文字。\n\n"
+            f"【完整公文摘要】{full_doc[:500]}\n\n"
+            f"【本段內容】{chunk}"
+        )
+        try:
+            context = self.llm_provider.generate(prompt, temperature=0.1, max_tokens=80)
+            if context and len(context.strip()) < 100:
+                enriched = f"[上下文: {context.strip()}] {chunk}"
+                logger.debug(
+                    "Contextual enrichment 完成 (chunk %d/%d): %s",
+                    idx + 1, total, context.strip()[:50],
+                )
+                return enriched
+            logger.debug("Contextual enrichment 回傳過長或為空，使用原始 chunk")
+        except Exception as e:
+            logger.warning("Contextual enrichment 失敗，使用原始 chunk: %s", e)
+        return chunk
 
     @staticmethod
     def _format_query_results(results: dict) -> list[dict]:

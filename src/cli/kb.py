@@ -59,7 +59,12 @@ def _init_kb() -> KnowledgeBaseManager:
         raise typer.Exit(1)
     llm = get_llm_factory(llm_config, full_config=config)
     kb_path = config.get("knowledge_base", {}).get("path", "./kb_data")
-    return KnowledgeBaseManager(persist_path=kb_path, llm_provider=llm)
+    contextual_retrieval = config.get("knowledge_base", {}).get("contextual_retrieval", False)
+    return KnowledgeBaseManager(
+        persist_path=kb_path,
+        llm_provider=llm,
+        contextual_retrieval=bool(contextual_retrieval),
+    )
 
 
 @app.command()
@@ -67,7 +72,7 @@ def ingest(
     source_dir: str = typer.Option("./kb_data/examples", help="要匯入的 Markdown 檔案所在目錄"),
     collection: str = typer.Option("examples", "--collection", "-c", help="目標集合（examples/regulations/policies）"),
     reset: bool = typer.Option(False, help="匯入前重設資料庫（注意：將清除所有已匯入的資料）")
-):
+) -> None:
     """
     將 Markdown 檔案匯入知識庫。
 
@@ -93,11 +98,20 @@ def ingest(
     files = list(source_path.glob("*.md"))
     console.print(f"在 {source_dir} 中找到 {len(files)} 個 Markdown 檔案")
 
+    # Contextual Retrieval 提示
+    if kb.contextual_retrieval:
+        console.print(
+            "[bold cyan][Contextual Retrieval] 已啟用，正在為 chunk 加入上下文...[/bold cyan]"
+        )
+        console.print(
+            "[dim]每個 chunk 會透過 LLM 生成上下文摘要前綴，匯入速度可能較慢。[/dim]"
+        )
+
     success_count = 0
     deprecated_count = 0
     failed_count = 0
     with typer.progressbar(files, label=f"正在匯入至 '{collection}'") as progress:
-        for file_path in progress:
+        for file_idx, file_path in enumerate(progress):
             metadata, content = parse_markdown_with_metadata(file_path)
 
             # 跳過已棄用的文件
@@ -114,7 +128,22 @@ def ingest(
 
             clean_metadata = _sanitize_metadata(metadata)
 
-            doc_id = kb.add_document(content, clean_metadata, collection_name=collection)
+            # 讀取完整文件內容供 Contextual Retrieval 使用
+            full_doc_content: str | None = None
+            if kb.contextual_retrieval:
+                try:
+                    full_doc_content = file_path.read_text(encoding="utf-8")
+                except Exception:
+                    full_doc_content = content  # fallback
+
+            doc_id = kb.add_document(
+                content,
+                clean_metadata,
+                collection_name=collection,
+                full_document=full_doc_content,
+                chunk_index=file_idx,
+                total_chunks=len(files),
+            )
             if doc_id:
                 success_count += 1
             else:
@@ -136,7 +165,7 @@ def ingest(
 def search(
     query: str = typer.Argument(..., help="搜尋關鍵字（語意搜尋，不限完全匹配）"),
     limit: int = typer.Option(3, "--limit", "-n", help="回傳結果數量", min=1, max=100)
-):
+) -> None:
     """
     在知識庫中搜尋相關文件（語意搜尋）。
 
@@ -200,11 +229,32 @@ def search(
 
 def _ingest_fetch_results(results: list, kb: KnowledgeBaseManager) -> int:
     """將 FetchResult 清單匯入知識庫，回傳成功筆數。"""
+    if kb.contextual_retrieval:
+        console.print(
+            "[bold cyan][Contextual Retrieval] 已啟用，匯入時將為 chunk 加入上下文...[/bold cyan]"
+        )
+    total = len(results)
     success = 0
-    for r in results:
+    for idx, r in enumerate(results):
         metadata, content = parse_markdown_with_metadata(r.file_path)
         clean = _sanitize_metadata(metadata)
-        if kb.add_document(content, clean, collection_name=r.collection):
+
+        # 讀取完整文件供 Contextual Retrieval 使用
+        full_doc: str | None = None
+        if kb.contextual_retrieval:
+            try:
+                full_doc = r.file_path.read_text(encoding="utf-8")
+            except Exception:
+                full_doc = content
+
+        if kb.add_document(
+            content,
+            clean,
+            collection_name=r.collection,
+            full_document=full_doc,
+            chunk_index=idx,
+            total_chunks=total,
+        ):
             success += 1
     return success
 
@@ -230,7 +280,7 @@ def fetch_laws(
         "--bulk",
         help="使用 bulk XML 下載模式（全量下載）",
     ),
-):
+) -> None:
     """
     從全國法規資料庫擷取法規全文（Level A 來源）。
 
@@ -291,7 +341,7 @@ def fetch_gazette(
         "--no-pdf",
         help="bulk 模式下跳過 PDF 全文提取",
     ),
-):
+) -> None:
     """
     從行政院公報擷取近期公報（Level A 來源）。
 
@@ -344,7 +394,7 @@ def fetch_opendata(
         "-I",
         help="擷取後自動匯入知識庫",
     ),
-):
+) -> None:
     """
     從政府資料開放平臺搜尋資料集（Level B 來源）。
 
@@ -374,7 +424,7 @@ def fetch_opendata(
 
 
 @app.command("list")
-def list_kb():
+def list_kb() -> None:
     """
     列出知識庫統計資訊和各集合的文件數量。
 
@@ -441,7 +491,7 @@ def fetch_npa(
         "-I",
         help="擷取後自動匯入知識庫",
     ),
-):
+) -> None:
     """
     從警政署 OPEN DATA 擷取警政資料集（Level B 來源）。
 
@@ -475,7 +525,7 @@ def fetch_legislative(
     do_ingest: bool = typer.Option(
         False, "--ingest", "-I", help="擷取後自動匯入知識庫",
     ),
-):
+) -> None:
     """
     從立法院開放資料擷取議案（Level B 來源）。
 
@@ -507,7 +557,7 @@ def fetch_debates(
     do_ingest: bool = typer.Option(
         False, "--ingest", "-I", help="擷取後自動匯入知識庫",
     ),
-):
+) -> None:
     """
     從立法院 g0v API 擷取質詢與會議紀錄（Level B 來源）。
 
@@ -541,7 +591,7 @@ def fetch_procurement(
     do_ingest: bool = typer.Option(
         False, "--ingest", "-I", help="擷取後自動匯入知識庫",
     ),
-):
+) -> None:
     """
     從 g0v 採購 API 擷取政府採購公告（Level B 來源）。
 
@@ -575,7 +625,7 @@ def fetch_judicial(
     do_ingest: bool = typer.Option(
         False, "--ingest", "-I", help="擷取後自動匯入知識庫",
     ),
-):
+) -> None:
     """
     從司法院裁判書 API 擷取裁判書全文（Level A 來源，需設定環境變數）。
 
@@ -611,7 +661,7 @@ def fetch_interpretations(
     do_ingest: bool = typer.Option(
         False, "--ingest", "-I", help="擷取後自動匯入知識庫",
     ),
-):
+) -> None:
     """
     從法務部主管法規查詢系統擷取行政函釋（Level A 來源）。
 
@@ -646,7 +696,7 @@ def fetch_local(
     do_ingest: bool = typer.Option(
         False, "--ingest", "-I", help="擷取後自動匯入知識庫",
     ),
-):
+) -> None:
     """
     從地方法規查詢系統擷取地方自治法規（Level A 來源）。
 
@@ -678,7 +728,7 @@ def fetch_examyuan(
     do_ingest: bool = typer.Option(
         False, "--ingest", "-I", help="擷取後自動匯入知識庫",
     ),
-):
+) -> None:
     """
     從考試院法規資料庫擷取人事法規（Level B 來源）。
 
@@ -710,7 +760,7 @@ def fetch_statistics(
     do_ingest: bool = typer.Option(
         False, "--ingest", "-I", help="擷取後自動匯入知識庫",
     ),
-):
+) -> None:
     """
     從主計總處統計發布訊息擷取統計通報（Level B 來源）。
 
@@ -742,7 +792,7 @@ def fetch_controlyuan(
     do_ingest: bool = typer.Option(
         False, "--ingest", "-I", help="擷取後自動匯入知識庫",
     ),
-):
+) -> None:
     """
     從監察院擷取糾正案文（Level A 來源）。
 
@@ -768,7 +818,7 @@ def fetch_controlyuan(
 def list_docs(
     collection: str = typer.Option("all", "--collection", "-c", help="集合名稱（examples/regulations/policies/all）"),
     limit: int = typer.Option(50, "--limit", "-n", help="最大顯示數量"),
-):
+) -> None:
     """
     列出知識庫中所有文件的詳細資訊。
 
@@ -842,7 +892,7 @@ def delete_doc(
         "examples", "--collection", "-c",
         help="文件所在集合（examples/regulations/policies）",
     ),
-):
+) -> None:
     """
     從知識庫刪除單筆文件。
 
@@ -887,7 +937,7 @@ def delete_doc(
 
 
 @app.command("collections")
-def list_collections():
+def list_collections() -> None:
     """
     列出知識庫中所有集合及其文件數量。
 
@@ -924,7 +974,7 @@ def list_collections():
 
 
 @app.command("details")
-def details():
+def details() -> None:
     """
     顯示知識庫的詳細統計資訊，包含儲存路徑和大小。
 
@@ -974,7 +1024,7 @@ def details():
 @app.command("export-json")
 def export_data(
     output_path: str = typer.Option("kb_export.json", "--output", "-o", help="匯出檔案路徑"),
-):
+) -> None:
     """
     將知識庫統計和文件清單匯出為 JSON。
 
@@ -1028,7 +1078,7 @@ def export_data(
 @app.command(name="export")
 def kb_export(
     output: str = typer.Option("kb_export.zip", "-o", "--output", help="匯出 ZIP 路徑"),
-):
+) -> None:
     """將知識庫資料匯出為 ZIP 壓縮檔。"""
     import zipfile
     try:
@@ -1066,7 +1116,7 @@ def kb_export(
 
 
 @app.command()
-def info():
+def info() -> None:
     """顯示知識庫資訊總覽。"""
     import os
     from datetime import datetime
@@ -1126,7 +1176,7 @@ def info():
 @app.command(name="stats-detail")
 def stats_detail(
     kb_path: str = typer.Option("./kb_data", "--path", "-p", help="知識庫路徑"),
-):
+) -> None:
     """
     顯示知識庫目錄的詳細統計資訊（各子目錄的檔案數、大小、最後修改時間）。
 
@@ -1176,7 +1226,7 @@ def stats_detail(
 @app.command(name="list-sources")
 def list_sources(
     kb_path: str = typer.Option("./kb_data", "--path", "-p", help="知識庫路徑"),
-):
+) -> None:
     """列出知識庫中的所有來源檔案。"""
     if not os.path.isdir(kb_path):
         console.print(f"[red]找不到知識庫目錄：{kb_path}[/red]")

@@ -6,6 +6,7 @@ from src.core.llm import LLMProvider
 from src.core.models import PublicDocRequirement
 from src.core.constants import (
     LLM_TEMPERATURE_CREATIVE,
+    LLM_TEMPERATURE_PRECISE,
     KB_WRITER_RESULTS,
     MAX_EXAMPLE_LENGTH,
     escape_prompt_tag,
@@ -25,19 +26,165 @@ class WriterAgent:
         self.llm = llm_provider
         self.kb = kb_manager
 
+    # ------------------------------------------------------------------
+    # Agentic RAG：搜尋 → 評估相關性 → 精煉查詢 → 重新搜尋
+    # ------------------------------------------------------------------
+
+    def _search_with_refinement(
+        self,
+        query: str,
+        kb: KnowledgeBaseManager,
+        n_results: int = 5,
+        max_retries: int = 2,
+        source_level: str | None = None,
+    ) -> list[dict]:
+        """Agentic RAG：自主判斷搜尋結果品質，不佳則精煉查詢重新搜尋。
+
+        Args:
+            query: 搜尋查詢
+            kb: 知識庫管理器
+            n_results: 回傳筆數
+            max_retries: 最多精煉次數（防止無限迴圈）
+            source_level: 來源等級篩選（"A" 或 None）
+
+        Returns:
+            搜尋結果列表
+        """
+        results = kb.search_hybrid(query, n_results=n_results, source_level=source_level)
+
+        for attempt in range(max_retries):
+            if not results or not self._check_relevance(query, results):
+                # 用 LLM 精煉查詢
+                refined = self._refine_query(query, results, attempt + 1)
+                if refined and refined != query:
+                    logger.info(
+                        "Agentic RAG 精煉 #%d: '%s' → '%s'",
+                        attempt + 1, query[:40], refined[:40],
+                    )
+                    console.print(
+                        f"[yellow]搜尋結果相關性不足，精煉查詢 (第 {attempt + 1} 次)...[/yellow]"
+                    )
+                    results = kb.search_hybrid(
+                        refined, n_results=n_results, source_level=source_level,
+                    )
+                    query = refined
+                else:
+                    logger.info(
+                        "Agentic RAG: 精煉 #%d 未產生新查詢，停止迭代",
+                        attempt + 1,
+                    )
+                    break
+            else:
+                logger.info(
+                    "Agentic RAG: 搜尋結果通過相關性檢查 (attempt=%d, results=%d)",
+                    attempt, len(results),
+                )
+                break
+
+        return results
+
+    def _check_relevance(self, query: str, results: list[dict]) -> bool:
+        """檢查搜尋結果是否與查詢相關。
+
+        使用 ChromaDB 的 distance 指標：cosine distance 越小越相關。
+        閾值 1.2 表示平均餘弦距離在可接受範圍內。
+
+        Returns:
+            True 表示結果相關，False 表示需要精煉查詢
+        """
+        if not results:
+            return False
+
+        # 計算平均距離（ChromaDB cosine distance，範圍 0~2）
+        distances = [r.get("distance", 1.5) for r in results]
+        avg_distance = sum(distances) / len(distances)
+
+        # 同時檢查最佳結果：至少有一筆距離 < 1.0 才算有價值
+        min_distance = min(distances)
+
+        is_relevant = avg_distance < 1.2 and min_distance < 1.0
+
+        logger.debug(
+            "Agentic RAG 相關性檢查: avg_dist=%.3f, min_dist=%.3f, relevant=%s",
+            avg_distance, min_distance, is_relevant,
+        )
+        return is_relevant
+
+    def _refine_query(
+        self, original_query: str, poor_results: list[dict], attempt: int,
+    ) -> str:
+        """用 LLM 精煉搜尋查詢，嘗試用不同關鍵字找到更相關的結果。
+
+        Args:
+            original_query: 原始查詢
+            poor_results: 品質不佳的搜尋結果（供 LLM 參考）
+            attempt: 第幾次精煉
+
+        Returns:
+            精煉後的查詢字串；失敗時回傳原始查詢
+        """
+        # 整理搜尋結果摘要供 LLM 參考
+        result_summaries = ""
+        if poor_results:
+            snippets = []
+            for i, r in enumerate(poor_results[:3], 1):
+                title = r.get("metadata", {}).get("title", "無標題")
+                dist = r.get("distance", "N/A")
+                content_preview = (r.get("content", "") or "")[:80]
+                snippets.append(
+                    f"  {i}. [{title}] (距離: {dist}) {content_preview}..."
+                )
+            result_summaries = "\n".join(snippets)
+
+        prompt = (
+            "你是公文知識庫搜尋助手。以下搜尋查詢未找到足夠相關的結果，"
+            "請用不同的關鍵字或同義詞重新表述查詢。\n\n"
+            f"原始查詢: {original_query}\n"
+            f"精煉次數: 第 {attempt} 次\n"
+        )
+        if result_summaries:
+            prompt += f"\n目前搜尋結果（相關性不足）:\n{result_summaries}\n"
+        prompt += (
+            "\n請分析原始查詢和搜尋結果，用不同的關鍵字重新表述查詢，"
+            "以找到更相關的公文範例或法規。\n"
+            "策略：嘗試使用同義詞、上位概念、或更具體的法規名稱。\n"
+            "只輸出新的查詢文字，不要任何其他說明。"
+        )
+
+        try:
+            refined = self.llm.generate(prompt, temperature=LLM_TEMPERATURE_PRECISE)
+            refined = (refined or "").strip()
+            # 安全檢查：精煉結果不應過長或過短
+            if refined and 2 <= len(refined) <= 200 and refined != original_query:
+                return refined
+            logger.debug(
+                "Agentic RAG: 精煉結果無效或與原查詢相同 (len=%d)",
+                len(refined) if refined else 0,
+            )
+            return original_query
+        except Exception as exc:
+            logger.warning("Agentic RAG 精煉查詢失敗: %s", exc)
+            return original_query
+
+    # ------------------------------------------------------------------
+
     def write_draft(self, requirement: PublicDocRequirement) -> str:
         """
         根據需求和檢索到的範例產生公文草稿。
         """
 
-        # 1. 檢索相關範例（兩段式檢索：先 Level A，再補足所有來源）
+        # 1. 檢索相關範例（兩段式 Agentic RAG：先 Level A，再補足所有來源）
         console.print(f"[cyan]正在搜尋與「{requirement.subject}」相關的範例...[/cyan]")
         query = f"{requirement.doc_type} {requirement.subject}"
         try:
-            # 優先搜尋 Level A 來源
-            level_a_results = self.kb.search_hybrid(query, n_results=3, source_level="A")
-            # 再搜尋所有來源補足
-            all_results = self.kb.search_hybrid(query, n_results=KB_WRITER_RESULTS)
+            # 優先搜尋 Level A 來源（含 Agentic RAG 精煉）
+            level_a_results = self._search_with_refinement(
+                query, self.kb, n_results=3, max_retries=2, source_level="A",
+            )
+            # 再搜尋所有來源補足（含 Agentic RAG 精煉）
+            all_results = self._search_with_refinement(
+                query, self.kb, n_results=KB_WRITER_RESULTS, max_retries=2,
+            )
             # 合併去重（優先 Level A）
             seen_ids: set[str] = set()
             examples: list[dict] = []
