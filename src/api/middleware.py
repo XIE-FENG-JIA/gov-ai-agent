@@ -6,6 +6,7 @@
 import logging
 import os
 import re
+import secrets
 import time
 import threading
 import uuid
@@ -171,6 +172,10 @@ _PUBLIC_PATHS: frozenset[str] = frozenset({
 })
 
 
+_auto_key_lock = threading.Lock()
+_auto_key_generated = False
+
+
 def _check_api_key(request: Request) -> bool | None:
     """檢查 API Key 認證。
 
@@ -179,11 +184,12 @@ def _check_api_key(request: Request) -> bool | None:
         True  — 認證通過
         False — 認證失敗
     """
+    global _auto_key_generated
     config = get_config()
     api_config = config.get("api", {})
 
-    # 預設停用認證（向後相容）
-    if not api_config.get("auth_enabled", False):
+    # 預設啟用認證（安全優先：未明確設定時視為啟用）
+    if not api_config.get("auth_enabled", True):
         return None
 
     # 公開路徑免認證
@@ -192,12 +198,19 @@ def _check_api_key(request: Request) -> bool | None:
 
     api_keys: list[str] = api_config.get("api_keys", [])
     if not api_keys:
-        # 啟用認證但未設定任何 key → 記錄警告，放行（避免鎖死自己）
-        logger.warning(
-            "API 認證已啟用但 api_keys 為空，所有請求將被放行。"
-            "請在 config.yaml 的 api.api_keys 中設定至少一組 key。"
-        )
-        return None
+        with _auto_key_lock:
+            # Double-check after acquiring lock
+            api_keys = api_config.get("api_keys", [])
+            if not api_keys and not _auto_key_generated:
+                generated_key = secrets.token_urlsafe(32)
+                api_config["api_keys"] = [generated_key]
+                _auto_key_generated = True
+                logger.warning(
+                    "API 認證已啟用但 api_keys 為空，已自動產生臨時 API key: %s*** "
+                    "（請儘速在 config.yaml 的 api.api_keys 中設定永久 key）",
+                    generated_key[:8],
+                )
+            api_keys = api_config.get("api_keys", [])
 
     # 嘗試從 Authorization: Bearer <key> 取得
     auth_header = request.headers.get("Authorization", "")

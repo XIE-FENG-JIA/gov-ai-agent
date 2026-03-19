@@ -9,6 +9,8 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+_MISSING = object()  # sentinel：區分「值為 None」和「key 不存在」
+
 # 載入 .env 檔案
 def load_dotenv() -> None:
     """從專案目錄載入 .env 檔案。
@@ -162,7 +164,9 @@ class ConfigManager:
         value = self.config
         for k in keys:
             if isinstance(value, dict):
-                value = value.get(k)
+                value = value.get(k, _MISSING)
+                if value is _MISSING:
+                    return default
             else:
                 return default
-        return value if value is not None else default
+        return value

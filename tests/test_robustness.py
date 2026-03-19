@@ -2780,11 +2780,13 @@ class TestProductionReadinessIteration2:
 
     def test_middleware_logs_non_health_requests(self, caplog):
         """非 health check 的請求應產生日誌"""
+        from unittest.mock import patch
         from fastapi.testclient import TestClient
         from api_server import app
 
         client = TestClient(app)
-        with caplog.at_level(logging.INFO):
+        with caplog.at_level(logging.INFO), \
+             patch("src.api.middleware._check_api_key", return_value=None):
             # POST 到不存在的 endpoint 會回 422/404，但仍應記錄日誌
             client.post(
                 "/api/v1/agent/requirement",

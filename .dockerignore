@@ -1,4 +1,5 @@
 .env
+config.yaml
 .git
 .github
 .vscode
