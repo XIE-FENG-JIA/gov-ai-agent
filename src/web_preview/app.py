@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from src.core.constants import MAX_USER_INPUT_LENGTH
+from src.api.dependencies import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +31,19 @@ web_app = FastAPI(docs_url=None, redoc_url=None)
 # 靜態檔案與模板
 web_app.mount("/static", StaticFiles(directory=str(_DIR / "static")), name="web_static")
 templates = Jinja2Templates(directory=str(_DIR / "templates"))
+templates.env.autoescape = True
 
 # 後端 API 基底 URL（透過環境變數可覆蓋）
 _API_BASE = os.environ.get("WEB_UI_API_BASE", "http://127.0.0.1:8000")
+
+
+def _api_headers() -> dict[str, str]:
+    """取得呼叫內部 API 所需的認證標頭。"""
+    config = get_config()
+    api_keys = config.get("api", {}).get("api_keys", [])
+    if api_keys:
+        return {"Authorization": f"Bearer {api_keys[0]}"}
+    return {}
 
 # SSRF 防護：僅允許本機地址與安全協議
 _parsed = urlparse(_API_BASE)
@@ -105,6 +116,7 @@ async def generate(
         async with httpx.AsyncClient(timeout=180.0) as client:
             resp = await client.post(
                 f"{_API_BASE}/api/v1/meeting",
+                headers=_api_headers(),
                 json={
                     "user_input": effective_input,
                     "skip_review": skip_review,
@@ -140,7 +152,7 @@ async def kb_page(request: Request):
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(f"{_API_BASE}/api/v1/health")
+            resp = await client.get(f"{_API_BASE}/api/v1/health", headers=_api_headers())
             if resp.status_code == 200:
                 data = resp.json()
                 stats = {
@@ -175,6 +187,7 @@ async def kb_search(
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.post(
                 f"{_API_BASE}/api/v1/kb/search",
+                headers=_api_headers(),
                 json={
                     "query": query,
                     "n_results": n_results,
@@ -245,7 +258,7 @@ async def config_page(request: Request):
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(f"{_API_BASE}/api/v1/health")
+            resp = await client.get(f"{_API_BASE}/api/v1/health", headers=_api_headers())
             if resp.status_code == 200:
                 health = resp.json()
     except Exception as e:
@@ -274,7 +287,7 @@ async def metrics_data(request: Request):
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(f"{_API_BASE}/api/v1/metrics")
+            resp = await client.get(f"{_API_BASE}/api/v1/metrics", headers=_api_headers())
             if resp.status_code == 200:
                 metrics = resp.json()
             else:
@@ -314,6 +327,7 @@ async def detailed_review(session_id: str = ""):
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.get(
                 f"{_API_BASE}/api/v1/detailed-review",
+                headers=_api_headers(),
                 params={"session_id": session_id},
             )
             return JSONResponse(

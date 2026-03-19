@@ -24,6 +24,7 @@ n8n 呼叫方式：
 import logging
 import os
 import sys
+import threading
 import types
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -174,10 +175,63 @@ def _preflight_check() -> None:
             workers, workers, _RATE_LIMIT_RPM, workers * _RATE_LIMIT_RPM,
         )
 
+    # API 認證檢查
+    api_config = config.get("api", {})
+    auth_enabled = api_config.get("auth_enabled", True)
+    api_keys = api_config.get("api_keys", [])
+
+    if not auth_enabled:
+        logger.warning(
+            "PREFLIGHT: API 認證已停用 (auth_enabled=false)，"
+            "所有端點將無需認證即可存取。生產環境請務必啟用認證。"
+        )
+    elif not api_keys:
+        logger.critical(
+            "PREFLIGHT: API 認證已啟用但 api_keys 為空，"
+            "所有受保護端點將回傳 401。"
+            "請在 config.yaml 的 api.api_keys 中設定至少一組 key。"
+        )
+
     logger.info(
-        "PREFLIGHT: provider=%s, model=%s, has_api_key=%s, kb_path=%s",
+        "PREFLIGHT: provider=%s, model=%s, has_api_key=%s, kb_path=%s, "
+        "auth_enabled=%s, api_keys_count=%d",
         provider, model, bool(api_key), kb_path,
+        auth_enabled, len(api_keys),
     )
+
+
+def _ensure_api_key() -> None:
+    """啟動時檢查 api_keys，若為空則提前生成，避免 Web UI 呼叫 API 時 401。"""
+    _mw.ensure_api_key(get_config())
+
+
+def _warmup_law_cache() -> None:
+    """背景預熱法規快取，避免首次請求時阻塞 worker 執行緒 ~120s。"""
+    try:
+        from src.knowledge.realtime_lookup import LawVerifier
+        verifier = LawVerifier()
+        verifier._ensure_cache()
+        logger.info("法規快取預熱完成。")
+    except Exception:
+        logger.warning("法規快取預熱失敗，將於首次使用時重試。", exc_info=True)
+
+
+def _cleanup_old_outputs() -> None:
+    """掃描 output/ 目錄，刪除超過 24 小時的 .docx 檔案。"""
+    import pathlib
+    import time as _time
+
+    output_dir = pathlib.Path("output")
+    if not output_dir.exists():
+        return
+    cutoff = _time.time() - 86400  # 24 hours
+    count = 0
+    for f in output_dir.glob("*.docx"):
+        if f.stat().st_mtime < cutoff:
+            f.unlink()
+            count += 1
+    if count:
+        logger.info("清理 %d 個超過 24 小時的輸出檔案", count)
 
 
 @asynccontextmanager
@@ -185,10 +239,14 @@ async def lifespan(app: FastAPI):
     """在啟動時初始化共享資源，關閉時清理。"""
     _setup_logging()
     logger.info("正在初始化 API 資源...")
+    _cleanup_old_outputs()
     _preflight_check()
     get_config()
+    _ensure_api_key()
     get_llm()
     get_kb()
+    # 背景預熱法規快取（不阻塞啟動）
+    threading.Thread(target=_warmup_law_cache, daemon=True).start()
     logger.info("API 資源就緒。")
     yield
     logger.info("正在關閉 API，等待進行中的任務完成...")
@@ -286,7 +344,11 @@ app.include_router(knowledge.router)
 
 
 class _BackwardCompatModule(types.ModuleType):
-    """包裝原始模組，讓全域狀態讀寫能透明代理到子模組。"""
+    """包裝原始模組，讓全域狀態讀寫能透明代理到子模組。
+
+    過渡方案：供舊測試直接 patch api_server._config 等全域狀態用。
+    長期應更新測試改為 import src.api.dependencies，屆時可移除此類別。
+    """
 
     # 需要代理到 dependencies 的狀態屬性
     _DEPS_ATTRS = frozenset({"_config", "_llm", "_kb", "_org_memory", "_init_lock"})
@@ -341,6 +403,28 @@ if __name__ == "__main__":
     _port = int(os.environ.get("API_PORT", "8000"))
     _workers = int(os.environ.get("API_WORKERS", "1"))
     _log_level = os.environ.get("LOG_LEVEL", "info").lower()
+
+    # 安全檢查：無 API key 時強制限制為 localhost
+    _startup_config = get_config()
+    _startup_api = _startup_config.get("api", {})
+    _startup_auth = _startup_api.get("auth_enabled", True)
+    _startup_keys = _startup_api.get("api_keys", [])
+
+    if _startup_auth and not _startup_keys and _host != "127.0.0.1":
+        logger.warning(
+            "SECURITY: API 認證已啟用但未設定任何 api_keys，"
+            "強制將綁定地址從 %s 改為 127.0.0.1 以防止外部存取。"
+            "請在 config.yaml 的 api.api_keys 中設定至少一組 key 後再開放外部連線。",
+            _host,
+        )
+        _host = "127.0.0.1"
+
+    if not _startup_auth and _host != "127.0.0.1":
+        logger.warning(
+            "SECURITY: API 認證已停用 (auth_enabled=false) 且綁定地址為 %s，"
+            "所有端點將對外暴露且無需認證。生產環境請務必啟用認證。",
+            _host,
+        )
 
     uvicorn.run(
         "api_server:app",

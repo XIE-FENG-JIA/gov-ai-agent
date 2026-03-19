@@ -97,6 +97,24 @@ class KnowledgeBaseManager:
         self.invalidate_cache()
         return doc_id
 
+    @staticmethod
+    def _format_query_results(results: dict) -> list[dict]:
+        """將 ChromaDB query() 回傳的結果格式化為統一的 list[dict]。"""
+        formatted: list[dict] = []
+        if results.get("ids") and results["ids"][0]:
+            ids_list = results["ids"][0]
+            docs_list = results.get("documents", [[]])[0] if results.get("documents") else []
+            metas_list = results.get("metadatas", [[]])[0] if results.get("metadatas") else []
+            dists_list = results.get("distances", [[]])[0] if results.get("distances") else []
+            for i in range(len(ids_list)):
+                formatted.append({
+                    "id": ids_list[i],
+                    "content": docs_list[i] if i < len(docs_list) else "",
+                    "metadata": metas_list[i] if i < len(metas_list) else {},
+                    "distance": dists_list[i] if i < len(dists_list) else None,
+                })
+        return formatted
+
     @property
     def is_available(self) -> bool:
         """知識庫是否可用。"""
@@ -133,20 +151,7 @@ class KnowledgeBaseManager:
             logger.error("政策搜尋查詢失敗: %s", e)
             return []
 
-        formatted = []
-        if results.get('ids') and results['ids'][0]:
-            ids_list = results['ids'][0]
-            docs_list = results.get('documents', [[]])[0] if results.get('documents') else []
-            metas_list = results.get('metadatas', [[]])[0] if results.get('metadatas') else []
-            dists_list = results.get('distances', [[]])[0] if results.get('distances') else []
-            for i in range(len(ids_list)):
-                formatted.append({
-                    "id": ids_list[i],
-                    "content": docs_list[i] if i < len(docs_list) else "",
-                    "metadata": metas_list[i] if i < len(metas_list) else {},
-                    "distance": dists_list[i] if i < len(dists_list) else None,
-                })
-        return formatted
+        return self._format_query_results(results)
 
     def search_examples(
         self, query: str, n_results: int = 3,
@@ -186,22 +191,7 @@ class KnowledgeBaseManager:
             logger.error("範例搜尋查詢失敗: %s", e)
             return []
 
-        # Format results
-        formatted_results = []
-        if results.get('ids') and results['ids'][0]:
-            ids_list = results['ids'][0]
-            docs_list = results.get('documents', [[]])[0] if results.get('documents') else []
-            metas_list = results.get('metadatas', [[]])[0] if results.get('metadatas') else []
-            dists_list = results.get('distances', [[]])[0] if results.get('distances') else []
-            for i in range(len(ids_list)):
-                formatted_results.append({
-                    "id": ids_list[i],
-                    "content": docs_list[i] if i < len(docs_list) else "",
-                    "metadata": metas_list[i] if i < len(metas_list) else {},
-                    "distance": dists_list[i] if i < len(dists_list) else None,
-                })
-
-        return formatted_results
+        return self._format_query_results(results)
 
     def search_regulations(
         self, query: str, doc_type: str | None = None,
@@ -244,20 +234,7 @@ class KnowledgeBaseManager:
             logger.error("法規搜尋查詢失敗: %s", e)
             return []
 
-        formatted = []
-        if results.get('ids') and results['ids'][0]:
-            ids_list = results['ids'][0]
-            docs_list = results.get('documents', [[]])[0] if results.get('documents') else []
-            metas_list = results.get('metadatas', [[]])[0] if results.get('metadatas') else []
-            dists_list = results.get('distances', [[]])[0] if results.get('distances') else []
-            for i in range(len(ids_list)):
-                formatted.append({
-                    "id": ids_list[i],
-                    "content": docs_list[i] if i < len(docs_list) else "",
-                    "metadata": metas_list[i] if i < len(metas_list) else {},
-                    "distance": dists_list[i] if i < len(dists_list) else None,
-                })
-        return formatted
+        return self._format_query_results(results)
 
     def search_hybrid(
         self,
@@ -329,18 +306,7 @@ class KnowledgeBaseManager:
                     n_results=min(n_results, count),
                     where=where_filter,
                 )
-                if results.get("ids") and results["ids"][0]:
-                    ids_list = results["ids"][0]
-                    docs_list = results.get("documents", [[]])[0] if results.get("documents") else []
-                    metas_list = results.get("metadatas", [[]])[0] if results.get("metadatas") else []
-                    dists_list = results.get("distances", [[]])[0] if results.get("distances") else []
-                    for i in range(len(ids_list)):
-                        all_results.append({
-                            "id": ids_list[i],
-                            "content": docs_list[i] if i < len(docs_list) else "",
-                            "metadata": metas_list[i] if i < len(metas_list) else {},
-                            "distance": dists_list[i] if i < len(dists_list) else None,
-                        })
+                all_results.extend(self._format_query_results(results))
             except Exception as e:
                 logger.warning("混合搜尋集合查詢失敗: %s", e)
                 continue
@@ -389,8 +355,10 @@ class KnowledgeBaseManager:
                 count = coll.count()
                 if count == 0:
                     continue
-                # ChromaDB get() 取出所有文件
-                data = coll.get(include=["documents", "metadatas"])
+                if count > 500:
+                    logger.info("集合 %s 文件數 %d > 500，關鍵字搜尋僅取前 500 筆", coll.name, count)
+                # ChromaDB get() 取出文件（限制最多 500 筆避免記憶體爆量）
+                data = coll.get(include=["documents", "metadatas"], limit=500)
                 if not data or not data.get("ids"):
                     continue
                 for i, doc_id in enumerate(data["ids"]):

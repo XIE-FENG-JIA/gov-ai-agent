@@ -157,7 +157,8 @@ class TemplateEngine:
     def __init__(self) -> None:
         template_dir = os.path.join(os.path.dirname(__file__), "..", "assets", "templates")
         # keep_trailing_newline=True 保留結尾換行
-        # autoescape=False 公文不需要 HTML 轉義，避免特殊字元被意外轉義
+        # autoescape=False：此模板引擎僅用於公文 Markdown/純文字渲染，
+        # 輸出不直接作為 HTML 回應。Web UI 使用獨立的 Jinja2 環境（autoescape=True）。
         self.env = Environment(
             loader=FileSystemLoader(template_dir),
             keep_trailing_newline=True,

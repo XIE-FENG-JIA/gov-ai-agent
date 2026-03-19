@@ -4,9 +4,14 @@
 集中管理專案中的所有魔法數字和共用常數，
 避免散落在各模組中造成維護困難。
 """
+import logging
+import os
 import platform
 import re
+from pathlib import Path
 from typing import Literal
+
+logger = logging.getLogger(__name__)
 
 # ============================================================
 # LLM 呼叫相關常數
@@ -143,10 +148,72 @@ _FONT_FALLBACK: dict[str, dict[str, list[str]]] = {
 }
 
 
+def _find_available_font(candidates: list[str]) -> str | None:
+    """從候選字體清單中回傳第一個存在於系統的字體名稱。
+
+    僅檢查常見的系統字體目錄，若完全找不到則回傳第一個候選並記錄警告。
+    """
+    if not candidates:
+        return None
+
+    os_name = platform.system()
+    font_dirs: list[Path] = []
+    if os_name == "Windows":
+        windir = os.environ.get("WINDIR", r"C:\Windows")
+        font_dirs.append(Path(windir) / "Fonts")
+    elif os_name == "Darwin":
+        font_dirs.extend([
+            Path("/Library/Fonts"),
+            Path.home() / "Library" / "Fonts",
+            Path("/System/Library/Fonts"),
+        ])
+    elif os_name == "Linux":
+        font_dirs.extend([
+            Path("/usr/share/fonts"),
+            Path("/usr/local/share/fonts"),
+            Path.home() / ".local" / "share" / "fonts",
+        ])
+
+    # 字體名稱 → 可能的檔名對應（不含副檔名）
+    _NAME_TO_FILE: dict[str, list[str]] = {
+        "DFKai-SB": ["kaiu"],
+        "MingLiU": ["mingliu"],
+        "標楷體": ["kaiu"],
+        "新細明體": ["mingliu"],
+        "PingFang TC": ["PingFang"],
+        "Heiti TC": ["STHeiti Medium"],
+        "STSong": ["STSong"],
+        "Noto Sans CJK TC": ["NotoSansCJK-Regular", "NotoSansCJKtc-Regular"],
+        "WenQuanYi Micro Hei": ["wqy-microhei"],
+    }
+
+    for candidate in candidates:
+        file_stems = _NAME_TO_FILE.get(candidate, [candidate])
+        for font_dir in font_dirs:
+            if not font_dir.is_dir():
+                continue
+            for stem in file_stems:
+                for ext in (".ttf", ".ttc", ".otf"):
+                    if (font_dir / f"{stem}{ext}").exists():
+                        return candidate
+                    # 也搜尋子目錄一層（Linux 常見結構）
+                    for sub in font_dir.iterdir():
+                        if sub.is_dir() and (sub / f"{stem}{ext}").exists():
+                            return candidate
+
+    # 找不到任何字體檔案，回傳第一個候選並警告
+    logger.warning(
+        "字體 fallback: 候選 %s 均未在系統字體目錄中找到，"
+        "使用第一個候選 '%s'。如公文輸出字體異常，請安裝中文字體。",
+        candidates, candidates[0],
+    )
+    return candidates[0]
+
+
 def get_platform_fonts() -> tuple[str | None, str | None]:
     """依據作業系統回傳 (標題字體, 內文字體)。
 
-    依序嘗試 fallback 鏈中的字體名稱，
+    依序嘗試 fallback 鏈中的字體名稱，驗證字體檔案是否存在，
     若當前平台無對應設定則回傳 (None, None)，
     交由 Word 使用預設字體。
     """
@@ -154,8 +221,8 @@ def get_platform_fonts() -> tuple[str | None, str | None]:
     chain = _FONT_FALLBACK.get(os_name)
     if not chain:
         return (None, None)
-    title_font = chain["title"][0] if chain["title"] else None
-    body_font = chain["body"][0] if chain["body"] else None
+    title_font = _find_available_font(chain["title"])
+    body_font = _find_available_font(chain["body"])
     return (title_font, body_font)
 
 # ============================================================

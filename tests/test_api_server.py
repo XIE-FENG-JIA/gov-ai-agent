@@ -37,10 +37,13 @@ def mock_api_deps():
     """Mock 所有 API 依賴項（LLM、KB、Config）"""
     import api_server
 
-    # Mock config
+    # Mock config（auth_enabled 預設為 True，需提供測試用 API keys）
     mock_config = {
         "llm": {"provider": "mock", "model": "test"},
-        "knowledge_base": {"path": "./test_kb"}
+        "knowledge_base": {"path": "./test_kb"},
+        "api": {
+            "auth_enabled": False,
+        },
     }
     api_server._config = mock_config
 
@@ -150,33 +153,47 @@ class TestRootAndHealth:
         assert data["embedding_status"] == "available"
 
     def test_health_check_degraded_when_llm_fails(self, client, mock_api_deps):
-        """LLM 失敗時健康檢查應回傳 degraded + 503"""
-        mock_api_deps["llm"].generate.side_effect = RuntimeError("LLM down")
-        response = client.get("/api/v1/health")
-        assert response.status_code == 503
-        data = response.json()
-        assert data["status"] in ("degraded", "unhealthy")
-        assert data["llm_status"] == "unavailable"
+        """LLM 不可用時健康檢查應回傳 degraded + 503"""
+        import api_server
+        original_llm = api_server._llm
+        api_server._llm = None
+        try:
+            response = client.get("/api/v1/health")
+            assert response.status_code == 503
+            data = response.json()
+            assert data["status"] in ("degraded", "unhealthy")
+            assert data["llm_status"] == "unavailable"
+        finally:
+            api_server._llm = original_llm
 
     def test_health_check_degraded_when_embed_fails(self, client, mock_api_deps):
-        """Embedding 失敗時健康檢查應回傳 degraded + 503"""
-        mock_api_deps["llm"].embed.side_effect = RuntimeError("Embed down")
-        response = client.get("/api/v1/health")
-        assert response.status_code == 503
-        data = response.json()
-        assert data["status"] in ("degraded", "unhealthy")
-        assert data["embedding_status"] == "unavailable"
+        """Embedding 不可用時健康檢查應回傳 degraded + 503"""
+        original_embed = getattr(mock_api_deps["llm"], "embed", None)
+        if hasattr(mock_api_deps["llm"], "embed"):
+            del mock_api_deps["llm"].embed
+        try:
+            response = client.get("/api/v1/health")
+            assert response.status_code == 503
+            data = response.json()
+            assert data["status"] in ("degraded", "unhealthy")
+            assert data["embedding_status"] == "unavailable"
+        finally:
+            if original_embed is not None:
+                mock_api_deps["llm"].embed = original_embed
 
     def test_health_check_unhealthy_when_all_fail(self, client, mock_api_deps):
         """所有元件失敗時應回傳 unhealthy + 503"""
         import api_server
-        mock_api_deps["llm"].generate.side_effect = RuntimeError("LLM down")
-        mock_api_deps["llm"].embed.side_effect = RuntimeError("Embed down")
-        api_server._kb = None  # KB 不可用
-        response = client.get("/api/v1/health")
-        assert response.status_code == 503
-        data = response.json()
-        assert data["status"] == "unhealthy"
+        original_llm = api_server._llm
+        api_server._llm = None
+        api_server._kb = None
+        try:
+            response = client.get("/api/v1/health")
+            assert response.status_code == 503
+            data = response.json()
+            assert data["status"] == "unhealthy"
+        finally:
+            api_server._llm = original_llm
 
     def test_health_check_healthy_returns_200(self, client, mock_api_deps):
         """所有元件正常時應回傳 healthy + 200"""
@@ -2598,33 +2615,25 @@ class TestBatchFailureIsolation:
 
     def test_batch_failure_isolation_mixed(self, client, mock_api_deps):
         """測試批次處理中失敗項目不影響成功項目"""
-        call_count = [0]
         def side_effect(prompt, **kwargs):
-            call_count[0] += 1
-            # 第一個項目的需求分析（成功）
-            if call_count[0] == 1:
-                return json.dumps({
-                    "doc_type": "函",
-                    "sender": "測試機關",
-                    "receiver": "測試單位",
-                    "subject": "測試主旨"
-                })
-            # 第一個項目的草稿撰寫（成功）
-            if call_count[0] == 2:
-                return "### 主旨\n測試公文\n### 說明\n測試說明"
-            # 第二個項目的需求分析（失敗）
-            if call_count[0] == 3:
+            # 根據 prompt 內容分派（相容並行執行順序不確定）
+            if "第二份" in prompt:
                 raise RuntimeError("LLM 連線失敗")
-            # 第三個項目的需求分析（成功）
-            if call_count[0] == 4:
-                return json.dumps({
-                    "doc_type": "函",
-                    "sender": "第三項機關",
-                    "receiver": "第三項單位",
-                    "subject": "第三項主旨"
-                })
-            # 第三個項目的草稿撰寫（成功）
-            return "### 主旨\n第三項公文\n### 說明\n第三項說明"
+            # 需求分析回應（含 JSON 格式）
+            if "需求" in prompt and "分析" in prompt or "doc_type" not in prompt:
+                for label, sender, receiver in [
+                    ("第一份", "測試機關", "測試單位"),
+                    ("第三份", "第三項機關", "第三項單位"),
+                ]:
+                    if label in prompt:
+                        return json.dumps({
+                            "doc_type": "函",
+                            "sender": sender,
+                            "receiver": receiver,
+                            "subject": f"{label}主旨"
+                        })
+            # 預設回傳草稿
+            return "### 主旨\n測試公文\n### 說明\n測試說明"
 
         mock_api_deps["llm"].generate.side_effect = side_effect
 
@@ -2755,15 +2764,15 @@ class TestAPIKeyAuth:
         from api_server import app
         return TestClient(app, raise_server_exceptions=False)
 
-    # --- 認證停用時（預設行為） ---
+    # --- 認證明確停用時 ---
 
-    def test_auth_disabled_by_default(self, client):
-        """認證停用時，所有端點應正常存取"""
+    def test_auth_explicitly_disabled(self, client):
+        """認證明確停用時，所有端點應正常存取"""
         response = client.get("/")
         assert response.status_code == 200
 
     def test_auth_disabled_post_works(self, client, mock_api_deps):
-        """認證停用時，POST 端點不需要 API Key"""
+        """認證明確停用時，POST 端點不需要 API Key"""
         response = client.post("/api/v1/agent/requirement", json={
             "user_input": "寫一份函，測試無認證存取"
         })
@@ -2871,8 +2880,8 @@ class TestAPIKeyAuth:
 
     # --- 認證啟用但 api_keys 為空 ---
 
-    def test_auth_enabled_empty_keys_allows_access(self, mock_api_deps):
-        """啟用認證但 api_keys 為空時，放行並記錄警告"""
+    def test_auth_enabled_empty_keys_rejects_access(self, mock_api_deps):
+        """啟用認證但 api_keys 為空時，拒絕所有受保護端點"""
         import api_server
 
         api_server._config = {
@@ -2887,8 +2896,77 @@ class TestAPIKeyAuth:
         response = empty_key_client.post("/api/v1/agent/requirement", json={
             "user_input": "寫一份函，測試空金鑰列表"
         })
-        # 空金鑰列表放行，避免鎖死
-        assert response.status_code == 200
+        # 空金鑰列表拒絕存取，防止端點暴露
+        assert response.status_code == 401
+
+    def test_auth_enabled_empty_keys_public_paths_still_work(self, mock_api_deps):
+        """啟用認證但 api_keys 為空時，公開路徑仍可存取"""
+        import api_server
+
+        api_server._config = {
+            "llm": {"provider": "mock", "model": "test"},
+            "knowledge_base": {"path": "./test_kb"},
+            "api": {"auth_enabled": True, "api_keys": []},
+        }
+
+        from api_server import app
+        empty_key_client = TestClient(app, raise_server_exceptions=False)
+
+        response = empty_key_client.get("/api/v1/health")
+        # 公開路徑（健康檢查）仍可存取，不受 api_keys 為空影響
+        assert response.status_code != 401
+
+    # --- auth_enabled 預設為 True（安全優先） ---
+
+    def test_auth_enabled_by_default_when_no_api_section(self, mock_api_deps):
+        """config 中無 api 區段時，認證預設啟用並拒絕受保護端點"""
+        import api_server
+
+        # 完全沒有 api 區段的 config
+        api_server._config = {
+            "llm": {"provider": "mock", "model": "test"},
+            "knowledge_base": {"path": "./test_kb"},
+        }
+
+        from api_server import app
+        no_api_client = TestClient(app, raise_server_exceptions=False)
+
+        response = no_api_client.post("/api/v1/agent/requirement", json={
+            "user_input": "寫一份函，測試預設認證"
+        })
+        assert response.status_code == 401
+
+    def test_auth_default_public_paths_still_work(self, mock_api_deps):
+        """config 中無 api 區段時，公開路徑仍可存取"""
+        import api_server
+
+        api_server._config = {
+            "llm": {"provider": "mock", "model": "test"},
+            "knowledge_base": {"path": "./test_kb"},
+        }
+
+        from api_server import app
+        no_api_client = TestClient(app, raise_server_exceptions=False)
+
+        response = no_api_client.get("/api/v1/health")
+        assert response.status_code != 401
+
+    def test_health_shows_auth_enabled_by_default(self, mock_api_deps):
+        """config 中無 api 區段時，健康檢查應顯示 auth_enabled=true"""
+        import api_server
+
+        api_server._config = {
+            "llm": {"provider": "mock", "model": "test"},
+            "knowledge_base": {"path": "./test_kb"},
+        }
+
+        from api_server import app
+        no_api_client = TestClient(app, raise_server_exceptions=False)
+
+        response = no_api_client.get("/api/v1/health")
+        data = response.json()
+        assert "auth_enabled" in data
+        assert data["auth_enabled"] is True
 
     # --- GET 端點也需要認證 ---
 
@@ -3060,20 +3138,18 @@ class TestBatchProgressTracking:
 
     def test_batch_item_has_status_field(self, client, mock_api_deps):
         """測試批次回應每筆結果包含 status 欄位"""
-        call_count = [0]
         def side_effect(prompt, **kwargs):
-            call_count[0] += 1
-            if call_count[0] == 1:
+            # 根據 prompt 內容分派（相容並行執行）
+            if "第二份" in prompt:
+                raise RuntimeError("LLM 錯誤")
+            if "第一份" in prompt:
                 return json.dumps({
                     "doc_type": "函",
                     "sender": "測試機關",
                     "receiver": "測試單位",
                     "subject": "測試主旨"
                 })
-            if call_count[0] == 2:
-                return "### 主旨\n測試公文\n### 說明\n測試說明"
-            # 第二項失敗
-            raise RuntimeError("LLM 錯誤")
+            return "### 主旨\n測試公文\n### 說明\n測試說明"
 
         mock_api_deps["llm"].generate.side_effect = side_effect
 
