@@ -244,10 +244,11 @@ class KnowledgeBaseManager:
         doc_type: str | None = None,
         source_type: str | None = None,
     ) -> list[dict]:
-        """兩段式檢索：先依 metadata 篩選，再依語義排序。
+        """Hybrid Search：向量語意搜尋 + BM25 關鍵字搜尋，以 RRF 融合排序。
 
         搜尋 examples + regulations + policies 三個集合，
-        合併後依距離排序取 top-N。
+        對每個集合同時做向量搜尋與 BM25 關鍵字搜尋，
+        再用 Reciprocal Rank Fusion (RRF) 融合兩個排名取 top-N。
 
         包含 TTL 快取（5 分鐘）和 embedding 失敗時的關鍵字降級搜尋。
         """
@@ -289,12 +290,16 @@ class KnowledgeBaseManager:
         else:
             where_filter = None
 
-        all_results: list[dict] = []
+        # --- 向量搜尋 ---
+        vector_results: list[dict] = []
         collections = [
             self.examples_collection,
             self.regulations_collection,
             self.policies_collection,
         ]
+
+        # 向量搜尋取較多結果以便 RRF 融合（每集合取 n_results * 2）
+        vector_fetch = n_results * 2
 
         for coll in collections:
             try:
@@ -303,22 +308,213 @@ class KnowledgeBaseManager:
                     continue
                 results = coll.query(
                     query_embeddings=[query_embedding],
-                    n_results=min(n_results, count),
+                    n_results=min(vector_fetch, count),
                     where=where_filter,
                 )
-                all_results.extend(self._format_query_results(results))
+                vector_results.extend(self._format_query_results(results))
             except Exception as e:
-                logger.warning("混合搜尋集合查詢失敗: %s", e)
+                logger.warning("混合搜尋向量查詢失敗: %s", e)
                 continue
 
-        # 依距離排序取 top-N
-        all_results.sort(key=lambda x: x.get("distance") or 1.0)
-        final = all_results[:n_results]
+        # --- BM25 關鍵字搜尋 ---
+        bm25_results: list[dict] = []
+        try:
+            bm25_results = self._bm25_search(
+                query,
+                collections=collections,
+                n_results=vector_fetch,
+                source_level=source_level,
+                doc_type=doc_type,
+                source_type=source_type,
+            )
+        except Exception as e:
+            logger.warning("混合搜尋 BM25 查詢失敗，回退至純向量搜尋: %s", e)
+
+        # --- RRF 融合 ---
+        if bm25_results:
+            final = self._rrf_fuse(vector_results, bm25_results, n_results)
+            logger.info(
+                "Hybrid search: 向量 %d 筆 + BM25 %d 筆 → 融合 %d 筆",
+                len(vector_results), len(bm25_results), len(final),
+            )
+        else:
+            # BM25 無結果，回退至純向量排序
+            vector_results.sort(key=lambda x: x.get("distance") or 1.0)
+            final = vector_results[:n_results]
+            logger.info(
+                "Hybrid search: 向量 %d 筆 + BM25 0 筆 → 純向量 %d 筆",
+                len(vector_results), len(final),
+            )
 
         # 寫入快取
         with self._cache_lock:
             self._search_cache[cache_key] = final
         return final
+
+    # ------------------------------------------------------------------
+    # BM25 關鍵字搜尋（Hybrid Search 用）
+    # ------------------------------------------------------------------
+
+    def _bm25_search(
+        self,
+        query: str,
+        collections: list,
+        n_results: int = 10,
+        source_level: str | None = None,
+        doc_type: str | None = None,
+        source_type: str | None = None,
+    ) -> list[dict]:
+        """使用 jieba 分詞 + 簡化 BM25 評分進行關鍵字搜尋。
+
+        BM25 公式（簡化版）:
+            score = sum(tf(t,d) * idf(t) for t in query_terms)
+            tf(t,d) = freq(t,d) / len(d)
+            idf(t) = log(N / (1 + df(t)))
+        """
+        try:
+            import jieba
+        except ImportError:
+            logger.debug("jieba 未安裝，跳過 BM25 搜尋")
+            return []
+
+        query_tokens = list(jieba.cut(query))
+        # 過濾掉長度 <= 1 的停用詞級別 token
+        query_tokens = [t for t in query_tokens if len(t.strip()) > 1]
+        if not query_tokens:
+            return []
+
+        # 從所有集合取出文件
+        all_docs: list[dict] = []
+        for coll in collections:
+            try:
+                count = coll.count()
+                if count == 0:
+                    continue
+                if count > 500:
+                    logger.debug(
+                        "BM25: 集合 %s 文件數 %d > 500，僅取前 500 筆",
+                        coll.name, count,
+                    )
+                data = coll.get(include=["documents", "metadatas"], limit=500)
+                if not data or not data.get("ids"):
+                    continue
+                for i, doc_id in enumerate(data["ids"]):
+                    content = (
+                        data["documents"][i]
+                        if data.get("documents") and i < len(data["documents"])
+                        else ""
+                    )
+                    meta = (
+                        data["metadatas"][i]
+                        if data.get("metadatas") and i < len(data["metadatas"])
+                        else {}
+                    )
+                    # metadata 篩選
+                    if source_level and meta.get("source_level") != source_level:
+                        continue
+                    if doc_type and meta.get("doc_type") != doc_type:
+                        continue
+                    if source_type and meta.get("source") != source_type:
+                        continue
+
+                    all_docs.append({
+                        "id": doc_id,
+                        "content": content,
+                        "metadata": meta,
+                    })
+            except Exception as e:
+                logger.warning("BM25 集合讀取失敗: %s", e)
+                continue
+
+        if not all_docs:
+            return []
+
+        # 對每篇文件做 jieba 分詞並計算詞頻
+        doc_count = len(all_docs)
+        token_doc_freq: Counter = Counter()  # df(t): 包含 token t 的文件數
+        doc_token_freqs: list[Counter] = []  # 每篇文件的詞頻 Counter
+        doc_lengths: list[int] = []          # 每篇文件的 token 總數
+
+        for doc in all_docs:
+            tokens = list(jieba.cut(doc["content"]))
+            freq = Counter(tokens)
+            doc_token_freqs.append(freq)
+            doc_lengths.append(len(tokens))
+            for unique_token in freq:
+                token_doc_freq[unique_token] += 1
+
+        # 計算 BM25 分數
+        scored: list[tuple[float, dict]] = []
+        for idx, doc in enumerate(all_docs):
+            freq = doc_token_freqs[idx]
+            doc_len = doc_lengths[idx] if doc_lengths[idx] > 0 else 1
+            score = 0.0
+            for qt in query_tokens:
+                if qt in freq:
+                    tf = freq[qt] / doc_len
+                    df = token_doc_freq.get(qt, 0)
+                    idf = math.log((doc_count) / (1 + df))
+                    score += tf * idf
+            scored.append((score, doc))
+
+        # 依分數降序排序，取 top-N（分數 > 0）
+        scored.sort(key=lambda x: x[0], reverse=True)
+        results: list[dict] = []
+        for score, doc in scored[:n_results]:
+            if score > 0:
+                doc["distance"] = 1.0 / (1.0 + score)  # 轉換為距離格式
+                doc["_bm25_score"] = score
+                results.append(doc)
+
+        return results
+
+    # ------------------------------------------------------------------
+    # Reciprocal Rank Fusion (RRF)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _rrf_fuse(
+        vector_results: list[dict],
+        bm25_results: list[dict],
+        n_results: int,
+        k: int = 60,
+    ) -> list[dict]:
+        """用 Reciprocal Rank Fusion 融合向量搜尋和 BM25 搜尋的排名。
+
+        RRF 公式: rrf_score(d) = sum(1 / (k + rank_i) for each ranking)
+        其中 k=60 是標準常數。
+        """
+        # 建立 id → doc 的對應（用於去重和合併）
+        doc_map: dict[str, dict] = {}
+        rrf_scores: dict[str, float] = {}
+
+        # 向量搜尋排名（已按 distance 排序，distance 越小越好）
+        vector_sorted = sorted(vector_results, key=lambda x: x.get("distance") or 1.0)
+        for rank, doc in enumerate(vector_sorted):
+            doc_id = doc["id"]
+            rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + 1.0 / (k + rank + 1)
+            if doc_id not in doc_map:
+                doc_map[doc_id] = doc
+
+        # BM25 排名（已按 _bm25_score 降序排序）
+        for rank, doc in enumerate(bm25_results):
+            doc_id = doc["id"]
+            rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + 1.0 / (k + rank + 1)
+            if doc_id not in doc_map:
+                doc_map[doc_id] = doc
+
+        # 按 RRF 分數降序排序
+        sorted_ids = sorted(rrf_scores, key=lambda x: rrf_scores[x], reverse=True)
+
+        results: list[dict] = []
+        for doc_id in sorted_ids[:n_results]:
+            doc = doc_map[doc_id].copy()
+            doc["_rrf_score"] = rrf_scores[doc_id]
+            # 清理 BM25 內部欄位
+            doc.pop("_bm25_score", None)
+            results.append(doc)
+
+        return results
 
     # ------------------------------------------------------------------
     # Embedding 失敗降級：關鍵字搜尋（jieba 分詞 + TF-IDF）
