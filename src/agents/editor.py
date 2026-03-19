@@ -24,6 +24,11 @@ from src.core.constants import (
     assess_risk_level,
     escape_prompt_tag,
 )
+from src.core.scoring import (
+    get_agent_category,
+    calculate_weighted_scores,
+    calculate_risk_scores,
+)
 from src.agents.auditor import FormatAuditor
 from src.agents.style_checker import StyleChecker
 from src.agents.fact_checker import FactChecker
@@ -126,7 +131,7 @@ class EditorInChief:
         timed_out_agents: list[str] = []
         parallel_tasks = {
             "Style Checker": lambda: self.style_checker.check(draft),
-            "Fact Checker": lambda: self.fact_checker.check(draft),
+            "Fact Checker": lambda: self.fact_checker.check(draft, doc_type=doc_type),
             "Consistency Checker": lambda: self.consistency_checker.check(draft),
             "Compliance Checker": lambda: self.compliance_checker.check(draft),
         }
@@ -458,7 +463,7 @@ class EditorInChief:
                 self.format_auditor.audit(draft, doc_type)
             ),
             "Style Checker": lambda: self.style_checker.check(draft),
-            "Fact Checker": lambda: self.fact_checker.check(draft),
+            "Fact Checker": lambda: self.fact_checker.check(draft, doc_type=doc_type),
             "Consistency Checker": lambda: self.consistency_checker.check(draft),
             "Compliance Checker": lambda: self.compliance_checker.check(draft),
         }
@@ -749,36 +754,14 @@ Return ONLY the corrected draft markdown.
     def _calculate_weighted_scores(
         self, results: list[ReviewResult]
     ) -> tuple[float, float]:
-        """計算加權品質分數。"""
-        weighted_score = 0.0
-        total_weight = 0.0
-
-        for res in results:
-            agent_category = self._get_agent_category(res.agent_name)
-            weight = CATEGORY_WEIGHTS.get(agent_category, 1.0)
-            weighted_score += res.score * weight * res.confidence
-            total_weight += weight * res.confidence
-
-        return weighted_score, total_weight
+        """計算加權品質分數。委派至 src.core.scoring 純函式。"""
+        return calculate_weighted_scores(results)
 
     def _calculate_risk_scores(
         self, results: list[ReviewResult]
     ) -> tuple[float, float]:
-        """計算加權風險分數（錯誤和警告）。"""
-        weighted_error_score = 0.0
-        weighted_warning_score = 0.0
-
-        for res in results:
-            agent_category = self._get_agent_category(res.agent_name)
-            weight = CATEGORY_WEIGHTS.get(agent_category, 1.0)
-
-            for issue in res.issues:
-                if issue.severity == "error":
-                    weighted_error_score += weight
-                elif issue.severity == "warning":
-                    weighted_warning_score += weight * WARNING_WEIGHT_FACTOR
-
-        return weighted_error_score, weighted_warning_score
+        """計算加權風險分數（錯誤和警告）。委派至 src.core.scoring 純函式。"""
+        return calculate_risk_scores(results)
 
     @staticmethod
     def _build_audit_log(
@@ -846,17 +829,8 @@ Return ONLY the corrected draft markdown.
 
     @staticmethod
     def _get_agent_category(agent_name: str) -> str:
-        """推斷 Agent 所屬的類別以取得對應權重。"""
-        name_lower = agent_name.lower()
-        if "format" in name_lower or "auditor" in name_lower:
-            return "format"
-        elif "compliance" in name_lower or "policy" in name_lower:
-            return "compliance"
-        elif "fact" in name_lower:
-            return "fact"
-        elif "consistency" in name_lower:
-            return "consistency"
-        return "style"  # 預設為最低權重
+        """推斷 Agent 所屬的類別以取得對應權重。委派至 src.core.scoring 純函式。"""
+        return get_agent_category(agent_name)
 
     def _auto_refine(self, draft: str, results: list[ReviewResult]) -> str:
         """根據審查結果自動修正草稿。"""

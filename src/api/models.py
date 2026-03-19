@@ -181,6 +181,10 @@ class MeetingRequest(BaseModel):
         description="輸出檔名（不含路徑，僅允許 .docx 副檔名）",
         max_length=200,
     )
+    use_graph: bool = Field(
+        True,
+        description="使用 LangGraph 流程圖執行（True=新路徑, False=傳統路徑）",
+    )
 
     @field_validator("user_input")
     @classmethod
