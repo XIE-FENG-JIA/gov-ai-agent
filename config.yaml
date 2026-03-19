@@ -1,16 +1,17 @@
 api:
   auth_enabled: true
   api_keys:
-    - test-key-for-dev
+    - cc
 knowledge_base:
   path: ./kb_data
   contextual_retrieval: false  # 啟用 Contextual Retrieval（匯入時為每個 chunk 加 LLM 生成的上下文摘要前綴）
 llm:
-  base_url: http://localhost:11434
+  api_key: cc
+  base_url: http://localhost:9090/v1
   embedding_model: qwen3-embedding
   embedding_provider: ollama
-  model: llama3.1:8b
-  provider: ollama
+  model: openai/sonnet
+  provider: custom
 organizational_memory:
   default_agencies:
     市政府:
