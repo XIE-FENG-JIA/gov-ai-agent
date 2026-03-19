@@ -8,36 +8,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 
-import urllib3
 import requests
 import yaml
 
-# 台灣政府 API 憑證配置不完整，需關閉 SSL 驗證警告
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
 logger = logging.getLogger(__name__)
-
-# 政府 API 已知 SSL 問題的域名
-_GOV_SSL_DOMAINS = frozenset({
-    "law.moj.gov.tw",
-    "gazette.nat.gov.tw",
-    "data.gov.tw",
-    "www.npa.gov.tw",
-    # 新增爬蟲域名
-    "data.ly.gov.tw",
-    "v2.ly.govapi.tw",
-    "data.judicial.gov.tw",
-    "judgment.judicial.gov.tw",
-    "lawsearch.judicial.gov.tw",
-    "mojlaw.moj.gov.tw",
-    "www.laws.taipei.gov.tw",
-    "law.exam.gov.tw",
-    "weblaw.exam.gov.tw",
-    "nstatdb.dgbas.gov.tw",
-    "www.stat.gov.tw",
-    "www.cy.gov.tw",
-    "pcc-api.openfun.app",
-})
 
 # 共用 HTTP retry 設定
 _DEFAULT_MAX_RETRIES = 3
@@ -94,17 +68,14 @@ class BaseFetcher(ABC):
         Raises:
             requests.RequestException: 所有重試皆失敗後拋出
         """
-        # 台灣政府 API 自動關閉 SSL 驗證
-        from urllib.parse import urlparse
-        host = urlparse(url).hostname or ""
-        if host in _GOV_SSL_DOMAINS:
-            kwargs.setdefault("verify", False)
-
         last_exc: Exception | None = None
+        ssl_fallback = False  # SSL 憑證驗證降級旗標
         for attempt in range(max_retries + 1):
             self._throttle()
             try:
                 http_func = getattr(requests, method)
+                if ssl_fallback:
+                    kwargs.setdefault("verify", False)
                 resp = http_func(url, **kwargs)
                 if resp.status_code not in _RETRYABLE_STATUS_CODES:
                     resp.raise_for_status()
@@ -118,6 +89,15 @@ class BaseFetcher(ABC):
                     f"HTTP {resp.status_code}", response=resp,
                 )
             except requests.ConnectionError as e:
+                # SSL 憑證錯誤時自動降級為 verify=False
+                if "SSL" in str(e) or "CERTIFICATE" in str(e):
+                    if not ssl_fallback:
+                        ssl_fallback = True
+                        last_exc = e
+                        logger.warning(
+                            "SSL 憑證驗證失敗 %s，降級為不驗證模式重試", url,
+                        )
+                        continue  # 立即重試，不消耗重試次數
                 logger.warning("連線失敗 %s（第 %d/%d 次）: %s", url, attempt + 1, max_retries, e)
                 last_exc = e
             except requests.Timeout as e:
@@ -132,6 +112,30 @@ class BaseFetcher(ABC):
                 time.sleep(wait)
 
         raise last_exc  # type: ignore[misc]
+
+    def _fetch_json(
+        self,
+        method: str,
+        url: str,
+        *,
+        max_retries: int = _DEFAULT_MAX_RETRIES,
+        **kwargs,
+    ) -> dict | list | None:
+        """HTTP 請求 + JSON 解析的快捷方法。
+
+        結合 _request_with_retry 與 resp.json()，失敗時回傳 None 並記錄錯誤。
+        適用於大多數回傳 JSON 的政府 API 端點。
+        """
+        try:
+            resp = self._request_with_retry(method, url, max_retries=max_retries, **kwargs)
+        except requests.RequestException as exc:
+            logger.error("HTTP 請求失敗 %s：%s", url, exc)
+            return None
+        try:
+            return resp.json()
+        except Exception as exc:
+            logger.error("JSON 解析失敗 %s：%s", url, exc)
+            return None
 
     def _write_markdown(self, file_path: Path, metadata: dict, body: str) -> Path:
         """輸出含 YAML frontmatter 的 Markdown 檔案。
