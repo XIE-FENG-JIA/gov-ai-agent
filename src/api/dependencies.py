@@ -7,7 +7,6 @@
 """
 
 import logging
-import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any

@@ -1,7 +1,6 @@
 """搜尋已生成的公文記錄。"""
 
 import json
-import os
 
 import typer
 from rich.console import Console

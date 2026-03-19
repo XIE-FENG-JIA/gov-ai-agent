@@ -95,7 +95,6 @@ def _init_kb() -> tuple[KnowledgeBaseManager, dict]:
 
 def _parse_and_ingest(results: list[FetchResult], kb: KnowledgeBaseManager) -> tuple[int, int]:
     """解析 FetchResult 並匯入知識庫，回傳 (成功, 失敗)。"""
-    import datetime
     from src.cli.kb import parse_markdown_with_metadata, _sanitize_metadata
 
     success = 0

@@ -10,7 +10,7 @@
 """
 import pytest
 from docx import Document
-from docx.shared import Pt, Cm, Emu
+from docx.shared import Pt
 
 from src.document.exporter import DocxExporter
 from src.core.constants import (

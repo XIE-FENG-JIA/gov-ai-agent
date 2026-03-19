@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import math
 import pathlib
-import re
 
 import yaml
 from rich.console import Console

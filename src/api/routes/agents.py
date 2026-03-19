@@ -22,7 +22,6 @@ from src.core.constants import (
 )
 from src.core.models import PublicDocRequirement
 from src.core.review_models import ReviewResult
-from src.agents.editor import EditorInChief
 from src.agents.requirement import RequirementAgent
 from src.agents.writer import WriterAgent
 from src.agents.template import TemplateEngine

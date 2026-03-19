@@ -6,7 +6,6 @@ import logging
 import re
 from pathlib import Path
 
-import requests
 
 from src.knowledge.fetchers.base import BaseFetcher, FetchResult
 from src.knowledge.fetchers.constants import (

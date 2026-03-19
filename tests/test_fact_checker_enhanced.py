@@ -87,7 +87,7 @@ class TestFakeCitationSeverity:
 
         verifier = LawVerifier()
         checker = FactChecker(mock_llm, law_verifier=verifier)
-        result = checker.check("依據政府資訊安全管理辦法第5條辦理。")
+        checker.check("依據政府資訊安全管理辦法第5條辦理。")
 
         # 確認 prompt 中包含「error」而非「warning」的虛假引用指示
         call_args = mock_llm.generate.call_args
@@ -115,7 +115,7 @@ class TestFakeCitationSeverity:
 
         verifier = LawVerifier()
         checker = FactChecker(mock_llm, law_verifier=verifier)
-        result = checker.check("依據行政程序法第999條辦理。")
+        checker.check("依據行政程序法第999條辦理。")
 
         call_args = mock_llm.generate.call_args
         prompt = call_args[0][0] if call_args[0] else call_args[1].get("prompt", "")
@@ -178,7 +178,7 @@ class TestDocTypeCrossReference:
 
         verifier = LawVerifier()
         checker = FactChecker(mock_llm, law_verifier=verifier)
-        result = checker.check(
+        checker.check(
             "依據廢棄物清理法第28條辦理人事調動。",
             doc_type="人事令",
         )

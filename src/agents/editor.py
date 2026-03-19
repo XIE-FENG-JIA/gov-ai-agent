@@ -10,7 +10,6 @@ from src.core.llm import LLMProvider
 from src.core.review_models import ReviewResult, ReviewIssue, QAReport, IterationState
 from src.core.constants import (
     CATEGORY_WEIGHTS,
-    WARNING_WEIGHT_FACTOR,
     EDITOR_MAX_WORKERS,
     DEFAULT_FAILED_SCORE,
     DEFAULT_FAILED_CONFIDENCE,

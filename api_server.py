@@ -38,7 +38,7 @@ from src.core.logging_config import setup_logging as _shared_setup_logging
 import src.api.dependencies as _deps
 import src.api.middleware as _mw
 
-from src.api.dependencies import get_config, get_llm, get_kb, get_org_memory, executor
+from src.api.dependencies import get_config, get_llm, get_kb, executor
 from src.api.middleware import security_middleware
 
 # 路由模組
@@ -165,7 +165,6 @@ def _preflight_check() -> None:
         )
 
     # 多 worker 限流警告
-    from src.api.middleware import _RATE_LIMIT_RPM
     workers = int(os.environ.get("API_WORKERS", "1"))
     if workers > 1:
         logger.warning(

@@ -109,7 +109,7 @@ def history_list(
         table.add_row(str(i), ts, doc_type, input_text, status_str, score_str, elapsed_str, output)
 
     console.print(table)
-    console.print(f"[dim]共 {len(history)} 筆記錄（儲存於 {_HISTORY_FILE}）[/dim]")
+    console.print(f"[dim]共 {len(history)} 筆記錄（儲存於 {_history_store.path}）[/dim]")
 
 
 @app.command(name="export")
@@ -314,12 +314,7 @@ def history_filter(
     before: str = typer.Option("", "--before", help="此日期前的記錄（YYYY-MM-DD）"),
 ) -> None:
     """依條件篩選歷史記錄。"""
-    history_file = _get_history_path()
-    if not os.path.isfile(history_file):
-        console.print("[yellow]尚無歷史記錄。[/yellow]")
-        return
-    with open(history_file, "r", encoding="utf-8") as f:
-        records = json.load(f)
+    records = _history_store.load()
     if not records:
         console.print("[yellow]尚無歷史記錄。[/yellow]")
         return

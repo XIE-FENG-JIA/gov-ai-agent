@@ -4,7 +4,7 @@ import io
 import zipfile
 import warnings
 import pytest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 from src.knowledge.realtime_lookup import (
     Citation,
