@@ -3,6 +3,7 @@
 =============================================
 """
 
+import asyncio
 import logging
 import os
 import re
@@ -242,39 +243,39 @@ async def run_batch(request: BatchRequest) -> BatchResponse:
     依序執行每筆完整開會流程，個別失敗不影響其他項目。
     回傳包含進度追蹤、每項處理時間及整體耗時。
     """
-    results: list[BatchItemResult] = []
-    success_count = 0
-    fail_count = 0
     batch_start = time.monotonic()
 
-    for item in request.items:
+    # 並行執行：Semaphore 控制同時最多 3 筆，避免 ThreadPoolExecutor 過載
+    semaphore = asyncio.Semaphore(3)
+
+    async def _process_item(item) -> BatchItemResult:
         session_id = str(uuid.uuid4())[:SESSION_ID_LENGTH]
         item_start = time.monotonic()
-        try:
-            llm = get_llm()
-            kb = get_kb()
+        async with semaphore:
+            try:
+                llm = get_llm()
+                kb = get_kb()
 
-            requirement, final_draft, qa_report, output_filename, rounds_used = (
-                await run_in_executor(
-                    lambda req=item, _llm=llm, _kb=kb, _sid=session_id: _execute_document_workflow(
-                        user_input=req.user_input,
-                        llm=_llm,
-                        kb=_kb,
-                        session_id=_sid,
-                        skip_review=req.skip_review,
-                        max_rounds=req.max_rounds,
-                        output_docx=req.output_docx,
-                        output_filename_hint=req.output_filename,
-                        convergence=req.convergence,
-                        skip_info=req.skip_info,
-                    ),
-                    timeout=MEETING_TIMEOUT,
+                requirement, final_draft, qa_report, output_filename, rounds_used = (
+                    await run_in_executor(
+                        lambda req=item, _llm=llm, _kb=kb, _sid=session_id: _execute_document_workflow(
+                            user_input=req.user_input,
+                            llm=_llm,
+                            kb=_kb,
+                            session_id=_sid,
+                            skip_review=req.skip_review,
+                            max_rounds=req.max_rounds,
+                            output_docx=req.output_docx,
+                            output_filename_hint=req.output_filename,
+                            convergence=req.convergence,
+                            skip_info=req.skip_info,
+                        ),
+                        timeout=MEETING_TIMEOUT,
+                    )
                 )
-            )
 
-            item_duration = round((time.monotonic() - item_start) * 1000, 2)
-            results.append(
-                BatchItemResult(
+                item_duration = round((time.monotonic() - item_start) * 1000, 2)
+                return BatchItemResult(
                     status="success",
                     duration_ms=item_duration,
                     error_message=None,
@@ -286,15 +287,12 @@ async def run_batch(request: BatchRequest) -> BatchResponse:
                     output_path=output_filename,
                     rounds_used=rounds_used,
                 )
-            )
-            success_count += 1
 
-        except Exception as e:
-            logger.exception("批次處理項目失敗")
-            item_duration = round((time.monotonic() - item_start) * 1000, 2)
-            sanitized = _sanitize_error(e)
-            results.append(
-                BatchItemResult(
+            except Exception as e:
+                logger.exception("批次處理項目失敗")
+                item_duration = round((time.monotonic() - item_start) * 1000, 2)
+                sanitized = _sanitize_error(e)
+                return BatchItemResult(
                     status="error",
                     duration_ms=item_duration,
                     error_message=sanitized,
@@ -303,9 +301,14 @@ async def run_batch(request: BatchRequest) -> BatchResponse:
                     error=sanitized,
                     error_code=_get_error_code(e),
                 )
-            )
-            fail_count += 1
 
+    # 所有項目同時啟動，由 Semaphore 控制並行度
+    results: list[BatchItemResult] = await asyncio.gather(
+        *[_process_item(item) for item in request.items]
+    )
+
+    success_count = sum(1 for r in results if r.success)
+    fail_count = len(results) - success_count
     total_duration = round((time.monotonic() - batch_start) * 1000, 2)
     total_items = len(request.items)
 

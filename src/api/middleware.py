@@ -40,6 +40,7 @@ class _RateLimiter:
     def __init__(self, max_requests: int, window_seconds: int) -> None:
         self.max_requests = max_requests
         self.window = window_seconds
+        self.max_ips = 10000
         self._requests: dict[str, list[float]] = defaultdict(list)
         self._lock = threading.Lock()
         self._request_counter = 0
@@ -63,6 +64,19 @@ class _RateLimiter:
                 ]
                 for ip in expired_ips:
                     del self._requests[ip]
+
+            # IP 數量上限防護：防止殭屍網路耗盡記憶體
+            if client_ip not in self._requests and len(self._requests) >= self.max_ips:
+                # 緊急全域清理
+                expired_ips = [
+                    ip for ip, ts in self._requests.items()
+                    if not any(now - t < self.window for t in ts)
+                ]
+                for ip in expired_ips:
+                    del self._requests[ip]
+                # 清理後仍超過上限，拒絕新 IP
+                if len(self._requests) >= self.max_ips:
+                    return False, 0, self.window
 
             timestamps = self._requests[client_ip]
             # 清理過期的時間戳
@@ -192,8 +206,8 @@ def _check_api_key(request: Request) -> bool | None:
     if not api_config.get("auth_enabled", True):
         return None
 
-    # 公開路徑免認證
-    if request.url.path in _PUBLIC_PATHS:
+    # 公開路徑免認證（含 Web UI）
+    if request.url.path in _PUBLIC_PATHS or request.url.path.startswith("/ui"):
         return None
 
     api_keys: list[str] = api_config.get("api_keys", [])
@@ -301,7 +315,13 @@ async def security_middleware(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
-    response.headers["Content-Security-Policy"] = "default-src 'none'"
+    if request.url.path.startswith("/ui"):
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'"
+        )
+    else:
+        response.headers["Content-Security-Policy"] = "default-src 'none'"
     if os.environ.get("HTTPS_ENABLED", "false").lower() == "true":
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["X-API-Version"] = API_VERSION
