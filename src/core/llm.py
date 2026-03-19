@@ -146,10 +146,14 @@ class LiteLLMProvider(LLMProvider):
         if not prompt or not prompt.strip():
             logger.warning("LLM generate 收到空的 prompt，回傳空字串")
             return ""
+        # Qwen3 thinking 模式太慢，自動關閉
+        user_content = prompt
+        if "qwen3" in self.model_name.lower():
+            user_content = "/no_think\n" + prompt
         try:
             response = litellm.completion(
                 model=self.model_name,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[{"role": "user", "content": user_content}],
                 api_key=self.api_key,
                 base_url=self.base_url,
                 timeout=LLM_GENERATION_TIMEOUT,

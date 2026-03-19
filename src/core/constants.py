@@ -61,7 +61,7 @@ API_MAX_WORKERS = 5                   # API Server 並行執行緒數
 
 # 超時設定（秒）
 PARALLEL_REVIEW_TIMEOUT = 150         # 並行審查 as_completed 逾時
-LLM_GENERATION_TIMEOUT = 120          # LLM 生成呼叫逾時
+LLM_GENERATION_TIMEOUT = 300          # LLM 生成呼叫逾時（CPU 推理需要較長時間）
 LLM_CHECK_TIMEOUT = 60               # LLM 審查/檢查呼叫逾時
 CONNECTIVITY_CHECK_TIMEOUT = 10       # 連線測試逾時
 HTTP_DEFAULT_TIMEOUT = 60             # 一般 HTTP 請求預設逾時
