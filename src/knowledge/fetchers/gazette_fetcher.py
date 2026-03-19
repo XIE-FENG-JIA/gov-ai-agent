@@ -4,7 +4,7 @@ from __future__ import annotations
 import io
 import logging
 import re
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path

@@ -5,7 +5,7 @@ import io
 import json
 import logging
 import re
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 import zipfile
 from pathlib import Path
 from typing import Any

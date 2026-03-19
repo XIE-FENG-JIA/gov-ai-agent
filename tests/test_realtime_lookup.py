@@ -2,8 +2,9 @@
 import json
 import io
 import zipfile
+import warnings
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, call
 
 from src.knowledge.realtime_lookup import (
     Citation,
@@ -458,3 +459,180 @@ class TestComplianceCheckerWithFetcher:
         result = checker.check("### 主旨\n測試主旨。\n### 說明\n測試說明。")
 
         assert result.agent_name == "Compliance Checker"
+
+
+# ===========================================================================
+# TestSSLVerificationEnabled (GOV-23)
+# ===========================================================================
+
+class TestSSLVerificationEnabled:
+    """確認 SSL 驗證已啟用，不再繞過政府 API 的 SSL 驗證。"""
+
+    def test_no_global_urllib3_warning_suppression(self):
+        """模組不應有全域 urllib3 InsecureRequestWarning 抑制。"""
+        import urllib3
+        # 重新載入模組確認 disable_warnings 未被呼叫
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+            # 確認 InsecureRequestWarning 過濾器未被設定為 ignore
+            active_filters = [
+                f for f in warnings.filters
+                if f[2] is urllib3.exceptions.InsecureRequestWarning
+                and f[0] == "ignore"
+            ]
+            assert len(active_filters) == 0, (
+                "urllib3 InsecureRequestWarning 不應被全域抑制"
+            )
+
+    @patch("src.knowledge.realtime_lookup.requests.get")
+    def test_request_with_retry_uses_ssl_verification(self, mock_get):
+        """_request_with_retry 應對所有 URL（含政府 API）啟用 SSL 驗證。"""
+        from src.knowledge.realtime_lookup import _request_with_retry
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.raise_for_status = MagicMock()
+        mock_get.return_value = mock_resp
+
+        _request_with_retry("https://law.moj.gov.tw/api/Ch/Law/json")
+
+        # 確認 requests.get 被呼叫時沒有 verify=False
+        call_kwargs = mock_get.call_args
+        verify_value = call_kwargs.kwargs.get("verify", True)
+        assert verify_value is not False, (
+            "對政府 API 的請求不應使用 verify=False"
+        )
+
+    @patch("src.knowledge.realtime_lookup.requests.get")
+    def test_gazette_api_uses_ssl_verification(self, mock_get):
+        """公報 API 也應啟用 SSL 驗證。"""
+        from src.knowledge.realtime_lookup import _request_with_retry
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.raise_for_status = MagicMock()
+        mock_get.return_value = mock_resp
+
+        _request_with_retry("https://gazette.nat.gov.tw/egFront/OpenData/downloadXML.jsp")
+
+        call_kwargs = mock_get.call_args
+        verify_value = call_kwargs.kwargs.get("verify", True)
+        assert verify_value is not False, (
+            "對公報 API 的請求不應使用 verify=False"
+        )
+
+    def test_no_gov_ssl_domains_bypass_in_realtime_lookup(self):
+        """realtime_lookup 模組不應包含 SSL 繞過域名清單。"""
+        import src.knowledge.realtime_lookup as mod
+        assert not hasattr(mod, "_GOV_SSL_DOMAINS"), (
+            "realtime_lookup 不應有 _GOV_SSL_DOMAINS 域名繞過清單"
+        )
+
+    def test_no_gov_ssl_domains_bypass_in_base_fetcher(self):
+        """base fetcher 模組不應包含 SSL 繞過域名清單。"""
+        import src.knowledge.fetchers.base as mod
+        assert not hasattr(mod, "_GOV_SSL_DOMAINS"), (
+            "base fetcher 不應有 _GOV_SSL_DOMAINS 域名繞過清單"
+        )
+
+    def test_base_fetcher_request_no_verify_false(self):
+        """BaseFetcher._request_with_retry 不應對任何 URL 設定 verify=False。"""
+        from src.knowledge.fetchers.base import BaseFetcher
+
+        class _StubFetcher(BaseFetcher):
+            def fetch(self):
+                return []
+            def name(self):
+                return "stub"
+
+        fetcher = _StubFetcher(output_dir=__import__("pathlib").Path("/tmp"), rate_limit=0.0)
+
+        with patch("src.knowledge.fetchers.base.requests.get") as mock_get:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.raise_for_status = MagicMock()
+            mock_get.return_value = mock_resp
+
+            fetcher._request_with_retry(
+                "get",
+                "https://law.moj.gov.tw/api/Ch/Law/json",
+                timeout=10,
+            )
+
+            call_kwargs = mock_get.call_args
+            verify_value = call_kwargs.kwargs.get("verify", True)
+            assert verify_value is not False, (
+                "BaseFetcher 對政府 API 的請求不應使用 verify=False"
+            )
+
+
+# ===========================================================================
+# TestXXEPrevention (GOV-24)
+# ===========================================================================
+
+class TestXXEPrevention:
+    """確認 XML 解析使用 defusedxml，可防禦 XXE 攻擊。"""
+
+    def test_realtime_lookup_uses_defusedxml(self):
+        """realtime_lookup 模組應使用 defusedxml 而非標準 xml.etree.ElementTree。"""
+        import src.knowledge.realtime_lookup as mod
+        import inspect
+        source = inspect.getsource(mod)
+        assert "defusedxml" in source, (
+            "realtime_lookup 應使用 defusedxml.ElementTree"
+        )
+        assert "import xml.etree.ElementTree" not in source, (
+            "realtime_lookup 不應使用標準 xml.etree.ElementTree"
+        )
+
+    def test_gazette_fetcher_uses_defusedxml(self):
+        """gazette_fetcher 模組應使用 defusedxml。"""
+        import src.knowledge.fetchers.gazette_fetcher as mod
+        import inspect
+        source = inspect.getsource(mod)
+        assert "defusedxml" in source
+        assert "import xml.etree.ElementTree" not in source
+
+    def test_law_fetcher_uses_defusedxml(self):
+        """law_fetcher 模組應使用 defusedxml。"""
+        import src.knowledge.fetchers.law_fetcher as mod
+        import inspect
+        source = inspect.getsource(mod)
+        assert "defusedxml" in source
+        assert "import xml.etree.ElementTree" not in source
+
+    def test_npa_fetcher_uses_defusedxml(self):
+        """npa_fetcher 模組應使用 defusedxml。"""
+        import src.knowledge.fetchers.npa_fetcher as mod
+        import inspect
+        source = inspect.getsource(mod)
+        assert "defusedxml" in source
+        assert "import xml.etree.ElementTree" not in source
+
+    def test_xxe_payload_rejected_by_parse_xml(self):
+        """RecentPolicyFetcher._parse_xml 應拒絕含 XXE 的 XML。"""
+        xxe_payload = b"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE foo [
+  <!ENTITY xxe SYSTEM "file:///etc/passwd">
+]>
+<Records>
+  <Record>
+    <Title>&xxe;</Title>
+  </Record>
+</Records>"""
+        from defusedxml.common import EntitiesForbidden
+        with pytest.raises(EntitiesForbidden):
+            RecentPolicyFetcher._parse_xml(xxe_payload)
+
+    def test_safe_xml_still_parsed(self):
+        """正常 XML 仍應正確解析。"""
+        safe_xml = b"""<?xml version="1.0" encoding="UTF-8"?>
+<Records>
+  <Record>
+    <Title>Test Title</Title>
+    <Category>Test</Category>
+  </Record>
+</Records>"""
+        records = RecentPolicyFetcher._parse_xml(safe_xml)
+        assert len(records) == 1
+        assert records[0]["Title"] == "Test Title"

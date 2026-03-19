@@ -13,7 +13,7 @@ app = typer.Typer()
 console = Console()
 
 
-def _get_org_memory():
+def _get_org_memory() -> None:
     """取得 OrganizationalMemory 實例。"""
     from src.core.config import ConfigManager
     from src.agents.org_memory import OrganizationalMemory
@@ -28,7 +28,7 @@ def _get_org_memory():
 @app.command(name="list")
 def list_agencies(
     category: str = typer.Option("", "--category", "-c", help="依正式程度篩選（standard/formal/concise）"),
-):
+) -> None:
     """列出所有已記錄的機構及其偏好摘要。"""
     try:
         om = _get_org_memory()
@@ -75,7 +75,7 @@ def list_agencies(
 @app.command(name="show")
 def show_agency(
     name: str = typer.Argument(..., help="機構名稱"),
-):
+) -> None:
     """顯示特定機構的詳細偏好設定。"""
     try:
         om = _get_org_memory()
@@ -113,7 +113,7 @@ def set_preference(
     agency_name: str = typer.Argument(..., help="機構名稱"),
     key: str = typer.Option(..., "--key", "-k", help="偏好項目（formal_level / signature_format）"),
     value: str = typer.Option(..., "--value", "-v", help="設定值"),
-):
+) -> None:
     """手動設定機構偏好。"""
     allowed_keys = {"formal_level", "signature_format"}
     if key not in allowed_keys:
@@ -138,7 +138,7 @@ def add_term(
     agency_name: str = typer.Argument(..., help="機構名稱"),
     old_term: str = typer.Option(..., "--from", help="原始用語"),
     new_term: str = typer.Option(..., "--to", help="偏好用語"),
-):
+) -> None:
     """新增機構的偏好詞彙替換規則。"""
     try:
         om = _get_org_memory()
@@ -157,7 +157,7 @@ def export_memory(
     output_path: str = typer.Option(
         "org_memory_export.json", "--output", "-o", help="匯出路徑"
     ),
-):
+) -> None:
     """匯出所有機構記憶為 JSON 檔案。"""
     try:
         om = _get_org_memory()
@@ -175,7 +175,7 @@ def export_memory(
 
 
 @app.command(name="report")
-def report():
+def report() -> None:
     """顯示機構記憶統計報告。"""
     try:
         om = _get_org_memory()
@@ -191,7 +191,7 @@ def report():
 def org_memory_search(
     keyword: str = typer.Argument(..., help="搜尋關鍵字"),
     memory_dir: str = typer.Option(".org_memory", "--dir", "-d", help="組織記憶目錄"),
-):
+) -> None:
     """搜尋組織記憶目錄中的檔案內容。"""
     mem_path = Path(memory_dir)
     if not mem_path.is_dir():

@@ -11,31 +11,12 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from src.cli.utils import JSONStore
+
 app = typer.Typer()
 console = Console()
 
-_FEEDBACK_FILE = ".gov-ai-feedback.json"
-
-
-def _get_feedback_path() -> str:
-    return os.path.join(os.getcwd(), _FEEDBACK_FILE)
-
-
-def _load_feedback() -> list[dict]:
-    path = _get_feedback_path()
-    if not os.path.isfile(path):
-        return []
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return []
-
-
-def _save_feedback(data: list[dict]) -> None:
-    path = _get_feedback_path()
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+_feedback_store = JSONStore(".gov-ai-feedback.json", default=[])
 
 
 def _score_color(score: int) -> str:
@@ -51,7 +32,7 @@ def add(
     file: str = typer.Option("", "--file", "-f", help="公文檔案路徑（記錄用）"),
     score: int = typer.Option(..., "--score", "-s", help="品質評分 1-5", min=1, max=5),
     comment: str = typer.Option("", "--comment", "-c", help="改進建議"),
-):
+) -> None:
     """新增一筆品質回饋。"""
     record = {
         "timestamp": datetime.now().isoformat(),
@@ -59,9 +40,9 @@ def add(
         "score": score,
         "comment": comment,
     }
-    data = _load_feedback()
+    data = _feedback_store.load()
     data.append(record)
-    _save_feedback(data)
+    _feedback_store.save(data)
     color = _score_color(score)
     console.print(f"[green]已新增回饋[/green]（評分：[{color}]{score}[/{color}]）")
 
@@ -70,9 +51,9 @@ def add(
 def list_feedback(
     count: int = typer.Option(10, "--count", "-n", help="顯示最近 N 筆", min=1, max=100),
     sort_by: str = typer.Option("date", "--sort", "-s", help="排序方式（date/score）"),
-):
+) -> None:
     """列出最近的品質回饋。"""
-    data = _load_feedback()
+    data = _feedback_store.load()
     if not data:
         console.print("[yellow]尚無回饋記錄。[/yellow]")
         raise typer.Exit()
@@ -108,9 +89,9 @@ def list_feedback(
 
 
 @app.command(name="summary")
-def summary():
+def summary() -> None:
     """顯示回饋統計摘要。"""
-    data = _load_feedback()
+    data = _feedback_store.load()
     if not data:
         console.print("[yellow]尚無回饋記錄。[/yellow]")
         raise typer.Exit()
@@ -166,7 +147,7 @@ def feedback_stats(
     feedback_dir: str = typer.Option(
         ".feedback", "--dir", "-d", help="回饋目錄"
     ),
-):
+) -> None:
     """掃描回饋目錄中的 JSON 檔案並顯示統計摘要。"""
     if not os.path.isdir(feedback_dir):
         console.print("[red]找不到回饋目錄[/red]")
@@ -222,10 +203,10 @@ def feedback_stats(
 @app.command(name="export")
 def feedback_export(
     output: str = typer.Option("feedback_export.csv", "-o", "--output", help="匯出路徑"),
-):
+) -> None:
     """匯出回饋記錄為 CSV 檔案。"""
     import csv
-    data = _load_feedback()
+    data = _feedback_store.load()
     if not data:
         console.print("[yellow]尚無回饋記錄可匯出。[/yellow]")
         raise typer.Exit()

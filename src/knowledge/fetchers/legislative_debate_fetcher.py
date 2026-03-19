@@ -48,18 +48,10 @@ class LegislativeDebateFetcher(BaseFetcher):
             url = f"{LY_GOVAPI_URL}/interpellations"
             params = {"page": page, "limit": page_size}
 
-            try:
-                resp = self._request_with_retry(
-                    "get", url, params=params, timeout=30,
-                )
-            except requests.RequestException as exc:
-                logger.error("查詢 ly.govapi.tw 失敗：%s", exc)
-                break
-
-            try:
-                data = resp.json()
-            except Exception as exc:
-                logger.error("解析 ly.govapi.tw JSON 失敗：%s", exc)
+            data = self._fetch_json(
+                "get", url, params=params, timeout=30,
+            )
+            if data is None:
                 break
 
             # API 回傳格式：{"interpellations": [...], "total_page": N, ...}

@@ -68,16 +68,8 @@ class ProcurementFetcher(BaseFetcher):
             url = f"{PCC_API_URL}/api/searchbytitle"
             params = {"query": self.keyword, "page": page}
 
-            try:
-                resp = self._request_with_retry("get", url, params=params, timeout=30)
-            except requests.RequestException as exc:
-                logger.error("查詢採購 API 失敗：%s", exc)
-                break
-
-            try:
-                data = resp.json()
-            except Exception as exc:
-                logger.error("解析採購 JSON 失敗：%s", exc)
+            data = self._fetch_json("get", url, params=params, timeout=30)
+            if data is None:
                 break
 
             records = data.get("records", [])
@@ -108,16 +100,8 @@ class ProcurementFetcher(BaseFetcher):
             url = f"{PCC_API_URL}/api/listbydate"
             params = {"date": date_str}
 
-            try:
-                resp = self._request_with_retry("get", url, params=params, timeout=30)
-            except requests.RequestException as exc:
-                logger.warning("取得 %s 採購公告失敗：%s", date_str, exc)
-                continue
-
-            try:
-                data = resp.json()
-            except Exception as exc:
-                logger.warning("解析 %s 採購 JSON 失敗：%s", date_str, exc)
+            data = self._fetch_json("get", url, params=params, timeout=30)
+            if data is None:
                 continue
 
             records = data.get("records", [])

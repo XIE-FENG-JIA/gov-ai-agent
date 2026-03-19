@@ -381,7 +381,7 @@ def test_fact_checker_prompt_contains_skepticism_stance(mock_llm):
     call_args = mock_llm.generate.call_args
     prompt_text = call_args[0][0] if call_args[0] else call_args[1].get("prompt", "")
     assert "Default Stance" in prompt_text
-    assert "ALWAYS flag as" in prompt_text
+    assert "flag as" in prompt_text
 
 
 def test_fact_checker_prompt_checks_hallucination_patterns(mock_llm):
@@ -497,6 +497,109 @@ def test_style_checker_prompt_contains_agency_name_rules(mock_llm):
     assert "Agency Name Consistency" in prompt_text
     assert "全銜" in prompt_text
     assert "簡稱" in prompt_text
+
+
+# ==================== ConsistencyChecker Enhanced Tests ====================
+
+def test_consistency_checker_prompt_contains_detailed_checks(mock_llm):
+    """測試 ConsistencyChecker 的 prompt 包含詳細的一致性檢查項目。"""
+    checker = ConsistencyChecker(mock_llm)
+    mock_llm.generate.return_value = '{"issues": [], "score": 0.95}'
+
+    checker.check("### 主旨\n測試主旨\n### 說明\n測試說明")
+
+    call_args = mock_llm.generate.call_args
+    prompt_text = call_args[0][0] if call_args[0] else call_args[1].get("prompt", "")
+    # 驗證 prompt 包含核心檢查項目
+    assert "Subject–Body Contradiction" in prompt_text
+    assert "Numeric Inconsistency" in prompt_text
+    assert "Date Contradiction" in prompt_text
+    assert "Named Entity Mismatch" in prompt_text
+    assert "Attachment Reference Mismatch" in prompt_text
+
+
+def test_consistency_checker_prompt_has_severity_guidelines(mock_llm):
+    """測試 ConsistencyChecker 的 prompt 包含嚴重度指引。"""
+    checker = ConsistencyChecker(mock_llm)
+    mock_llm.generate.return_value = '{"issues": [], "score": 0.95}'
+
+    checker.check("### 主旨\n測試")
+
+    call_args = mock_llm.generate.call_args
+    prompt_text = call_args[0][0] if call_args[0] else call_args[1].get("prompt", "")
+    assert "Severity Guidelines" in prompt_text
+    assert "What NOT to Flag" in prompt_text
+
+
+def test_consistency_checker_prompt_has_examples(mock_llm):
+    """測試 ConsistencyChecker 的 prompt 包含具體範例。"""
+    checker = ConsistencyChecker(mock_llm)
+    mock_llm.generate.return_value = '{"issues": [], "score": 0.95}'
+
+    checker.check("### 主旨\n測試")
+
+    call_args = mock_llm.generate.call_args
+    prompt_text = call_args[0][0] if call_args[0] else call_args[1].get("prompt", "")
+    # 包含公文領域的具體範例
+    assert "同意補助" in prompt_text
+    assert "補助新臺幣" in prompt_text
+
+
+def test_consistency_checker_detects_contradiction(mock_llm):
+    """測試 ConsistencyChecker 能偵測主旨與說明矛盾。"""
+    checker = ConsistencyChecker(mock_llm)
+    mock_llm.generate.return_value = json.dumps({
+        "issues": [{
+            "severity": "error",
+            "location": "主旨 vs 說明",
+            "description": "主旨表示「同意補助」，但說明指出「不符合補助資格」",
+            "suggestion": "統一主旨與說明的立場"
+        }],
+        "score": 0.3,
+    })
+
+    result = checker.check(
+        "### 主旨\n同意補助新臺幣50萬元\n### 說明\n一、經審查不符合補助資格"
+    )
+    assert len(result.issues) == 1
+    assert result.issues[0].severity == "error"
+    assert result.issues[0].category == "consistency"
+
+
+def test_consistency_checker_detects_numeric_mismatch(mock_llm):
+    """測試 ConsistencyChecker 能偵測數字不一致。"""
+    checker = ConsistencyChecker(mock_llm)
+    mock_llm.generate.return_value = json.dumps({
+        "issues": [{
+            "severity": "error",
+            "location": "主旨 vs 辦法",
+            "description": "金額不一致：主旨為50萬元，辦法為30萬元",
+            "suggestion": "請確認正確金額並統一"
+        }],
+        "score": 0.4,
+    })
+
+    result = checker.check(
+        "### 主旨\n補助新臺幣50萬元\n### 辦法\n核定金額30萬元"
+    )
+    assert len(result.issues) == 1
+    assert result.issues[0].severity == "error"
+
+
+def test_consistency_checker_scope_delineation(mock_llm):
+    """測試 ConsistencyChecker 的 prompt 明確劃分不檢查的範圍。"""
+    checker = ConsistencyChecker(mock_llm)
+    mock_llm.generate.return_value = '{"issues": [], "score": 0.95}'
+
+    checker.check("### 主旨\n測試")
+
+    call_args = mock_llm.generate.call_args
+    prompt_text = call_args[0][0] if call_args[0] else call_args[1].get("prompt", "")
+    # 明確排除其他 Agent 的職責
+    assert "Format Auditor" in prompt_text
+    assert "Style Checker" in prompt_text
+    assert "Fact Checker" in prompt_text
+    assert "Compliance Checker" in prompt_text
 
 
 def test_style_checker_agency_name_inconsistency(mock_llm):

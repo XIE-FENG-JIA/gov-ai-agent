@@ -96,7 +96,7 @@ app.command(name="highlight")(highlight_cmd)
 
 console = Console()
 
-def version_callback(value: bool):
+def version_callback(value: bool) -> None:
     """顯示版本號後結束程式。"""
     if value:
         console.print(f"公文 AI 助理 CLI 版本：[bold green]{__version__}[/bold green]")
@@ -118,7 +118,7 @@ def main(
         "-V",
         help="啟用詳細日誌輸出（DEBUG 等級）。",
     ),
-):
+) -> None:
     """
     台灣政府公文 AI 智慧助理。
 

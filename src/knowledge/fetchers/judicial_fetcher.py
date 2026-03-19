@@ -73,18 +73,15 @@ class JudicialFetcher(BaseFetcher):
         for ep in _COURT_ENDPOINTS:
             if len(all_items) >= self.limit:
                 break
-            try:
-                resp = self._request_with_retry(
-                    "get", ep["url"], headers=headers, timeout=15,
-                )
-                data = resp.json()
-                links = data.get("li_list", [])
-                for link_html in links:
-                    item = self._parse_link(link_html, ep["court"])
-                    if item:
-                        all_items.append(item)
-            except (requests.RequestException, ValueError) as exc:
-                logger.warning("取得 %s 裁判列表失敗：%s", ep["court"], exc)
+            data = self._fetch_json("get", ep["url"], headers=headers, timeout=15)
+            if data is None:
+                logger.warning("取得 %s 裁判列表失敗", ep["court"])
+                continue
+            links = data.get("li_list", []) if isinstance(data, dict) else []
+            for link_html in links:
+                item = self._parse_link(link_html, ep["court"])
+                if item:
+                    all_items.append(item)
 
         all_items = all_items[: self.limit]
 

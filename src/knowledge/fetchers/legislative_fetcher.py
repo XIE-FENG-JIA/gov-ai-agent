@@ -63,18 +63,10 @@ class LegislativeFetcher(BaseFetcher):
             if self.term and self.term != "all":
                 params["屆"] = self.term
 
-            try:
-                resp = self._request_with_retry(
-                    "get", url, params=params, headers=headers, timeout=30,
-                )
-            except requests.RequestException as exc:
-                logger.error("查詢立法院議案 API 失敗：%s", exc)
-                break
-
-            try:
-                data = resp.json()
-            except Exception as exc:
-                logger.error("解析立法院 JSON 失敗：%s", exc)
+            data = self._fetch_json(
+                "get", url, params=params, headers=headers, timeout=30,
+            )
+            if data is None:
                 break
 
             bills = data.get("bills", [])

@@ -65,20 +65,12 @@ class OpenDataFetcher(BaseFetcher):
                 "sort": "_score_desc",
             }
 
-            try:
-                resp = self._request_with_retry(
-                    "post", _FRONT_SEARCH_URL,
-                    json=payload, timeout=30,
-                    headers={"Content-Type": "application/json"},
-                )
-            except requests.RequestException as exc:
-                logger.error("查詢開放資料平臺失敗（已重試）：%s", exc)
-                break
-
-            try:
-                data = resp.json()
-            except Exception as exc:
-                logger.error("解析開放資料 JSON 失敗：%s", exc)
+            data = self._fetch_json(
+                "post", _FRONT_SEARCH_URL,
+                json=payload, timeout=30,
+                headers={"Content-Type": "application/json"},
+            )
+            if data is None:
                 break
 
             if not isinstance(data, dict):

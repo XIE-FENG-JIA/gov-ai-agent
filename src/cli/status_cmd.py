@@ -3,7 +3,6 @@
 讀取各項設定與記錄檔案，顯示系統整體狀態。
 """
 
-import json
 import os
 
 import yaml
@@ -11,24 +10,15 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from src.cli.utils import JSONStore
+
 console = Console()
 
-_HISTORY_FILE = ".gov-ai-history.json"
-_FEEDBACK_FILE = ".gov-ai-feedback.json"
-_PROFILE_FILE = ".gov-ai-profile.json"
-_ALIASES_FILE = ".gov-ai-aliases.json"
+_history_store = JSONStore(".gov-ai-history.json", default=[])
+_feedback_store = JSONStore(".gov-ai-feedback.json", default=[])
+_profile_store = JSONStore(".gov-ai-profile.json", default={})
+_aliases_store = JSONStore(".gov-ai-aliases.json", default={})
 _CONFIG_FILE = "config.yaml"
-
-
-def _load_json(path: str) -> list | dict | None:
-    """嘗試載入 JSON 檔案，失敗回傳 None。"""
-    if not os.path.isfile(path):
-        return None
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return None
 
 
 def _load_config(path: str) -> dict | None:
@@ -70,14 +60,14 @@ def status():
         table.add_row("LLM 設定", "[dim]✗ 未設定[/dim]", "[dim]尚未建立 config.yaml[/dim]")
 
     # 2. 生成記錄
-    history = _load_json(os.path.join(cwd, _HISTORY_FILE))
+    history = _history_store.load()
     if isinstance(history, list) and history:
         table.add_row("生成記錄", "[green]✓ 已設定[/green]", f"{len(history)} 筆")
     else:
         table.add_row("生成記錄", "[dim]✗ 未設定[/dim]", "[dim]尚無記錄[/dim]")
 
     # 3. 回饋記錄
-    feedback = _load_json(os.path.join(cwd, _FEEDBACK_FILE))
+    feedback = _feedback_store.load()
     if isinstance(feedback, list) and feedback:
         scores = [r.get("score") for r in feedback if isinstance(r.get("score"), (int, float))]
         avg = sum(scores) / len(scores) if scores else 0
@@ -89,14 +79,14 @@ def status():
         table.add_row("回饋記錄", "[dim]✗ 未設定[/dim]", "[dim]尚無回饋[/dim]")
 
     # 4. 使用者設定
-    profile = _load_json(os.path.join(cwd, _PROFILE_FILE))
+    profile = _profile_store.load()
     if isinstance(profile, dict) and profile:
         table.add_row("使用者設定", "[green]✓ 已設定[/green]", f"{len(profile)} 項欄位")
     else:
         table.add_row("使用者設定", "[dim]✗ 未設定[/dim]", "[dim]尚未建立[/dim]")
 
     # 5. 別名數量
-    aliases = _load_json(os.path.join(cwd, _ALIASES_FILE))
+    aliases = _aliases_store.load()
     if isinstance(aliases, dict) and aliases:
         table.add_row("指令別名", "[green]✓ 已設定[/green]", f"{len(aliases)} 組")
     else:

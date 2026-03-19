@@ -3,12 +3,15 @@
 顯示系統使用統計和知識庫概覽。
 """
 import os
-import json
 
 from rich.console import Console
 from rich.panel import Panel
 
+from src.cli.utils import JSONStore
+
 console = Console()
+
+_history_store = JSONStore(".gov-ai-history.json", default=[])
 
 
 def stats():
@@ -28,11 +31,9 @@ def stats():
 
     # 1. 生成記錄統計
     console.print("\n[bold]生成記錄[/bold]")
-    history_path = os.path.join(os.getcwd(), ".gov-ai-history.json")
-    if os.path.isfile(history_path):
-        try:
-            with open(history_path, "r", encoding="utf-8") as f:
-                history = json.load(f)
+    if _history_store.exists():
+        history = _history_store.load()
+        if isinstance(history, list):
             total = len(history)
             success = sum(1 for r in history if r.get("status") == "success")
             failed = total - success
@@ -55,7 +56,7 @@ def stats():
                 sorted_types = sorted(type_counts.items(), key=lambda x: -x[1])
                 top_types = ", ".join(f"{t}({c})" for t, c in sorted_types[:5])
                 console.print(f"  類型分佈：{top_types}")
-        except (json.JSONDecodeError, OSError):
+        else:
             console.print("  [yellow]歷史記錄檔案損壞[/yellow]")
     else:
         console.print("  [dim]尚無記錄（使用 gov-ai generate 後自動產生）[/dim]")

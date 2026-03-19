@@ -11,7 +11,7 @@ from rich.table import Table
 console = Console()
 
 
-def doctor():
+def doctor() -> None:
     """
     快速診斷系統環境和常見問題。
 

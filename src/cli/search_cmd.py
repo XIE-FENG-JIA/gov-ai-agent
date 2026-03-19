@@ -7,8 +7,10 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from src.cli.utils import JSONStore
+
 console = Console(width=120)
-_HISTORY_FILE = ".gov-ai-history.json"
+_history_store = JSONStore(".gov-ai-history.json", default=[])
 
 
 def search(
@@ -18,15 +20,12 @@ def search(
     export: str = typer.Option("", "--export", "-e", help="匯出搜尋結果至 JSON 檔案"),
 ):
     """搜尋生成歷史中包含關鍵字的公文記錄。"""
-    path = os.path.join(os.getcwd(), _HISTORY_FILE)
-    if not os.path.isfile(path):
+    if not _history_store.exists():
         console.print("[yellow]尚無生成記錄。[/yellow]")
         raise typer.Exit()
 
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            history = json.load(f)
-    except (json.JSONDecodeError, OSError):
+    history = _history_store.load()
+    if not isinstance(history, list):
         console.print("[red]歷史記錄檔案損壞。[/red]")
         raise typer.Exit(1)
 

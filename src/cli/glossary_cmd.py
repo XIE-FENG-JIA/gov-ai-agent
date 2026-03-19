@@ -45,7 +45,7 @@ _GLOSSARY = {
 
 
 @app.command("list")
-def list_categories():
+def list_categories() -> None:
     """列出所有公文語彙分類。"""
     table = Table(title="公文語彙分類")
     table.add_column("分類", style="cyan")
@@ -59,7 +59,7 @@ def list_categories():
 def search(
     keyword: str = typer.Argument(..., help="搜尋關鍵字"),
     fuzzy: bool = typer.Option(False, "--fuzzy", help="啟用模糊搜尋（部分匹配）"),
-):
+) -> None:
     """搜尋公文語彙（名稱或說明）。"""
     table = Table(title=f"搜尋結果：{keyword}")
     table.add_column("分類", style="cyan")
@@ -92,7 +92,7 @@ def glossary_add(
     glossary_file: str = typer.Option(
         ".glossary/custom.json", "--file", "-f", help="語彙檔案路徑"
     ),
-):
+) -> None:
     """新增或更新自訂語彙。"""
     path = Path(glossary_file)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -120,7 +120,7 @@ def glossary_remove(
     glossary_file: str = typer.Option(
         ".glossary/custom.json", "--file", "-f", help="語彙檔案路徑"
     ),
-):
+) -> None:
     """刪除自訂語彙。"""
     path = Path(glossary_file)
     if not path.exists():

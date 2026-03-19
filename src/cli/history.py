@@ -15,15 +15,17 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from src.cli.utils import JSONStore
+
 app = typer.Typer()
 console = Console()
 
-_HISTORY_FILE = ".gov-ai-history.json"
 _MAX_HISTORY = 100
 
-
-def _get_history_path() -> str:
-    return os.path.join(os.getcwd(), _HISTORY_FILE)
+# 共用 JSONStore 實例
+_history_store = JSONStore(".gov-ai-history.json", default=[])
+_tags_store = JSONStore(os.path.join(".history", "tags.json"), default={})
+_pins_store = JSONStore(os.path.join(".history", "pins.json"), default=[])
 
 
 def append_record(
@@ -35,7 +37,7 @@ def append_record(
     rounds_used: int | None = None,
     elapsed: float | None = None,
     status: str = "success",
-):
+) -> None:
     """新增一筆生成記錄。"""
     record = {
         "timestamp": datetime.now().isoformat(),
@@ -48,23 +50,14 @@ def append_record(
         "elapsed_sec": round(elapsed, 1) if elapsed else None,
         "status": status,
     }
-    path = _get_history_path()
-    history: list[dict] = []
-    if os.path.isfile(path):
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                history = json.load(f)
-        except (json.JSONDecodeError, OSError):
-            history = []
-
+    history = _history_store.load()
     history.append(record)
     # 保留最近 N 筆
     if len(history) > _MAX_HISTORY:
         history = history[-_MAX_HISTORY:]
 
     try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(history, f, ensure_ascii=False, indent=2)
+        _history_store.save(history)
     except OSError:
         pass  # 寫入失敗不影響主流程
 
@@ -73,23 +66,9 @@ def append_record(
 def history_list(
     count: int = typer.Option(10, "--count", "-n", help="顯示最近 N 筆記錄", min=1, max=100),
     output_json: bool = typer.Option(False, "--json", help="以 JSON 格式輸出"),
-):
+) -> None:
     """列出最近的公文生成記錄。"""
-    path = _get_history_path()
-    if not os.path.isfile(path):
-        if output_json:
-            console.print(json.dumps([], ensure_ascii=False, indent=2))
-            return
-        console.print("[yellow]尚無生成記錄。[/yellow]")
-        console.print("[dim]使用 gov-ai generate 產生公文後，歷史記錄將自動建立。[/dim]")
-        raise typer.Exit()
-
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            history = json.load(f)
-    except (json.JSONDecodeError, OSError):
-        console.print("[red]歷史記錄檔案損壞。[/red]")
-        raise typer.Exit(1)
+    history = _history_store.load()
 
     if not history:
         if output_json:
@@ -136,19 +115,9 @@ def history_list(
 @app.command(name="export")
 def export_history(
     output: str = typer.Option("gov-ai-history.csv", "--output", "-o", help="匯出路徑"),
-):
+) -> None:
     """將生成歷史記錄匯出為 CSV 格式。"""
-    path = _get_history_path()
-    if not os.path.isfile(path):
-        console.print("[yellow]尚無生成記錄可匯出。[/yellow]")
-        raise typer.Exit()
-
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            history = json.load(f)
-    except (json.JSONDecodeError, OSError):
-        console.print("[red]歷史記錄檔案損壞。[/red]")
-        raise typer.Exit(1)
+    history = _history_store.load()
 
     if not history:
         console.print("[yellow]尚無生成記錄可匯出。[/yellow]")
@@ -176,15 +145,9 @@ def export_history(
 @app.command(name="export-csv")
 def export_csv(
     output: str = typer.Option("history_export.csv", "-o", "--output", help="CSV 輸出路徑"),
-):
+) -> None:
     """將歷史記錄匯出為 CSV 格式。"""
-    history_file = _get_history_path()
-    if not os.path.isfile(history_file):
-        console.print("[yellow]尚無歷史記錄可匯出。[/yellow]")
-        return
-
-    with open(history_file, "r", encoding="utf-8") as f:
-        records = json.load(f)
+    records = _history_store.load()
 
     if not records:
         console.print("[yellow]尚無歷史記錄可匯出。[/yellow]")
@@ -202,19 +165,9 @@ def export_csv(
 
 
 @app.command(name="stats")
-def history_stats():
+def history_stats() -> None:
     """顯示歷史生成記錄的統計分析。"""
-    path = _get_history_path()
-    if not os.path.isfile(path):
-        console.print("[yellow]尚無生成記錄可統計。[/yellow]")
-        raise typer.Exit()
-
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            history = json.load(f)
-    except (json.JSONDecodeError, OSError):
-        console.print("[red]歷史記錄檔案損壞。[/red]")
-        raise typer.Exit(1)
+    history = _history_store.load()
 
     if not history:
         console.print("[yellow]尚無生成記錄可統計。[/yellow]")
@@ -269,15 +222,9 @@ def history_stats():
 def history_search(
     query: str = typer.Option(..., "-q", "--query", help="搜尋關鍵字"),
     doc_type: str = typer.Option("", "--type", "-t", help="按公文類型篩選"),
-):
+) -> None:
     """搜尋歷史記錄。"""
-    path = _get_history_path()
-    if not os.path.isfile(path):
-        console.print("[yellow]尚無歷史記錄。[/yellow]")
-        return
-
-    with open(path, "r", encoding="utf-8") as f:
-        records = json.load(f)
+    records = _history_store.load()
 
     if not records:
         console.print("[yellow]尚無歷史記錄。[/yellow]")
@@ -317,19 +264,9 @@ def history_clear(
     yes: bool = typer.Option(False, "--yes", "-y", help="跳過確認直接清除"),
     before: str = typer.Option("", "--before", help="清除此日期前的記錄（格式：YYYY-MM-DD）"),
     keep: int = typer.Option(0, "--keep", "-k", help="保留最近 N 筆記錄"),
-):
+) -> None:
     """清除生成歷史記錄。"""
-    path = _get_history_path()
-    if not os.path.isfile(path):
-        console.print("[yellow]尚無歷史記錄可清除。[/yellow]")
-        return
-
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            records = json.load(f)
-    except (json.JSONDecodeError, OSError):
-        console.print("[red]歷史記錄檔案損壞。[/red]")
-        raise typer.Exit(1)
+    records = _history_store.load()
 
     if not records:
         console.print("[yellow]尚無歷史記錄可清除。[/yellow]")
@@ -364,8 +301,7 @@ def history_clear(
         console.print("[dim]使用 --yes 跳過確認。[/dim]")
         raise typer.Exit(0)
 
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(remaining, f, ensure_ascii=False, indent=2)
+    _history_store.save(remaining)
 
     console.print(f"[green]已清除 {deleted_count} 筆記錄，保留 {len(remaining)} 筆。[/green]")
 
@@ -376,7 +312,7 @@ def history_filter(
     score_min: float = typer.Option(0.0, "--score-min", help="最低分數篩選"),
     after: str = typer.Option("", "--after", help="此日期後的記錄（YYYY-MM-DD）"),
     before: str = typer.Option("", "--before", help="此日期前的記錄（YYYY-MM-DD）"),
-):
+) -> None:
     """依條件篩選歷史記錄。"""
     history_file = _get_history_path()
     if not os.path.isfile(history_file):
@@ -457,7 +393,7 @@ def _save_tags(tags: dict[str, list[str]]) -> None:
 def tag_add(
     record_id: str = typer.Argument(..., help="記錄 ID"),
     tag: str = typer.Argument(..., help="標籤名稱"),
-):
+) -> None:
     """為指定記錄加入標籤。"""
     tags = _load_tags()
     if record_id not in tags:
@@ -472,7 +408,7 @@ def tag_add(
 def tag_remove(
     record_id: str = typer.Argument(..., help="記錄 ID"),
     tag: str = typer.Argument(..., help="標籤名稱"),
-):
+) -> None:
     """移除指定記錄的標籤。"""
     tags = _load_tags()
     if record_id in tags and tag in tags[record_id]:
@@ -488,7 +424,7 @@ def tag_remove(
 @app.command(name="tag-list")
 def tag_list(
     record_id: str = typer.Option("", help="查詢特定記錄的標籤"),
-):
+) -> None:
     """列出標籤。"""
     tags = _load_tags()
     if not tags:
@@ -517,7 +453,7 @@ def tag_list(
 @app.command(name="duplicate")
 def duplicate(
     threshold: float = typer.Option(0.8, "--threshold", "-t", help="相似度門檻（0.0-1.0）"),
-):
+) -> None:
     """偵測可能重複的歷史記錄。"""
     history_dir = os.path.join(os.getcwd(), ".history")
     if not os.path.isdir(history_dir):
@@ -570,7 +506,7 @@ def duplicate(
 def rename(
     record_id: str = typer.Argument(..., help="記錄 ID"),
     new_name: str = typer.Argument(..., help="新的備註/主旨"),
-):
+) -> None:
     """重新命名指定記錄的主旨。"""
     history_dir = os.path.join(os.getcwd(), ".history")
     if not os.path.isdir(history_dir):
@@ -625,7 +561,7 @@ def _save_pins(pins: list[str]) -> None:
 @app.command(name="pin")
 def pin(
     record_id: str = typer.Argument(..., help="記錄 ID"),
-):
+) -> None:
     """釘選指定的歷史記錄。"""
     pins = _load_pins()
     if record_id in pins:
@@ -639,7 +575,7 @@ def pin(
 @app.command(name="unpin")
 def unpin(
     record_id: str = typer.Argument(..., help="記錄 ID"),
-):
+) -> None:
     """取消釘選指定的歷史記錄。"""
     pins = _load_pins()
     if record_id not in pins:
@@ -657,7 +593,7 @@ _ARCHIVE_EXCLUDE = {"tags.json", "pins.json"}
 def history_archive(
     days: int = typer.Option(30, "--days", "-d", help="封存超過 N 天的記錄"),
     yes: bool = typer.Option(False, "--yes", "-y", help="跳過確認"),
-):
+) -> None:
     """封存超過指定天數的歷史記錄。"""
     history_dir = os.path.join(os.getcwd(), ".history")
     if not os.path.isdir(history_dir):
@@ -701,7 +637,7 @@ def history_archive(
 def history_compare(
     id_a: str = typer.Argument(..., help="第一筆記錄 ID"),
     id_b: str = typer.Argument(..., help="第二筆記錄 ID"),
-):
+) -> None:
     """比較兩筆歷史記錄的差異。"""
     history_dir = os.path.join(os.getcwd(), ".history")
     if not os.path.isdir(history_dir):

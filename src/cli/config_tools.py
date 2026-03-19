@@ -46,7 +46,7 @@ def show(
         "", "--section", "-s",
         help="僅顯示特定區段（llm/knowledge_base/api/organizational_memory）",
     ),
-):
+) -> None:
     """
     顯示目前的組態設定。
 
@@ -123,7 +123,7 @@ def show(
 @app.command(name="validate")
 def config_validate(
     config_path: str = typer.Option("config.yaml", "--path", "-p", help="設定檔路徑"),
-):
+) -> None:
     """
     驗證設定檔的格式與必要欄位。
 
@@ -177,7 +177,7 @@ def fetch_models(
     update: bool = typer.Option(False, "--update", "-u", help="以找到的最佳模型更新 config.yaml"),
     limit: int = typer.Option(5, "--limit", "-l", help="測試並顯示的模型數量", min=1, max=50),
     test: bool = typer.Option(True, "--test/--no-test", help="是否測試模型連線能力")
-):
+) -> None:
     """
     從 OpenRouter API 擷取、列出並測試最佳免費模型。
 
@@ -320,7 +320,7 @@ _PROVIDER_TEMPLATES = {
 
 
 @app.command()
-def init():
+def init() -> None:
     """
     互動式引導建立 config.yaml 設定檔。
 
@@ -386,7 +386,7 @@ def init():
     config_data = {
         "llm": llm_config,
         "knowledge_base": {"path": kb_path},
-        "api": {"auth_enabled": False, "api_keys": []},
+        "api": {"auth_enabled": True, "api_keys": []},
         "organizational_memory": {"enabled": True, "storage_path": f"{kb_path}/agency_preferences.json"},
     }
 
@@ -399,7 +399,7 @@ def init():
     console.print("  [cyan]gov-ai generate -i \"台北市環保局發給各學校，加強資源回收\"[/cyan]  產生公文")
 
 
-def _parse_value(value: str):
+def _parse_value(value: str) -> None:
     """自動判斷值的類型：布林、整數、浮點數或字串。"""
     if value.lower() in ("true", "yes"):
         return True
@@ -420,7 +420,7 @@ def _parse_value(value: str):
 def set_value(
     key: str = typer.Argument(help="設定鍵（支援點號分隔路徑，例如 llm.temperature）"),
     value: str = typer.Argument(help="設定值（自動判斷數字、布林、字串）"),
-):
+) -> None:
     """設定 config.yaml 中的值。
 
     支援點號分隔的路徑，例如：llm.temperature, llm.max_tokens
@@ -468,7 +468,7 @@ def set_value(
     console.print(f"[cyan]{key}[/cyan]: [red]{old_value}[/red] → [green]{parsed_value}[/green]")
 
 
-def _mask_sensitive(data, _sensitive_keys=("api_key", "secret", "token", "password")):
+def _mask_sensitive(data, _sensitive_keys=("api_key", "secret", "token", "password")) -> None:
     """遞迴遮蔽敏感欄位。"""
     if isinstance(data, dict):
         return {
@@ -484,7 +484,7 @@ def _mask_sensitive(data, _sensitive_keys=("api_key", "secret", "token", "passwo
 def export(
     output: str = typer.Option("", "-o", "--output", help="匯出檔案路徑（預設標準輸出）"),
     format: str = typer.Option("json", "--format", "-f", help="匯出格式：json / yaml"),
-):
+) -> None:
     """匯出目前設定。"""
     try:
         cm = ConfigManager()
@@ -512,7 +512,7 @@ def export(
 @app.command(name="backup")
 def config_backup(
     output: str = typer.Option("", "-o", "--output", help="備份檔案路徑"),
-):
+) -> None:
     """備份目前的設定檔。"""
     import shutil
     cm = ConfigManager()

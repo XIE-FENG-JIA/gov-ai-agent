@@ -5,6 +5,7 @@
 """
 import json
 import os
+import re
 
 import typer
 import yaml
@@ -23,8 +24,21 @@ def _ensure_dir() -> str:
     return _WORKFLOW_DIR
 
 
+_VALID_NAME_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+
+def _validate_workflow_name(name: str) -> None:
+    """驗證工作流程名稱，防止路徑穿越攻擊。"""
+    if not _VALID_NAME_RE.match(name):
+        raise typer.BadParameter(
+            f"範本名稱 '{name}' 包含不允許的字元，"
+            "僅允許英數字、底線與連字號 [a-zA-Z0-9_-]。"
+        )
+
+
 def _workflow_path(name: str) -> str:
     """取得範本檔案路徑。"""
+    _validate_workflow_name(name)
     return os.path.join(_WORKFLOW_DIR, f"{name}.json")
 
 

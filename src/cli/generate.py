@@ -37,6 +37,394 @@ _INPUT_MAX_LENGTH = MAX_USER_INPUT_LENGTH
 _PATH_PATTERN = re.compile(r"[A-Za-z]:\\[\w\\. -]+|/[\w/. -]{5,}")
 
 
+def _apply_content_metadata(
+    draft: str,
+    *,
+    priority_tag: str,
+    cc: str,
+    receiver_title: str,
+    ref_number: str,
+    date: str,
+    header: str,
+    classification: str,
+    watermark: str,
+    footnote: str,
+    sign: str,
+    attachment: str,
+    page_break: bool,
+    disclaimer: str,
+) -> str:
+    """將使用者指定的元資料（優先標記、副本、發文字號等）注入草稿。"""
+    # 優先標記
+    if priority_tag:
+        _TAG_MAP = {"urgent": "【急件】", "confidential": "【密】", "normal": ""}
+        tag_text = _TAG_MAP.get(priority_tag.lower(), "")
+        if tag_text and "主旨" in draft:
+            draft = draft.replace("主旨", f"{tag_text}主旨", 1)
+            console.print(f"  [dim]已加入優先標記：{tag_text}[/dim]")
+        elif priority_tag.lower() not in _TAG_MAP:
+            console.print(f"[yellow]未知的優先標記：{priority_tag}（可用：urgent, confidential, normal）[/yellow]")
+
+    # 副本收受者
+    if cc:
+        cc_list = [c.strip() for c in cc.split(",") if c.strip()]
+        if cc_list:
+            cc_text = f"副本：{'、'.join(cc_list)}"
+            if "副本" in draft:
+                import re as _re
+                draft = _re.sub(r"副本[：:].*", cc_text, draft, count=1)
+            elif "正本" in draft:
+                lines = draft.split("\n")
+                new_lines = []
+                inserted = False
+                for line in lines:
+                    new_lines.append(line)
+                    if not inserted and line.strip().startswith("正本"):
+                        new_lines.append(cc_text)
+                        inserted = True
+                if not inserted:
+                    new_lines.append(cc_text)
+                draft = "\n".join(new_lines)
+            else:
+                draft = draft.rstrip() + f"\n{cc_text}"
+            console.print(f"  [dim]已加入副本：{'、'.join(cc_list)}[/dim]")
+
+    # 受文者敬稱
+    if receiver_title:
+        if "正本" in draft:
+            lines = draft.split("\n")
+            new_lines = []
+            for line in lines:
+                new_lines.append(line)
+                if line.strip().startswith("正本"):
+                    new_lines.append(f"  敬稱：{receiver_title}")
+            draft = "\n".join(new_lines)
+        else:
+            draft = draft.rstrip() + f"\n敬稱：{receiver_title}"
+        console.print(f"  [dim]已加入敬稱：{receiver_title}[/dim]")
+
+    # 發文字號
+    if ref_number:
+        if "主旨" in draft:
+            draft = draft.replace("主旨", f"發文字號：{ref_number}\n主旨", 1)
+        else:
+            draft = f"發文字號：{ref_number}\n{draft}"
+        console.print(f"  [dim]已加入發文字號：{ref_number}[/dim]")
+
+    # 發文日期
+    if date:
+        date_text = f"發文日期：{date}"
+        if "主旨" in draft:
+            draft = draft.replace("主旨", f"{date_text}\n主旨", 1)
+        else:
+            draft = f"{date_text}\n{draft}"
+        console.print(f"  [dim]已加入發文日期：{date}[/dim]")
+
+    # 頁首
+    if header:
+        draft = f"{header}\n\n{draft}"
+        console.print(f"  [dim]已加入頁首：{header}[/dim]")
+
+    # 密等標記
+    if classification:
+        _CLS_VALID = {"密", "機密", "極機密", "限閱"}
+        if classification in _CLS_VALID:
+            cls_text = f"【{classification}】"
+            draft = f"{cls_text}\n{draft}"
+            console.print(f"  [dim]已加入密等標記：{cls_text}[/dim]")
+        else:
+            console.print(f"[yellow]未知的密等：{classification}（可用：{'、'.join(sorted(_CLS_VALID))}）[/yellow]")
+
+    # 浮水印
+    if watermark:
+        wm_text = f"【{watermark}】"
+        draft = f"{wm_text}\n{draft}"
+        console.print(f"  [dim]已加入浮水印：{wm_text}[/dim]")
+
+    # 附註
+    if footnote:
+        draft = draft.rstrip() + f"\n附註：{footnote}"
+        console.print(f"  [dim]已加入附註：{footnote}[/dim]")
+
+    # 署名
+    if sign:
+        if "正本" in draft:
+            draft = draft.replace("正本", f"\n{sign}\n\n正本", 1)
+        else:
+            draft = draft.rstrip() + f"\n\n{sign}"
+        console.print(f"  [dim]已加入署名：{sign}[/dim]")
+
+    # 附件清單
+    if attachment:
+        att_list = [a.strip() for a in attachment.split(",") if a.strip()]
+        if att_list:
+            att_lines = "\n".join(f"  {i}. {a}" for i, a in enumerate(att_list, 1))
+            att_text = f"附件：\n{att_lines}"
+            draft = draft.rstrip() + f"\n{att_text}"
+            console.print(f"  [dim]已加入附件清單（{len(att_list)} 項）[/dim]")
+
+    # 分頁標記
+    if page_break:
+        if "說明" in draft and "辦法" in draft:
+            draft = draft.replace("辦法", "--- 分頁 ---\n辦法", 1)
+            console.print("  [dim]已在說明與辦法之間插入分頁標記。[/dim]")
+        else:
+            console.print("  [yellow]找不到「說明」及「辦法」段落，無法插入分頁標記。[/yellow]")
+
+    # 免責聲明
+    if disclaimer:
+        disclaimer_text = disclaimer.strip()
+        if disclaimer_text:
+            draft = draft.rstrip() + f"\n\n免責聲明：{disclaimer_text}"
+            console.print("  [dim]已加入免責聲明[/dim]")
+
+    return draft
+
+
+def _display_format_options(
+    *,
+    speed: str,
+    margin: str,
+    line_spacing: str,
+    font_size: str,
+    duplex: str,
+    orientation: str,
+    paper_size: str,
+    columns: str,
+    seal: str,
+    copy_count: str,
+    draft_mark: str,
+    urgency_label: str,
+    lang: str,
+    header_logo: str,
+) -> None:
+    """顯示排版與格式設定（不修改草稿內容）。"""
+    # 速度模式
+    _SPEED_MODES = {"fast": "快速模式", "normal": "標準模式", "careful": "謹慎模式"}
+    speed_label = _SPEED_MODES.get(speed.lower().strip(), "")
+    if speed_label:
+        console.print(f"  [dim]生成模式：{speed_label}[/dim]")
+    else:
+        console.print(f"[yellow]未知的速度模式：{speed}（可用：fast/normal/careful）[/yellow]")
+
+    # 頁邊距
+    _MARGIN_MAP = {"standard": "標準邊距", "narrow": "窄邊距", "wide": "寬邊距"}
+    margin_label = _MARGIN_MAP.get(margin.lower().strip(), "")
+    if margin_label:
+        console.print(f"  [dim]頁邊距：{margin_label}[/dim]")
+    else:
+        console.print(f"[yellow]未知的頁邊距設定：{margin}（可用：standard/narrow/wide）[/yellow]")
+
+    # 行距
+    _SPACING_MAP = {"1.0": "單行距", "1.5": "1.5 倍行距", "2.0": "雙倍行距"}
+    spacing_label = _SPACING_MAP.get(line_spacing.strip(), "")
+    if spacing_label:
+        console.print(f"  [dim]行距：{spacing_label}[/dim]")
+    else:
+        console.print(f"[yellow]未知的行距設定：{line_spacing}（可用：1.0/1.5/2.0）[/yellow]")
+
+    # 字型大小
+    _FONT_SIZES = {"10", "12", "14", "16"}
+    fs = font_size.strip()
+    if fs in _FONT_SIZES:
+        console.print(f"  [dim]字型大小：{fs}pt[/dim]")
+    else:
+        console.print(f"[yellow]未知的字型大小：{font_size}（可用：10/12/14/16）[/yellow]")
+
+    # 雙面列印
+    _DUPLEX_MAP = {"off": "單面列印", "long-edge": "雙面列印（長邊翻轉）", "short-edge": "雙面列印（短邊翻轉）"}
+    duplex_label = _DUPLEX_MAP.get(duplex.lower().strip(), "")
+    if duplex_label:
+        console.print(f"  [dim]列印模式：{duplex_label}[/dim]")
+    else:
+        console.print(f"[yellow]未知的雙面列印設定：{duplex}（可用：off/long-edge/short-edge）[/yellow]")
+
+    # 紙張方向
+    _ORIENT_MAP = {"portrait": "直印", "landscape": "橫印"}
+    orient_label = _ORIENT_MAP.get(orientation.lower().strip(), "")
+    if orient_label:
+        console.print(f"  [dim]紙張方向：{orient_label}[/dim]")
+    else:
+        console.print(f"[yellow]未知的紙張方向：{orientation}（可用：portrait/landscape）[/yellow]")
+
+    # 紙張大小
+    _PAPER_SIZES = {
+        "A4": "A4 (210×297mm)", "B4": "B4 (257×364mm)",
+        "A3": "A3 (297×420mm)", "Letter": "Letter (216×279mm)",
+    }
+    ps = paper_size.strip().upper() if paper_size.strip().upper() != "LETTER" else "Letter"
+    if paper_size.strip().lower() == "letter":
+        ps = "Letter"
+    ps_label = _PAPER_SIZES.get(ps, "")
+    if ps_label:
+        console.print(f"  [dim]紙張大小：{ps_label}[/dim]")
+    else:
+        console.print(f"[yellow]未知的紙張大小：{paper_size}（可用：A4/B4/A3/Letter）[/yellow]")
+
+    # 排版欄數
+    _COLUMNS_MAP = {"1": "單欄排版", "2": "雙欄排版"}
+    col_label = _COLUMNS_MAP.get(columns.strip(), "")
+    if col_label:
+        console.print(f"  [dim]排版：{col_label}[/dim]")
+    else:
+        console.print(f"[yellow]未知的欄數設定：{columns}（可用：1/2）[/yellow]")
+
+    # 用印
+    _SEAL_MAP = {"none": "免用印", "official": "蓋機關印信", "personal": "蓋職章"}
+    seal_label = _SEAL_MAP.get(seal.lower().strip(), "")
+    if seal_label:
+        console.print(f"  [dim]用印：{seal_label}[/dim]")
+    else:
+        console.print(f"[yellow]未知的用印設定：{seal}（可用：none/official/personal）[/yellow]")
+
+    # 輸出份數
+    try:
+        cc_val = int(copy_count.strip())
+    except ValueError:
+        cc_val = 0
+    if 1 <= cc_val <= 10:
+        if cc_val > 1:
+            console.print(f"  [dim]輸出份數：{cc_val} 份[/dim]")
+        else:
+            console.print("  [dim]輸出份數：1 份（預設）[/dim]")
+    else:
+        console.print(f"[yellow]無效的份數設定：{copy_count}（可用：1-10）[/yellow]")
+
+    # 草稿標記
+    _DRAFT_MARK_MAP = {"none": "無標記", "draft": "草稿", "internal": "內部文件"}
+    dm_label = _DRAFT_MARK_MAP.get(draft_mark.lower().strip(), "")
+    if dm_label:
+        if draft_mark.lower().strip() != "none":
+            console.print(f"  [dim]草稿標記：{dm_label}[/dim]")
+    else:
+        console.print(f"[yellow]未知的草稿標記：{draft_mark}（可用：none/draft/internal）[/yellow]")
+
+    # 急件標示
+    _URGENCY_LABEL_MAP = {"normal": "普通件", "urgent": "急件", "most-urgent": "最速件"}
+    ul_label = _URGENCY_LABEL_MAP.get(urgency_label.lower().strip(), "")
+    if ul_label:
+        if urgency_label.lower().strip() != "normal":
+            console.print(f"  [dim]急件標示：{ul_label}[/dim]")
+    else:
+        console.print(f"[yellow]未知的急件標示：{urgency_label}（可用：normal/urgent/most-urgent）[/yellow]")
+
+    # 公文語言
+    _LANG_MAP = {"zh-tw": "繁體中文", "zh-cn": "簡體中文", "en": "英文"}
+    lang_label = _LANG_MAP.get(lang.lower().strip(), "")
+    if lang_label:
+        if lang.lower().strip() != "zh-tw":
+            console.print(f"  [dim]公文語言：{lang_label}[/dim]")
+    else:
+        console.print(f"[yellow]未知的語言設定：{lang}（可用：zh-TW/zh-CN/en）[/yellow]")
+
+    # 頁首 logo
+    if header_logo:
+        if os.path.isfile(header_logo):
+            console.print(f"  [dim]頁首 Logo：{os.path.basename(header_logo)}[/dim]")
+        else:
+            console.print(f"[yellow]找不到 logo 檔案：{header_logo}[/yellow]")
+
+
+def _export_document(
+    final_draft: str,
+    output_path: str,
+    *,
+    qa_report_str: str | None,
+    qa_report,
+    save_markdown: bool,
+    encoding: str,
+    preview: bool,
+    lang_check_flag: bool,
+    export_report: str,
+    requirement,
+) -> str:
+    """匯出 DOCX、Markdown，並執行後處理檢查。回傳最終輸出路徑。"""
+    console.rule("[bold blue]步驟 5/5 · 匯出文件[/bold blue]")
+
+    # 防止路徑遍歷
+    has_traversal = ".." in output_path
+    is_absolute = os.path.isabs(output_path) or output_path.startswith("/")
+    safe_filename = os.path.basename(output_path)
+    if not safe_filename or safe_filename.startswith("."):
+        safe_filename = "output.docx"
+    if not safe_filename.endswith(".docx"):
+        safe_filename += ".docx"
+
+    if is_absolute or has_traversal:
+        full_output_path = safe_filename
+    elif os.path.dirname(output_path):
+        output_dir = os.path.dirname(os.path.abspath(output_path))
+        full_output_path = os.path.join(output_dir, safe_filename)
+    else:
+        full_output_path = safe_filename
+
+    exporter = DocxExporter()
+    try:
+        final_path = exporter.export(final_draft, full_output_path, qa_report=qa_report_str)
+        console.print(f"[bold green]完成！文件已儲存至：[/bold green] {final_path}")
+    except Exception as e:
+        console.print(f"[red]匯出失敗：{_sanitize_error(e)}[/red]")
+        raise typer.Exit(1)
+
+    # Markdown 匯出
+    if save_markdown:
+        _VALID_ENCODINGS = {"utf-8", "big5", "utf-8-sig"}
+        md_enc = encoding.lower().strip() if encoding else "utf-8"
+        if md_enc not in _VALID_ENCODINGS:
+            valid_list = ', '.join(sorted(_VALID_ENCODINGS))
+            console.print(
+                f"[yellow]不支援的編碼 '{encoding}'，"
+                f"改用 utf-8。可用：{valid_list}[/yellow]"
+            )
+            md_enc = "utf-8"
+        md_path = os.path.splitext(full_output_path)[0] + ".md"
+        try:
+            with open(md_path, "w", encoding=md_enc) as f:
+                f.write(final_draft)
+            enc_note = f"（{md_enc}）" if md_enc != "utf-8" else ""
+            console.print(f"  [green]Markdown 版本：{md_path}{enc_note}[/green]")
+        except OSError as e:
+            console.print(f"  [yellow]Markdown 匯出失敗：{_sanitize_error(e)}[/yellow]")
+
+    # 簡體字偵測
+    sc_findings = detect_simplified(final_draft)
+    if sc_findings:
+        unique_chars = sorted(set((s, t) for s, t, _ in sc_findings))
+        console.print(f"\n[yellow]⚠ 偵測到 {len(sc_findings)} 處可能的簡體字：[/yellow]")
+        for sc, tc in unique_chars[:10]:
+            console.print(f"  [yellow]「{sc}」→ 建議「{tc}」[/yellow]")
+        if len(unique_chars) > 10:
+            console.print(f"  [dim]...及其他 {len(unique_chars) - 10} 種字[/dim]")
+        console.print("[dim]提示：建議檢查並修正為繁體中文。[/dim]")
+
+    # 公文用語品質檢查
+    if lang_check_flag:
+        findings = check_language(final_draft)
+        if findings:
+            console.print(f"\n[yellow]公文用語檢查：發現 {len(findings)} 項建議[/yellow]")
+            for f in findings[:15]:
+                label = "口語詞" if f["type"] == "informal" else "贅詞"
+                console.print(f"  [{label}] 「{f['found']}」→ 建議「{f['suggest']}」（{f['count']} 處）")
+        else:
+            console.print("\n[green]公文用語檢查：未發現口語詞或贅詞。[/green]")
+
+    # 預覽模式
+    if preview:
+        console.print()
+        console.print(Panel(
+            Markdown(final_draft),
+            title=f"[bold cyan]公文預覽 — {requirement.doc_type}[/bold cyan]",
+            border_style="cyan",
+            padding=(1, 2),
+        ))
+
+    # 匯出 QA 報告
+    if export_report and qa_report:
+        _export_qa_report(qa_report, export_report)
+
+    return full_output_path
+
+
 def _save_version(content: str, output_path: str, version: int, label: str):
     """將草稿版本儲存至 <basename>_v<N>.md 檔案。"""
     base = os.path.splitext(output_path)[0]
@@ -317,6 +705,320 @@ def _export_qa_report(qa_report, report_path: str):
         console.print(f"  [yellow]QA 報告匯出失敗：{_sanitize_error(e)}[/yellow]")
 
 
+def _resolve_input(input_text: str | None, from_file: str) -> str:
+    """從 --input、--from-file 或互動式提示解析並驗證輸入。"""
+    if from_file:
+        if input_text is not None:
+            console.print("[red]錯誤：不可同時使用 --input 和 --from-file。[/red]")
+            raise typer.Exit(1)
+        if not os.path.isfile(from_file):
+            console.print(f"[red]錯誤：找不到檔案：{from_file}[/red]")
+            raise typer.Exit(1)
+        try:
+            with open(from_file, "r", encoding="utf-8-sig") as f:
+                input_text = f.read().strip()
+        except UnicodeDecodeError:
+            console.print("[red]錯誤：檔案編碼不支援，請使用 UTF-8 編碼。[/red]")
+            raise typer.Exit(1)
+        except OSError as e:
+            console.print(f"[red]錯誤：無法讀取檔案：{_sanitize_error(e)}[/red]")
+            raise typer.Exit(1)
+        if not input_text:
+            console.print("[red]錯誤：檔案內容為空。[/red]")
+            raise typer.Exit(1)
+        console.print(f"[dim]從檔案讀取到 {len(input_text)} 字的需求描述。[/dim]")
+
+    if input_text is None:
+        input_text = _read_interactive_input()
+        if not input_text:
+            raise typer.Exit(1)
+    elif not input_text.strip():
+        console.print("[red]錯誤：公文需求描述不可為空白。[/red]")
+        raise typer.Exit(1)
+
+    stripped = input_text.strip()
+    if len(stripped) < _INPUT_MIN_LENGTH:
+        console.print(f"[red]錯誤：需求描述至少需要 {_INPUT_MIN_LENGTH} 個字（目前 {len(stripped)} 字）。[/red]")
+        console.print("[dim]提示：請提供更完整的公文需求，包含發文者、受文者和主旨。[/dim]")
+        raise typer.Exit(1)
+
+    if len(stripped) > _INPUT_MAX_LENGTH:
+        console.print(f"[red]錯誤：需求描述不可超過 {_INPUT_MAX_LENGTH} 字（目前 {len(stripped)} 字）。[/red]")
+        console.print("[dim]提示：請精簡您的需求描述，僅保留核心資訊。[/dim]")
+        raise typer.Exit(1)
+
+    return input_text
+
+
+def _init_pipeline(input_text: str, *, auto_sender: bool):
+    """初始化 config、LLM、KB 並執行連線檢查。回傳 (config, llm, kb, input_text)。"""
+    config_manager = ConfigManager()
+    config = config_manager.config
+    llm_config = config.get("llm")
+    if not llm_config:
+        console.print("[red]錯誤：設定檔缺少 'llm' 區塊，請檢查 config.yaml[/red]")
+        raise typer.Exit(1)
+
+    if auto_sender:
+        default_sender = config.get("default_sender", "")
+        if default_sender:
+            input_text = f"發文者：{default_sender}。{input_text}"
+            console.print(f"  [dim]已自動填入發文者：{default_sender}[/dim]")
+        else:
+            console.print("[yellow]提示：config.yaml 未設定 default_sender，--auto-sender 無效。[/yellow]")
+            console.print("[dim]請在 config.yaml 加入 default_sender: \"您的機關名稱\"[/dim]")
+
+    kb_path = config.get("knowledge_base", {}).get("path", "./kb_data")
+    llm = get_llm_factory(llm_config, full_config=config)
+    kb = KnowledgeBaseManager(kb_path, llm)
+
+    # 知識庫空白提示（不阻擋執行）
+    try:
+        kb_stats = kb.get_stats()
+        if kb_stats.get("examples_count", 0) == 0:
+            console.print(
+                "[yellow]提示：知識庫尚未初始化，建議先執行 "
+                "`gov-ai kb ingest` 匯入範例。[/yellow]"
+            )
+            console.print("[dim]系統仍可繼續產生公文，但品質可能受限。[/dim]")
+    except Exception as e:
+        console.print(f"[dim]知識庫檢查時發生例外：{e}[/dim]")
+
+    # LLM 連線快速診斷（僅對 LiteLLMProvider 執行）
+    if isinstance(llm, LiteLLMProvider):
+        with Status("[cyan]正在檢查 LLM 連線...[/cyan]", console=console):
+            ok, err_msg = llm.check_connectivity(timeout=5)
+        if not ok:
+            console.print(f"[red]錯誤：{err_msg}[/red]")
+            provider = llm_config.get("provider", "")
+            if provider == "ollama":
+                console.print("[dim]Ollama 用戶請確認已啟動：ollama serve[/dim]")
+            elif provider in ("openrouter", "gemini"):
+                console.print("[dim]API 用戶請確認 API Key 已設定：export LLM_API_KEY=your-key[/dim]")
+            raise typer.Exit(1)
+
+    return config, llm, kb, input_text
+
+
+def _handle_dry_run(
+    llm_config: dict, kb_path: str, input_text: str, output_path: str,
+    *, skip_review: bool, convergence: bool, max_rounds: int,
+) -> None:
+    """Dry-run 模式：驗證配置後顯示結果。"""
+    console.rule("[bold blue]Dry Run 模式[/bold blue]")
+    console.print("  [green]✓[/green] 設定檔載入成功")
+    console.print(f"  [green]✓[/green] LLM 供應商：{llm_config.get('provider', '未設定')}")
+    console.print(f"  [green]✓[/green] 模型：{llm_config.get('model', '未設定')}")
+    console.print(f"  [green]✓[/green] 知識庫路徑：{kb_path}")
+    console.print(f"  [green]✓[/green] 輸入長度：{len(input_text)} 字")
+    console.print(f"  [green]✓[/green] 輸出路徑：{output_path}")
+    if convergence:
+        review_label = "啟用（分層收斂模式，零錯誤制）"
+    elif skip_review:
+        review_label = "跳過"
+    else:
+        review_label = f"啟用（最多 {max_rounds} 輪）"
+    console.print(f"  [green]✓[/green] 審查：{review_label}")
+    console.print("\n[bold green]Dry run 完成，一切就緒。[/bold green]")
+    console.print("[dim]移除 --dry-run 即可正式生成公文。[/dim]")
+
+
+def _handle_estimate(
+    input_text: str, *, skip_review: bool, convergence: bool, max_rounds: int,
+) -> None:
+    """預估 LLM 使用量和耗時。"""
+    console.rule("[bold blue]LLM 使用量預估[/bold blue]")
+    input_chars = len(input_text)
+    input_tokens = input_chars * 2
+    output_tokens = 2000
+    review_tokens = 0
+    if not skip_review:
+        if convergence:
+            est_rounds = 9
+            review_tokens = est_rounds * 5 * 500
+            output_tokens += est_rounds * 1000
+        else:
+            est_rounds = max_rounds
+            review_tokens = est_rounds * 5 * 500
+            output_tokens += 1000
+    total_tokens = input_tokens + output_tokens + review_tokens
+    est_time_min = total_tokens / 1000 * 2
+    est_time_max = total_tokens / 1000 * 5
+    console.print(f"  輸入長度：{input_chars} 字（≈ {input_tokens:,} tokens）")
+    console.print(f"  預估輸出：≈ {output_tokens:,} tokens")
+    if not skip_review:
+        if convergence:
+            console.print(f"  審查預估：≈ {review_tokens:,} tokens（分層收斂模式，最多 ~{est_rounds} 輪估算）")
+        else:
+            console.print(f"  審查預估：≈ {review_tokens:,} tokens（{max_rounds} 輪 × 5 agents）")
+    console.print(f"  [bold]預估總量：≈ {total_tokens:,} tokens[/bold]")
+    console.print(f"  預估耗時：{est_time_min:.0f} ~ {est_time_max:.0f} 秒")
+    console.print("\n[dim]以上為粗略估算，實際用量因模型和內容而異。[/dim]")
+    console.print("[dim]移除 --estimate 即可正式生成公文。[/dim]")
+
+
+def _run_core_pipeline(
+    llm, kb, input_text: str, *,
+    skip_review: bool, max_rounds: int, convergence: bool, skip_info: bool,
+    show_rounds: bool, retries: int, save_versions: bool, output_path: str,
+    template_name: str,
+) -> tuple:
+    """執行核心 pipeline：需求分析→草稿撰寫→格式標準化→多 Agent 審查。
+
+    回傳 (requirement, final_draft, qa_report, qa_report_str, ver_num,
+           do_write_fn, template_engine)。
+    """
+    # 1. 需求分析
+    console.rule("[bold blue]步驟 1/5 · 需求分析[/bold blue]")
+    req_agent = RequirementAgent(llm)
+
+    def _do_analyze():
+        with Status("[cyan]正在分析需求...[/cyan]", console=console):
+            return req_agent.analyze(input_text)
+
+    requirement = _retry_with_backoff(_do_analyze, retries, "需求分析")
+    console.print(f"  [green]類型：[/green]{requirement.doc_type}")
+    console.print(f"  [green]主旨：[/green]{requirement.subject}")
+    console.print(f"  [green]發文者：[/green]{requirement.sender}")
+    console.print(f"  [green]受文者：[/green]{requirement.receiver}")
+
+    # 2. 草稿撰寫 (RAG)
+    console.rule("[bold blue]步驟 2/5 · 草稿撰寫 (RAG)[/bold blue]")
+    writer = WriterAgent(llm, kb)
+
+    def _do_write():
+        with Status("[cyan]正在檢索範例並撰寫草稿...[/cyan]", console=console):
+            return writer.write_draft(requirement)
+
+    raw_draft = _retry_with_backoff(_do_write, retries, "草稿撰寫")
+    ver_num = 0
+    if save_versions:
+        ver_num += 1
+        _save_version(raw_draft, output_path, ver_num, "原始草稿")
+
+    # 3. 格式標準化
+    console.rule("[bold blue]步驟 3/5 · 格式標準化[/bold blue]")
+    template_engine = TemplateEngine()
+    try:
+        sections = template_engine.parse_draft(raw_draft)
+        formatted_draft = template_engine.apply_template(requirement, sections)
+    except Exception as e:
+        console.print(f"[red]格式標準化失敗：{_sanitize_error(e)}[/red]")
+        raise typer.Exit(1)
+    console.print("  [green]格式標準化完成。[/green]")
+    if template_name:
+        console.print(f"  [dim]使用範本：{template_name}[/dim]")
+    if save_versions:
+        ver_num += 1
+        _save_version(formatted_draft, output_path, ver_num, "格式標準化")
+
+    # 4. 多 Agent 審查與修正
+    final_draft = formatted_draft
+    qa_report = None
+    qa_report_str = None
+
+    if not skip_review:
+        console.rule("[bold blue]步驟 4/5 · 多 Agent 審查[/bold blue]")
+        editor = EditorInChief(llm, kb)
+        final_draft, qa_report = editor.review_and_refine(
+            formatted_draft, requirement.doc_type, max_rounds=max_rounds,
+            convergence=convergence, skip_info=skip_info,
+            show_rounds=show_rounds,
+        )
+        qa_report_str = qa_report.audit_log
+        if save_versions:
+            ver_num += 1
+            _save_version(final_draft, output_path, ver_num, "審查修正後")
+    else:
+        console.rule("[bold blue]步驟 4/5 · 審查（已跳過）[/bold blue]")
+        console.print("  [yellow]已跳過多 Agent 審查步驟。[/yellow]")
+
+    return requirement, final_draft, qa_report, qa_report_str, ver_num, _do_write, template_engine
+
+
+def _handle_confirm(
+    final_draft: str, *,
+    do_write_fn, retries: int, template_engine, requirement,
+    skip_review: bool, llm, kb,
+    max_rounds: int, convergence: bool, skip_info: bool, show_rounds: bool,
+) -> tuple:
+    """互動式確認迴圈。回傳 (final_draft, qa_report, qa_report_str)。"""
+    qa_report = None
+    qa_report_str = None
+    console.print()
+    console.print(Panel(
+        Markdown(final_draft[:500] + ("\n..." if len(final_draft) > 500 else "")),
+        title="[bold cyan]草稿預覽[/bold cyan]",
+        border_style="cyan",
+    ))
+    while True:
+        choice = input("\n接受此草稿？(y=接受/r=重新生成/n=取消) ").strip().lower()
+        if choice in ("y", "yes", ""):
+            break
+        elif choice in ("r", "retry"):
+            console.print("[yellow]重新生成...[/yellow]")
+            raw_draft = _retry_with_backoff(do_write_fn, retries, "草稿撰寫")
+            sections = template_engine.parse_draft(raw_draft)
+            formatted_draft = template_engine.apply_template(requirement, sections)
+            final_draft = formatted_draft
+            if not skip_review:
+                editor = EditorInChief(llm, kb)
+                final_draft, qa_report = editor.review_and_refine(
+                    formatted_draft, requirement.doc_type, max_rounds=max_rounds,
+                    convergence=convergence, skip_info=skip_info,
+                    show_rounds=show_rounds,
+                )
+                qa_report_str = qa_report.audit_log
+            console.print(Panel(
+                Markdown(final_draft[:500] + ("\n..." if len(final_draft) > 500 else "")),
+                title="[bold cyan]新草稿預覽[/bold cyan]",
+                border_style="cyan",
+            ))
+        elif choice in ("n", "no"):
+            console.print("[yellow]已取消。[/yellow]")
+            raise typer.Exit()
+        else:
+            console.print("[dim]請輸入 y（接受）、r（重新生成）或 n（取消）[/dim]")
+    return final_draft, qa_report, qa_report_str
+
+
+def _display_summary(
+    requirement, qa_report, gen_elapsed: float, full_output_path: str,
+    *, summary_flag: bool,
+) -> None:
+    """顯示摘要卡片或簡單統計。"""
+    if summary_flag:
+        score_str = f"{qa_report.overall_score:.2f}" if qa_report else "N/A"
+        risk_str = qa_report.risk_summary if qa_report else "未審查"
+        _risk_colors = {
+            "Safe": "green", "Low": "green", "Moderate": "yellow",
+            "High": "red", "Critical": "red",
+        }
+        risk_color = _risk_colors.get(risk_str, "white")
+        card_lines = [
+            f"[bold]{requirement.doc_type}[/bold]",
+            f"主旨：{requirement.subject}",
+            f"發文者：{requirement.sender} → 受文者：{requirement.receiver}",
+            "",
+            f"品質分數：[bold]{score_str}[/bold]  風險等級：[{risk_color}]{risk_str}[/{risk_color}]",
+            f"處理時間：{gen_elapsed:.1f} 秒  輸出：{full_output_path}",
+        ]
+        console.print()
+        console.print(Panel(
+            "\n".join(card_lines),
+            title="[bold cyan]公文生成摘要[/bold cyan]",
+            border_style="cyan",
+            padding=(1, 2),
+        ))
+    else:
+        console.print("\n[bold]統計摘要[/bold]")
+        console.print(f"  類型：{requirement.doc_type}  速別：{requirement.urgency}")
+        console.print(f"  處理時間：{gen_elapsed:.1f} 秒")
+        if qa_report:
+            console.print(f"  品質分數：{qa_report.overall_score:.2f}  風險等級：{qa_report.risk_summary}")
+            console.print(f"  審查輪數：{qa_report.rounds_used}")
+
+
 @app.command()
 def generate(
     input_text: str | None = typer.Option(
@@ -404,633 +1106,85 @@ def generate(
         _run_batch(batch, skip_review, max_rounds=max_rounds, convergence=convergence, skip_info=skip_info)
         return
 
-    # --from-file：從檔案讀取需求描述
-    if from_file:
-        if input_text is not None:
-            console.print("[red]錯誤：不可同時使用 --input 和 --from-file。[/red]")
-            raise typer.Exit(1)
-        if not os.path.isfile(from_file):
-            console.print(f"[red]錯誤：找不到檔案：{from_file}[/red]")
-            raise typer.Exit(1)
-        try:
-            with open(from_file, "r", encoding="utf-8-sig") as f:
-                input_text = f.read().strip()
-        except UnicodeDecodeError:
-            console.print("[red]錯誤：檔案編碼不支援，請使用 UTF-8 編碼。[/red]")
-            raise typer.Exit(1)
-        except OSError as e:
-            console.print(f"[red]錯誤：無法讀取檔案：{_sanitize_error(e)}[/red]")
-            raise typer.Exit(1)
-        if not input_text:
-            console.print("[red]錯誤：檔案內容為空。[/red]")
-            raise typer.Exit(1)
-        console.print(f"[dim]從檔案讀取到 {len(input_text)} 字的需求描述。[/dim]")
+    # 解析並驗證輸入
+    input_text = _resolve_input(input_text, from_file)
 
-    # 互動式輸入：若未提供 -i，嘗試從 stdin 或互動式提示取得
-    if input_text is None:
-        input_text = _read_interactive_input()
-        if not input_text:
-            raise typer.Exit(1)
-    elif not input_text.strip():
-        console.print("[red]錯誤：公文需求描述不可為空白。[/red]")
-        raise typer.Exit(1)
+    # 初始化 config、LLM、KB
+    config, llm, kb, input_text = _init_pipeline(input_text, auto_sender=auto_sender)
+    llm_config = config.get("llm")
+    kb_path = config.get("knowledge_base", {}).get("path", "./kb_data")
 
-    stripped = input_text.strip()
-    if len(stripped) < _INPUT_MIN_LENGTH:
-        console.print(f"[red]錯誤：需求描述至少需要 {_INPUT_MIN_LENGTH} 個字（目前 {len(stripped)} 字）。[/red]")
-        console.print("[dim]提示：請提供更完整的公文需求，包含發文者、受文者和主旨。[/dim]")
-        raise typer.Exit(1)
-
-    if len(stripped) > _INPUT_MAX_LENGTH:
-        console.print(f"[red]錯誤：需求描述不可超過 {_INPUT_MAX_LENGTH} 字（目前 {len(stripped)} 字）。[/red]")
-        console.print("[dim]提示：請精簡您的需求描述，僅保留核心資訊。[/dim]")
-        raise typer.Exit(1)
-
-    # 0. 初始化（傳入完整設定以避免重複讀取設定檔）
-    config_manager = ConfigManager()
-    config = config_manager.config
-    llm_config = config.get('llm')
-    if not llm_config:
-        console.print("[red]錯誤：設定檔缺少 'llm' 區塊，請檢查 config.yaml[/red]")
-        raise typer.Exit(1)
-    # 0-auto. 自動填入發文者
-    if auto_sender:
-        default_sender = config.get("default_sender", "")
-        if default_sender:
-            input_text = f"發文者：{default_sender}。{input_text}"
-            console.print(f"  [dim]已自動填入發文者：{default_sender}[/dim]")
-        else:
-            console.print("[yellow]提示：config.yaml 未設定 default_sender，--auto-sender 無效。[/yellow]")
-            console.print("[dim]請在 config.yaml 加入 default_sender: \"您的機關名稱\"[/dim]")
-
-    kb_path = config.get('knowledge_base', {}).get('path', './kb_data')
-    llm = get_llm_factory(llm_config, full_config=config)
-    kb = KnowledgeBaseManager(kb_path, llm)
-
-    # 0a. 知識庫空白提示（不阻擋執行）
-    try:
-        kb_stats = kb.get_stats()
-        if kb_stats.get("examples_count", 0) == 0:
-            console.print(
-                "[yellow]提示：知識庫尚未初始化，建議先執行 "
-                "`gov-ai kb ingest` 匯入範例。[/yellow]"
-            )
-            console.print("[dim]系統仍可繼續產生公文，但品質可能受限。[/dim]")
-    except Exception as e:
-        console.print(f"[dim]知識庫檢查時發生例外：{e}[/dim]")  # 不影響主流程
-
-    # 0b. LLM 連線快速診斷（僅對 LiteLLMProvider 執行）
-    if isinstance(llm, LiteLLMProvider):
-        with Status("[cyan]正在檢查 LLM 連線...[/cyan]", console=console):
-            ok, err_msg = llm.check_connectivity(timeout=5)
-        if not ok:
-            console.print(f"[red]錯誤：{err_msg}[/red]")
-            provider = llm_config.get("provider", "")
-            if provider == "ollama":
-                console.print("[dim]Ollama 用戶請確認已啟動：ollama serve[/dim]")
-            elif provider in ("openrouter", "gemini"):
-                console.print("[dim]API 用戶請確認 API Key 已設定：export LLM_API_KEY=your-key[/dim]")
-            raise typer.Exit(1)
-
-    # 0c. Dry-run 模式：驗證配置後即結束
+    # Dry-run 模式
     if dry_run:
-        console.rule("[bold blue]Dry Run 模式[/bold blue]")
-        console.print("  [green]✓[/green] 設定檔載入成功")
-        console.print(f"  [green]✓[/green] LLM 供應商：{llm_config.get('provider', '未設定')}")
-        console.print(f"  [green]✓[/green] 模型：{llm_config.get('model', '未設定')}")
-        console.print(f"  [green]✓[/green] 知識庫路徑：{kb_path}")
-        console.print(f"  [green]✓[/green] 輸入長度：{len(input_text)} 字")
-        console.print(f"  [green]✓[/green] 輸出路徑：{output_path}")
-        if convergence:
-            review_label = "啟用（分層收斂模式，零錯誤制）"
-        elif skip_review:
-            review_label = "跳過"
-        else:
-            review_label = f"啟用（最多 {max_rounds} 輪）"
-        console.print(f"  [green]✓[/green] 審查：{review_label}")
-        console.print("\n[bold green]Dry run 完成，一切就緒。[/bold green]")
-        console.print("[dim]移除 --dry-run 即可正式生成公文。[/dim]")
+        _handle_dry_run(
+            llm_config, kb_path, input_text, output_path,
+            skip_review=skip_review, convergence=convergence, max_rounds=max_rounds,
+        )
         return
 
-    # 0d. Estimate 模式：預估 LLM 使用量
+    # Estimate 模式
     if estimate:
-        console.rule("[bold blue]LLM 使用量預估[/bold blue]")
-        input_chars = len(input_text)
-        # 粗略估算：1 中文字 ≈ 2 tokens
-        input_tokens = input_chars * 2
-        # 需求分析 + 草稿撰寫 + 格式標準化
-        output_tokens = 2000  # 基礎輸出
-        review_tokens = 0
-        if not skip_review:
-            if convergence:
-                # 分層收斂：最多 3 phases × ~3 輪 × 5 agents
-                est_rounds = 9
-                review_tokens = est_rounds * 5 * 500
-                output_tokens += est_rounds * 1000  # 每輪修正
-            else:
-                # 經典模式
-                est_rounds = max_rounds
-                review_tokens = est_rounds * 5 * 500
-                output_tokens += 1000  # 修正後草稿
-        total_tokens = input_tokens + output_tokens + review_tokens
-        # 粗略時間估算：每 1000 tokens ≈ 2-5 秒
-        est_time_min = total_tokens / 1000 * 2
-        est_time_max = total_tokens / 1000 * 5
-        console.print(f"  輸入長度：{input_chars} 字（≈ {input_tokens:,} tokens）")
-        console.print(f"  預估輸出：≈ {output_tokens:,} tokens")
-        if not skip_review:
-            if convergence:
-                console.print(f"  審查預估：≈ {review_tokens:,} tokens（分層收斂模式，最多 ~{est_rounds} 輪估算）")
-            else:
-                console.print(f"  審查預估：≈ {review_tokens:,} tokens（{max_rounds} 輪 × 5 agents）")
-        console.print(f"  [bold]預估總量：≈ {total_tokens:,} tokens[/bold]")
-        console.print(f"  預估耗時：{est_time_min:.0f} ~ {est_time_max:.0f} 秒")
-        console.print("\n[dim]以上為粗略估算，實際用量因模型和內容而異。[/dim]")
-        console.print("[dim]移除 --estimate 即可正式生成公文。[/dim]")
+        _handle_estimate(
+            input_text, skip_review=skip_review, convergence=convergence, max_rounds=max_rounds,
+        )
         return
 
     gen_start = time.monotonic()
 
-    # 1. 需求分析
-    console.rule("[bold blue]步驟 1/5 · 需求分析[/bold blue]")
-    req_agent = RequirementAgent(llm)
+    # 核心 pipeline：需求分析→草稿撰寫→格式標準化→多 Agent 審查
+    requirement, final_draft, qa_report, qa_report_str, ver_num, do_write_fn, template_engine = _run_core_pipeline(
+        llm, kb, input_text,
+        skip_review=skip_review, max_rounds=max_rounds, convergence=convergence,
+        skip_info=skip_info, show_rounds=show_rounds, retries=retries,
+        save_versions=save_versions, output_path=output_path, template_name=template_name,
+    )
 
-    def _do_analyze():
-        with Status("[cyan]正在分析需求...[/cyan]", console=console):
-            return req_agent.analyze(input_text)
-
-    requirement = _retry_with_backoff(_do_analyze, retries, "需求分析")
-    console.print(f"  [green]類型：[/green]{requirement.doc_type}")
-    console.print(f"  [green]主旨：[/green]{requirement.subject}")
-    console.print(f"  [green]發文者：[/green]{requirement.sender}")
-    console.print(f"  [green]受文者：[/green]{requirement.receiver}")
-
-    # 2. 草稿撰寫 (RAG)
-    console.rule("[bold blue]步驟 2/5 · 草稿撰寫 (RAG)[/bold blue]")
-    writer = WriterAgent(llm, kb)
-
-    def _do_write():
-        with Status("[cyan]正在檢索範例並撰寫草稿...[/cyan]", console=console):
-            return writer.write_draft(requirement)
-
-    raw_draft = _retry_with_backoff(_do_write, retries, "草稿撰寫")
-    _ver_num = 0
-    if save_versions:
-        _ver_num += 1
-        _save_version(raw_draft, output_path, _ver_num, "原始草稿")
-
-    # 3. 格式標準化
-    console.rule("[bold blue]步驟 3/5 · 格式標準化[/bold blue]")
-    template_engine = TemplateEngine()
-    try:
-        sections = template_engine.parse_draft(raw_draft)
-        formatted_draft = template_engine.apply_template(requirement, sections)
-    except Exception as e:
-        console.print(f"[red]格式標準化失敗：{_sanitize_error(e)}[/red]")
-        raise typer.Exit(1)
-    console.print("  [green]格式標準化完成。[/green]")
-    if template_name:
-        console.print(f"  [dim]使用範本：{template_name}[/dim]")
-    if save_versions:
-        _ver_num += 1
-        _save_version(formatted_draft, output_path, _ver_num, "格式標準化")
-
-    # 4. 多 Agent 審查與修正
-    final_draft = formatted_draft
-    qa_report = None
-    qa_report_str = None
-
-    if not skip_review:
-        console.rule("[bold blue]步驟 4/5 · 多 Agent 審查[/bold blue]")
-        editor = EditorInChief(llm, kb)
-        final_draft, qa_report = editor.review_and_refine(
-            formatted_draft, requirement.doc_type, max_rounds=max_rounds,
-            convergence=convergence, skip_info=skip_info,
+    # 互動式確認
+    if confirm and sys.stdin.isatty():
+        final_draft, _qa, _qa_str = _handle_confirm(
+            final_draft,
+            do_write_fn=do_write_fn, retries=retries, template_engine=template_engine,
+            requirement=requirement, skip_review=skip_review, llm=llm, kb=kb,
+            max_rounds=max_rounds, convergence=convergence, skip_info=skip_info,
             show_rounds=show_rounds,
         )
-        qa_report_str = qa_report.audit_log
-        if save_versions:
-            _ver_num += 1
-            _save_version(final_draft, output_path, _ver_num, "審查修正後")
-    else:
-        console.rule("[bold blue]步驟 4/5 · 審查（已跳過）[/bold blue]")
-        console.print("  [yellow]已跳過多 Agent 審查步驟。[/yellow]")
+        if _qa is not None:
+            qa_report = _qa
+        if _qa_str is not None:
+            qa_report_str = _qa_str
 
-    # 4b. 確認模式
-    if confirm and sys.stdin.isatty():
-        console.print()
-        console.print(Panel(
-            Markdown(final_draft[:500] + ("\n..." if len(final_draft) > 500 else "")),
-            title="[bold cyan]草稿預覽[/bold cyan]",
-            border_style="cyan",
-        ))
-        while True:
-            choice = input("\n接受此草稿？(y=接受/r=重新生成/n=取消) ").strip().lower()
-            if choice in ("y", "yes", ""):
-                break
-            elif choice in ("r", "retry"):
-                console.print("[yellow]重新生成...[/yellow]")
-                raw_draft = _retry_with_backoff(_do_write, retries, "草稿撰寫")
-                sections = template_engine.parse_draft(raw_draft)
-                formatted_draft = template_engine.apply_template(requirement, sections)
-                final_draft = formatted_draft
-                if not skip_review:
-                    editor = EditorInChief(llm, kb)
-                    final_draft, qa_report = editor.review_and_refine(
-                        formatted_draft, requirement.doc_type, max_rounds=max_rounds,
-                        convergence=convergence, skip_info=skip_info,
-                        show_rounds=show_rounds,
-                    )
-                    qa_report_str = qa_report.audit_log
-                console.print(Panel(
-                    Markdown(final_draft[:500] + ("\n..." if len(final_draft) > 500 else "")),
-                    title="[bold cyan]新草稿預覽[/bold cyan]",
-                    border_style="cyan",
-                ))
-            elif choice in ("n", "no"):
-                console.print("[yellow]已取消。[/yellow]")
-                raise typer.Exit()
-            else:
-                console.print("[dim]請輸入 y（接受）、r（重新生成）或 n（取消）[/dim]")
+    # 元資料注入與格式設定
+    final_draft = _apply_content_metadata(
+        final_draft,
+        priority_tag=priority_tag, cc=cc, receiver_title=receiver_title,
+        ref_number=ref_number, date=date, header=header, classification=classification,
+        watermark=watermark, footnote=footnote, sign=sign, attachment=attachment,
+        page_break=page_break, disclaimer=disclaimer,
+    )
 
-    # 4b-2. 速度模式提示
-    _SPEED_MODES = {"fast": "快速模式", "normal": "標準模式", "careful": "謹慎模式"}
-    speed_label = _SPEED_MODES.get(speed.lower().strip(), "")
-    if speed_label:
-        console.print(f"  [dim]生成模式：{speed_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的速度模式：{speed}（可用：fast/normal/careful）[/yellow]")
+    _display_format_options(
+        speed=speed, margin=margin, line_spacing=line_spacing, font_size=font_size,
+        duplex=duplex, orientation=orientation, paper_size=paper_size, columns=columns,
+        seal=seal, copy_count=copy_count, draft_mark=draft_mark, urgency_label=urgency_label,
+        lang=lang, header_logo=header_logo,
+    )
 
-    # 4c. 優先標記
-    if priority_tag:
-        _TAG_MAP = {"urgent": "【急件】", "confidential": "【密】", "normal": ""}
-        tag_text = _TAG_MAP.get(priority_tag.lower(), "")
-        if tag_text and "主旨" in final_draft:
-            final_draft = final_draft.replace("主旨", f"{tag_text}主旨", 1)
-            console.print(f"  [dim]已加入優先標記：{tag_text}[/dim]")
-        elif priority_tag.lower() not in _TAG_MAP:
-            console.print(f"[yellow]未知的優先標記：{priority_tag}（可用：urgent, confidential, normal）[/yellow]")
-
-    # 4d. 副本收受者
-    if cc:
-        cc_list = [c.strip() for c in cc.split(",") if c.strip()]
-        if cc_list:
-            cc_text = f"副本：{'、'.join(cc_list)}"
-            if "副本" in final_draft:
-                # 替換既有副本行
-                import re as _re
-                final_draft = _re.sub(r"副本[：:].*", cc_text, final_draft, count=1)
-            elif "正本" in final_draft:
-                # 在正本之後加入
-                final_draft = final_draft.replace("正本", "正本", 1)
-                # 找到正本行尾加入副本
-                lines = final_draft.split("\n")
-                new_lines = []
-                inserted = False
-                for line in lines:
-                    new_lines.append(line)
-                    if not inserted and line.strip().startswith("正本"):
-                        new_lines.append(cc_text)
-                        inserted = True
-                if not inserted:
-                    new_lines.append(cc_text)
-                final_draft = "\n".join(new_lines)
-            else:
-                # 無正本/副本結構，附加在文末
-                final_draft = final_draft.rstrip() + f"\n{cc_text}"
-            console.print(f"  [dim]已加入副本：{'、'.join(cc_list)}[/dim]")
-
-    # 4e. 受文者敬稱
-    if receiver_title:
-        if "正本" in final_draft:
-            lines = final_draft.split("\n")
-            new_lines = []
-            for line in lines:
-                new_lines.append(line)
-                if line.strip().startswith("正本"):
-                    new_lines.append(f"  敬稱：{receiver_title}")
-            final_draft = "\n".join(new_lines)
-        else:
-            final_draft = final_draft.rstrip() + f"\n敬稱：{receiver_title}"
-        console.print(f"  [dim]已加入敬稱：{receiver_title}[/dim]")
-
-    # 4f. 發文字號
-    if ref_number:
-        if "主旨" in final_draft:
-            final_draft = final_draft.replace("主旨", f"發文字號：{ref_number}\n主旨", 1)
-        else:
-            final_draft = f"發文字號：{ref_number}\n{final_draft}"
-        console.print(f"  [dim]已加入發文字號：{ref_number}[/dim]")
-
-    # 4f. 發文日期
-    if date:
-        date_text = f"發文日期：{date}"
-        if "主旨" in final_draft:
-            final_draft = final_draft.replace("主旨", f"{date_text}\n主旨", 1)
-        else:
-            final_draft = f"{date_text}\n{final_draft}"
-        console.print(f"  [dim]已加入發文日期：{date}[/dim]")
-
-    # 4g. 頁首
-    if header:
-        final_draft = f"{header}\n\n{final_draft}"
-        console.print(f"  [dim]已加入頁首：{header}[/dim]")
-
-    # 4h. 密等標記
-    if classification:
-        _CLS_VALID = {"密", "機密", "極機密", "限閱"}
-        if classification in _CLS_VALID:
-            cls_text = f"【{classification}】"
-            final_draft = f"{cls_text}\n{final_draft}"
-            console.print(f"  [dim]已加入密等標記：{cls_text}[/dim]")
-        else:
-            console.print(f"[yellow]未知的密等：{classification}（可用：{'、'.join(sorted(_CLS_VALID))}）[/yellow]")
-
-    # 4i. 浮水印
-    if watermark:
-        wm_text = f"【{watermark}】"
-        final_draft = f"{wm_text}\n{final_draft}"
-        console.print(f"  [dim]已加入浮水印：{wm_text}[/dim]")
-
-    # 4i. 附註
-    if footnote:
-        final_draft = final_draft.rstrip() + f"\n附註：{footnote}"
-        console.print(f"  [dim]已加入附註：{footnote}[/dim]")
-
-    # 4j. 署名
-    if sign:
-        if "正本" in final_draft:
-            final_draft = final_draft.replace("正本", f"\n{sign}\n\n正本", 1)
-        else:
-            final_draft = final_draft.rstrip() + f"\n\n{sign}"
-        console.print(f"  [dim]已加入署名：{sign}[/dim]")
-
-    # 4k. 附件清單
-    if attachment:
-        att_list = [a.strip() for a in attachment.split(",") if a.strip()]
-        if att_list:
-            att_lines = "\n".join(f"  {i}. {a}" for i, a in enumerate(att_list, 1))
-            att_text = f"附件：\n{att_lines}"
-            final_draft = final_draft.rstrip() + f"\n{att_text}"
-            console.print(f"  [dim]已加入附件清單（{len(att_list)} 項）[/dim]")
-
-    # 4l. 分頁標記
-    if page_break:
-        if "說明" in final_draft and "辦法" in final_draft:
-            final_draft = final_draft.replace("辦法", "--- 分頁 ---\n辦法", 1)
-            console.print("  [dim]已在說明與辦法之間插入分頁標記。[/dim]")
-        else:
-            console.print("  [yellow]找不到「說明」及「辦法」段落，無法插入分頁標記。[/yellow]")
-
-    # 4m. 頁邊距設定
-    _MARGIN_MAP = {"standard": "標準邊距", "narrow": "窄邊距", "wide": "寬邊距"}
-    margin_label = _MARGIN_MAP.get(margin.lower().strip(), "")
-    if margin_label:
-        console.print(f"  [dim]頁邊距：{margin_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的頁邊距設定：{margin}（可用：standard/narrow/wide）[/yellow]")
-
-    # 4n. 行距設定
-    _SPACING_MAP = {"1.0": "單行距", "1.5": "1.5 倍行距", "2.0": "雙倍行距"}
-    spacing_label = _SPACING_MAP.get(line_spacing.strip(), "")
-    if spacing_label:
-        console.print(f"  [dim]行距：{spacing_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的行距設定：{line_spacing}（可用：1.0/1.5/2.0）[/yellow]")
-
-    # 4o. 字型大小設定
-    _FONT_SIZES = {"10", "12", "14", "16"}
-    fs = font_size.strip()
-    if fs in _FONT_SIZES:
-        console.print(f"  [dim]字型大小：{fs}pt[/dim]")
-    else:
-        console.print(f"[yellow]未知的字型大小：{font_size}（可用：10/12/14/16）[/yellow]")
-
-    # 4p. 雙面列印設定
-    _DUPLEX_MAP = {"off": "單面列印", "long-edge": "雙面列印（長邊翻轉）", "short-edge": "雙面列印（短邊翻轉）"}
-    duplex_label = _DUPLEX_MAP.get(duplex.lower().strip(), "")
-    if duplex_label:
-        console.print(f"  [dim]列印模式：{duplex_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的雙面列印設定：{duplex}（可用：off/long-edge/short-edge）[/yellow]")
-
-    # 4q. 紙張方向設定
-    _ORIENT_MAP = {"portrait": "直印", "landscape": "橫印"}
-    orient_label = _ORIENT_MAP.get(orientation.lower().strip(), "")
-    if orient_label:
-        console.print(f"  [dim]紙張方向：{orient_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的紙張方向：{orientation}（可用：portrait/landscape）[/yellow]")
-
-    # 4r. 紙張大小設定
-    _PAPER_SIZES = {
-        "A4": "A4 (210×297mm)", "B4": "B4 (257×364mm)",
-        "A3": "A3 (297×420mm)", "Letter": "Letter (216×279mm)",
-    }
-    ps = paper_size.strip().upper() if paper_size.strip().upper() != "LETTER" else "Letter"
-    if paper_size.strip().lower() == "letter":
-        ps = "Letter"
-    ps_label = _PAPER_SIZES.get(ps, "")
-    if ps_label:
-        console.print(f"  [dim]紙張大小：{ps_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的紙張大小：{paper_size}（可用：A4/B4/A3/Letter）[/yellow]")
-
-    # 4s. 排版欄數設定
-    _COLUMNS_MAP = {"1": "單欄排版", "2": "雙欄排版"}
-    col_label = _COLUMNS_MAP.get(columns.strip(), "")
-    if col_label:
-        console.print(f"  [dim]排版：{col_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的欄數設定：{columns}（可用：1/2）[/yellow]")
-
-    # 4t. 用印設定
-    _SEAL_MAP = {"none": "免用印", "official": "蓋機關印信", "personal": "蓋職章"}
-    seal_label = _SEAL_MAP.get(seal.lower().strip(), "")
-    if seal_label:
-        console.print(f"  [dim]用印：{seal_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的用印設定：{seal}（可用：none/official/personal）[/yellow]")
-
-    # 4u. 輸出份數設定
-    try:
-        cc_val = int(copy_count.strip())
-    except ValueError:
-        cc_val = 0
-    if 1 <= cc_val <= 10:
-        if cc_val > 1:
-            console.print(f"  [dim]輸出份數：{cc_val} 份[/dim]")
-        else:
-            console.print("  [dim]輸出份數：1 份（預設）[/dim]")
-    else:
-        console.print(f"[yellow]無效的份數設定：{copy_count}（可用：1-10）[/yellow]")
-
-    # 4v. 草稿標記設定
-    _DRAFT_MARK_MAP = {"none": "無標記", "draft": "草稿", "internal": "內部文件"}
-    dm_label = _DRAFT_MARK_MAP.get(draft_mark.lower().strip(), "")
-    if dm_label:
-        if draft_mark.lower().strip() != "none":
-            console.print(f"  [dim]草稿標記：{dm_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的草稿標記：{draft_mark}（可用：none/draft/internal）[/yellow]")
-
-    # 4w. 急件標示
-    _URGENCY_LABEL_MAP = {"normal": "普通件", "urgent": "急件", "most-urgent": "最速件"}
-    ul_label = _URGENCY_LABEL_MAP.get(urgency_label.lower().strip(), "")
-    if ul_label:
-        if urgency_label.lower().strip() != "normal":
-            console.print(f"  [dim]急件標示：{ul_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的急件標示：{urgency_label}（可用：normal/urgent/most-urgent）[/yellow]")
-
-    # 4x. 公文語言設定
-    _LANG_MAP = {"zh-tw": "繁體中文", "zh-cn": "簡體中文", "en": "英文"}
-    lang_label = _LANG_MAP.get(lang.lower().strip(), "")
-    if lang_label:
-        if lang.lower().strip() != "zh-tw":
-            console.print(f"  [dim]公文語言：{lang_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的語言設定：{lang}（可用：zh-TW/zh-CN/en）[/yellow]")
-
-    # 4y. 頁首 logo 設定
-    if header_logo:
-        if os.path.isfile(header_logo):
-            console.print(f"  [dim]頁首 Logo：{os.path.basename(header_logo)}[/dim]")
-        else:
-            console.print(f"[yellow]找不到 logo 檔案：{header_logo}[/yellow]")
-
-    # 4z. 免責聲明
-    if disclaimer:
-        disclaimer_text = disclaimer.strip()
-        if disclaimer_text:
-            final_draft = final_draft.rstrip() + f"\n\n免責聲明：{disclaimer_text}"
-            console.print("  [dim]已加入免責聲明[/dim]")
-
-    # 5. 匯出（驗證輸出路徑安全性）
-    console.rule("[bold blue]步驟 5/5 · 匯出文件[/bold blue]")
-    # 防止路徑遍歷：若含 ".." 或絕對路徑，僅取 basename
-    # 正常相對子目錄路徑（如 "output/doc.docx"）則保留目錄
-    has_traversal = ".." in output_path
-    is_absolute = os.path.isabs(output_path) or output_path.startswith("/")
-    safe_filename = os.path.basename(output_path)
-    if not safe_filename or safe_filename.startswith("."):
-        safe_filename = "output.docx"
-    if not safe_filename.endswith(".docx"):
-        safe_filename += ".docx"
-
-    if is_absolute or has_traversal:
-        # 絕對路徑或路徑遍歷：強制僅取 basename
-        full_output_path = safe_filename
-    elif os.path.dirname(output_path):
-        # 使用者指定了子目錄（無遍歷），保留目錄結構
-        output_dir = os.path.dirname(os.path.abspath(output_path))
-        full_output_path = os.path.join(output_dir, safe_filename)
-    else:
-        full_output_path = safe_filename
-
-    exporter = DocxExporter()
-    try:
-        final_path = exporter.export(final_draft, full_output_path, qa_report=qa_report_str)
-        console.print(f"[bold green]完成！文件已儲存至：[/bold green] {final_path}")
-    except Exception as e:
-        console.print(f"[red]匯出失敗：{_sanitize_error(e)}[/red]")
-        raise typer.Exit(1)
-
-    # Markdown 匯出
-    if save_markdown:
-        _VALID_ENCODINGS = {"utf-8", "big5", "utf-8-sig"}
-        md_enc = encoding.lower().strip() if encoding else "utf-8"
-        if md_enc not in _VALID_ENCODINGS:
-            valid_list = ', '.join(sorted(_VALID_ENCODINGS))
-            console.print(
-                f"[yellow]不支援的編碼 '{encoding}'，"
-                f"改用 utf-8。可用：{valid_list}[/yellow]"
-            )
-            md_enc = "utf-8"
-        md_path = os.path.splitext(full_output_path)[0] + ".md"
-        try:
-            with open(md_path, "w", encoding=md_enc) as f:
-                f.write(final_draft)
-            enc_note = f"（{md_enc}）" if md_enc != "utf-8" else ""
-            console.print(f"  [green]Markdown 版本：{md_path}{enc_note}[/green]")
-        except OSError as e:
-            console.print(f"  [yellow]Markdown 匯出失敗：{_sanitize_error(e)}[/yellow]")
-
-    # 簡體字偵測警告
-    sc_findings = detect_simplified(final_draft)
-    if sc_findings:
-        unique_chars = sorted(set((s, t) for s, t, _ in sc_findings))
-        console.print(f"\n[yellow]⚠ 偵測到 {len(sc_findings)} 處可能的簡體字：[/yellow]")
-        for sc, tc in unique_chars[:10]:
-            console.print(f"  [yellow]「{sc}」→ 建議「{tc}」[/yellow]")
-        if len(unique_chars) > 10:
-            console.print(f"  [dim]...及其他 {len(unique_chars) - 10} 種字[/dim]")
-        console.print("[dim]提示：建議檢查並修正為繁體中文。[/dim]")
-
-    # 公文用語品質檢查
-    if lang_check:
-        findings = check_language(final_draft)
-        if findings:
-            console.print(f"\n[yellow]公文用語檢查：發現 {len(findings)} 項建議[/yellow]")
-            for f in findings[:15]:
-                label = "口語詞" if f["type"] == "informal" else "贅詞"
-                console.print(f"  [{label}] 「{f['found']}」→ 建議「{f['suggest']}」（{f['count']} 處）")
-        else:
-            console.print("\n[green]公文用語檢查：未發現口語詞或贅詞。[/green]")
-
-    # 預覽模式：在終端顯示公文內容
-    if preview:
-        console.print()
-        console.print(Panel(
-            Markdown(final_draft),
-            title=f"[bold cyan]公文預覽 — {requirement.doc_type}[/bold cyan]",
-            border_style="cyan",
-            padding=(1, 2),
-        ))
-
-    # 匯出 QA 報告
-    if export_report and qa_report:
-        _export_qa_report(qa_report, export_report)
+    # 匯出、後處理檢查
+    full_output_path = _export_document(
+        final_draft, output_path,
+        qa_report_str=qa_report_str, qa_report=qa_report,
+        save_markdown=save_markdown, encoding=encoding, preview=preview,
+        lang_check_flag=lang_check, export_report=export_report, requirement=requirement,
+    )
 
     gen_elapsed = time.monotonic() - gen_start
 
-    # 摘要卡片模式
-    if summary:
-        score_str = f"{qa_report.overall_score:.2f}" if qa_report else "N/A"
-        risk_str = qa_report.risk_summary if qa_report else "未審查"
-        _risk_colors = {
-            "Safe": "green", "Low": "green", "Moderate": "yellow",
-            "High": "red", "Critical": "red",
-        }
-        risk_color = _risk_colors.get(risk_str, "white")
-        card_lines = [
-            f"[bold]{requirement.doc_type}[/bold]",
-            f"主旨：{requirement.subject}",
-            f"發文者：{requirement.sender} → 受文者：{requirement.receiver}",
-            "",
-            f"品質分數：[bold]{score_str}[/bold]  風險等級：[{risk_color}]{risk_str}[/{risk_color}]",
-            f"處理時間：{gen_elapsed:.1f} 秒  輸出：{full_output_path}",
-        ]
-        console.print()
-        console.print(Panel(
-            "\n".join(card_lines),
-            title="[bold cyan]公文生成摘要[/bold cyan]",
-            border_style="cyan",
-            padding=(1, 2),
-        ))
-    else:
-        console.print("\n[bold]統計摘要[/bold]")
-        console.print(f"  類型：{requirement.doc_type}  速別：{requirement.urgency}")
-        console.print(f"  處理時間：{gen_elapsed:.1f} 秒")
-        if qa_report:
-            console.print(f"  品質分數：{qa_report.overall_score:.2f}  風險等級：{qa_report.risk_summary}")
-            console.print(f"  審查輪數：{qa_report.rounds_used}")
+    # 摘要與歷史記錄
+    _display_summary(requirement, qa_report, gen_elapsed, full_output_path, summary_flag=summary)
 
-    # 自動記錄歷史
     try:
         append_record(
-            input_text=input_text,
-            doc_type=requirement.doc_type,
+            input_text=input_text, doc_type=requirement.doc_type,
             output_path=full_output_path,
             score=qa_report.overall_score if qa_report else None,
             risk=qa_report.risk_summary if qa_report else None,
@@ -1038,7 +1192,7 @@ def generate(
             elapsed=gen_elapsed,
         )
     except Exception as e:
-        console.print(f"[dim]歷史記錄寫入失敗：{e}[/dim]")  # 不影響主流程
+        console.print(f"[dim]歷史記錄寫入失敗：{e}[/dim]")
 
 if __name__ == "__main__":
     app()

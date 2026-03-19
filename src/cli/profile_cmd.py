@@ -7,29 +7,20 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from src.cli.utils import JSONStore
+
 app = typer.Typer()
 console = Console()
 _PROFILE_FILE = ".gov-ai-profile.json"
-
-
-def _load_profile() -> dict:
-    if os.path.isfile(_PROFILE_FILE):
-        with open(_PROFILE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
-
-
-def _save_profile(profile: dict):
-    with open(_PROFILE_FILE, "w", encoding="utf-8") as f:
-        json.dump(profile, f, ensure_ascii=False, indent=2)
+_profile_store = JSONStore(_PROFILE_FILE, default={})
 
 
 @app.command()
 def show(
     output_json: bool = typer.Option(False, "--json", help="以 JSON 格式輸出"),
-):
+) -> None:
     """顯示目前的個人設定檔。"""
-    profile = _load_profile()
+    profile = _profile_store.load()
     if not profile:
         if output_json:
             console.print("{}")
@@ -60,7 +51,7 @@ def profile_set(
     key: str = typer.Argument(..., help="設定鍵名"),
     value: str = typer.Argument(..., help="設定值"),
     profile_dir: str = typer.Option(".profile", "--dir", help="設定檔目錄"),
-):
+) -> None:
     """設定或更新個人資料鍵值。"""
     os.makedirs(profile_dir, exist_ok=True)
     settings_path = os.path.join(profile_dir, "settings.json")
@@ -76,7 +67,7 @@ def profile_set(
 
 
 @app.command()
-def clear():
+def clear() -> None:
     """清除個人設定檔。"""
     if os.path.isfile(_PROFILE_FILE):
         os.remove(_PROFILE_FILE)
