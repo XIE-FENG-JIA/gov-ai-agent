@@ -204,16 +204,30 @@ def _execute_via_graph(
 
     # ── 從 final_state 萃取結果 ──────────────────────────────
 
+    # 檢查 graph 是否有錯誤
+    graph_error = final_state.get("error")
+    if graph_error:
+        logger.warning("LangGraph 流程出現錯誤: %s", graph_error)
+
     # requirement: graph 中以 dict 儲存，需重建為 Pydantic model
-    requirement_dict = final_state.get("requirement", {})
+    requirement_dict = final_state.get("requirement") or {}
+    if not requirement_dict:
+        # graph 中 parse_requirement 失敗，無法建構需求物件
+        raise ValueError(f"LangGraph 需求分析失敗: {graph_error or '未知原因'}")
     requirement = PublicDocRequirement(**requirement_dict)
 
     # final_draft: 優先取精煉版，其次格式化版，最後原始草稿
     final_draft = (
         final_state.get("refined_draft")
         or final_state.get("formatted_draft")
-        or final_state.get("draft", "")
+        or final_state.get("draft")
+        or ""
     )
+    if not final_draft.strip():
+        logger.warning(
+            "LangGraph 草稿為空 (phase=%s, error=%s)",
+            final_state.get("phase"), graph_error,
+        )
 
     # qa_report: 從 aggregated_report 建構，供 API 回傳
     # 原始 workflow 回傳 QAReport Pydantic model，但 API 端只呼叫 .model_dump()
