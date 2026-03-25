@@ -68,3 +68,24 @@
 - 剩餘 batch CLI 測試失敗根因是 Rich Live display 在 CliRunner 環境下衝突
 - 剩餘 e2e 失敗分散在 LLM mock 回傳格式和 fact_checker 中文比對
 
+### [2026-03-26] Round 5 — chromadb 可選依賴提交 + 狀態審查
+**角度**: 🏗️ 架構（依賴降級）
+**為什麼**: manager.py 的 chromadb optional import 改動在 Round 2 時已修改但未提交
+**做了什麼**: 提交 `src/knowledge/manager.py` — chromadb import 改為 try/except
+**結果**: PASS — 35 failed, 2208 passed, 75 skipped（從初始 367 問題降到 35，改善率 90.5%）
+**累計改善（Round 1-5）**:
+- 367 問題 → 35 問題（-332，改善率 90.5%）
+- 0 errors（從 245 降到 0）
+- 75 個正確 skip（可選依賴缺失時）
+**剩餘 35 個失敗分類**:
+- test_api_server.py (~20): 測試隔離問題（e2e 跑後全域狀態汙染）— 需重構 middleware auth 重設機制
+- test_e2e.py (~9): LLM mock 回傳格式不匹配、KB chromadb 缺失
+- test_stress.py (~4): KB manager 重複建立（chromadb 缺失）、auth 401
+- test_cli_commands.py (2): Rich 顯示 + 中文 stdout 編碼
+**未追蹤新檔案（待審查提交）**:
+- src/cli/utils.py (79 行) — CLI 工具函式
+- tests/test_editor_coverage.py (676 行) — 新增覆蓋率測試
+- tests/test_fact_checker_coverage.py (231 行)
+- tests/test_validators_coverage.py (326 行)
+- tests/test_workflow_cmd.py (72 行)
+
