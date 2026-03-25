@@ -623,6 +623,7 @@ class TestScenario5_APIEndpoints:
             mock_config.return_value = {
                 "llm": {"provider": "mock", "model": "test"},
                 "knowledge_base": {"path": "./test_kb"},
+                "api": {"auth_enabled": False},
             }
 
             self.mock_llm = MagicMock(spec=LLMProvider)
@@ -1962,6 +1963,7 @@ class TestFullIntegrationFlow:
             mock_config.return_value = {
                 "llm": {"provider": "mock", "model": "test"},
                 "knowledge_base": {"path": "./test_kb"},
+                "api": {"auth_enabled": False},
             }
             mock_llm_fn.return_value = mock_llm
             mock_kb_fn.return_value = MagicMock(
