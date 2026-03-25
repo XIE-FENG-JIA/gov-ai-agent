@@ -575,13 +575,13 @@ def _run_batch(
 
                 # 需求分析
                 req_agent = RequirementAgent(llm)
-                with Status("[cyan]正在分析需求...[/cyan]", console=console):
-                    requirement = req_agent.analyze(input_text)
+                progress.update(task, description=f"[{idx}/{total}] 分析需求中...")
+                requirement = req_agent.analyze(input_text)
 
                 # 草稿撰寫
                 writer = WriterAgent(llm, kb)
-                with Status("[cyan]正在撰寫草稿...[/cyan]", console=console):
-                    raw_draft = writer.write_draft(requirement)
+                progress.update(task, description=f"[{idx}/{total}] 撰寫草稿中...")
+                raw_draft = writer.write_draft(requirement)
 
                 # 格式標準化
                 template_engine = TemplateEngine()

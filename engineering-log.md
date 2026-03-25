@@ -106,3 +106,19 @@
 - e2e mock 根因：writer 收到 review 回應（LLM side_effect 未按 agent 分流）
 - metrics 的 `perf_counter` 修復也是生產環境改善（Windows 部署更精確）
 
+### [2026-03-26] Round 7 — 修復批次處理 Rich Live 巢狀衝突（生產 bug）
+**角度**: 🐛 Bug（生產環境 + 測試修復）
+**為什麼**: `_run_batch()` 在 `Progress`（Rich Live）迴圈內又用 `with Status(...)`（也是 Live），Rich 不允許巢狀 Live display，導致 `LiveError: Only one live display may be active at once`。用戶執行 `gov-ai generate --batch` 必定全部失敗。
+**做了什麼**:
+- `src/cli/generate.py`: 迴圈內的 `with Status(...)` 替換為 `progress.update(task, description=...)`
+- 狀態顯示改在 Progress bar 的 description 欄位更新，不再巢狀開 Live
+**結果**: PASS
+- test_cli_commands::TestBatchProcessing: 2 failed → 0 failed（4/4 passed）
+- 全量測試：28 failed → 21 failed（-7），2466 passed（+7），82 skipped
+- 連帶修復了若干 e2e 測試中因同一 Live 巢狀問題導致的失敗
+- 累計：367 問題 → 21 failed + 0 errors + 82 skipped（改善率 94.3%）
+**下一步可能**:
+- 剩餘 21 失敗：e2e LLM mock 路由(12)、stress chromadb/auth(9)
+- e2e 測試的 LLM mock `side_effect` 需按 agent 類型分流（writer vs reviewer）
+- stress 測試 chromadb 未安裝需加 skip 標記
+
