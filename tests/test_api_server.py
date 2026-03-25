@@ -1508,7 +1508,8 @@ class TestMeetingReviewLoop:
             "user_input": "寫一份函，測試機關發給測試單位",
             "skip_review": False,
             "output_docx": False,
-            "max_rounds": 3
+            "max_rounds": 3,
+            "use_graph": False,
         })
         assert response.status_code == 200
         data = response.json()

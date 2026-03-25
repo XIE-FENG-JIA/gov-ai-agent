@@ -515,6 +515,14 @@ class TestScenario3_GenerateSign:
 # 場景 4：知識庫匯入和搜尋
 # ============================================================
 
+try:
+    import chromadb as _chromadb_check  # noqa: F401
+    _has_chromadb = True
+except ImportError:
+    _has_chromadb = False
+
+
+@pytest.mark.skipif(not _has_chromadb, reason="chromadb 未安裝，跳過知識庫測試")
 class TestScenario4_KnowledgeBase:
     """場景 4：知識庫管理"""
 
@@ -1436,11 +1444,11 @@ code_block = True
         doc = Document(str(output_file))
         section = doc.sections[0]
 
-        # 標準 A4 邊距
+        # 嚴格模式（預設）邊距：上下左右均 2.54cm
         assert abs(section.top_margin - Cm(2.54)) < Cm(0.1)
         assert abs(section.bottom_margin - Cm(2.54)) < Cm(0.1)
-        assert abs(section.left_margin - Cm(3.17)) < Cm(0.1)
-        assert abs(section.right_margin - Cm(3.17)) < Cm(0.1)
+        assert abs(section.left_margin - Cm(2.54)) < Cm(0.1)
+        assert abs(section.right_margin - Cm(2.54)) < Cm(0.1)
 
 
 # ============================================================

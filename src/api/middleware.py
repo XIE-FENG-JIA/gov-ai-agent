@@ -152,7 +152,7 @@ class _MetricsCollector:
         with self._lock:
             total = self._total_requests
             avg_ms = (
-                round(self._total_response_time_ms / total, 2) if total > 0 else 0.0
+                round(self._total_response_time_ms / total, 4) if total > 0 else 0.0
             )
             cache_total = self._cache_hits + self._cache_misses
             hit_rate = (
@@ -325,9 +325,9 @@ async def security_middleware(request: Request, call_next):
             return resp
 
     metrics.record_request_start()
-    start_time = time.monotonic()
+    start_time = time.perf_counter()
     response = await call_next(request)
-    elapsed_ms = (time.monotonic() - start_time) * 1000
+    elapsed_ms = (time.perf_counter() - start_time) * 1000
     metrics.record_request_end(elapsed_ms)
 
     # 安全標頭
