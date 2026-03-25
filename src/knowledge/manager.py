@@ -5,10 +5,14 @@ from collections import Counter
 from typing import Any
 import uuid
 
-import chromadb
 from cachetools import TTLCache
 
 from src.core.llm import LLMProvider
+
+try:
+    import chromadb
+except ImportError:
+    chromadb = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +36,17 @@ class KnowledgeBaseManager:
         # 搜尋快取（TTL 5 分鐘，最多 256 筆）
         self._search_cache: TTLCache = TTLCache(maxsize=_CACHE_MAXSIZE, ttl=_CACHE_TTL)
         self._cache_lock = threading.Lock()
+
+        if chromadb is None:
+            logger.error(
+                "chromadb 未安裝，知識庫功能不可用。請執行: pip install chromadb"
+            )
+            self._available = False
+            self.client = None
+            self.examples_collection = None
+            self.regulations_collection = None
+            self.policies_collection = None
+            return
 
         try:
             self.client = chromadb.PersistentClient(path=persist_path)
