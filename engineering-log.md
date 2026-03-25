@@ -51,3 +51,20 @@
 - 剩餘 ~48 個失敗：test_e2e(21) 多為 auth 401 問題、test_stress(9) 為環境問題
 - test_api_server 剩餘 1 個 `test_meeting_with_review_loop_safe` 為獨立邏輯 bug
 
+### [2026-03-26] Round 4 — e2e auth + proxy IP rebinding + toc 跨磁碟
+**角度**: Bug（測試配置缺失 + mock rebinding + Windows 相容性）
+**為什麼**: 三類不同的 bug 一起修：
+1. test_e2e.py mock config 缺 `api.auth_enabled`，auth middleware 預設啟用導致 12 個 POST 端點回 401
+2. TestGetClientIp 設定 `api_server._TRUST_PROXY` 只改 re-export 引用，`helpers._TRUST_PROXY` 不受影響
+3. toc 命令 `os.path.commonpath()` 在 Windows 跨磁碟時 ValueError
+**做了什麼**:
+- test_e2e.py: 兩處 mock_config 加入 `"api": {"auth_enabled": False}`
+- test_cli_commands.py: 改用 `patch("src.api.helpers._TRUST_PROXY")`
+- src/cli/toc_cmd.py: `commonpath()` 加 try/except 回退到 cwd
+**結果**: PASS
+- test_e2e.py: 21 failed → 9 failed（-12）
+- test_cli_commands.py: 4 failed → 2 failed（-2）
+**下一步可能**:
+- 剩餘 batch CLI 測試失敗根因是 Rich Live display 在 CliRunner 環境下衝突
+- 剩餘 e2e 失敗分散在 LLM mock 回傳格式和 fact_checker 中文比對
+
