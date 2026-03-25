@@ -3,6 +3,9 @@ api_server.py 的 API 端點測試
 使用 FastAPI TestClient 和 mock 來避免依賴外部服務
 """
 import pytest
+
+pytest.importorskip("multipart", reason="python-multipart 未安裝，跳過 API 測試")
+
 import json
 from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient

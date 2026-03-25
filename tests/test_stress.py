@@ -17,6 +17,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+pytest.importorskip("multipart", reason="python-multipart 未安裝，跳過壓力測試")
+
 from fastapi.testclient import TestClient
 
 from src.core.llm import LLMProvider

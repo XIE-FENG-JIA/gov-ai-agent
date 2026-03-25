@@ -8,6 +8,7 @@
 4. Graceful degradation（優雅降級）
 5. LLM 回傳異常值處理
 """
+import importlib
 import json
 import logging
 import os
@@ -16,6 +17,12 @@ import threading
 from pathlib import Path
 import pytest
 from unittest.mock import MagicMock, patch
+
+_has_chromadb = importlib.util.find_spec("chromadb") is not None
+_has_multipart = importlib.util.find_spec("multipart") is not None
+
+_skip_no_chromadb = pytest.mark.skipif(not _has_chromadb, reason="chromadb 未安裝")
+_skip_no_multipart = pytest.mark.skipif(not _has_multipart, reason="python-multipart 未安裝")
 
 from src.core.llm import MockLLMProvider, LiteLLMProvider, LLMConnectionError, LLMAuthError
 from src.core.config import ConfigManager
@@ -968,6 +975,7 @@ code block
 # 4. Graceful Degradation（優雅降級）
 # ============================================================
 
+@_skip_no_chromadb
 class TestGracefulDegradation:
     """測試各種服務不可用時系統仍能運作"""
 
@@ -2295,6 +2303,7 @@ class TestIteration1StabilityHardening:
 
     # --- Fix 3: KnowledgeBaseManager safe index access ---
 
+    @_skip_no_chromadb
     def test_kb_search_empty_results(self):
         """搜尋結果為空時不應崩潰"""
         mock_llm = MagicMock()
@@ -2315,6 +2324,7 @@ class TestIteration1StabilityHardening:
             results = kb.search_policies("test")
             assert results == []
 
+    @_skip_no_chromadb
     def test_kb_search_inconsistent_results(self):
         """ChromaDB 回傳不一致陣列長度時不應 IndexError"""
         mock_llm = MagicMock()
@@ -2341,6 +2351,7 @@ class TestIteration1StabilityHardening:
             assert results[2]["metadata"] == {}
             assert results[2]["distance"] is None
 
+    @_skip_no_chromadb
     def test_kb_search_missing_keys(self):
         """ChromaDB 回傳缺少 key 時不應 KeyError"""
         mock_llm = MagicMock()
@@ -2668,7 +2679,7 @@ class TestProductionReadinessIteration1:
         """requirements-lock.txt 中的依賴應有 == 版本鎖定"""
         from pathlib import Path
         lock_file = Path(__file__).parent.parent / "requirements-lock.txt"
-        with open(lock_file) as f:
+        with open(lock_file, encoding="utf-8") as f:
             lines = [ln.strip() for ln in f if ln.strip() and not ln.startswith("#")]
         assert len(lines) > 0, "Lock file 不應為空"
         for line in lines:
@@ -2739,7 +2750,7 @@ class TestProductionReadinessIteration2:
 
     def test_api_main_reads_env_vars(self):
         """api_server __main__ 應從環境變數讀取 host/port/workers"""
-        with open("api_server.py") as f:
+        with open("api_server.py", encoding="utf-8") as f:
             content = f.read()
         # 確認 __main__ 區塊使用環境變數
         assert "API_HOST" in content, "__main__ 應支援 API_HOST 環境變數"
@@ -2748,7 +2759,7 @@ class TestProductionReadinessIteration2:
 
     def test_api_main_has_default_values(self):
         """api_server __main__ 應有合理的預設值"""
-        with open("api_server.py") as f:
+        with open("api_server.py", encoding="utf-8") as f:
             content = f.read()
         assert '"0.0.0.0"' in content, "預設 host 應為 0.0.0.0"
         assert '"8000"' in content, "預設 port 應為 8000"
@@ -2824,7 +2835,7 @@ class TestProductionReadinessIteration3:
 
     def test_lifespan_shutdown_has_cancel_futures(self):
         """lifespan 的 _executor.shutdown 應包含 cancel_futures=True"""
-        with open("api_server.py") as f:
+        with open("api_server.py", encoding="utf-8") as f:
             content = f.read()
         assert "cancel_futures=True" in content, (
             "executor shutdown 應使用 cancel_futures=True 避免永久阻塞"
@@ -2832,7 +2843,7 @@ class TestProductionReadinessIteration3:
 
     def test_lifespan_shutdown_logs_message(self):
         """shutdown 前應有日誌提示"""
-        with open("api_server.py") as f:
+        with open("api_server.py", encoding="utf-8") as f:
             content = f.read()
         assert "等待進行中的任務完成" in content
 
@@ -2842,7 +2853,7 @@ class TestProductionReadinessIteration3:
         """.env.example 中的 CORS 變數名應與代碼一致"""
         from pathlib import Path
         env_example = Path(__file__).parent.parent / ".env.example"
-        with open(env_example) as f:
+        with open(env_example, encoding="utf-8") as f:
             content = f.read()
         # 代碼使用 CORS_ALLOWED_ORIGINS
         assert "CORS_ALLOWED_ORIGINS" in content, (
@@ -2861,7 +2872,7 @@ class TestProductionReadinessIteration3:
         """.env.example 應包含所有 API Server 相關環境變數"""
         from pathlib import Path
         env_example = Path(__file__).parent.parent / ".env.example"
-        with open(env_example) as f:
+        with open(env_example, encoding="utf-8") as f:
             content = f.read()
         for var in ["API_HOST", "API_PORT", "API_WORKERS", "LOG_LEVEL", "RATE_LIMIT_RPM"]:
             assert var in content, f".env.example 應包含 {var}"
@@ -3025,13 +3036,13 @@ class TestProductionReadinessIteration4:
 
     def test_run_in_executor_has_timeout(self):
         """_run_in_executor 應包含 asyncio.wait_for 超時保護"""
-        with open("src/api/helpers.py") as f:
+        with open("src/api/helpers.py", encoding="utf-8") as f:
             content = f.read()
         assert "wait_for" in content, "_run_in_executor 應使用 asyncio.wait_for"
 
     def test_endpoint_timeout_configurable(self):
         """endpoint timeout 應可透過環境變數配置"""
-        with open("src/api/helpers.py") as f:
+        with open("src/api/helpers.py", encoding="utf-8") as f:
             content = f.read()
         assert "API_ENDPOINT_TIMEOUT" in content
         assert "API_MEETING_TIMEOUT" in content
@@ -3060,7 +3071,7 @@ class TestProductionReadinessIteration4:
 
     def test_meeting_endpoint_uses_longer_timeout(self):
         """meeting endpoint 應使用 MEETING_TIMEOUT 而非預設超時"""
-        with open("src/api/routes/workflow.py") as f:
+        with open("src/api/routes/workflow.py", encoding="utf-8") as f:
             content = f.read()
         assert "MEETING_TIMEOUT" in content
         assert "timeout=MEETING_TIMEOUT" in content
@@ -3070,6 +3081,7 @@ class TestProductionReadinessIteration4:
 # 覆蓋率提升測試
 # ============================================================
 
+@_skip_no_chromadb
 class TestCoverageImprovement:
     """針對覆蓋率分析中發現的未覆蓋路徑補充測試。"""
 

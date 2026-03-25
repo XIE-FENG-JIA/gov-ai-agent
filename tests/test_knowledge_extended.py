@@ -3,6 +3,9 @@ src/knowledge/manager.py 的延伸測試
 補充不同集合的操作、搜尋和邊界條件
 """
 import pytest
+
+chromadb = pytest.importorskip("chromadb", reason="chromadb 未安裝，跳過知識庫測試")
+
 from src.knowledge.manager import KnowledgeBaseManager
 
 

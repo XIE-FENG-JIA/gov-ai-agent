@@ -2,6 +2,7 @@
 src/agents/ 的延伸測試
 補充邊界條件、錯誤路徑和未覆蓋的功能
 """
+import importlib
 import os
 import pytest
 import json
@@ -1950,6 +1951,10 @@ class TestCLIOutputPath:
 
 # ==================== RateLimiter 清理機制測試 ====================
 
+@pytest.mark.skipif(
+    not importlib.util.find_spec("multipart"),
+    reason="python-multipart 未安裝，跳過 API 相關測試",
+)
 class TestRateLimiterCleanup:
     """測試 RateLimiter 的定期清理機制"""
 
@@ -2727,6 +2732,10 @@ class TestWriteMetaInfoStopConditions:
 
 # ==================== GAP-008: Meeting 端點匯出失敗 ====================
 
+@pytest.mark.skipif(
+    not importlib.util.find_spec("multipart"),
+    reason="python-multipart 未安裝，跳過 API 相關測試",
+)
 class TestMeetingExportFailure:
     """GAP-008: Meeting 端點中 DocxExporter 失敗時的處理。"""
 

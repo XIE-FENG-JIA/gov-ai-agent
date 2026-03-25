@@ -25,6 +25,9 @@ import json
 import os
 import sys
 import pytest
+
+pytest.importorskip("multipart", reason="python-multipart 未安裝，跳過 E2E 測試")
+
 import yaml
 from pathlib import Path
 from unittest.mock import MagicMock, patch

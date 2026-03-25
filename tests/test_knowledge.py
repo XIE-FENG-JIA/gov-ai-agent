@@ -1,6 +1,8 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
+chromadb = pytest.importorskip("chromadb", reason="chromadb 未安裝，跳過知識庫測試")
+
 from src.knowledge.manager import KnowledgeBaseManager
 
 
