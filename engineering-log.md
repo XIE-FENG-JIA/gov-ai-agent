@@ -122,3 +122,14 @@
 - e2e 測試的 LLM mock `side_effect` 需按 agent 類型分流（writer vs reviewer）
 - stress 測試 chromadb 未安裝需加 skip 標記
 
+### [2026-03-26] Round 8 — e2e 適配 Agentic RAG 精煉迴圈
+**角度**: Bug（mock 未適配 Agentic RAG 的額外 LLM 呼叫）
+**為什麼**: `_check_relevance()` 在搜尋結果缺 `distance` 欄位時使用預設值 1.5 > 閾值 1.2，判定不相關並觸發精煉迴圈，消耗 `side_effect` 列表中的回應導致序列錯位。
+**做了什麼**:
+- `mock_kb` fixture 預設返回帶 `distance=0.3` 的結果
+- 有 Level A 範例的測試加 `distance` 欄位
+- 空 KB 測試加 4 個 refinement 佔位回應
+**結果**: PASS
+- test_e2e.py 單獨執行：0 failed（95 passed, 7 skipped）
+- 跨檔案因 api_server 全域狀態汙染仍有 12 個失敗（已有問題）
+
