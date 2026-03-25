@@ -2032,44 +2032,32 @@ class TestGetClientIp:
     def test_get_client_ip_no_proxy(self):
         """TRUST_PROXY=false 時應使用 request.client.host"""
         import api_server
-        original = api_server._TRUST_PROXY
-        try:
-            api_server._TRUST_PROXY = False
+        with patch("src.api.helpers._TRUST_PROXY", False):
             mock_request = MagicMock()
             mock_request.client.host = "192.168.1.100"
             mock_request.headers = {"X-Forwarded-For": "10.0.0.1"}
             ip = api_server._get_client_ip(mock_request)
             assert ip == "192.168.1.100"
-        finally:
-            api_server._TRUST_PROXY = original
 
     def test_get_client_ip_with_proxy(self):
         """TRUST_PROXY=true 時應使用 X-Forwarded-For"""
         import api_server
-        original = api_server._TRUST_PROXY
-        try:
-            api_server._TRUST_PROXY = True
+        with patch("src.api.helpers._TRUST_PROXY", True):
             mock_request = MagicMock()
             mock_request.client.host = "127.0.0.1"
             mock_request.headers = {"X-Forwarded-For": "203.0.113.50, 10.0.0.1"}
             ip = api_server._get_client_ip(mock_request)
             assert ip == "203.0.113.50"
-        finally:
-            api_server._TRUST_PROXY = original
 
     def test_get_client_ip_invalid_forwarded(self):
         """X-Forwarded-For 格式不合法時應回退"""
         import api_server
-        original = api_server._TRUST_PROXY
-        try:
-            api_server._TRUST_PROXY = True
+        with patch("src.api.helpers._TRUST_PROXY", True):
             mock_request = MagicMock()
             mock_request.client.host = "127.0.0.1"
             mock_request.headers = {"X-Forwarded-For": "not-an-ip, 10.0.0.1"}
             ip = api_server._get_client_ip(mock_request)
             assert ip == "127.0.0.1"
-        finally:
-            api_server._TRUST_PROXY = original
 
 
 class TestConfigValidateExitCode:

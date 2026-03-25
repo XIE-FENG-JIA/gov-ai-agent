@@ -31,7 +31,11 @@ def toc(
 
     # 計算所有檔案的共同父目錄作為深度基準
     abs_files = [os.path.abspath(f) for f in files]
-    base_dir = os.path.commonpath([os.path.dirname(af) for af in abs_files]) if abs_files else os.getcwd()
+    try:
+        base_dir = os.path.commonpath([os.path.dirname(af) for af in abs_files]) if abs_files else os.getcwd()
+    except ValueError:
+        # Windows 跨磁碟時 commonpath 會 ValueError
+        base_dir = os.getcwd()
 
     entries = []
     for i, f in enumerate(files, 1):
