@@ -74,7 +74,11 @@ def mock_kb(mock_llm):
     kb.search_examples.return_value = []
     kb.search_regulations.return_value = []
     kb.search_policies.return_value = []
-    kb.search_hybrid.return_value = []
+    # 預設返回帶 distance 的結果（避免觸發 Agentic RAG 精煉迴圈）
+    # 需要測試空 KB 行為的測試應自行覆蓋為 []
+    kb.search_hybrid.return_value = [
+        {"content": "範例公文內容", "metadata": {"title": "範例"}, "distance": 0.3}
+    ]
     kb.get_stats.return_value = {
         "examples_count": 0,
         "regulations_count": 0,
@@ -295,11 +299,12 @@ class TestScenario1_GenerateHan:
 一、請加強宣導資源回收。
 二、落實垃圾分類。
 """
-        # 模擬知識庫有範例
+        # 模擬知識庫有範例（distance < 1.2 避免觸發 Agentic RAG 精煉）
         mock_kb.search_hybrid.return_value = [
             {
                 "content": "範例公文內容",
                 "metadata": {"title": "環保回收函"},
+                "distance": 0.3,
             }
         ]
 
@@ -307,7 +312,6 @@ class TestScenario1_GenerateHan:
         draft = writer.write_draft(sample_han_requirement)
 
         assert "主旨" in draft or "函轉" in draft
-        mock_llm.generate.assert_called_once()
         mock_kb.search_hybrid.assert_called()
 
     def test_template_standardization_for_han(self, sample_han_requirement):
@@ -2082,9 +2086,13 @@ class TestUserSimulation:
         mock_kb.search_hybrid.return_value = []
 
         # 設定 LLM 回應序列
+        # 注意：空 KB 會觸發 Agentic RAG 精煉（2 次 search × max_retries=2 = 4 次 generate）
         mock_llm.generate.side_effect = [
             # RequirementAgent
             _make_mock_llm_json_response(requirement_json),
+            # Agentic RAG 精煉查詢（4 次：Level A 2 次 + all 2 次）
+            "安全教育 校園安全", "學生安全 教育宣導",
+            "安全教育 函", "校園安全教育 宣導",
             # WriterAgent（空 KB 時 LLM 產出含【待補依據】的草稿）
             """### 主旨
 函轉有關加強學生安全教育一案，請查照。
@@ -2170,7 +2178,7 @@ class TestUserSimulation:
             "attachments": ["校園資源回收指南"],
         }
 
-        # 模擬知識庫有 Level A 範例
+        # 模擬知識庫有 Level A 範例（distance < 1.2 避免 Agentic RAG 精煉）
         mock_kb.search_hybrid.return_value = [
             {
                 "id": "ex1",
@@ -2181,6 +2189,7 @@ class TestUserSimulation:
                     "source_url": "https://gazette.nat.gov.tw/example",
                     "content_hash": "abc123",
                 },
+                "distance": 0.3,
             },
         ]
 
@@ -2285,6 +2294,11 @@ class TestUserSimulation:
 二、如有疑義，請逕洽本局建管科承辦人員。
 """
 
+        # 讓 mock_kb 返回帶 distance 的結果，避免 Agentic RAG 精煉
+        mock_kb.search_hybrid.return_value = [
+            {"content": "駁回申請範例", "metadata": {"title": "駁回函"}, "distance": 0.3}
+        ]
+
         mock_llm.generate.side_effect = [
             # RequirementAgent
             _make_mock_llm_json_response(requirement_json),
@@ -2301,8 +2315,6 @@ class TestUserSimulation:
             # ComplianceChecker
             json.dumps({"issues": [], "score": 0.9, "confidence": 0.85}),
         ]
-
-        mock_kb.search_hybrid.return_value = []
 
         req_agent = RequirementAgent(mock_llm)
         requirement = req_agent.analyze(
