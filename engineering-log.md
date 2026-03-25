@@ -38,3 +38,16 @@
 - 剩餘 38 個真實失敗需個別修復：test_stress(9) 為 auth 配置問題、test_fetchers(4) mock 路徑錯誤、test_cli_commands(3) 邏輯 bug
 - test_cli_commands 的 batch 測試有中文 stdout 編碼問題，可能需要 CliRunner 設定 charset_normalizer
 
+### [2026-03-26] Round 3 — 修復 22 個 fetcher 測試 mock 失敗 + 時間炸彈
+**角度**: Bug（測試 mock 目標錯誤 + 硬編碼日期）
+**為什麼**: 4 個 fetcher 子模組（opendata/legislative/legislative_debate/procurement）未 `import requests`，但測試用 `@patch("X_fetcher.requests.post")` 去 mock，造成 `AttributeError: module has no attribute 'requests'`。另外 `test_fetch_bulk_date_filter` 使用硬編碼日期 2026-02-20，超過 30 天窗口後必然失敗。
+**做了什麼**:
+- 4 個 fetcher 加上 `import requests`，與其他 9 個 fetcher 保持一致
+- `test_fetch_bulk_date_filter` 改用 `datetime.date.today() - timedelta(days=5)` 動態日期
+**結果**: PASS
+- test_fetchers.py：22 failed → 0 failed（124/124 passed）
+- test_api_server.py：217 error → 1 failed（340/341 passed）
+**下一步可能**:
+- 剩餘 ~48 個失敗：test_e2e(21) 多為 auth 401 問題、test_stress(9) 為環境問題
+- test_api_server 剩餘 1 個 `test_meeting_with_review_loop_safe` 為獨立邏輯 bug
+

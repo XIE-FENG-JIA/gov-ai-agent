@@ -5,6 +5,7 @@ import logging
 import re
 from pathlib import Path
 
+import requests  # noqa: F401 — needed for test mock targets
 
 from src.knowledge.fetchers.base import BaseFetcher, FetchResult
 from src.knowledge.fetchers.constants import (

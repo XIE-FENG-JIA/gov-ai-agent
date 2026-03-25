@@ -1158,11 +1158,13 @@ class TestGazetteFetcherBulk:
     @patch("src.knowledge.fetchers.gazette_fetcher.requests.get")
     def test_fetch_bulk_date_filter(self, mock_get, tmp_path):
         """測試日期篩選在 bulk 模式下仍生效"""
+        import datetime
         from src.knowledge.fetchers.gazette_fetcher import GazetteFetcher
 
+        recent_date = (datetime.date.today() - datetime.timedelta(days=5)).isoformat()
         records = [
             {"MetaId": "BK001", "Title": "新公報", "Category": "",
-             "PubGov": "行政院", "Date_Published": "2026-02-20", "HTMLContent": ""},
+             "PubGov": "行政院", "Date_Published": recent_date, "HTMLContent": ""},
             {"MetaId": "BK002", "Title": "舊公報", "Category": "",
              "PubGov": "行政院", "Date_Published": "2020-01-01", "HTMLContent": ""},
         ]
