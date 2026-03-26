@@ -5,7 +5,7 @@ knowledge_base:
   path: ./kb_data
 llm:
   api_key: ''
-  base_url: http://localhost:11434
+  base_url: http://127.0.0.1:11434
   embedding_base_url: ''
   embedding_model: all-MiniLM-L6-v2
   embedding_provider: local
@@ -35,7 +35,7 @@ providers:
     api_key: ''
     model: gemini-2.5-pro
   ollama:
-    base_url: http://localhost:11434
+    base_url: http://127.0.0.1:11434
     model: llama3.1:8b
   openrouter:
     api_key: ''

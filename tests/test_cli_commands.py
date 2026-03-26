@@ -1647,11 +1647,11 @@ class TestConfigShowCommand:
             "llm": {
                 "provider": "ollama",
                 "model": "llama3.1:8b",
-                "base_url": "http://localhost:11434",
+                "base_url": "http://127.0.0.1:11434",
                 "api_key": "",
                 "embedding_provider": "ollama",
                 "embedding_model": "llama3.1:8b",
-                "embedding_base_url": "http://localhost:11434",
+                "embedding_base_url": "http://127.0.0.1:11434",
             },
             "knowledge_base": {"path": "./kb_data"},
             "organizational_memory": {"enabled": True},

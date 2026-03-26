@@ -120,7 +120,7 @@ class LiteLLMProvider(LLMProvider):
         # Embedding Config
         self.emb_provider = provider_config.get("embedding_provider", "ollama")
         self.emb_model = provider_config.get("embedding_model", "llama3.1:8b")
-        self.emb_base_url = provider_config.get("embedding_base_url", "http://localhost:11434")
+        self.emb_base_url = provider_config.get("embedding_base_url", "http://127.0.0.1:11434")
 
         # Validate API Key for cloud providers
         if self.provider in ["gemini", "openrouter"] and not self.api_key:

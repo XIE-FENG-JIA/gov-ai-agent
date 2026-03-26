@@ -132,7 +132,7 @@ class ConfigManager:
                 "provider": "ollama",
                 "model": "mistral",
                 "api_key": "",
-                "base_url": "http://localhost:11434"
+                "base_url": "http://127.0.0.1:11434"
             },
             "knowledge_base": {
                 "path": "./kb_data",

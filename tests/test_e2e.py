@@ -215,12 +215,12 @@ def temp_config_dir(tmp_path):
             "provider": "ollama",
             "model": "llama3.1:8b",
             "api_key": "",
-            "base_url": "http://localhost:11434",
+            "base_url": "http://127.0.0.1:11434",
         },
         "knowledge_base": {"path": str(tmp_path / "kb_data")},
         "providers": {
             "ollama": {
-                "base_url": "http://localhost:11434",
+                "base_url": "http://127.0.0.1:11434",
                 "model": "llama3.1:8b",
             },
             "openrouter": {

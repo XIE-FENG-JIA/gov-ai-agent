@@ -778,3 +778,18 @@
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
 - `_find_available_font` 在 Linux 大型字體目錄下效能可優化（遞迴 iterdir）
 - `src/cli/kb.py` 的 3 處 `stat()` 無 try/except 保護（P2，非致命）
+
+### [2026-03-26] Round 46 — localhost → 127.0.0.1 跨平台連線 bug 修復
+**角度**: 🐛 Bug（IPv6 DNS 解析導致 Ollama 連線失敗）
+**為什麼**: Python `urllib` 將 `localhost` 解析為 IPv6 `::1`，但 Ollama 預設只綁定 IPv4 `127.0.0.1`。在部分 Windows/Linux 環境下，所有使用預設 URL 的 LLM/embedding 連線都會 connection refused。這個 bug 隱蔽且跨平台，影響新用戶首次設定體驗。
+**做了什麼**:
+- `src/core/llm.py`: `embedding_base_url` 預設值 `localhost` → `127.0.0.1`
+- `src/core/config.py`: `_create_default_config` 預設值修正
+- `src/cli/config_tools.py`: `_PROVIDER_TEMPLATES` ollama 範本修正
+- `config.yaml` + `config.yaml.example`: ollama provider 區塊修正
+- `tests/test_cli_commands.py` + `test_e2e.py`: 測試資料同步修正
+**結果**: PASS — 2806 passed, 84 skipped, 0 failed（零回歸）
+**下一步可能**:
+- `src/cli/kb.py` 的 3 處 `stat()` 無 try/except 保護（P2，非致命）
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+- `_find_available_font` 在 Linux 大型字體目錄下效能可優化（遞迴 iterdir）
