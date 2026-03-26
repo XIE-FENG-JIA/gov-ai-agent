@@ -501,3 +501,20 @@
 - 所有核心模組覆蓋率 ≥ 90%，考慮提升 CI 門檻至 87%
 - conftest 加 `mock_kb` 為 session-scope fixture
 - 功能層面：考慮 Web UI 的批次處理頁面實作（目前只有空殼模板）
+
+### [2026-03-26] Round 34 — doctor.py 死碼修復 + 覆蓋率 100% / checklist_cmd.py 70%→93%
+**角度**: 🐛 Bug（死碼）+ 🧪 測試（CLI 工具覆蓋率盲區消除）
+**為什麼**:
+1. `doctor.py` 的套件檢查有 copy-paste 冗餘碼——`__import__("docx")` 失敗後，內層 try 再做一次完全相同的 `__import__("docx")`，是永遠失敗的死路。改為 `_PKG_INSTALL_NAME` dict 映射。
+2. `checklist_cmd.py` 70% 覆蓋率，docx 讀取（成功/失敗）、不支援格式等 4 個分支無測試。
+**做了什麼**:
+- `src/cli/doctor.py`: 冗餘 try/except 替換為 dict 映射（-6 行），+7 個測試覆蓋全分支
+- `tests/test_cli_commands.py`: +4 個 checklist 邊界測試（不支援格式、docx 正常、docx 損壞、md 格式）
+**結果**: PASS
+- doctor.py: 92% → **100%**（死碼修復 + 全分支覆蓋）
+- checklist_cmd.py: 70% → **93%**（+23pp，剩 3 行 python-docx ImportError 分支）
+- 全量測試：2657 passed, 84 skipped, 0 failed（+11 新測試，零回歸）
+**下一步可能**:
+- `cli/org_memory_cmd.py`（70%，45 行未覆蓋）是剩餘最低覆蓋 CLI 模組
+- MISSION.md 功能缺口：審查意見具體修改建議
+- CI 覆蓋率門檻考慮從 85% 提升至 88%

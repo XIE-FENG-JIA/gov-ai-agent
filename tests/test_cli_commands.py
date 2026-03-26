@@ -4135,6 +4135,45 @@ class TestChecklistCommand:
         assert result.exit_code == 1
         assert "找不到檔案" in result.stdout
 
+    def test_checklist_unsupported_format(self, tmp_path):
+        """不支援的檔案格式應報錯"""
+        from src.cli.main import app
+        doc = tmp_path / "bad.csv"
+        doc.write_text("data", encoding="utf-8")
+        result = runner.invoke(app, ["checklist", str(doc)])
+        assert result.exit_code == 1
+        assert "不支援的檔案格式" in result.stdout
+
+    def test_checklist_docx_success(self, tmp_path):
+        """docx 檔案正常讀取"""
+        from src.cli.main import app
+        from docx import Document
+        doc_path = tmp_path / "test.docx"
+        doc = Document()
+        doc.add_paragraph("主旨：測試\n受文者：XX\n發文日期：中華民國115年1月1日\n發文字號：字第001號\n局長 王\n正本：XX")
+        doc.save(str(doc_path))
+        result = runner.invoke(app, ["checklist", str(doc_path)])
+        assert result.exit_code == 0 or result.exit_code == 1  # 看內容是否全通過
+        assert "正在檢核" in result.stdout
+
+    def test_checklist_docx_open_error(self, tmp_path):
+        """docx 檔案損壞時應報錯"""
+        from src.cli.main import app
+        doc_path = tmp_path / "corrupt.docx"
+        doc_path.write_bytes(b"not a real docx")
+        result = runner.invoke(app, ["checklist", str(doc_path)])
+        assert result.exit_code == 1
+        assert "無法開啟文件" in result.stdout
+
+    def test_checklist_md_file(self, tmp_path):
+        """.md 檔案也能檢核"""
+        from src.cli.main import app
+        doc = tmp_path / "draft.md"
+        doc.write_text("主旨：測試公文\n受文者：全體\n", encoding="utf-8")
+        result = runner.invoke(app, ["checklist", str(doc)])
+        # 部分檢核會失敗但不應 crash
+        assert "正在檢核" in result.stdout
+
 
 # ==================== Estimate Parameter ====================
 
