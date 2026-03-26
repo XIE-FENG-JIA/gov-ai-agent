@@ -1,3 +1,4 @@
+import copy
 import pytest
 import sys
 from pathlib import Path
@@ -9,6 +10,38 @@ sys.path.append(str(Path(__file__).parent.parent))
 from src.core.llm import LLMProvider
 from src.core.models import PublicDocRequirement
 from src.core.review_models import ReviewResult, ReviewIssue
+
+
+# ============================================================
+# API 測試用共用配置 — 單一來源，避免各檔案重複定義導致不同步
+# Round 4/9/10 三次因漏加 auth_enabled:False 造成 401 假失敗
+# ============================================================
+
+_BASE_API_CONFIG: dict = {
+    "llm": {"provider": "mock", "model": "test"},
+    "knowledge_base": {"path": "./test_kb"},
+    "api": {"auth_enabled": False},
+}
+
+
+def make_api_config(**overrides) -> dict:
+    """建立 API 測試配置（auth 預設關閉）。
+
+    每次呼叫回傳獨立的 deep copy，避免測試間互相汙染。
+    可透過 keyword args 覆蓋頂層 key。
+
+    範例::
+
+        cfg = make_api_config()  # 標準配置
+        cfg = make_api_config(api={"auth_enabled": True, "api_keys": ["k1"]})
+    """
+    config = copy.deepcopy(_BASE_API_CONFIG)
+    for key, value in overrides.items():
+        if isinstance(value, dict) and isinstance(config.get(key), dict):
+            config[key].update(value)
+        else:
+            config[key] = value
+    return config
 
 
 @pytest.fixture

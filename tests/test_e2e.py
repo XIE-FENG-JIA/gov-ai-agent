@@ -36,6 +36,7 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.core.config import ConfigManager, LLMProvider
+from conftest import make_api_config
 from src.core.models import PublicDocRequirement
 from src.core.review_models import ReviewIssue, ReviewResult, QAReport
 from src.core.llm import MockLLMProvider, LiteLLMProvider, get_llm_factory
@@ -635,11 +636,7 @@ class TestScenario5_APIEndpoints:
              patch("src.api.dependencies.get_llm") as mock_llm_fn, \
              patch("src.api.dependencies.get_kb") as mock_kb_fn:
 
-            _mock_cfg = {
-                "llm": {"provider": "mock", "model": "test"},
-                "knowledge_base": {"path": "./test_kb"},
-                "api": {"auth_enabled": False},
-            }
+            _mock_cfg = make_api_config()
             mock_config.return_value = _mock_cfg
             mock_mw_config.return_value = _mock_cfg
 
@@ -1978,11 +1975,7 @@ class TestFullIntegrationFlow:
              patch("src.api.dependencies.get_llm") as mock_llm_fn, \
              patch("src.api.dependencies.get_kb") as mock_kb_fn:
 
-            _mock_cfg = {
-                "llm": {"provider": "mock", "model": "test"},
-                "knowledge_base": {"path": "./test_kb"},
-                "api": {"auth_enabled": False},
-            }
+            _mock_cfg = make_api_config()
             mock_config.return_value = _mock_cfg
             mock_mw_config.return_value = _mock_cfg
             mock_llm_fn.return_value = mock_llm

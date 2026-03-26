@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from src.core.llm import LLMProvider
 from src.core.review_models import ReviewResult, ReviewIssue
+from conftest import make_api_config
 
 
 # ==================== Fixtures ====================
@@ -40,14 +41,7 @@ def mock_api_deps():
     """Mock 所有 API 依賴項（LLM、KB、Config）"""
     import api_server
 
-    # Mock config（auth_enabled 預設為 True，需提供測試用 API keys）
-    mock_config = {
-        "llm": {"provider": "mock", "model": "test"},
-        "knowledge_base": {"path": "./test_kb"},
-        "api": {
-            "auth_enabled": False,
-        },
-    }
+    mock_config = make_api_config()
     api_server._config = mock_config
 
     # Mock LLM

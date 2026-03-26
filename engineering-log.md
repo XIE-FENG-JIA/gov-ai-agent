@@ -182,3 +182,17 @@
 - `base.py` SSL 驗證失敗自動降級為 `verify=False`（HIGH 安全風險），需評估是否為政府 API 所需
 - 9 處 `except Exception` 靜默吞噬錯誤（無 logger），影響生產環境可觀測性
 - `workflow.py` 的 `asyncio.gather()` 未用 `return_exceptions=True`，單項失敗中斷全部
+
+### [2026-03-26] Round 12 — 統一 API 測試 auth 配置到 conftest
+**角度**: 🏗️ 架構（DRY + 防回歸）
+**為什麼**: `auth_enabled: False` 分散在 4 個測試檔（test_api_server、test_e2e ×2、test_stress）各自硬編碼，Round 4/9/10 三次因漏同步導致 401 假失敗。這是架構問題，不是能力問題。
+**做了什麼**:
+- `tests/conftest.py`: 新增 `_BASE_API_CONFIG` 常數和 `make_api_config(**overrides)` 工廠函式
+- `tests/test_api_server.py`: `mock_api_deps` 改用 `make_api_config()`
+- `tests/test_stress.py`: `mock_api_deps` 改用 `make_api_config()`
+- `tests/test_e2e.py`: 兩處 inline config dict 改用 `make_api_config()`
+**結果**: PASS — 2485 passed, 84 skipped, 0 failed（零回歸）
+**下一步可能**:
+- 同樣手法可用於 LLM mock 和 KB mock 的統一（目前也是各檔重複定義）
+- `workflow.py` 的 `asyncio.gather()` 未用 `return_exceptions=True`，單項失敗中斷全部
+- `base.py` SSL 驗證降級為 `verify=False` 需評估安全影響
