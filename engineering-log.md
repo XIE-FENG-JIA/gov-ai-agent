@@ -598,3 +598,20 @@
 - `cli/config_tools.py`（82%，52 行未覆蓋）
 - `cli/workflow_cmd.py`（79%，40 行未覆蓋）— 最低覆蓋 CLI 模組
 - MISSION.md 功能缺口：審查意見具體修改建議
+
+### [2026-03-26] Round 39 — kb.py 邊界路徑覆蓋（+19 個測試案例）
+**角度**: 🧪 測試（KB CLI 邊界路徑覆蓋率提升）
+**為什麼**: `kb.py` 77%（140 行未覆蓋），KB unavailable 防護（7 處）、delete/collections 例外處理、details 完整命令、ingest 失敗計數、fetch --ingest 分支等關鍵防禦路徑無測試保護。
+**做了什麼**: 新增 `TestKBEdgeCases`（19 個測試案例）：
+- KB unavailable（6）：list-docs/delete/collections/details/export-json/search
+- delete 邊界（2）：未知集合、刪除例外
+- collections/list-docs 例外（3）：讀取失敗降級、limit 截斷
+- export-json 集合例外（1）：失敗降級為空
+- details 完整命令（1）：KB 目錄結構掃描
+- _init_kb 缺 llm（1）、config 例外 fallback（2）
+- ingest 失敗計數（1）、fetch-gazette --ingest（1）、stats-detail 空目錄（1）
+**結果**: PASS — 2739 passed, 84 skipped, 0 failed（+19 新測試，零回歸）
+**下一步可能**:
+- kb.py 剩餘 fetch_* ingest 分支（同一模式 ×11）
+- `cli/config_tools.py`（82%）、`cli/workflow_cmd.py`（79%）
+- MISSION.md 功能缺口：審查意見具體修改建議

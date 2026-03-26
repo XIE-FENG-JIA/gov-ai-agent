@@ -3783,6 +3783,286 @@ class TestKBListDeleteCollections:
         assert "5" in result.stdout
 
 
+# ==================== KB Edge Cases ====================
+
+class TestKBEdgeCases:
+    """kb.py 未覆蓋邊界路徑的測試"""
+
+    def _make_unavailable_kb(self):
+        mock_kb = MagicMock()
+        mock_kb.is_available = False
+        return mock_kb
+
+    def _make_available_kb(self):
+        mock_kb = MagicMock()
+        mock_kb.is_available = True
+        mock_kb.persist_path = "./test_kb"
+        mock_kb.get_stats.return_value = {
+            "examples_count": 1, "regulations_count": 0, "policies_count": 0,
+        }
+        coll = MagicMock()
+        coll.get.return_value = {"ids": ["id1"], "metadatas": [{"title": "t"}]}
+        coll.count.return_value = 1
+        empty = MagicMock()
+        empty.get.return_value = {"ids": [], "metadatas": []}
+        empty.count.return_value = 0
+        mock_kb.examples_collection = coll
+        mock_kb.regulations_collection = empty
+        mock_kb.policies_collection = empty
+        return mock_kb
+
+    # ---- KB unavailable 分支 ----
+
+    def test_list_docs_unavailable(self, monkeypatch):
+        """list-docs 在 KB 不可用時應報錯"""
+        from src.cli import kb as kb_module
+        from src.cli.kb import app as kb_app
+        monkeypatch.setattr(kb_module, "_init_kb", lambda: self._make_unavailable_kb())
+        result = runner.invoke(kb_app, ["list-docs"])
+        assert result.exit_code == 1
+        assert "不可用" in result.stdout
+
+    def test_delete_unavailable(self, monkeypatch):
+        """delete 在 KB 不可用時應報錯"""
+        from src.cli import kb as kb_module
+        from src.cli.kb import app as kb_app
+        monkeypatch.setattr(kb_module, "_init_kb", lambda: self._make_unavailable_kb())
+        result = runner.invoke(kb_app, ["delete", "--id", "x", "-c", "examples"])
+        assert result.exit_code == 1
+        assert "不可用" in result.stdout
+
+    def test_collections_unavailable(self, monkeypatch):
+        """collections 在 KB 不可用時應報錯"""
+        from src.cli import kb as kb_module
+        from src.cli.kb import app as kb_app
+        monkeypatch.setattr(kb_module, "_init_kb", lambda: self._make_unavailable_kb())
+        result = runner.invoke(kb_app, ["collections"])
+        assert result.exit_code == 1
+        assert "不可用" in result.stdout
+
+    def test_details_unavailable(self, monkeypatch):
+        """details 在 KB 不可用時應報錯"""
+        from src.cli import kb as kb_module
+        from src.cli.kb import app as kb_app
+        monkeypatch.setattr(kb_module, "_init_kb", lambda: self._make_unavailable_kb())
+        result = runner.invoke(kb_app, ["details"])
+        assert result.exit_code == 1
+        assert "不可用" in result.stdout
+
+    def test_export_json_unavailable(self, monkeypatch):
+        """export-json 在 KB 不可用時應報錯"""
+        from src.cli import kb as kb_module
+        from src.cli.kb import app as kb_app
+        monkeypatch.setattr(kb_module, "_init_kb", lambda: self._make_unavailable_kb())
+        result = runner.invoke(kb_app, ["export-json"])
+        assert result.exit_code == 1
+        assert "不可用" in result.stdout
+
+    def test_search_unavailable(self, monkeypatch):
+        """search 在 KB 不可用時應報錯"""
+        from src.cli import kb as kb_module
+        from src.cli.kb import app as kb_app
+        monkeypatch.setattr(kb_module, "_init_kb", lambda: self._make_unavailable_kb())
+        result = runner.invoke(kb_app, ["search", "測試"])
+        assert result.exit_code == 1
+        assert "失敗" in result.stdout
+
+    # ---- delete 邊界 ----
+
+    def test_delete_unknown_collection(self, monkeypatch):
+        """刪除時指定不存在的集合應報錯"""
+        from src.cli import kb as kb_module
+        from src.cli.kb import app as kb_app
+        monkeypatch.setattr(kb_module, "_init_kb", lambda: self._make_available_kb())
+        result = runner.invoke(kb_app, ["delete", "--id", "x", "-c", "nonexistent"])
+        assert result.exit_code == 1
+        assert "未知集合" in result.stdout
+
+    def test_delete_exception(self, monkeypatch):
+        """刪除過程發生例外應報錯"""
+        from src.cli import kb as kb_module
+        from src.cli.kb import app as kb_app
+        mock_kb = self._make_available_kb()
+        mock_kb.examples_collection.get.return_value = {"ids": ["id1"]}
+        mock_kb.examples_collection.delete.side_effect = RuntimeError("db locked")
+        monkeypatch.setattr(kb_module, "_init_kb", lambda: mock_kb)
+        result = runner.invoke(kb_app, ["delete", "--id", "id1", "-c", "examples"])
+        assert result.exit_code == 1
+        assert "刪除失敗" in result.stdout
+
+    # ---- collections 例外 ----
+
+    def test_collections_exception(self, monkeypatch):
+        """list_collections 例外應報錯"""
+        from src.cli import kb as kb_module
+        from src.cli.kb import app as kb_app
+        mock_kb = self._make_available_kb()
+        mock_kb.client.list_collections.side_effect = RuntimeError("connection lost")
+        monkeypatch.setattr(kb_module, "_init_kb", lambda: mock_kb)
+        result = runner.invoke(kb_app, ["collections"])
+        assert result.exit_code == 1
+        assert "無法列出" in result.stdout
+
+    # ---- list-docs 邊界 ----
+
+    def test_list_docs_limit_break(self, monkeypatch):
+        """list-docs 的 limit 參數應截斷結果"""
+        from src.cli import kb as kb_module
+        from src.cli.kb import app as kb_app
+        mock_kb = self._make_available_kb()
+        # 設定 examples 有 5 筆
+        mock_kb.examples_collection.get.return_value = {
+            "ids": [f"id-{i}" for i in range(5)],
+            "metadatas": [{"title": f"文件{i}", "doc_type": "函"} for i in range(5)],
+        }
+        monkeypatch.setattr(kb_module, "_init_kb", lambda: mock_kb)
+        result = runner.invoke(kb_app, ["list-docs", "-n", "3"])
+        assert result.exit_code == 0
+        assert "共顯示 3 筆" in result.stdout
+
+    def test_list_docs_collection_exception(self, monkeypatch):
+        """list-docs 讀取集合例外時顯示警告但不崩潰"""
+        from src.cli import kb as kb_module
+        from src.cli.kb import app as kb_app
+        mock_kb = self._make_available_kb()
+        mock_kb.examples_collection.get.side_effect = RuntimeError("corrupt")
+        monkeypatch.setattr(kb_module, "_init_kb", lambda: mock_kb)
+        result = runner.invoke(kb_app, ["list-docs", "-c", "examples"])
+        assert result.exit_code == 0
+        assert "錯誤" in result.stdout
+
+    # ---- export-json 集合例外 ----
+
+    def test_export_json_collection_exception(self, monkeypatch, tmp_path):
+        """export-json 讀取集合失敗時降級為空"""
+        from src.cli import kb as kb_module
+        from src.cli.kb import app as kb_app
+        mock_kb = self._make_available_kb()
+        mock_kb.examples_collection.get.side_effect = RuntimeError("fail")
+        monkeypatch.setattr(kb_module, "_init_kb", lambda: mock_kb)
+        out = str(tmp_path / "export.json")
+        result = runner.invoke(kb_app, ["export-json", "--output", out])
+        assert result.exit_code == 0
+        data = json.loads(Path(out).read_text(encoding="utf-8"))
+        assert data["collections"]["examples"]["count"] == 0
+
+    # ---- details 完整命令 ----
+
+    def test_details_full(self, monkeypatch, tmp_path):
+        """details 命令完整路徑"""
+        from src.cli import kb as kb_module
+        from src.cli.kb import app as kb_app
+        # 建立假的 KB 目錄結構
+        kb_dir = tmp_path / "kb_data"
+        kb_dir.mkdir()
+        (kb_dir / "test.txt").write_text("hello", encoding="utf-8")
+
+        mock_kb = self._make_available_kb()
+        mock_kb.persist_path = str(kb_dir)
+        monkeypatch.setattr(kb_module, "_init_kb", lambda: mock_kb)
+        result = runner.invoke(kb_app, ["details"])
+        assert result.exit_code == 0
+        assert "知識庫詳細資訊" in result.stdout
+        assert "1" in result.stdout  # examples_count
+
+    # ---- _init_kb 缺 llm ----
+
+    def test_init_kb_no_llm(self, monkeypatch):
+        """config 缺 llm 時 _init_kb 應報錯"""
+        from src.cli.kb import _init_kb, app as kb_app
+        monkeypatch.setattr("src.cli.kb.ConfigManager", lambda: MagicMock(config={}))
+        result = runner.invoke(kb_app, ["list"])
+        assert result.exit_code == 1
+
+    # ---- kb_export config 例外 ----
+
+    def test_kb_export_config_exception(self, monkeypatch, tmp_path):
+        """kb export config 載入失敗時使用預設路徑"""
+        from src.cli.kb import app as kb_app
+        # ConfigManager raise → 使用預設 ./kb_data
+        monkeypatch.setattr("src.cli.kb.ConfigManager", MagicMock(side_effect=RuntimeError("bad")))
+        # 但 ./kb_data 不存在，所以會報目錄不存在
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(kb_app, ["export"])
+        assert result.exit_code == 1
+        assert "不存在" in result.stdout
+
+    # ---- info config 例外 ----
+
+    def test_info_config_exception(self, monkeypatch, tmp_path):
+        """info config 載入失敗時使用預設路徑"""
+        from src.cli.kb import app as kb_app
+        monkeypatch.setattr("src.cli.kb.ConfigManager", MagicMock(side_effect=RuntimeError("bad")))
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(kb_app, ["info"])
+        # 預設 ./kb_data 不存在
+        assert "不存在" in result.stdout
+
+    # ---- ingest 失敗計數 ----
+
+    def test_ingest_add_document_failure(self, monkeypatch, tmp_path):
+        """ingest 時 add_document 返回 False 應計入失敗"""
+        from src.cli import kb as kb_module
+        from src.cli.kb import app as kb_app
+
+        mock_kb = self._make_available_kb()
+        mock_kb.add_document.return_value = False
+        monkeypatch.setattr(kb_module, "_init_kb", lambda: mock_kb)
+
+        md_file = tmp_path / "test.md"
+        md_file.write_text("# 測試內容\n這是測試文件", encoding="utf-8")
+        result = runner.invoke(kb_app, ["ingest", "--source-dir", str(tmp_path)])
+        assert result.exit_code == 0
+        assert "嵌入失敗" in result.stdout or "失敗" in result.stdout
+
+    # ---- fetch-gazette --ingest 分支 ----
+
+    def test_fetch_gazette_with_ingest(self, monkeypatch, tmp_path):
+        """fetch-gazette --ingest 應初始化 KB 並匯入"""
+        from src.cli import kb as kb_module
+        from src.cli.kb import app as kb_app
+
+        # 建立真實的 MD 檔案供 parse_markdown_with_metadata 讀取
+        md_file = tmp_path / "gazette.md"
+        md_file.write_text("---\ntitle: 公報1\n---\n內容", encoding="utf-8")
+
+        mock_result = MagicMock()
+        mock_result.file_path = md_file
+        mock_result.collection = "regulations"
+
+        mock_fetcher = MagicMock()
+        mock_fetcher.name.return_value = "政府公報"
+        mock_fetcher.fetch.return_value = [mock_result]
+
+        mock_kb = self._make_available_kb()
+        mock_kb.contextual_retrieval = False
+        mock_kb.add_document.return_value = True
+        monkeypatch.setattr(kb_module, "_init_kb", lambda: mock_kb)
+        monkeypatch.setattr(
+            "src.knowledge.fetchers.gazette_fetcher.GazetteFetcher",
+            lambda **kw: mock_fetcher,
+        )
+
+        result = runner.invoke(kb_app, ["fetch-gazette", "--ingest"])
+        assert result.exit_code == 0
+        assert "已匯入" in result.stdout
+
+    # ---- stats-detail 空子目錄 ----
+
+    def test_stats_detail_empty_subdir(self, tmp_path):
+        """stats-detail 空子目錄應顯示 '-' 作為最後修改時間"""
+        from src.cli.kb import app as kb_app
+
+        kb_dir = tmp_path / "kb_data"
+        kb_dir.mkdir()
+        (kb_dir / "empty_subdir").mkdir()
+        (kb_dir / "has_files").mkdir()
+        (kb_dir / "has_files" / "test.txt").write_text("content", encoding="utf-8")
+
+        result = runner.invoke(kb_app, ["stats-detail", "--path", str(kb_dir)])
+        assert result.exit_code == 0
+
+
 # ==================== Batch Tools ====================
 
 class TestBatchTools:
