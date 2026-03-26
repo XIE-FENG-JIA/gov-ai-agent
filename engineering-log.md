@@ -4,6 +4,18 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 33 — API key 前綴不再洩漏至 log 檔案
+**角度**: 🔒 安全（資訊洩漏 — API key 部分內容持久化於 log）
+**為什麼**: `ensure_api_key()` 的 `logger.warning()` 包含 `generated_key[:8]`，這些 log 可能被 ELK/Loki/CloudWatch 等日誌系統長期保存。攻擊者取得 log 存取權後，已知前 8 字元可大幅縮小暴力破解範圍（從 43 字元 base64url 減少到 35 字元）。
+**做了什麼**:
+- `middleware.py`: logger.warning 移除所有 key 內容，只記錄「已產生臨時 key」事件
+- 完整 key 改用 `print(file=sys.stderr)` 輸出——僅在啟動終端一閃即過，不被 log handler 捕獲
+- 新增 `TestAutoKeyNoLogLeak`（2 個測試）驗證 logger 不洩漏 + stderr 正確輸出完整 key
+**結果**: PASS — 3026 passed, 84 skipped, 0 failed（+2 新測試，零回歸）
+**下一步可能**:
+- org_memory.py 的 stored prompt injection 防護可加強（目前只移除 `'` 和 `\n`）
+- writer.py:432 的 LLM 錯誤偵測 regex 可能誤判合法草稿
+
 ### [2026-03-27] Round 32 — config_tools YAML 寫入改用原子操作
 **角度**: 🐛 Bug（設定檔寫入中途崩潰會導致 config.yaml 永久損毀）
 **為什麼**: Round 31 修復了 JSON 狀態檔的原子寫入，但 `config_tools.py` 仍有 3 處裸 `open("w") + yaml.dump()` 寫入 config.yaml（:293, :394, :466）。config.yaml 是系統核心設定命脈，損毀後 LLM provider、API 認證、知識庫路徑全部遺失。另外 `switcher.py` 手動複製了 15 行原子寫入邏輯，違反 DRY。

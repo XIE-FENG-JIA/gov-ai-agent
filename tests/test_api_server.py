@@ -3916,3 +3916,53 @@ class TestCleanupOldOutputs:
         with patch("src.core.constants.OUTPUT_DIR", fake_dir):
             from api_server import _cleanup_old_outputs
             _cleanup_old_outputs()  # 不應拋出例外
+
+
+class TestAutoKeyNoLogLeak:
+    """驗證自動產生的 API key 不會洩漏到 logger。"""
+
+    def test_generated_key_not_in_log_output(self):
+        """ensure_api_key 的 logger.warning 不應包含 key 的任何部分。"""
+        import src.api.middleware as mw
+
+        # 重設全域狀態
+        mw._auto_key_generated = False
+
+        mock_config = MagicMock()
+        mock_config.get.return_value = {"auth_enabled": True, "api_keys": []}
+
+        import logging
+        with patch.object(mw.logger, "warning") as mock_warn, \
+             patch("builtins.print"):  # 攔截 stderr 輸出
+            mw.ensure_api_key(mock_config)
+
+        # logger.warning 應被呼叫但不包含 key 內容
+        assert mock_warn.called
+        logged_msg = mock_warn.call_args[0][0]
+        # 訊息不應包含 %s 格式化佔位（key 前綴已移除）
+        assert "%s" not in logged_msg
+
+        # 重設
+        mw._auto_key_generated = False
+
+    def test_generated_key_printed_to_stderr(self):
+        """完整 key 應透過 stderr 輸出，不經過 logger。"""
+        import src.api.middleware as mw
+
+        mw._auto_key_generated = False
+
+        mock_config = MagicMock()
+        mock_config.get.return_value = {"auth_enabled": True, "api_keys": []}
+
+        with patch("src.api.middleware.print") as mock_print:
+            mw.ensure_api_key(mock_config)
+
+        assert mock_print.called
+        printed_text = mock_print.call_args[0][0]
+        assert "臨時 API Key" in printed_text
+        # 確保印出的是完整 key（43 字元的 base64url）
+        import re
+        key_match = re.search(r"[A-Za-z0-9_-]{40,}", printed_text)
+        assert key_match is not None
+
+        mw._auto_key_generated = False

@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import secrets
+import sys
 import time
 import threading
 import uuid
@@ -216,9 +217,13 @@ def ensure_api_key(config) -> None:
         api_config["api_keys"] = [generated_key]
         _auto_key_generated = True
         logger.warning(
-            "API 認證已啟用但 api_keys 為空，已自動產生臨時 API key: %s*** "
+            "API 認證已啟用但 api_keys 為空，已自動產生臨時 API key"
             "（請儘速在 config.yaml 的 api.api_keys 中設定永久 key）",
-            generated_key[:8],
+        )
+        # key 只輸出到 stderr（終端可見），不寫入 log 檔案，避免洩漏
+        print(
+            f"\n  [臨時 API Key] {generated_key}\n",
+            file=sys.stderr, flush=True,
         )
 
 
