@@ -1567,3 +1567,20 @@
 **下一步可能**:
 - 批次處理效能優化（MISSION 剩餘功能缺口之一）
 - `呈`/`咨` 範本補齊（目前各 3 筆，遠低於其他類型）
+
+### [2026-03-27] Round 76 — 批次處理效能優化（共享初始化 + 並行 worker）
+**角度**: ⚡ 效能瓶頸（MISSION 剩餘功能缺口）
+**為什麼**: `_run_batch()` 每筆文件都重新 init `ConfigManager`/`get_llm_factory`/`KnowledgeBaseManager`，N 筆就有 N 次冗餘磁碟 I/O 與物件建立；所有 LLM 呼叫全部序列，完全沒利用 I/O-bound 的並行優勢。這是 MISSION 功能缺口「批次處理效能優化」的直接對應。
+**搜尋**: Python `concurrent.futures.ThreadPoolExecutor` 是 I/O-bound 任務的標準做法（stdlib，無額外依賴）；Rich Progress 是 thread-safe，多執行緒同時 advance/print 不需加鎖；計數器/列表需 threading.Lock 保護。
+**做了什麼**:
+- 提取 `_process_batch_item()` helper（單筆處理邏輯完全隔離，可單獨測試）
+- 共享初始化移至迴圈外：`ConfigManager`/`get_llm_factory`/`KnowledgeBaseManager` 各只建一次
+- 新增 `--workers N` 旗標（`generate` command，預設 1=序列，向後相容，上限 10）
+- `workers>1` 時以 `ThreadPoolExecutor` 並行提交所有任務，`as_completed` 收集結果
+- `parallel=True` 模式抑制 `rule`/`description` 更新避免多執行緒輸出混亂
+- `threading.Lock` 保護 `success_count`/`fail_count`/`failed_items` 計數器
+- 新增 `tests/test_batch_perf.py`：9 個 unit test（共享初始化只建一次、並行/序列路徑、partial 失敗收集、parallel flag 傳遞驗證）
+**結果**: PASS — 9 個新測試全通過；163 個核心測試全通過（7 skipped），零回歸
+**下一步可能**:
+- `呈`/`咨` 範本補齊（目前各 3 筆，其他類型通常 10+ 筆）
+- 知識庫正式更新：執行 `kb ingest` 重新索引使 Round 73 新範本生效

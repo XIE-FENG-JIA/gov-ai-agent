@@ -1,8 +1,10 @@
+import concurrent.futures
 import csv
 import json
 import os
 import re
 import sys
+import threading
 import time
 
 import typer
@@ -425,9 +427,90 @@ def _load_batch_csv(batch_file: str) -> list[dict]:
         return items
 
 
+def _process_batch_item(
+    item: dict,
+    idx: int,
+    total: int,
+    llm,
+    kb,
+    skip_review: bool,
+    max_rounds: int,
+    convergence: bool,
+    skip_info: bool,
+    progress,
+    task,
+    parallel: bool = False,
+) -> dict:
+    """處理單一批次項目，回傳 {"success": bool, "failed_item": dict|None, "elapsed": float}。"""
+    item_start = time.monotonic()
+    input_text = item["input"]
+    output_path = item.get("output", f"batch_output_{idx}.docx")
+
+    if not parallel:
+        progress.console.rule(f"[bold cyan][{idx}/{total}] 正在處理...[/bold cyan]")
+        progress.console.print(f"  需求：{input_text[:60]}{'...' if len(input_text) > 60 else ''}")
+
+    result: dict = {"success": False, "failed_item": None, "elapsed": 0.0}
+
+    try:
+        # 需求分析
+        req_agent = RequirementAgent(llm)
+        if not parallel:
+            progress.update(task, description=f"[{idx}/{total}] 分析需求中...")
+        requirement = req_agent.analyze(input_text)
+
+        # 草稿撰寫
+        writer = WriterAgent(llm, kb)
+        if not parallel:
+            progress.update(task, description=f"[{idx}/{total}] 撰寫草稿中...")
+        raw_draft = writer.write_draft(requirement)
+
+        # 格式標準化
+        template_engine = TemplateEngine()
+        sections = template_engine.parse_draft(raw_draft)
+        formatted_draft = template_engine.apply_template(requirement, sections)
+
+        # 審查
+        final_draft = formatted_draft
+        qa_report_str = None
+        if not skip_review:
+            with EditorInChief(llm, kb) as editor:
+                final_draft, qa_report = editor.review_and_refine(
+                    formatted_draft, requirement.doc_type, max_rounds=max_rounds,
+                    convergence=convergence, skip_info=skip_info,
+                )
+                qa_report_str = qa_report.audit_log
+
+        # 匯出
+        safe_filename = os.path.basename(output_path)
+        if not safe_filename or safe_filename.startswith("."):
+            safe_filename = f"batch_output_{idx}.docx"
+        if not safe_filename.endswith(".docx"):
+            safe_filename += ".docx"
+
+        exporter = DocxExporter()
+        final_path = exporter.export(final_draft, safe_filename, qa_report=qa_report_str)
+        progress.console.print(f"  [green][{idx}/{total}] 完成 -> {final_path}[/green]")
+        result["success"] = True
+
+    except Exception as e:
+        analysis = ErrorAnalyzer.diagnose(e)
+        progress.console.print(f"  [red][{idx}/{total}] 失敗：{_sanitize_error(e)}[/red]")
+        progress.console.print(f"  [dim]診斷：{analysis['root_cause']}[/dim]")
+        progress.console.print(f"  [dim]建議：{analysis['suggestion']}[/dim]")
+        failed_item = dict(item)
+        failed_item["error_type"] = analysis["error_type"]
+        failed_item["suggestion"] = analysis["suggestion"]
+        result["failed_item"] = failed_item
+
+    result["elapsed"] = time.monotonic() - item_start
+    progress.advance(task)
+    return result
+
+
 def _run_batch(
     batch_file: str, skip_review: bool, max_rounds: int = 3,
-    convergence: bool = False, skip_info: bool = False,
+    convergence: bool = False, skip_info: bool = False, workers: int = 1,
 ):
     """批次處理 JSON 或 CSV 檔案中的多筆公文需求。
 
@@ -466,14 +549,35 @@ def _run_batch(
             console.print(f'[red]錯誤：第 {idx + 1} 筆缺少 "input" 欄位。[/red]')
             raise typer.Exit(1)
 
+    # 共享初始化（只建一次，所有批次項目共用）
+    try:
+        config_manager = ConfigManager()
+        config = config_manager.config
+        llm_config = config.get("llm")
+        if not llm_config:
+            console.print("[red]錯誤：設定檔缺少 'llm' 區塊[/red]")
+            raise typer.Exit(1)
+        kb_path = config.get("knowledge_base", {}).get("path", "./kb_data")
+        llm = get_llm_factory(llm_config, full_config=config)
+        kb = KnowledgeBaseManager(kb_path, llm)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        console.print(f"[red]錯誤：初始化失敗：{_sanitize_error(e)}[/red]")
+        raise typer.Exit(1)
+
     total = len(items)
+    workers = max(1, workers)
     success_count = 0
     fail_count = 0
     failed_items: list[dict] = []
     batch_start = time.monotonic()
     item_times: list[float] = []
+    _lock = threading.Lock()
 
-    console.rule(f"[bold blue]批次處理：共 {total} 筆[/bold blue]")
+    parallel = workers > 1
+    mode_label = f"並行 {workers} workers" if parallel else "序列"
+    console.rule(f"[bold blue]批次處理：共 {total} 筆（{mode_label}）[/bold blue]")
 
     with Progress(
         SpinnerColumn(),
@@ -484,75 +588,41 @@ def _run_batch(
         console=console,
     ) as progress:
         task = progress.add_task("批次處理", total=total)
-        for idx, item in enumerate(items, 1):
-            item_start = time.monotonic()
-            input_text = item["input"]
-            output_path = item.get("output", f"batch_output_{idx}.docx")
-            progress.console.rule(f"[bold cyan][{idx}/{total}] 正在處理...[/bold cyan]")
-            progress.console.print(f"  需求：{input_text[:60]}{'...' if len(input_text) > 60 else ''}")
 
-            try:
-                # 初始化
-                config_manager = ConfigManager()
-                config = config_manager.config
-                llm_config = config.get("llm")
-                if not llm_config:
-                    raise RuntimeError("設定檔缺少 'llm' 區塊")
-                kb_path = config.get("knowledge_base", {}).get("path", "./kb_data")
-                llm = get_llm_factory(llm_config, full_config=config)
-                kb = KnowledgeBaseManager(kb_path, llm)
+        def _collect(result: dict) -> None:
+            nonlocal success_count, fail_count
+            with _lock:
+                item_times.append(result["elapsed"])
+                if result["success"]:
+                    success_count += 1
+                else:
+                    fail_count += 1
+                    if result["failed_item"]:
+                        failed_items.append(result["failed_item"])
 
-                # 需求分析
-                req_agent = RequirementAgent(llm)
-                progress.update(task, description=f"[{idx}/{total}] 分析需求中...")
-                requirement = req_agent.analyze(input_text)
-
-                # 草稿撰寫
-                writer = WriterAgent(llm, kb)
-                progress.update(task, description=f"[{idx}/{total}] 撰寫草稿中...")
-                raw_draft = writer.write_draft(requirement)
-
-                # 格式標準化
-                template_engine = TemplateEngine()
-                sections = template_engine.parse_draft(raw_draft)
-                formatted_draft = template_engine.apply_template(requirement, sections)
-
-                # 審查
-                final_draft = formatted_draft
-                qa_report_str = None
-                if not skip_review:
-                    with EditorInChief(llm, kb) as editor:
-                        final_draft, qa_report = editor.review_and_refine(
-                            formatted_draft, requirement.doc_type, max_rounds=max_rounds,
-                            convergence=convergence, skip_info=skip_info,
-                        )
-                        qa_report_str = qa_report.audit_log
-
-                # 匯出
-                safe_filename = os.path.basename(output_path)
-                if not safe_filename or safe_filename.startswith("."):
-                    safe_filename = f"batch_output_{idx}.docx"
-                if not safe_filename.endswith(".docx"):
-                    safe_filename += ".docx"
-
-                exporter = DocxExporter()
-                final_path = exporter.export(final_draft, safe_filename, qa_report=qa_report_str)
-                progress.console.print(f"  [green]完成 -> {final_path}[/green]")
-                success_count += 1
-
-            except Exception as e:
-                analysis = ErrorAnalyzer.diagnose(e)
-                progress.console.print(f"  [red]失敗：{_sanitize_error(e)}[/red]")
-                progress.console.print(f"  [dim]診斷：{analysis['root_cause']}[/dim]")
-                progress.console.print(f"  [dim]建議：{analysis['suggestion']}[/dim]")
-                fail_count += 1
-                failed_item = dict(item)
-                failed_item["error_type"] = analysis["error_type"]
-                failed_item["suggestion"] = analysis["suggestion"]
-                failed_items.append(failed_item)
-
-            item_times.append(time.monotonic() - item_start)
-            progress.advance(task)
+        if not parallel:
+            # 序列模式（向後相容）
+            for idx, item in enumerate(items, 1):
+                result = _process_batch_item(
+                    item, idx, total, llm, kb,
+                    skip_review, max_rounds, convergence, skip_info,
+                    progress, task, parallel=False,
+                )
+                _collect(result)
+        else:
+            # 並行模式（ThreadPoolExecutor，I/O-bound LLM 呼叫）
+            with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+                future_map = {
+                    executor.submit(
+                        _process_batch_item,
+                        item, idx, total, llm, kb,
+                        skip_review, max_rounds, convergence, skip_info,
+                        progress, task, True,
+                    ): idx
+                    for idx, item in enumerate(items, 1)
+                }
+                for future in concurrent.futures.as_completed(future_map):
+                    _collect(future.result())
 
     # 總結
     batch_elapsed = time.monotonic() - batch_start
@@ -964,6 +1034,7 @@ def generate(
     skip_info: bool = typer.Option(False, "--skip-info", help="分層收斂模式下跳過 info 層級修正"),
     show_rounds: bool = typer.Option(False, "--show-rounds", help="每輪修正後顯示草稿全文與差異對比"),
     batch: str = typer.Option("", "--batch", "-b", help="批次處理檔案路徑（支援 .json 和 .csv）"),
+    workers: int = typer.Option(1, "--workers", "-w", help="批次並行 worker 數（預設 1=序列，建議上限 5）", min=1, max=10),
     preview: bool = typer.Option(False, "--preview", "-p", help="在終端預覽生成的公文內容"),
     retries: int = typer.Option(1, "--retries", help="LLM 呼叫失敗時的重試次數（1=不重試）", min=1, max=5),
     save_markdown: bool = typer.Option(False, "--markdown", "--md", help="同時匯出 Markdown 版本"),
@@ -1032,7 +1103,7 @@ def generate(
     """
     # 批次模式
     if batch:
-        _run_batch(batch, skip_review, max_rounds=max_rounds, convergence=convergence, skip_info=skip_info)
+        _run_batch(batch, skip_review, max_rounds=max_rounds, convergence=convergence, skip_info=skip_info, workers=workers)
         return
 
     # 解析並驗證輸入
