@@ -46,12 +46,14 @@ class TestSearchCache:
         assert mock_kb.llm_provider.embed.call_count == 2
 
     def test_invalidate_cache_clears_all(self, mock_kb):
-        """invalidate_cache 應清除所有快取"""
+        """invalidate_cache 應清除所有快取（含 embed 快取）"""
         mock_kb.search_hybrid("測試查詢")
         assert len(mock_kb._search_cache) > 0
+        assert len(mock_kb._embed_cache) > 0
 
         mock_kb.invalidate_cache()
         assert len(mock_kb._search_cache) == 0
+        assert len(mock_kb._embed_cache) == 0
 
     def test_add_document_invalidates_cache(self, mock_kb):
         """新增文件後應自動清除快取"""

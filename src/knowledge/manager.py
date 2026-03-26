@@ -21,7 +21,7 @@ _CACHE_TTL = 300       # 5 分鐘
 _CACHE_MAXSIZE = 256   # 最多快取 256 筆查詢
 
 # Embedding 快取設定（避免同一 query 在多輪審查中重複呼叫 LLM embed）
-_EMBED_CACHE_TTL = 600     # 10 分鐘（比搜尋快取長，因為向量不隨知識庫變動）
+_EMBED_CACHE_TTL = 600     # 10 分鐘（比搜尋快取長；invalidate_cache() 會主動清除）
 _EMBED_CACHE_MAXSIZE = 128  # 最多快取 128 筆 embedding
 
 # 文件集合快取設定（BM25/keyword 搜尋用，避免每次重新從 ChromaDB 拉取全量文件）
@@ -234,12 +234,14 @@ class KnowledgeBaseManager:
         return self._available
 
     def invalidate_cache(self) -> None:
-        """清除搜尋快取和文件集合快取。在 ingest / reset 後呼叫以確保資料一致性。"""
+        """清除所有快取。在 ingest / reset 後呼叫以確保資料一致性。"""
         with self._cache_lock:
             self._search_cache.clear()
+        with self._embed_cache_lock:
+            self._embed_cache.clear()
         with self._doc_cache_lock:
             self._doc_cache.clear()
-        logger.debug("搜尋快取和文件集合快取已清除")
+        logger.debug("搜尋快取、embedding 快取和文件集合快取已清除")
 
     def search_policies(self, query: str, n_results: int = 3, source_level: str | None = None) -> list[dict]:
         """在政策集合中搜尋。"""

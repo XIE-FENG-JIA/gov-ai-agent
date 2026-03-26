@@ -1058,3 +1058,16 @@
 **下一步可能**:
 - MISSION.md 功能缺口：公文範本庫擴充、法規自動更新
 - 下一個里程碑：從品質打磨轉向功能開發
+
+### [2026-03-26] Round 67 — invalidate_cache() 遺漏清除 embedding 快取
+**角度**: 🐛 Bug（快取一致性）
+**為什麼**: Round 62 新增 `_embed_cache`（embedding TTL 快取）時，`invalidate_cache()` 只清了 `_search_cache` 和 `_doc_cache`，漏掉 `_embed_cache`。結果：`add_document()` / `reset_db()` 後，舊的 embedding 向量最多被使用 10 分鐘，搜尋結果可能指向已不存在或已更新的文件。
+**做了什麼**:
+- `manager.py` `invalidate_cache()` 加入 `_embed_cache.clear()`（含 lock）
+- 修正 `_EMBED_CACHE_TTL` 旁邊的錯誤註解（原稱「不隨知識庫變動」，實際會被 invalidate 主動清除）
+- `test_knowledge_manager_cache.py` 強化 `test_invalidate_cache_clears_all` 斷言覆蓋 `_embed_cache`
+**結果**: PASS — 2982 passed, 84 skipped, 0 failed（零回歸）
+**下一步可能**:
+- `_sanitize_output_filename()` 加入 regex 驗證（與 download endpoint 三層防護對齊）
+- `fan_out_reviewers()` 在 requirement 缺失時 raise 而非靜默 fallback 到「函」
+- MISSION.md 功能缺口：公文範本庫擴充、法規自動更新
