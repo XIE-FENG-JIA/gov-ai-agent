@@ -238,10 +238,18 @@ class LawVerifier:
                 for name in zf.namelist():
                     if name.endswith(".json"):
                         raw = zf.read(name)
-                        parsed = json.loads(raw)
+                        try:
+                            parsed = json.loads(raw)
+                        except (json.JSONDecodeError, ValueError):
+                            logger.warning("ZIP 內 JSON 解析失敗：%s", name)
+                            continue
                         raw_list.extend(_unwrap(parsed))
         except zipfile.BadZipFile:
-            parsed = json.loads(data)
+            try:
+                parsed = json.loads(data)
+            except (json.JSONDecodeError, ValueError):
+                logger.warning("法規 API 回傳資料非合法 ZIP 亦非合法 JSON（%d bytes）", len(data))
+                return raw_list
             raw_list.extend(_unwrap(parsed))
 
         # 從 LawURL 提取 PCode

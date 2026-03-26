@@ -261,6 +261,45 @@ class TestLawVerifier:
         assert checks[0].confidence == 1.0
 
 
+class TestParseLaws:
+    """_parse_laws() 邊界測試：確保異常 JSON 不會炸掉整個法規驗證。"""
+
+    def test_valid_zip_with_json(self):
+        """正常 ZIP 包含 JSON — happy path。"""
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("laws.json", json.dumps({"Laws": [{"LawName": "行政程序法", "PCode": "A0030"}]}))
+        result = LawVerifier._parse_laws(buf.getvalue())
+        assert len(result) == 1
+        assert result[0]["LawName"] == "行政程序法"
+
+    def test_plain_json(self):
+        """非 ZIP 的純 JSON 回傳。"""
+        data = json.dumps({"Laws": [{"LawName": "個資法", "PCode": "P001"}]}).encode()
+        result = LawVerifier._parse_laws(data)
+        assert len(result) == 1
+
+    def test_malformed_json_returns_empty(self):
+        """回傳完全無法解析的資料時，應回傳空 list 而非拋出例外。"""
+        result = LawVerifier._parse_laws(b"this is not json or zip")
+        assert result == []
+
+    def test_zip_with_corrupt_json_skips_bad_entry(self):
+        """ZIP 內某個 JSON 檔損壞時，跳過該檔繼續處理其餘。"""
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("good.json", json.dumps([{"LawName": "A法", "PCode": "A001"}]))
+            zf.writestr("bad.json", b"{corrupted json!!!")
+        result = LawVerifier._parse_laws(buf.getvalue())
+        assert len(result) == 1
+        assert result[0]["LawName"] == "A法"
+
+    def test_empty_bytes_returns_empty(self):
+        """空 bytes 不應拋出例外。"""
+        result = LawVerifier._parse_laws(b"")
+        assert result == []
+
+
 # ===========================================================================
 # TestRecentPolicyFetcher
 # ===========================================================================
