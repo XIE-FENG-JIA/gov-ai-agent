@@ -4,6 +4,18 @@
 
 ## 改善紀錄
 
+### [2026-03-26] Round 27 — LawFetcher JSON 解析容錯補強
+**角度**: 🐛 Bug（ZIP 內單一損壞 JSON 導致全部法規提取失敗）
+**為什麼**: `_extract_laws_from_response()` 中兩處 `json.loads` 缺少 `JSONDecodeError` 防護：(1) ZIP 內迴圈中的 `json.loads(raw)` 失敗會中斷整個迴圈，丟失所有其他正常檔案的資料；(2) fallback 路徑的 `json.loads(data)` 對非 JSON 資料直接崩潰。對比 `realtime_lookup.py:242` 已正確做了 per-file 容錯，law_fetcher 卻遺漏。
+**做了什麼**:
+- ZIP 內迴圈：加入 `except (json.JSONDecodeError, ValueError)` + `continue`，跳過損壞檔案繼續處理
+- fallback 路徑：加入 `except (json.JSONDecodeError, ValueError)` + 日誌警告 + 返回空列表
+- 新增 `TestLawFetcherJsonResilience` 測試類（2 個測試驗證上述兩條路徑）
+**結果**: PASS — 3006 passed, 84 skipped, 0 failed（+2 新測試，零回歸）
+**下一步可能**:
+- 同樣的 pattern 可檢查 exam_yuan_fetcher.py 的 JSON 解析容錯
+- `_sanitize_error` 改用 isinstance() 鏈式匹配
+
 ### [2026-03-26] Round 26 — API 錯誤映射補齊 LLMTimeoutError
 **角度**: 🐛 Bug（錯誤映射遺漏導致使用者收到錯誤的錯誤訊息）
 **為什麼**: `LLMTimeoutError` 在 commit 646072f 新增，但 `src/api/helpers.py` 的 `_sanitize_error()` 和 `_get_error_code()` 兩個映射表未同步更新。由於使用 `type(exc).__name__` 精確匹配，子類 `LLMTimeoutError` 不會 fallback 到父類 `LLMError`，導致 LLM 超時時 API 回傳「伺服器內部錯誤」+「INTERNAL_ERROR」，使用者完全無法判斷是超時問題。

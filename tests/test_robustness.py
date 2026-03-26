@@ -3078,6 +3078,34 @@ class TestProductionReadinessIteration4:
 
 
 # ============================================================
+# LawFetcher JSON 解析容錯測試
+# ============================================================
+
+class TestLawFetcherJsonResilience:
+    """測試 LawFetcher._extract_laws_from_response 的 JSON 解析容錯。"""
+
+    def test_extract_laws_corrupted_json_in_zip(self):
+        """ZIP 內含損壞的 JSON 檔時，應跳過該檔並繼續處理其他檔案"""
+        import io, zipfile
+        from src.knowledge.fetchers.law_fetcher import LawFetcher
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            good = json.dumps([{"PCode": "A0001", "LawName": "好法"}]).encode("utf-8")
+            zf.writestr("good.json", good)
+            zf.writestr("bad.json", b"{corrupted data!!!")
+        result = LawFetcher._extract_laws_from_response(buf.getvalue())
+        assert len(result) == 1
+        assert result[0]["PCode"] == "A0001"
+
+    def test_extract_laws_not_zip_not_json(self):
+        """資料既非合法 ZIP 也非合法 JSON 時，應返回空列表而非崩潰"""
+        from src.knowledge.fetchers.law_fetcher import LawFetcher
+        data = b"this is not json or zip"
+        result = LawFetcher._extract_laws_from_response(data)
+        assert result == []
+
+
+# ============================================================
 # 覆蓋率提升測試
 # ============================================================
 
