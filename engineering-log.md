@@ -613,5 +613,21 @@
 **結果**: PASS — 2739 passed, 84 skipped, 0 failed（+19 新測試，零回歸）
 **下一步可能**:
 - kb.py 剩餘 fetch_* ingest 分支（同一模式 ×11）
-- `cli/config_tools.py`（82%）、`cli/workflow_cmd.py`（79%）
+- `cli/config_tools.py`（82%）、~~`cli/workflow_cmd.py`（79%）~~ ✅ Round 39b 已完成
+- MISSION.md 功能缺口：審查意見具體修改建議
+
+### [2026-03-26] Round 39b — workflow_cmd.py 覆蓋率 79%→99%
+**角度**: 🧪 測試（全 CLI 最低覆蓋模組消除）
+**為什麼**: `workflow_cmd.py` 79% 是全 CLI 最低覆蓋模組，create/list/run/validate 共 6 個分支完全無測試保護。
+**做了什麼**: 新增 12 個測試案例：
+- `TestWorkflowCreate`（3）：重複名稱、convergence+skip_info、無效輸出格式
+- `TestWorkflowListVerboseError`（1）：verbose 損壞 JSON
+- `TestWorkflowShowNotFound`（1）
+- `TestWorkflowRun`（3）：不存在範本、正常 generate、convergence+markdown
+- `TestWorkflowValidateExtra`（4）：非字典、缺 name、steps 非列表、步驟缺 name
+**結果**: PASS — workflow_cmd.py 79% → **99%**（+20pp，剩 1 行）
+- 全量：2751 passed, 84 skipped, 0 failed（+12 新測試，零回歸）
+**下一步可能**:
+- `cli/config_tools.py`（82%，52 行未覆蓋）
+- `graph/nodes/formatter.py`（81%）、`graph/nodes/memory.py`（81%）
 - MISSION.md 功能缺口：審查意見具體修改建議
