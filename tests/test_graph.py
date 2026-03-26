@@ -4,6 +4,54 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 
+class TestReviewResultsReducer:
+    """_review_results_reducer 行為驗證"""
+
+    def test_empty_update_resets(self):
+        """空 list update 應重設為 []（_init_review 的清空信號）"""
+        from src.graph.state import _review_results_reducer
+        existing = [{"agent_name": "A", "score": 0.9}]
+        assert _review_results_reducer(existing, []) == []
+
+    def test_non_empty_update_concatenates(self):
+        """非空 update 應串接到現有 list"""
+        from src.graph.state import _review_results_reducer
+        existing = [{"agent_name": "A"}]
+        update = [{"agent_name": "B"}]
+        result = _review_results_reducer(existing, update)
+        assert len(result) == 2
+        assert result[0]["agent_name"] == "A"
+        assert result[1]["agent_name"] == "B"
+
+    def test_first_update_with_empty_current(self):
+        """current 為空時應正確初始化"""
+        from src.graph.state import _review_results_reducer
+        result = _review_results_reducer([], [{"agent_name": "A"}])
+        assert len(result) == 1
+
+    def test_reset_then_add(self):
+        """模擬精煉迴圈：先重設，再加入新結果"""
+        from src.graph.state import _review_results_reducer
+        round1 = [{"agent_name": "A", "round": 1}]
+        # init_review 重設
+        after_reset = _review_results_reducer(round1, [])
+        assert after_reset == []
+        # 新一輪審查結果
+        round2_result = [{"agent_name": "A", "round": 2}]
+        after_add = _review_results_reducer(after_reset, round2_result)
+        assert len(after_add) == 1
+        assert after_add[0]["round"] == 2
+
+    def test_multiple_reviewers_accumulate(self):
+        """並行審查：多個 reviewer 依序加入"""
+        from src.graph.state import _review_results_reducer
+        state = []
+        state = _review_results_reducer(state, [{"agent_name": "Format"}])
+        state = _review_results_reducer(state, [{"agent_name": "Style"}])
+        state = _review_results_reducer(state, [{"agent_name": "Fact"}])
+        assert len(state) == 3
+
+
 class TestGovDocState:
     """GovDocState TypedDict 結構驗證"""
 

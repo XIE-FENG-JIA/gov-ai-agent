@@ -3,14 +3,27 @@ GovDocState — LangGraph 狀態定義
 =================================
 
 使用 TypedDict + Annotated reducer 定義整個公文生成流程的共享狀態。
-``review_results`` 使用 ``operator.add`` reducer，
-讓並行審查 node 的結果自動合併。
+``review_results`` 使用自訂 reducer，支援並行審查結果合併及精煉輪次間的重設。
 """
 
 from __future__ import annotations
 
-import operator
 from typing import Annotated, Any, TypedDict
+
+
+def _review_results_reducer(
+    current: list[dict[str, Any]],
+    update: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """自訂 reducer：空 list 表示重設（由 _init_review 觸發），否則串接。
+
+    解決 operator.add 無法清空 list 的問題——精煉迴圈重新進入
+    init_review 時需清除上一輪審查結果，避免舊 issues 疊加導致
+    risk 評估偏高與不必要的額外精煉。
+    """
+    if not update:
+        return []
+    return (current or []) + update
 
 
 class GovDocState(TypedDict, total=False):
@@ -34,8 +47,8 @@ class GovDocState(TypedDict, total=False):
 
     # ── 審查 ──────────────────────────────────────────
     review_requested: bool  # 是否啟用審查流程
-    # 使用 operator.add reducer：並行 Send() 的審查結果會自動合併
-    review_results: Annotated[list[dict[str, Any]], operator.add]
+    # 自訂 reducer：並行審查結果串接，空 list 觸發重設（精煉迴圈用）
+    review_results: Annotated[list[dict[str, Any]], _review_results_reducer]
     aggregated_report: dict[str, Any]  # aggregate_reviews 產出的彙整報告
 
     # ── 審查用臨時欄位 ────────────────────────────────

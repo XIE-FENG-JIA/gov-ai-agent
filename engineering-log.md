@@ -367,3 +367,15 @@
 - LLM mock / KB mock 統一到 conftest（反覆未處理，已 12 輪）
 - `web_preview/app.py`（58%）和 `exam_yuan_fetcher.py`（56%）是剩餘低覆蓋模組
 - CI 加入 `--cov-fail-under=85` 門檻防止覆蓋率退化
+
+### [2026-03-26] Round 25 — 精煉迴圈 review_results 累積 bug 修復
+**角度**: 🐛 Bug（LangGraph reducer 語義錯誤）
+**為什麼**: `_init_review` 回傳 `{"review_results": []}` 意圖清空上一輪審查結果，但 `operator.add(existing, [])` = `existing`，清空操作實為空操作。第二輪精煉時 `aggregate_reviews` 會疊加所有歷史輪次的審查結果，導致：(1) 已修復的 issues 仍被計入 error_count (2) risk 評估偏高觸發不必要的額外精煉 (3) refiner 收到包含已修復 issues 的反饋，浪費 LLM tokens。
+**做了什麼**:
+- `src/graph/state.py`: `operator.add` 替換為自訂 `_review_results_reducer`（空 list = 重設信號，非空 = 串接）
+- `tests/test_graph.py`: 新增 `TestReviewResultsReducer`（5 個測試案例）覆蓋重設/串接/多輪/並行場景
+**結果**: PASS — 2566 passed, 84 skipped, 0 failed（+5 新測試，零回歸）
+**下一步可能**:
+- LLM mock / KB mock 統一到 conftest
+- `web_preview/app.py`（58%）和 `exam_yuan_fetcher.py`（56%）是剩餘低覆蓋模組
+- CI 加入 `--cov-fail-under=85` 門檻防止覆蓋率退化
