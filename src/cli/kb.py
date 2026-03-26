@@ -1273,5 +1273,253 @@ def list_sources(
     console.print(f"\n[dim]共 {len(files)} 個檔案。[/dim]")
 
 
+@app.command("staleness")
+def check_staleness(
+    level: str = typer.Option("", "--level", "-l", help="篩選來源等級（A 或 B）"),
+    stale_only: bool = typer.Option(False, "--stale-only", help="只顯示過期或從未擷取的來源"),
+) -> None:
+    """
+    顯示知識庫各資料來源的更新狀態，識別需要重新擷取的過期資料。
+
+    狀態圖示：✅ 正常  ❌ 過期  ⬜ 從未擷取
+
+    範例：
+
+        gov-ai kb staleness                  顯示所有來源狀態
+
+        gov-ai kb staleness --stale-only     只顯示過期來源
+
+        gov-ai kb staleness --level A        只顯示 Level A 權威來源
+    """
+    from src.knowledge.staleness import StalenessChecker
+
+    checker = StalenessChecker()
+    sources = checker.check_all()
+
+    # 篩選
+    level_upper = level.strip().upper()
+    if level_upper in ("A", "B"):
+        sources = [s for s in sources if s.level == level_upper]
+    if stale_only:
+        sources = [s for s in sources if s.is_stale]
+
+    if not sources:
+        console.print("[green]✅ 所有來源資料均在有效期內。[/green]")
+        return
+
+    table = Table(title="知識庫資料來源狀態 (gov-ai kb staleness)", show_lines=True)
+    table.add_column("", width=2)
+    table.add_column("來源", style="cyan", no_wrap=True)
+    table.add_column("Lv", width=3)
+    table.add_column("上次更新", no_wrap=True)
+    table.add_column("已過", justify="right")
+    table.add_column("建議頻率", justify="right")
+    table.add_column("文件數", justify="right")
+    table.add_column("更新指令", style="dim")
+
+    stale_count = 0
+    never_count = 0
+
+    for s in sources:
+        if s.never_fetched:
+            updated_str = "[dim]從未擷取[/dim]"
+            days_str = "[dim]—[/dim]"
+            never_count += 1
+        elif s.is_stale:
+            updated_str = s.last_updated.strftime("%Y-%m-%d") if s.last_updated else "—"
+            days_str = f"[red]{s.days_since_update:.0f} 天[/red]"
+            stale_count += 1
+        else:
+            updated_str = s.last_updated.strftime("%Y-%m-%d") if s.last_updated else "—"
+            days_str = f"[green]{s.days_since_update:.0f} 天[/green]"
+
+        lv_style = "yellow" if s.level == "A" else "blue"
+        table.add_row(
+            s.status_icon,
+            s.source_name,
+            f"[{lv_style}]{s.level}[/{lv_style}]",
+            updated_str,
+            days_str,
+            f"{s.max_age_days} 天",
+            str(s.file_count),
+            f"gov-ai kb {s.fetch_cmd}",
+        )
+
+    console.print(table)
+
+    total_stale = stale_count + never_count
+    if total_stale:
+        console.print(
+            f"\n[yellow]⚠ {total_stale} 個來源需要更新"
+            f"（{never_count} 個從未擷取，{stale_count} 個已過期）[/yellow]"
+        )
+        console.print("[dim]執行 `gov-ai kb auto-update` 自動更新 Level A 來源[/dim]")
+    else:
+        console.print("\n[green]✅ 所有來源資料均在有效期內[/green]")
+
+
+@app.command("auto-update")
+def auto_update(
+    max_age_days: int = typer.Option(
+        0,
+        "--max-age-days",
+        help="強制更新超過 N 天的來源（0 = 使用各來源預設設定）",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="僅顯示哪些來源需要更新，不實際執行",
+    ),
+    do_ingest: bool = typer.Option(
+        False,
+        "--ingest",
+        "-I",
+        help="更新後自動匯入知識庫",
+    ),
+    level: str = typer.Option(
+        "A",
+        "--level",
+        "-l",
+        help="只更新指定等級的來源（A=Level A 權威來源 / all=全部）",
+    ),
+) -> None:
+    """
+    自動更新過期的知識庫資料來源（預設僅 Level A 權威來源）。
+
+    Level A 來源（法規、公報、判決、函釋）將自動重新擷取；
+    Level B 來源（開放資料、採購公告等）顯示手動更新指令。
+
+    範例：
+
+        gov-ai kb auto-update                    更新所有過期 Level A 來源
+
+        gov-ai kb auto-update --level all        包含 Level B 來源（顯示手動指令）
+
+        gov-ai kb auto-update --max-age-days 7   更新超過 7 天的來源
+
+        gov-ai kb auto-update --dry-run          預覽計畫，不實際執行
+
+        gov-ai kb auto-update --ingest           更新後自動匯入知識庫
+    """
+    from src.knowledge.staleness import StalenessChecker, AUTO_UPDATABLE_SOURCES
+
+    checker = StalenessChecker()
+    age_override = max_age_days if max_age_days > 0 else None
+    stale = checker.get_stale(max_age_days=age_override)
+
+    # 按 level 篩選
+    level_upper = level.strip().upper()
+    if level_upper == "A":
+        stale = [s for s in stale if s.level == "A"]
+    # level_upper == "ALL" 不做篩選
+
+    if not stale:
+        console.print("[green]✅ 沒有需要更新的資料來源。[/green]")
+        return
+
+    # 顯示更新計畫
+    auto_list = [s for s in stale if s.is_auto_updatable]
+    manual_list = [s for s in stale if not s.is_auto_updatable]
+
+    console.print(f"\n[bold]需要更新的來源（共 {len(stale)} 個）：[/bold]")
+    for s in stale:
+        if s.never_fetched:
+            status_desc = "從未擷取"
+        else:
+            status_desc = f"最後更新 {s.days_since_update:.0f} 天前"
+        auto_label = "" if s.is_auto_updatable else " [dim][需手動][/dim]"
+        console.print(
+            f"  {s.status_icon} [cyan]{s.source_name}[/cyan] — {status_desc}{auto_label}"
+        )
+
+    if dry_run:
+        console.print(f"\n[dim]--dry-run 模式。將自動更新 {len(auto_list)} 個，"
+                      f"需手動更新 {len(manual_list)} 個。[/dim]")
+        if manual_list:
+            console.print("\n[dim]手動更新指令：[/dim]")
+            for s in manual_list:
+                console.print(f"  gov-ai kb {s.fetch_cmd} --ingest")
+        return
+
+    # 執行 Level A 自動更新
+    updated_count = 0
+    failed_count = 0
+
+    for s in auto_list:
+        console.print(f"\n[bold]正在更新：{s.source_name}...[/bold]")
+        try:
+            results = _run_fetcher_for_source(s.source_name)
+            if results is None:
+                console.print(f"  [yellow]⚠ {s.source_name}：找不到對應的 fetcher，請手動更新[/yellow]")
+                failed_count += 1
+                continue
+            console.print(f"  [green]✅ 擷取完成：{len(results)} 個檔案[/green]")
+            if do_ingest and results:
+                kb = _init_kb()
+                count = _ingest_fetch_results(results, kb)
+                console.print(f"  [green]已匯入 {count} 筆至知識庫[/green]")
+            updated_count += 1
+        except Exception as exc:
+            console.print(f"  [red]❌ 更新失敗：{exc}[/red]")
+            logger.exception("auto_update: %s 更新失敗", s.source_name)
+            failed_count += 1
+
+    # 顯示需手動更新的來源
+    if manual_list:
+        console.print("\n[yellow]以下來源需手動更新（參數較多，請依需求調整）：[/yellow]")
+        for s in manual_list:
+            console.print(f"  gov-ai kb {s.fetch_cmd} --ingest")
+
+    console.print(
+        f"\n[bold]自動更新完成：成功 {updated_count} 個"
+        + (f"，失敗 {failed_count} 個" if failed_count else "")
+        + (f"，手動更新 {len(manual_list)} 個" if manual_list else "")
+        + "[/bold]"
+    )
+
+
+def _run_fetcher_for_source(source_name: str):
+    """根據來源名稱建立並執行對應的 fetcher，回傳 FetchResult 清單。
+
+    僅支援 AUTO_UPDATABLE_SOURCES 中定義的 Level A 來源。
+    找不到對應 fetcher 時回傳 None。
+    """
+    from src.knowledge.fetchers.law_fetcher import LawFetcher
+    from src.knowledge.fetchers.gazette_fetcher import GazetteFetcher
+    from src.knowledge.fetchers.judicial_fetcher import JudicialFetcher
+    from src.knowledge.fetchers.interpretation_fetcher import InterpretationFetcher
+    from src.knowledge.fetchers.local_regulation_fetcher import LocalRegulationFetcher
+    from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
+    from src.knowledge.fetchers.constants import DEFAULT_LAW_PCODES
+
+    if source_name == "全國法規":
+        return LawFetcher(
+            output_dir=Path("./kb_data/regulations/laws"),
+            pcodes=DEFAULT_LAW_PCODES,
+        ).fetch()
+    if source_name == "行政院公報":
+        return GazetteFetcher(
+            output_dir=Path("./kb_data/examples/gazette"),
+            days=7,
+        ).fetch()
+    if source_name == "司法院判決":
+        return JudicialFetcher(
+            output_dir=Path("./kb_data/regulations/judicial"),
+        ).fetch()
+    if source_name == "法務部函釋":
+        return InterpretationFetcher(
+            output_dir=Path("./kb_data/regulations/interpretations"),
+        ).fetch()
+    if source_name == "地方法規":
+        return LocalRegulationFetcher(
+            output_dir=Path("./kb_data/regulations/local"),
+        ).fetch()
+    if source_name == "考試院法規":
+        return ExamYuanFetcher(
+            output_dir=Path("./kb_data/regulations/exam_yuan"),
+        ).fetch()
+    return None
+
+
 if __name__ == "__main__":
     app()

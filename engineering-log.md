@@ -4,6 +4,19 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 1（PUA輪次）— 法規自動更新機制
+**角度**: ✨ 功能缺口（MISSION 優先項目）
+**為什麼**: 知識庫 14 個資料來源全靠手動 `fetch_*` 指令維護，完全缺乏過期偵測。法規一旦超過 30 天沒更新，FactChecker 拿舊資料驗證引用，整個品質保障形同虛設——且無任何警告機制。這是 MISSION.md「功能缺口」中對核心價值影響最大的項目：法規引用準確性是政府公文 AI 的命脈。
+**搜尋**: 看了 BaseFetcher 有 `_compute_hash` 與 `FetchResult.content_hash` 但無任何 staleness 追蹤；各 `fetch_*` 指令有固定 output_dir 預設值；以 file system mtime 為判斷基準最輕量、無需額外 DB。
+**做了什麼**:
+- 新增 `src/knowledge/staleness.py`：`StalenessChecker` 類別，以目錄 mtime 追蹤 14 個來源新鮮度。`SOURCE_CONFIG` 定義各來源目錄、建議更新頻率（Level A 法規 30 天、公報 7 天）、對應 CLI 指令。支援 `check_all()`、`get_stale(max_age_days)`、`get_critical_stale()`、`summary()` 方法。
+- `kb.py` 新增 `gov-ai kb staleness`：彩色表格顯示全部 14 個來源狀態（✅正常 / ❌過期 / ⬜從未擷取），含上次更新日期、已過天數、建議頻率、更新指令。
+- `kb.py` 新增 `gov-ai kb auto-update`：Level A 來源（全國法規、行政院公報、司法院判決、法務部函釋、地方法規、考試院法規）自動重新擷取；Level B 來源顯示對應手動指令。支援 `--dry-run`、`--ingest`、`--max-age-days`、`--level`。
+**結果**: PASS — 3099 passed, 84 skipped, 0 failed（+30 新測試，零回歸）
+**下一步可能**:
+- MISSION 功能缺口：公文範本庫擴充（現有 12 種，可加入報告、陳情回覆、新聞稿等）
+- 審查意見的具體修改建議（Checkers 已有 suggestion，可加入「一鍵套用」CLI 功能）
+
 ### [2026-03-27] Round 79 — batch_tools 原子寫入完結篇
 **角度**: 🏗️ 架構（寫入模式統一）
 **為什麼**: `batch_tools.py` 混用三種檔案寫入模式（`Path.write_text()`、裸 `open()` + `json.dump()`、`atomic_json_write()`），5 處非原子寫入。這是整個 CLI 原子寫入專項的最後一塊拼圖。
