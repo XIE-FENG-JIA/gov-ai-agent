@@ -187,18 +187,29 @@ def _find_available_font(candidates: list[str]) -> str | None:
         "WenQuanYi Micro Hei": ["wqy-microhei"],
     }
 
+    # 預先快取每個字體目錄的一層子目錄（避免 N×M 重複 iterdir）
+    _subdir_cache: dict[Path, list[Path]] = {}
+
     for candidate in candidates:
         file_stems = _NAME_TO_FILE.get(candidate, [candidate])
         for font_dir in font_dirs:
             if not font_dir.is_dir():
                 continue
+            # 快取子目錄列表：每個 font_dir 只遍歷一次
+            if font_dir not in _subdir_cache:
+                try:
+                    _subdir_cache[font_dir] = [
+                        d for d in font_dir.iterdir() if d.is_dir()
+                    ]
+                except OSError:
+                    _subdir_cache[font_dir] = []
             for stem in file_stems:
                 for ext in (".ttf", ".ttc", ".otf"):
                     if (font_dir / f"{stem}{ext}").exists():
                         return candidate
                     # 也搜尋子目錄一層（Linux 常見結構）
-                    for sub in font_dir.iterdir():
-                        if sub.is_dir() and (sub / f"{stem}{ext}").exists():
+                    for sub in _subdir_cache[font_dir]:
+                        if (sub / f"{stem}{ext}").exists():
                             return candidate
 
     # 找不到任何字體檔案，回傳第一個候選並警告
