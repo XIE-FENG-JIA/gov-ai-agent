@@ -303,3 +303,21 @@
 - `write_draft()` 256 行同樣手法拆分
 - `_is_section_header` / `_detect_header` 現為模組級函式，可獨立寫邊界條件測試
 - LLM mock / KB mock 統一到 conftest
+
+### [2026-03-26] Round 21 — knowledge/manager.py 覆蓋率 40% → 93% + 未提交檔案閉環
+**角度**: 🧪 測試（覆蓋率盲區消除）+ 🏗️ 架構（技術債清理）
+**為什麼**: `knowledge/manager.py` 是全專案覆蓋率最低的核心模組（40%，246 行未覆蓋）。chromadb 可選依賴導致所有搜尋、寫入、RRF 融合、BM25 等業務路徑完全沒有測試保護。同時 Round 18-20 遺留 4 個已修改未提交檔案 + 6 個未追蹤測試/工具檔案。
+**做了什麼**:
+- 新增 `tests/test_knowledge_manager_unit.py`（76 個測試案例，覆蓋 11 個測試類別）
+  - mock chromadb 模組注入，不依賴安裝
+  - 覆蓋：__init__（正常/chromadb缺失/異常）、add_document（6 個 edge case）、contextual retrieval、三種搜尋方法（含過濾組合）、search_hybrid（快取/RRF融合/降級）、BM25、keyword fallback、reset_db、快取失效
+- 提交 Round 18-20 的未追蹤改動：OUTPUT_DIR 重構 + `src/cli/utils.py` + 4 個測試檔 + 15 個 golden example fixtures
+- `.gitignore`: 新增 `test_kb/`（168KB SQLite 二進位）和 `.engineer-loop.pid`
+**結果**: PASS
+- manager.py 覆蓋率：40% → 93%（+53pp，246 → 27 行未覆蓋）
+- 全量測試：2548 passed, 82 skipped, 0 failed（+76 新測試）
+- 未覆蓋的 27 行：jieba 實際分詞路徑和部分 metadata 篩選組合
+**下一步可能**:
+- `web_preview/app.py`（58%）和 `exam_yuan_fetcher.py`（56%）是剩餘低覆蓋模組
+- `write_draft()` 256 行超長函式拆分
+- CI 加入 `--cov-fail-under=85` 門檻防止覆蓋率退化
