@@ -406,3 +406,140 @@ class TestLiteLLMEmbedEdgeCases:
         })
         result = provider.embed("test")
         assert result == []
+
+
+# ==================== MockLLMProvider 空值防護 ====================
+
+class TestMockLLMProviderEmptyInput:
+    """MockLLMProvider 空值路徑覆蓋"""
+
+    def test_generate_empty_prompt_returns_empty(self):
+        provider = MockLLMProvider({})
+        assert provider.generate("") == ""
+        assert provider.generate("   ") == ""
+        assert provider.generate(None) == ""
+
+    def test_embed_empty_text_returns_empty(self):
+        provider = MockLLMProvider({})
+        assert provider.embed("") == []
+        assert provider.embed("   ") == []
+        assert provider.embed(None) == []
+
+
+# ==================== check_connectivity ====================
+
+class TestCheckConnectivity:
+    """LiteLLMProvider.check_connectivity 各分支覆蓋"""
+
+    @patch("src.core.llm.litellm")
+    def test_connectivity_success(self, mock_litellm):
+        mock_litellm.completion.return_value = MagicMock()
+        provider = LiteLLMProvider({"provider": "ollama", "model": "mistral"})
+        ok, msg = provider.check_connectivity(timeout=2)
+        assert ok is True
+        assert msg == ""
+
+    @patch("src.core.llm.litellm")
+    def test_connectivity_connection_error_ollama(self, mock_litellm):
+        mock_litellm.completion.side_effect = Exception("ConnectionError: [Errno 10061]")
+        provider = LiteLLMProvider({"provider": "ollama", "model": "mistral"})
+        ok, msg = provider.check_connectivity()
+        assert ok is False
+        assert "Ollama" in msg
+
+    @patch("src.core.llm.litellm")
+    def test_connectivity_connection_error_cloud(self, mock_litellm):
+        mock_litellm.completion.side_effect = Exception("ConnectionError: refused")
+        provider = LiteLLMProvider({"provider": "gemini", "api_key": "k"})
+        ok, msg = provider.check_connectivity()
+        assert ok is False
+        assert "網路連線" in msg
+
+    @patch("src.core.llm.litellm")
+    def test_connectivity_auth_error(self, mock_litellm):
+        mock_litellm.completion.side_effect = Exception("AuthenticationError: 401 Invalid API Key")
+        provider = LiteLLMProvider({"provider": "gemini", "api_key": "bad"})
+        ok, msg = provider.check_connectivity()
+        assert ok is False
+        assert "API Key" in msg
+
+    @patch("src.core.llm.litellm")
+    def test_connectivity_timeout(self, mock_litellm):
+        mock_litellm.completion.side_effect = Exception("Timeout: timed out after 5s")
+        provider = LiteLLMProvider({"provider": "ollama", "model": "mistral"})
+        ok, msg = provider.check_connectivity(timeout=5)
+        assert ok is False
+        assert "逾時" in msg
+
+    @patch("src.core.llm.litellm")
+    def test_connectivity_unknown_error(self, mock_litellm):
+        mock_litellm.completion.side_effect = Exception("Something went wrong")
+        provider = LiteLLMProvider({"provider": "ollama", "model": "mistral"})
+        ok, msg = provider.check_connectivity()
+        assert ok is False
+        assert "Something went wrong" in msg
+
+
+# ==================== _LocalEmbedder fallback ====================
+
+class TestLocalEmbedderFallback:
+    """embed() 使用 local provider 時的 fallback 路徑"""
+
+    @patch("src.core.llm._LocalEmbedder")
+    def test_local_embed_exception_returns_empty(self, mock_cls):
+        mock_cls.get.side_effect = ImportError("sentence_transformers not installed")
+        provider = LiteLLMProvider({
+            "embedding_provider": "local",
+            "embedding_model": "all-MiniLM-L6-v2",
+        })
+        result = provider.embed("test")
+        assert result == []
+
+    @patch("src.core.llm._LocalEmbedder")
+    def test_local_embed_success(self, mock_cls):
+        mock_instance = MagicMock()
+        mock_instance.embed.return_value = [0.1, 0.2, 0.3]
+        mock_cls.get.return_value = mock_instance
+        provider = LiteLLMProvider({
+            "embedding_provider": "local",
+            "embedding_model": "all-MiniLM-L6-v2",
+        })
+        result = provider.embed("test")
+        assert result == [0.1, 0.2, 0.3]
+
+
+# ==================== get_llm_factory model override ====================
+
+class TestGetLLMFactoryModelOverride:
+    """get_llm_factory 的 model 預設值覆蓋邏輯"""
+
+    def test_default_model_overridden_by_provider(self):
+        """config 使用預設模型名時，provider 預設值應覆蓋"""
+        full_config = {
+            "providers": {
+                "ollama": {"model": "llama3.2"}
+            }
+        }
+        result = get_llm_factory(
+            {"provider": "ollama", "model": "llama3.1:8b"},
+            full_config=full_config,
+        )
+        assert result.model == "llama3.2"
+
+    def test_custom_model_not_overridden(self):
+        """config 有自訂模型名時不應被覆蓋"""
+        full_config = {
+            "providers": {
+                "ollama": {"model": "llama3.2"}
+            }
+        }
+        result = get_llm_factory(
+            {"provider": "ollama", "model": "mistral"},
+            full_config=full_config,
+        )
+        assert result.model == "mistral"
+
+    def test_no_full_config_no_merge(self):
+        """未提供 full_config 時不做合併"""
+        result = get_llm_factory({"provider": "ollama", "model": "phi3"})
+        assert result.model == "phi3"

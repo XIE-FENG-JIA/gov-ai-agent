@@ -1136,5 +1136,18 @@
 **結果**: PASS — 2987 passed, 84 skipped, 0 failed（+2 新測試，零回歸）
 **觀察**: `llm.py` 覆蓋率 60%（全專案最低），主要是 `_LocalEmbedder` 和 provider 初始化分支未覆蓋
 **下一步可能**:
-- `llm.py` 覆蓋率 60% → 目標 85%（全專案最低短板）
+- ~~`llm.py` 覆蓋率 60% → 目標 85%~~ ✅ Round 72 已完成
 - MISSION.md 功能缺口：公文範本庫擴充、法規自動更新
+
+### [2026-03-26] Round 72 — llm.py 覆蓋率 60%→85%（+13 個測試）
+**角度**: 🧪 測試（全專案最低覆蓋模組消除）
+**為什麼**: `llm.py` 60% 是全專案覆蓋率最低模組。`check_connectivity`（5 個分支：成功/Ollama 斷線/雲端斷線/認證失敗/超時/未知錯誤）、`MockLLMProvider` 空值防護、`_LocalEmbedder` 成功/失敗 fallback、`get_llm_factory` model 覆蓋邏輯完全無測試保護。
+**做了什麼**: 新增 6 個測試類別共 13 個測試案例：
+- `TestMockLLMProviderEmptyInput`（2）：空/空白/None 輸入防護
+- `TestCheckConnectivity`（6）：成功 + 5 種錯誤分支
+- `TestLocalEmbedderFallback`（2）：local embed 成功 + ImportError fallback
+- `TestGetLLMFactoryModelOverride`（3）：預設模型覆蓋 + 自訂不覆蓋 + 無 full_config
+**結果**: PASS — 49 個 LLM 測試全通過（+13 新測試）
+**下一步可能**:
+- MISSION.md 功能缺口：公文範本庫擴充、法規自動更新
+- 下一個里程碑：從品質打磨轉向功能開發
