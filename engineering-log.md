@@ -1646,3 +1646,17 @@
 - 執行 `gov-ai kb sync` 讓 Round 73/77 新增的 12 筆範本正式生效
 - `公` 類文件範本補充（公告目前 18 筆）
 - WebSearch 搜尋台灣最新公文格式規範確認範本合規性
+
+### [2026-03-27] Round 9 — 修復 Round 78 遺留測試債（TestKBMetadataConversion + 分段審查截斷）
+**角度**: 🐛 Bug 修復（測試回歸閉環）
+**為什麼**: Round 78 將 `kb ingest` 從 `add_document` 改為 `upsert_document`（冪等寫入），是正確的架構改進，但 `TestKBMetadataConversion` 測試未同步更新——仍 mock 舊 API，`call_args=None` 觸發 `TypeError`，導致每次跑全套件都有紅燈。另外，`src/agents/editor.py` 有一個未提交的重要修復：`_segmented_review` 在高風險時會呼叫 `_auto_refine`，但 `_auto_refine` 有 `MAX_DRAFT_LENGTH` 截斷上限，分段審查的長草稿必然觸發截斷——靜默丟失後半段內容，這是真正的資料遺失 bug，已在之前 session 修復但未提交（由另一個工程 loop 提交為 `0335628`）。
+**搜尋**: 確認 ChromaDB upsert 簽名為 `(ids, documents, metadatas, ...)`；確認 `_auto_refine` 中 `MAX_DRAFT_LENGTH = 8000` 的截斷邏輯；確認 mock positional arg index 應從 1 改為 2。
+**做了什麼**:
+- `tests/test_agents_extended.py::TestKBMetadataConversion`：mock `upsert_document` 取代 `add_document`；新增 `make_deterministic_id` mock；設 `contextual_retrieval=False`；修正 metadata 位置引數索引 1→2
+- `config.yaml`：還原被意外清空的設定（從 git 還原，3 行→44 行）
+- 確認 `0335628`（分段審查截斷修復）已由前序工程 loop 提交，無需重複
+**結果**: PASS — 275 個核心測試全通過（test_agents_extended 237 + test_editor_coverage 38）；全套件無紅燈
+**下一步可能**:
+- `公` 類文件範本補充（announcement 目前 18 筆，可擴充公示/公開資訊/環境影響等類型）
+- WebSearch 確認範本符合最新行政院公文處理手冊規定
+- 執行 `gov-ai kb sync` 讓 Round 73/77 新增的 12 筆範本正式生效
