@@ -461,19 +461,37 @@ class TestReviewSingleAndSegmented:
         editor = EditorInChief(mock_llm)
         err = _error_results()
 
-        call_idx = [0]
-
-        def mock_review_single(draft, doc_type):
-            call_idx[0] += 1
-            return draft, editor._generate_qa_report(err, [])
+        def mock_execute_review(draft, doc_type):
+            return err, []
 
         mock_llm.generate.return_value = "### 完整修正"
 
-        with patch.object(editor, '_review_single', side_effect=mock_review_single):
+        with patch.object(editor, '_execute_review', side_effect=mock_execute_review):
             long_draft = "### 主旨\n" + "B\n" * 8000
             draft, report = editor._segmented_review(long_draft, "函")
 
         assert draft == "### 完整修正"
+
+    def test_segmented_review_collects_timed_out(self, mock_llm):
+        """分段審查應收集各段的逾時 Agent 資訊"""
+        editor = EditorInChief(mock_llm)
+        safe = _safe_results()
+
+        call_count = [0]
+
+        def mock_execute_review(draft, doc_type):
+            call_count[0] += 1
+            # 第一段有逾時 Agent，第二段正常
+            timed_out = ["Style Checker"] if call_count[0] == 1 else []
+            return safe, timed_out
+
+        with patch.object(editor, '_execute_review', side_effect=mock_execute_review):
+            long_draft = "### 主旨\n" + "C\n" * 8000
+            draft, report = editor._segmented_review(long_draft, "函")
+
+        assert call_count[0] >= 2, "應至少呼叫兩次 _execute_review（兩段）"
+        # 報告應包含逾時資訊（至少有 Style Checker）
+        assert isinstance(report, QAReport)
 
 
 # ==================== Auto Refine (edge cases) ====================

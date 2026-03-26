@@ -705,9 +705,10 @@ Return ONLY the corrected draft markdown.
         all_timed_out: list[str] = []
         for idx, segment in enumerate(segments):
             console.print(f"\n[cyan]--- 審查第 {idx + 1}/{len(segments)} 段（{len(segment)} 字）---[/cyan]")
-            _, segment_report = self._review_single(segment, doc_type)
+            seg_results, seg_timed_out = self._execute_review(segment, doc_type)
+            all_timed_out.extend(seg_timed_out)
             # 為每段結果的 agent_name 加上段落標記
-            for res in segment_report.agent_results:
+            for res in seg_results:
                 if len(segments) > 1:
                     res.agent_name = f"{res.agent_name}（段{idx + 1}）"
                 all_results.append(res)

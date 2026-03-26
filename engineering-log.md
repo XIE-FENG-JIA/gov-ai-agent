@@ -4,6 +4,18 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 35 — _segmented_review 逾時資訊遺失 + 浪費 refine
+**角度**: 🐛 Bug（超長草稿審查品質盲區）
+**為什麼**: `_segmented_review` 透過 `_review_single` 間接審查，但 `_review_single` 的 timed_out 資訊封裝在 QAReport 裡無法傳出，導致 `all_timed_out` 永遠為空。此外 `_review_single` 會對每段做 LLM refine，但 `_segmented_review` 忽略修正結果——純粹浪費 LLM tokens。
+**做了什麼**:
+- `editor.py`: `_segmented_review` 改為直接呼叫 `_execute_review`，收集各段 timed_out
+- 消除逐段 refine 的 token 浪費（全段修正在合併後才進行）
+- 更新 1 個既有測試 mock 目標，新增 1 個 timed_out 收集測試
+**結果**: PASS — 70 passed（editor 相關），零回歸
+**下一步可能**:
+- MISSION 最後功能缺口：批次處理效能優化
+- MISSION.md 更新已完成項目的勾選狀態
+
 ### [2026-03-27] Round 34 — e2e 測試全綠修復（通用驗證器相容性）
 **角度**: 🧪 測試（消除測試套件唯一紅燈）
 **為什麼**: Round 33（PUA）啟用 5 個通用驗證器後，`test_scenario_batch_mixed_types` 的 mock side_effect 不足以涵蓋第二輪審查（LLM 耗盡觸發 StopIteration），且模板化輸出永遠缺少 `[^n]` 引用標記導致 `score > 0.8` 斷言不可能通過。`test_no_ref_section` 的測試文本意外含「參考來源」子字串也在此修復。
