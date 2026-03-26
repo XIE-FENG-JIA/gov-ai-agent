@@ -740,4 +740,20 @@
 **下一步可能**:
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
 - 全 CLI 模組覆蓋率已全部達標，可轉向整合測試或功能開發
-- 既有 flaky test（TestMeetingReviewLoop）值得調查 test ordering 問題
+- ~~既有 flaky test（TestMeetingReviewLoop）值得調查 test ordering 問題~~ ✅ Round 44
+
+### [2026-03-26] Round 44 — TestMeetingReviewLoop flaky test 根因修復
+**角度**: 🐛 Bug（測試不穩定性 — 並行執行順序假設 + race condition）
+**為什麼**: TestMeetingReviewLoop 的 3 個測試使用 `call_count` 序號假設並行審查 agent（FormatAuditor, StyleChecker, FactChecker, ConsistencyChecker, ComplianceChecker）在 ThreadPoolExecutor 中以固定順序執行。但線程排程不確定，agent 可能以任何順序執行，導致錯誤的 agent 拿到錯誤格式的 JSON 回應而解析失敗。此外 `call_count` 跨線程共用但無鎖保護，存在 race condition。
+**做了什麼**:
+- 新增 `_detect_agent(prompt)` 輔助函式，根據 prompt 內關鍵字偵測 agent 類型（如 `"Compliance Engine"` → format, `"Style Editor"` → style）
+- `test_meeting_with_review_loop_safe`：前 2 次循序呼叫仍用 call_count，並行 agent 改用 prompt 偵測
+- `test_meeting_with_multiple_review_rounds`：同上，多輪審查用 call_count 閾值判斷輪次 + prompt 偵測 agent 類型
+- `test_meeting_max_rounds_exhausted`：同上
+- 所有 3 個測試的 `call_count` 加上 `threading.Lock` 保護
+**結果**: PASS — 2801 passed, 84 skipped, 0 failed（零回歸）
+- 連續 5 輪穩定性測試全通過（25/25 executions）
+**下一步可能**:
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+- agents.py 有一筆未提交的 scoring 重構（Round 40 遺留），需一併提交
+- 全 CLI 模組覆蓋率已達標，可轉向整合測試或功能開發
