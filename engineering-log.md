@@ -793,3 +793,17 @@
 - `src/cli/kb.py` 的 3 處 `stat()` 無 try/except 保護（P2，非致命）
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
 - `_find_available_font` 在 Linux 大型字體目錄下效能可優化（遞迴 iterdir）
+
+### [2026-03-26] Round 47 — optional/dev 依賴版本上界補齊
+**角度**: 🔧 DX（依賴衛生 — 防止破壞性升級）
+**為什麼**: Round 44 已為 `langgraph`/`langchain-core` 主要依賴加了 `<2.0.0` 上界，但 4 個 optional/dev 依賴（`jieba`, `sentence-transformers`, `types-PyYAML`, `types-requests`）仍無上界限制。這些套件的 major version bump 可能引入不相容 API 變更，導致 CI 或部署環境無法預期地壞掉。
+**做了什麼**:
+- `jieba>=0.42` → `jieba>=0.42,<1.0.0`
+- `sentence-transformers>=2.0` → `sentence-transformers>=2.0,<4.0.0`
+- `types-PyYAML>=6.0` → `types-PyYAML>=6.0,<7.0`
+- `types-requests>=2.31` → `types-requests>=2.31,<3.0`
+**結果**: PASS — 13/13 核心依賴正常 import，314 核心測試全通過
+**下一步可能**:
+- `src/cli/kb.py` 的 3 處 `stat()` 無 try/except 保護（P2，非致命）
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+- 專案品質穩定，可開始規劃下一個里程碑
