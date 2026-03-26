@@ -337,3 +337,20 @@
 - `_format_examples` / `_build_prompt` / `_postprocess_draft` 現為 staticmethod，可獨立寫邊界條件測試
 - LLM mock / KB mock 統一到 conftest
 - `knowledge/manager.py` 覆蓋率 40% 是最大測試盲區（若 Round 21 已處理則跳過）
+
+### [2026-03-26] Round 23 — ThreadPoolExecutor 缺失 import + symlink 防護 + generate.py 重構閉環
+**角度**: 🐛 Bug（生產 crash）+ 🔒 安全（路徑遍歷強化）+ 🏗️ 架構（遺漏提交閉環）
+**為什麼**:
+1. `api_server.py:246` 使用 `ThreadPoolExecutor` 但從未 import。正常啟動不會觸發（executor 由 `dependencies.py` 建立），但 lifespan 重啟時（`_deps.executor._shutdown == True`）會 `NameError` crash，導致 API 無法恢復。
+2. `download_file` 端點有正則+resolve 雙層防護，但缺少 symlink 檢查——若攻擊者能在 output/ 建立 symlink，可繞過路徑驗證讀取任意檔案。
+3. `src/cli/generate.py` 的 `_display_format_options()` 重構（105→34 行）在之前某輪完成但未提交。
+**做了什麼**:
+- `api_server.py`: 新增 `from concurrent.futures import ThreadPoolExecutor`
+- `src/api/routes/workflow.py`: `download_file` 新增第三層防護 `is_symlink()` 檢查
+- `src/cli/generate.py`: 提交遺漏的 `_FORMAT_OPTION_DEFS` 資料驅動重構
+**結果**: PASS — 2561 passed, 84 skipped, 0 failed（零回歸），覆蓋率 88%
+**下一步可能**:
+- LLM mock / KB mock 統一到 conftest（反覆未處理）
+- `web_preview/app.py`（58%）和 `exam_yuan_fetcher.py`（56%）是剩餘低覆蓋模組
+- CI 加入 `--cov-fail-under=85` 門檻防止覆蓋率退化
+- `_format_examples` / `_build_prompt` / `_postprocess_draft` 可獨立寫邊界條件測試

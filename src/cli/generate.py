@@ -181,6 +181,24 @@ def _apply_content_metadata(
     return draft
 
 
+# ── 格式選項定義（資料驅動）──────────────────────────────
+# (參數名, 顯示標籤, 合法值→顯示文字, 靜默跳過值, 提示文字覆寫)
+_FORMAT_OPTION_DEFS: tuple[tuple[str, str, dict[str, str], str | None, str | None], ...] = (
+    ("speed", "生成模式", {"fast": "快速模式", "normal": "標準模式", "careful": "謹慎模式"}, None, None),
+    ("margin", "頁邊距", {"standard": "標準邊距", "narrow": "窄邊距", "wide": "寬邊距"}, None, None),
+    ("line_spacing", "行距", {"1.0": "單行距", "1.5": "1.5 倍行距", "2.0": "雙倍行距"}, None, None),
+    ("font_size", "字型大小", {"10": "10pt", "12": "12pt", "14": "14pt", "16": "16pt"}, None, None),
+    ("duplex", "列印模式", {"off": "單面列印", "long-edge": "雙面列印（長邊翻轉）", "short-edge": "雙面列印（短邊翻轉）"}, None, None),
+    ("orientation", "紙張方向", {"portrait": "直印", "landscape": "橫印"}, None, None),
+    ("paper_size", "紙張大小", {"a4": "A4 (210×297mm)", "b4": "B4 (257×364mm)", "a3": "A3 (297×420mm)", "letter": "Letter (216×279mm)"}, None, "A4/B4/A3/Letter"),
+    ("columns", "排版", {"1": "單欄排版", "2": "雙欄排版"}, None, None),
+    ("seal", "用印", {"none": "免用印", "official": "蓋機關印信", "personal": "蓋職章"}, None, None),
+    ("draft_mark", "草稿標記", {"none": "無標記", "draft": "草稿", "internal": "內部文件"}, "none", None),
+    ("urgency_label", "急件標示", {"normal": "普通件", "urgent": "急件", "most-urgent": "最速件"}, "normal", None),
+    ("lang", "公文語言", {"zh-tw": "繁體中文", "zh-cn": "簡體中文", "en": "英文"}, "zh-tw", "zh-TW/zh-CN/en"),
+)
+
+
 def _display_format_options(
     *,
     speed: str,
@@ -199,85 +217,23 @@ def _display_format_options(
     header_logo: str,
 ) -> None:
     """顯示排版與格式設定（不修改草稿內容）。"""
-    # 速度模式
-    _SPEED_MODES = {"fast": "快速模式", "normal": "標準模式", "careful": "謹慎模式"}
-    speed_label = _SPEED_MODES.get(speed.lower().strip(), "")
-    if speed_label:
-        console.print(f"  [dim]生成模式：{speed_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的速度模式：{speed}（可用：fast/normal/careful）[/yellow]")
-
-    # 頁邊距
-    _MARGIN_MAP = {"standard": "標準邊距", "narrow": "窄邊距", "wide": "寬邊距"}
-    margin_label = _MARGIN_MAP.get(margin.lower().strip(), "")
-    if margin_label:
-        console.print(f"  [dim]頁邊距：{margin_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的頁邊距設定：{margin}（可用：standard/narrow/wide）[/yellow]")
-
-    # 行距
-    _SPACING_MAP = {"1.0": "單行距", "1.5": "1.5 倍行距", "2.0": "雙倍行距"}
-    spacing_label = _SPACING_MAP.get(line_spacing.strip(), "")
-    if spacing_label:
-        console.print(f"  [dim]行距：{spacing_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的行距設定：{line_spacing}（可用：1.0/1.5/2.0）[/yellow]")
-
-    # 字型大小
-    _FONT_SIZES = {"10", "12", "14", "16"}
-    fs = font_size.strip()
-    if fs in _FONT_SIZES:
-        console.print(f"  [dim]字型大小：{fs}pt[/dim]")
-    else:
-        console.print(f"[yellow]未知的字型大小：{font_size}（可用：10/12/14/16）[/yellow]")
-
-    # 雙面列印
-    _DUPLEX_MAP = {"off": "單面列印", "long-edge": "雙面列印（長邊翻轉）", "short-edge": "雙面列印（短邊翻轉）"}
-    duplex_label = _DUPLEX_MAP.get(duplex.lower().strip(), "")
-    if duplex_label:
-        console.print(f"  [dim]列印模式：{duplex_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的雙面列印設定：{duplex}（可用：off/long-edge/short-edge）[/yellow]")
-
-    # 紙張方向
-    _ORIENT_MAP = {"portrait": "直印", "landscape": "橫印"}
-    orient_label = _ORIENT_MAP.get(orientation.lower().strip(), "")
-    if orient_label:
-        console.print(f"  [dim]紙張方向：{orient_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的紙張方向：{orientation}（可用：portrait/landscape）[/yellow]")
-
-    # 紙張大小
-    _PAPER_SIZES = {
-        "A4": "A4 (210×297mm)", "B4": "B4 (257×364mm)",
-        "A3": "A3 (297×420mm)", "Letter": "Letter (216×279mm)",
+    values = {
+        "speed": speed, "margin": margin, "line_spacing": line_spacing,
+        "font_size": font_size, "duplex": duplex, "orientation": orientation,
+        "paper_size": paper_size, "columns": columns, "seal": seal,
+        "draft_mark": draft_mark, "urgency_label": urgency_label, "lang": lang,
     }
-    ps = paper_size.strip().upper() if paper_size.strip().upper() != "LETTER" else "Letter"
-    if paper_size.strip().lower() == "letter":
-        ps = "Letter"
-    ps_label = _PAPER_SIZES.get(ps, "")
-    if ps_label:
-        console.print(f"  [dim]紙張大小：{ps_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的紙張大小：{paper_size}（可用：A4/B4/A3/Letter）[/yellow]")
+    for key, label, choices, skip_val, hint in _FORMAT_OPTION_DEFS:
+        normalised = values[key].strip().lower()
+        display = choices.get(normalised)
+        if display:
+            if skip_val is None or normalised != skip_val:
+                console.print(f"  [dim]{label}：{display}[/dim]")
+        else:
+            opts = hint or "/".join(choices)
+            console.print(f"[yellow]未知的{label}設定：{values[key]}（可用：{opts}）[/yellow]")
 
-    # 排版欄數
-    _COLUMNS_MAP = {"1": "單欄排版", "2": "雙欄排版"}
-    col_label = _COLUMNS_MAP.get(columns.strip(), "")
-    if col_label:
-        console.print(f"  [dim]排版：{col_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的欄數設定：{columns}（可用：1/2）[/yellow]")
-
-    # 用印
-    _SEAL_MAP = {"none": "免用印", "official": "蓋機關印信", "personal": "蓋職章"}
-    seal_label = _SEAL_MAP.get(seal.lower().strip(), "")
-    if seal_label:
-        console.print(f"  [dim]用印：{seal_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的用印設定：{seal}（可用：none/official/personal）[/yellow]")
-
-    # 輸出份數
+    # copy_count — 需要 int 範圍檢查
     try:
         cc_val = int(copy_count.strip())
     except ValueError:
@@ -290,34 +246,7 @@ def _display_format_options(
     else:
         console.print(f"[yellow]無效的份數設定：{copy_count}（可用：1-10）[/yellow]")
 
-    # 草稿標記
-    _DRAFT_MARK_MAP = {"none": "無標記", "draft": "草稿", "internal": "內部文件"}
-    dm_label = _DRAFT_MARK_MAP.get(draft_mark.lower().strip(), "")
-    if dm_label:
-        if draft_mark.lower().strip() != "none":
-            console.print(f"  [dim]草稿標記：{dm_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的草稿標記：{draft_mark}（可用：none/draft/internal）[/yellow]")
-
-    # 急件標示
-    _URGENCY_LABEL_MAP = {"normal": "普通件", "urgent": "急件", "most-urgent": "最速件"}
-    ul_label = _URGENCY_LABEL_MAP.get(urgency_label.lower().strip(), "")
-    if ul_label:
-        if urgency_label.lower().strip() != "normal":
-            console.print(f"  [dim]急件標示：{ul_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的急件標示：{urgency_label}（可用：normal/urgent/most-urgent）[/yellow]")
-
-    # 公文語言
-    _LANG_MAP = {"zh-tw": "繁體中文", "zh-cn": "簡體中文", "en": "英文"}
-    lang_label = _LANG_MAP.get(lang.lower().strip(), "")
-    if lang_label:
-        if lang.lower().strip() != "zh-tw":
-            console.print(f"  [dim]公文語言：{lang_label}[/dim]")
-    else:
-        console.print(f"[yellow]未知的語言設定：{lang}（可用：zh-TW/zh-CN/en）[/yellow]")
-
-    # 頁首 logo
+    # header_logo — 需要檔案存在檢查
     if header_logo:
         if os.path.isfile(header_logo):
             console.print(f"  [dim]頁首 Logo：{os.path.basename(header_logo)}[/dim]")
