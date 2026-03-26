@@ -60,19 +60,14 @@ def doctor() -> None:
         checks.append(("LLM 提供者", "✗", "無法讀取"))
 
     # 5. 必要套件
+    # 套件名稱 → pip 安裝名稱（不同時才需列出）
+    _PKG_INSTALL_NAME = {"docx": "python-docx"}
     missing_pkgs = []
     for pkg_name in ["docx", "yaml", "litellm", "rich", "typer"]:
         try:
             __import__(pkg_name)
         except ImportError:
-            # docx 的 import 名稱不同
-            if pkg_name == "docx":
-                try:
-                    __import__("docx")
-                except ImportError:
-                    missing_pkgs.append("python-docx")
-            else:
-                missing_pkgs.append(pkg_name)
+            missing_pkgs.append(_PKG_INSTALL_NAME.get(pkg_name, pkg_name))
 
     if not missing_pkgs:
         checks.append(("必要套件", "✓", "全部就緒"))

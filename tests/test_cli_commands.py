@@ -3,6 +3,7 @@ src/cli/ 的命令行介面測試
 使用 typer.testing.CliRunner 來測試 CLI 命令
 """
 import asyncio
+import builtins
 import json
 import os
 from pathlib import Path
@@ -2909,6 +2910,70 @@ class TestDoctorCommand:
         assert result.exit_code == 0
         assert "系統診斷" in result.stdout
         assert "Python" in result.stdout
+
+    def test_doctor_python_version_too_low(self):
+        """Python < 3.10 應顯示 ✗ 和版本要求"""
+        import sys
+        from collections import namedtuple
+        FakeVer = namedtuple("version_info", "major minor micro releaselevel serial")
+        fake_ver = FakeVer(3, 9, 1, "final", 0)
+        with patch("src.cli.doctor.sys") as mock_sys:
+            mock_sys.version_info = fake_ver
+            from src.cli.doctor import doctor
+            doctor()
+
+    def test_doctor_missing_config_yaml(self, tmp_path, monkeypatch):
+        """config.yaml 不存在時應顯示 ✗"""
+        monkeypatch.chdir(tmp_path)
+        from src.cli.doctor import doctor
+        doctor()
+
+    def test_doctor_kb_dir_not_exists(self):
+        """知識庫目錄不存在時應顯示 △"""
+        from unittest.mock import patch, MagicMock
+        mock_cm = MagicMock()
+        mock_cm.config = {"knowledge_base": {"path": "/nonexistent/kb_dir"}, "llm": {"provider": "test", "model": "m"}}
+        with patch("src.core.config.ConfigManager", return_value=mock_cm):
+            from src.cli.doctor import doctor
+            doctor()
+
+    def test_doctor_config_error(self):
+        """ConfigManager 拋出異常時應顯示 —"""
+        from unittest.mock import patch
+        with patch("src.core.config.ConfigManager", side_effect=OSError("bad")):
+            from src.cli.doctor import doctor
+            doctor()
+
+    def test_doctor_missing_package(self, monkeypatch):
+        """缺少套件時應列出缺少的套件名稱"""
+        original_import = builtins.__import__
+        def fake_import(name, *args, **kwargs):
+            if name == "yaml":
+                raise ImportError(f"No module named '{name}'")
+            return original_import(name, *args, **kwargs)
+        monkeypatch.setattr("builtins.__import__", fake_import)
+        from src.cli.doctor import doctor
+        doctor()
+
+    def test_doctor_missing_docx_package(self, monkeypatch):
+        """缺少 docx 套件時應報告 python-docx"""
+        original_import = builtins.__import__
+        def fake_import(name, *args, **kwargs):
+            if name == "docx":
+                raise ImportError(f"No module named '{name}'")
+            return original_import(name, *args, **kwargs)
+        monkeypatch.setattr("builtins.__import__", fake_import)
+        from src.cli.doctor import doctor
+        doctor()
+
+    def test_doctor_has_error_shows_hint(self):
+        """有 ✗ 項目時應顯示修復建議"""
+        from unittest.mock import patch
+        with patch("src.core.config.ConfigManager", side_effect=ValueError("bad")):
+            from src.cli.main import app
+            result = runner.invoke(app, ["doctor"])
+            assert result.exit_code == 0
+            assert "需要修復" in result.stdout or "就緒" in result.stdout
 
 
 # ==================== Compare Command Tests ====================

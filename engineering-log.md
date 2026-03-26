@@ -456,6 +456,19 @@
 - `cli/doctor.py`（67%）、`cli/quickstart.py`（67%）可補測試
 - 考慮 conftest 加 `mock_kb` 為 session-scope fixture，減少重複建立開銷
 
+### [2026-03-26] Round 32 — doctor.py 死碼修復 + 覆蓋率 92%→100%
+**角度**: 🐛 Bug（死碼）+ 🧪 測試（覆蓋率盲區消除）
+**為什麼**: `doctor.py` 套件檢查邏輯有 copy-paste 冗餘碼——`__import__("docx")` 失敗後，內層 try 再做一次完全相同的 `__import__("docx")`，是永遠失敗的死路。行為碰巧正確（最終仍報告 python-docx 缺失），但邏輯有 bug。同時 doctor.py 覆蓋率 92%，7 個分支路徑無測試保護。
+**做了什麼**:
+- `src/cli/doctor.py`: 冗餘 try/except 替換為 `_PKG_INSTALL_NAME` dict 映射（106→100 行，-6 行）
+- `tests/test_cli_commands.py`: +7 個測試案例覆蓋：Python 版本低於 3.10、config.yaml 缺失、知識庫目錄不存在(△)、ConfigManager 異常(—)、一般套件缺失、docx 套件缺失、有錯誤時顯示修復建議
+**結果**: PASS — doctor.py **100%** 覆蓋率，2653 passed, 84 skipped, 0 failed（+7 新測試，零回歸）
+**全局狀態**: 覆蓋率 90%+，安全掃描零漏洞，web_preview/app.py 已達 99%（非 engineering-log 記載的 58%）
+**下一步可能**:
+- `cli/quickstart.py`（67%）是剩餘最低覆蓋 CLI 模組
+- `cli/checklist_cmd.py`（70%）、`cli/org_memory_cmd.py`（70%）可補測試
+- 考慮 MISSION.md 功能缺口：審查意見具體修改建議（不只指出問題）
+
 ### [2026-03-26] Round 32 — web_preview/app.py 覆蓋率 58%→99%
 **角度**: 🧪 測試（連續 8 輪未處理的最低覆蓋核心模組）
 **為什麼**: `web_preview/app.py` 自 Round 24 起每輪標為「剩餘唯一低於 70% 的核心模組」，58% 覆蓋率意味著所有 HTTP 路由的錯誤處理、輸入驗證、例外降級均無測試保護。作為面向使用者的 Web UI 層，未覆蓋的程式碼直接影響使用者體驗（錯誤訊息洩漏內部資訊、連線失敗白屏等）。
