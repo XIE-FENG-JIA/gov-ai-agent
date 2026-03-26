@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 ENDPOINT_TIMEOUT = int(os.environ.get("API_ENDPOINT_TIMEOUT", "180"))
 # 完整 meeting 流程超時（秒）— 含多輪審查，需要更長
 MEETING_TIMEOUT = int(os.environ.get("API_MEETING_TIMEOUT", "600"))
+# 批次處理總體超時（秒）— 防止大量項目導致 HTTP 連線無限掛起
+BATCH_TOTAL_TIMEOUT = int(os.environ.get("API_BATCH_TOTAL_TIMEOUT", "3600"))
 
 # X-Forwarded-For 支援（反向代理後的真實 IP 提取）
 _TRUST_PROXY = os.environ.get("TRUST_PROXY", "false").lower() == "true"

@@ -3280,6 +3280,27 @@ class TestMetricsEndpoint:
         assert data["executor_max_workers"] == API_MAX_WORKERS
 
 
+# ==================== Batch Total Timeout ====================
+
+class TestBatchTotalTimeout:
+    """批次處理總體超時保護"""
+
+    def test_batch_total_timeout_returns_504(self, client, mock_api_deps):
+        """批次處理超過總體時限時應回傳 504"""
+        import src.api.routes.workflow as wf_mod
+
+        original = wf_mod.BATCH_TOTAL_TIMEOUT
+        wf_mod.BATCH_TOTAL_TIMEOUT = 0.001  # 極短超時觸發 504
+        try:
+            response = client.post("/api/v1/batch", json={
+                "items": [{"user_input": "測試需求文字描述，需要足夠長度通過驗證"}]
+            })
+            assert response.status_code == 504
+            assert "總體時限" in response.json()["detail"]
+        finally:
+            wf_mod.BATCH_TOTAL_TIMEOUT = original
+
+
 # ==================== Batch Progress Tracking ====================
 
 class TestBatchProgressTracking:

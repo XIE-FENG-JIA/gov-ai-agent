@@ -1109,6 +1109,19 @@
 - 新增 `test_cleans_up_graph_temp_export` 測試驗證清理邏輯
 **結果**: PASS — 2984 passed, 84 skipped, 0 failed（+1 新測試，零回歸）
 **下一步可能**:
-- 批次處理 `asyncio.gather()` 缺少總體 timeout（50 筆 × 600s = 最長可掛 2.8 小時）
+- ~~批次處理 `asyncio.gather()` 缺少總體 timeout~~ ✅ Round 70 已完成
 - LLM error handling 缺少 timeout 與 connection error 的區分
 - MISSION.md 功能缺口：公文範本庫擴充、法規自動更新
+
+### [2026-03-26] Round 70 — 批次處理加入總體超時保護
+**角度**: 🐛 Bug（資源保護 / DoS 防禦）
+**為什麼**: `run_batch` 的 `asyncio.gather()` 無總體 timeout。50 筆 × semaphore(3) × MEETING_TIMEOUT(600s) = 最長可掛 10,000 秒（2.8 小時）。HTTP 連線無上限等待，既浪費伺服器資源又讓使用者無回饋，也構成慢速 DoS 向量。
+**做了什麼**:
+- `helpers.py` 新增 `BATCH_TOTAL_TIMEOUT`（預設 3600s，可透過 `API_BATCH_TOTAL_TIMEOUT` 環境變數調整）
+- `workflow.py` 用 `asyncio.wait_for()` 包裹 `asyncio.gather()`，超時回傳 HTTP 504 + 明確錯誤訊息
+- 新增 `TestBatchTotalTimeout::test_batch_total_timeout_returns_504` 測試
+**結果**: PASS — 2985 passed, 84 skipped, 0 failed（+1 新測試，零回歸）
+**下一步可能**:
+- LLM error handling 缺少 timeout 與 connection error 的區分
+- MISSION.md 功能缺口：公文範本庫擴充、法規自動更新
+- 下一個里程碑：從品質打磨轉向功能開發

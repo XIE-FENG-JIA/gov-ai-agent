@@ -12,7 +12,7 @@ import time
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 
 from src.core.constants import SESSION_ID_LENGTH, OUTPUT_DIR
@@ -31,6 +31,7 @@ from src.api.helpers import (
     _sanitize_output_filename,
     run_in_executor,
     MEETING_TIMEOUT,
+    BATCH_TOTAL_TIMEOUT,
 )
 from src.api.models import (
     MeetingRequest,
@@ -539,10 +540,22 @@ async def run_batch(request: BatchRequest) -> BatchResponse:
                     error_code=_get_error_code(e),
                 )
 
-    # 所有項目同時啟動，由 Semaphore 控制並行度
-    results: list[BatchItemResult] = await asyncio.gather(
-        *[_process_item(item) for item in request.items]
-    )
+    # 所有項目同時啟動，由 Semaphore 控制並行度，總體超時防止 HTTP 連線無限掛起
+    try:
+        results: list[BatchItemResult] = await asyncio.wait_for(
+            asyncio.gather(*[_process_item(item) for item in request.items]),
+            timeout=BATCH_TOTAL_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        total_duration = round((time.monotonic() - batch_start) * 1000, 2)
+        logger.error(
+            "批次處理總體超時 (%ds)，已處理時間: %.0fms",
+            BATCH_TOTAL_TIMEOUT, total_duration,
+        )
+        raise HTTPException(
+            status_code=504,
+            detail=f"批次處理超過總體時限 ({BATCH_TOTAL_TIMEOUT}s)，請減少項目數量或調整 API_BATCH_TOTAL_TIMEOUT",
+        )
 
     success_count = sum(1 for r in results if r.success)
     fail_count = len(results) - success_count
