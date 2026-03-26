@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from src.core.constants import MAX_USER_INPUT_LENGTH
+from src.core.models import VALID_DOC_TYPES
 from src.api.dependencies import get_config
 
 logger = logging.getLogger(__name__)
@@ -107,10 +108,10 @@ async def generate(
              "error": f"需求描述不可超過 {MAX_USER_INPUT_LENGTH} 字（目前 {len(stripped)} 字）。"},
         )
 
-    # 若使用者指定了公文類型，附加到 user_input 提示中
+    # 若使用者指定了合法公文類型，附加到 user_input 提示中
     effective_input = stripped
-    if doc_type:
-        effective_input = f"[公文類型：{doc_type}] {user_input}"
+    if doc_type and doc_type in VALID_DOC_TYPES:
+        effective_input = f"[公文類型：{doc_type}] {stripped}"
 
     try:
         async with httpx.AsyncClient(timeout=180.0) as client:

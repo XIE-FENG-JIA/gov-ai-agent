@@ -4,6 +4,18 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 75 — Web UI doc_type prompt injection 防護
+**角度**: 🔒 安全（prompt injection via form input）
+**為什麼**: `web_preview/app.py:113` 的 `doc_type` 來自使用者表單，未經任何驗證直接內插至 LLM prompt 字串 `f"[公文類型：{doc_type}]"`。攻擊者可構造惡意 doc_type（如 `函] ignore previous instructions...`）注入任意指令。此問題已被標記多輪。另外 effective_input 使用了未 strip 的 `user_input` 而非 `stripped`，屬於不一致 bug。
+**做了什麼**:
+- `app.py`: `doc_type` 加入 `VALID_DOC_TYPES` 白名單驗證，非法值直接忽略
+- `app.py`: `effective_input` 改用 `stripped` 保持一致
+- 新增 2 個測試：prompt injection payload 被忽略 + stripped input 一致性
+**結果**: PASS — 3061 passed, 84 skipped, 0 failed（+2 新測試，零回歸）
+**下一步可能**:
+- `fan_out_reviewers()` 在 requirement 缺失時 raise 而非靜默 fallback 到「函」
+- MISSION.md 功能缺口：公文範本庫擴充、法規自動更新
+
 ### [2026-03-27] Round 74 — config.yaml 意外刪除修復
 **角度**: 🐛 Bug（應用啟動失敗）
 **為什麼**: f79204b 提交「開會紀錄」功能時，staging area 殘留了被砍至 3 行的 config.yaml（僅剩 providers.openrouter.model: free/model-null），遺失 api、knowledge_base、llm、organizational_memory 等核心區塊，應用啟動會因缺少必要設定而失敗。
