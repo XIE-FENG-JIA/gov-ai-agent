@@ -4,6 +4,23 @@
 
 ## 改善紀錄
 
+### [2026-03-26] Round 68 — 審查 Agent 具體修改建議強化
+**角度**: ✨ 功能缺口（MISSION.md「審查意見的具體修改建議」）
+**為什麼**: 5 個審查 Agent 中只有 FormatAuditor 明確要求 LLM 輸出「將 X 改為 Y」格式的具體修正建議。其餘 4 個（StyleChecker、FactChecker、ConsistencyChecker、ComplianceChecker）的 prompt 僅要求 `"suggestion": "string"`，LLM 傾向輸出模糊建議如「請確認引用是否正確」「統一立場」，使用者無法直接採用。Editor 修正流程也未指示優先遵循具體建議文字。
+**搜尋**: 分析 FormatAuditor 的 golden pattern — `IMPORTANT: Each item MUST include a concrete "suggestion"... 直接給出修改後的文字或做法`，確認此指令有效提高建議品質。
+**做了什麼**:
+- **StyleChecker**: 加入 IMPORTANT 指令 + 3 個範例（口語改正式、官銜格式、稱謂用語）
+- **FactChecker**: 加入 IMPORTANT 指令 + 3 個範例（錯誤引用修正、日期修正、補充引用標記）
+- **ConsistencyChecker**: 加入 IMPORTANT 指令 + 3 個範例（數字統一、日期統一、名稱統一），要求「指明以哪段為準」
+- **ComplianceChecker**: 加入 IMPORTANT 指令 + 3 個範例（過時用語、政策違規、缺失元素）
+- **Editor `_layered_refine()`**: 兩種策略（一般/保守）都加入「When suggestion says '將 X 改為 Y', apply that exact replacement」
+- **Editor `_auto_refine()`**: 加入相同的精準替換指令
+**結果**: PASS — 2983 passed, 84 skipped, 0 failed（零回歸）
+**下一步可能**:
+- 功能缺口：公文範本庫擴充（更多公文類型範本）
+- 功能缺口：法規自動更新機制
+- `_sanitize_output_filename()` regex 驗證強化
+
 ### [2026-03-26] Round 1 — 補齊缺失依賴 python-multipart
 **角度**: Bug（依賴宣告缺失）
 **為什麼**: `test_api_server.py` 全部 217 個測試因 `python-multipart` 未安裝而在 setup 階段 error，FastAPI form data 功能在生產環境也會出問題。這是影響面最大的單一問題。

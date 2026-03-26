@@ -187,12 +187,17 @@ Return a JSON object:
             "severity": "error/warning/info",
             "location": "Section or paragraph name (Traditional Chinese)",
             "description": "Issue description (Traditional Chinese)",
-            "suggestion": "Suggested fix (Traditional Chinese)"
+            "suggestion": "具體的修正建議，直接給出符合政策的替代用語或做法"
         }}}}
     ],
     "score": 0.0 to 1.0,
     "confidence": 0.0 to 1.0
 }}}}
+IMPORTANT: Each issue MUST include a concrete "suggestion" with exact replacement text or action.
+- For outdated terms: "將「殘障」改為「身心障礙」"
+- For policy violations: "依據行政院 OO 年 OO 月函示，將「...」修改為「...」"
+- For missing elements: "於說明段第一項加入「依據個人資料保護法第○條」"
+Do NOT write vague suggestions like "建議調整用語". Always give the specific corrected text.
 
 Notes:
 - severity="error" means clear policy violation

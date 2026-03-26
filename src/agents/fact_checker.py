@@ -165,11 +165,16 @@ JSON format only:
             "severity": "error/warning",
             "location": "string",
             "description": "string",
-            "suggestion": "string"
+            "suggestion": "具體的修正建議"
         }}
     ],
     "score": 0.0 to 1.0
-}}"""
+}}
+IMPORTANT: Each issue MUST include a concrete "suggestion" that tells the user exactly HOW to fix it.
+- For wrong citations: "將「廢棄物清理法第28條」改為「廢棄物清理法第36條」" or "刪除此引用，該法規不存在"
+- For date errors: "將「113年12月31日」改為「114年12月31日」"
+- For unverified refs: "為「環境影響評估法第5條」加入 [^i] 引用標記並補充來源"
+Do NOT write vague suggestions like "請確認引用是否正確". Give the specific fix or clearly state what needs verification."""
         try:
             response = self.llm.generate(prompt, temperature=LLM_TEMPERATURE_PRECISE)
         except Exception as exc:

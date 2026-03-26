@@ -81,11 +81,16 @@ JSON format only:
             "severity": "error/warning/info",
             "location": "string",
             "description": "string",
-            "suggestion": "string"
+            "suggestion": "具體的修正建議，使用「將 X 改為 Y」格式"
         }}
     ],
     "score": 0.0 to 1.0 (1.0 is perfect)
 }}
+IMPORTANT: Each issue MUST include a concrete "suggestion" with the exact replacement text.
+- For colloquialisms: "將「幫我」改為「請」"
+- For title issues: "將「王副局」改為「王副局長」"
+- For terminology: "將「台端」改為「貴機關」（受文者為機關時）"
+Do NOT write vague suggestions like "請使用正式用語". Always give the corrected text.
 """
         try:
             response = self.llm.generate(prompt, temperature=LLM_TEMPERATURE_PRECISE)

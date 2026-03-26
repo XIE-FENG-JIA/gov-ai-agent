@@ -111,11 +111,16 @@ JSON format only:
             "severity": "error/warning/info",
             "location": "Which sections conflict (e.g., '主旨 vs 辦法第二項')",
             "description": "Describe the specific contradiction or mismatch (Traditional Chinese)",
-            "suggestion": "How to resolve the inconsistency (Traditional Chinese)"
+            "suggestion": "具體的修正建議，指明以哪段為準並給出修改後的文字"
         }}
     ],
     "score": 0.0 to 1.0 (1.0 = fully consistent, 0.0 = severe contradictions)
 }}
+IMPORTANT: Each issue MUST include a concrete "suggestion" with specific resolution text.
+- For contradictions: "以主旨為準，將辦法第二項「核定金額30萬元」改為「核定金額50萬元」"
+- For date conflicts: "統一為「115年1月1日」，將說明段日期改為與主旨一致"
+- For entity mismatches: "將說明段「文化局」改為「教育局」以與受文者一致"
+Do NOT write vague suggestions like "統一主旨與說明的立場". Always specify which段 should change and the exact new text.
 
 If the document is internally consistent, return empty issues and score near 1.0.
 Be precise: only flag genuine contradictions or mismatches, not stylistic preferences.
