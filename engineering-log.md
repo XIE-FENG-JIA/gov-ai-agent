@@ -4,6 +4,17 @@
 
 ## 改善紀錄
 
+### [2026-03-26] Round 29 — _ERROR_REGISTRY 結構完整性防護測試
+**角度**: 🧪 測試（防禦性測試覆蓋新架構的不變式）
+**為什麼**: Round 28 建立了 `_ERROR_REGISTRY` 單一真相來源，但沒有測試驗證其結構不變式（非空 code/message、UPPER_SNAKE_CASE 格式）。未來有人加新條目時可能寫錯格式，需要自動化防護。
+**做了什麼**:
+- `test_error_registry_integrity`：驗證每個 entry 的 code 非空、message 非空、code 為 UPPER_SNAKE_CASE
+- `test_error_registry_sanitize_and_code_consistent`：動態為 registry 中每個異常類型建立實例，驗證 `_sanitize_error` 和 `_get_error_code` 對所有 13 個類型都正確查詢
+**結果**: PASS — 3008 passed, 84 skipped, 0 failed（+2 新測試，零回歸）
+**下一步可能**:
+- error_analyzer.py 覆蓋率提升（目前 0%）
+- config.py 未覆蓋的 dotenv 解析路徑
+
 ### [2026-03-26] Round 28 — 錯誤映射表合併為單一真相來源
 **角度**: 🏗️ 架構（DRY 違反導致的同步遺漏風險）
 **為什麼**: `_sanitize_error()` 和 `_get_error_code()` 各維護一份獨立的映射 dict，共 13 個異常類型 × 2 = 26 個條目需要手動保持同步。Round 26 修的 `LLMTimeoutError` 遺漏正是此架構缺陷的直接後果。未來新增任何異常類型都可能重蹈覆轍。

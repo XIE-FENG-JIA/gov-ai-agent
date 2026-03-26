@@ -831,6 +831,29 @@ class TestHelperFunctions:
         assert _get_error_code(KeyError("x")) == "MISSING_FIELD"
         assert _get_error_code(RuntimeError("x")) == "INTERNAL_ERROR"
 
+    def test_error_registry_integrity(self):
+        """驗證 _ERROR_REGISTRY 結構完整性：每個 entry 都有非空 code 和 message"""
+        from src.api.helpers import _ERROR_REGISTRY
+        assert len(_ERROR_REGISTRY) > 0, "Registry 不可為空"
+        for exc_type, (code, message) in _ERROR_REGISTRY.items():
+            assert exc_type, f"異常類型名稱不可為空"
+            assert code and isinstance(code, str), f"{exc_type}: error_code 不可為空"
+            assert message and isinstance(message, str), f"{exc_type}: message 不可為空"
+            assert code == code.upper().replace(" ", "_"), (
+                f"{exc_type}: error_code '{code}' 應為 UPPER_SNAKE_CASE"
+            )
+
+    def test_error_registry_sanitize_and_code_consistent(self):
+        """驗證 _sanitize_error 和 _get_error_code 對所有 registry 類型一致"""
+        from src.api.helpers import _ERROR_REGISTRY, _sanitize_error, _get_error_code
+
+        # 動態建立每種類型的 exception 實例並驗證兩個函式都正確查詢
+        for exc_type_name, (expected_code, expected_msg) in _ERROR_REGISTRY.items():
+            # 建立 mock exception with matching __name__
+            exc = type(exc_type_name, (Exception,), {})("test")
+            assert _sanitize_error(exc) == expected_msg, f"{exc_type_name}: message 不匹配"
+            assert _get_error_code(exc) == expected_code, f"{exc_type_name}: code 不匹配"
+
     def test_sanitize_output_filename(self):
         """測試檔名清理函式"""
         from api_server import _sanitize_output_filename
