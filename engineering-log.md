@@ -429,4 +429,14 @@
 **下一步可能**:
 - `web_preview/app.py`（58%）是剩餘最低覆蓋核心模組
 - LLM mock / KB mock 統一到 conftest
-- `graph/nodes/refiner.py`（63%）可快速補測試
+- ~~`graph/nodes/refiner.py`（63%）可快速補測試~~ ✅ Round 30 已完成
+
+### [2026-03-26] Round 30 — refiner.py 覆蓋率 63%→100%
+**角度**: 🧪 測試（精煉迴圈核心節點覆蓋率盲區）
+**為什麼**: `refine_draft`/`verify_refinement` 是 LangGraph 精煉迴圈的核心節點，但 63% 覆蓋率意味著 LLM 無效回傳、例外處理、回饋/草稿截斷等關鍵防禦路徑無測試保護。
+**做了什麼**: 新增 13 個測試案例：有回饋成功、無回饋跳過、LLM 無效結果（4 種 bad value）、回饋截斷、草稿截斷、例外處理、草稿優先級、預設建議、verify 4 個分支
+**結果**: PASS — 2600 passed, 84 skipped, 0 failed。refiner.py 63% → **100%**（+37pp）
+**下一步可能**:
+- `web_preview/app.py`（58%）是剩餘唯一低於 70% 的核心模組
+- LLM mock / KB mock 統一到 conftest
+- `cli/doctor.py`（67%）、`cli/quickstart.py`（67%）可補測試

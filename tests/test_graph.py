@@ -399,3 +399,188 @@ class TestExecuteViaGraphExtraction:
         dump = qa_report.model_dump()
         assert dump["risk_summary"] == "Low"
         assert dump["error_count"] == 1
+
+
+# ============================================================
+# refine_draft / verify_refinement 單元測試
+# ============================================================
+
+class TestRefineDraft:
+    """refine_draft 節點覆蓋所有分支。"""
+
+    def _make_state(self, *, draft="測試草稿", issues=None, round_num=0):
+        state = {
+            "formatted_draft": draft,
+            "refinement_round": round_num,
+            "aggregated_report": {
+                "agent_results": issues or [],
+            },
+        }
+        return state
+
+    @patch("src.api.dependencies.get_llm")
+    def test_with_feedback_success(self, mock_get_llm):
+        """有審查回饋且 LLM 回傳有效結果"""
+        from src.graph.nodes.refiner import refine_draft
+
+        mock_llm = MagicMock()
+        mock_llm.generate.return_value = "修正後的草稿"
+        mock_get_llm.return_value = mock_llm
+
+        state = self._make_state(issues=[{
+            "agent_name": "Auditor",
+            "issues": [{"severity": "error", "description": "缺少主旨"}],
+        }])
+        result = refine_draft(state)
+        assert result["refined_draft"] == "修正後的草稿"
+        assert result["refinement_round"] == 1
+        assert result["phase"] == "draft_refined"
+
+    @patch("src.api.dependencies.get_llm")
+    def test_no_feedback_keeps_draft(self, mock_get_llm):
+        """無審查回饋時保留原始草稿"""
+        from src.graph.nodes.refiner import refine_draft
+
+        state = self._make_state(issues=[])
+        result = refine_draft(state)
+        assert result["refined_draft"] == "測試草稿"
+        assert result["refinement_round"] == 1
+
+    @patch("src.api.dependencies.get_llm")
+    def test_llm_invalid_result(self, mock_get_llm):
+        """LLM 回傳空字串或 Error 時保留原始草稿"""
+        from src.graph.nodes.refiner import refine_draft
+
+        mock_llm = MagicMock()
+        mock_get_llm.return_value = mock_llm
+
+        for bad_result in ["", "   ", "Error: timeout", None]:
+            mock_llm.generate.return_value = bad_result
+            state = self._make_state(issues=[{
+                "agent_name": "A",
+                "issues": [{"severity": "warning", "description": "x"}],
+            }])
+            result = refine_draft(state)
+            assert result["refined_draft"] == "測試草稿", f"bad_result={bad_result!r}"
+
+    @patch("src.api.dependencies.get_llm")
+    def test_feedback_truncation(self, mock_get_llm):
+        """超長回饋被截斷"""
+        from src.graph.nodes.refiner import refine_draft
+        from src.core.constants import MAX_FEEDBACK_LENGTH
+
+        mock_llm = MagicMock()
+        mock_llm.generate.return_value = "OK"
+        mock_get_llm.return_value = mock_llm
+
+        # 產生超過 MAX_FEEDBACK_LENGTH 的回饋
+        long_issues = [{
+            "agent_name": "Agent",
+            "issues": [{"severity": "error", "description": "x" * 500}]
+        } for _ in range(100)]
+        state = self._make_state(issues=long_issues)
+        result = refine_draft(state)
+        # 確認 prompt 中包含截斷標記
+        call_args = mock_llm.generate.call_args[0][0]
+        assert "已截斷" in call_args
+
+    @patch("src.api.dependencies.get_llm")
+    def test_draft_truncation(self, mock_get_llm):
+        """超長草稿被截斷"""
+        from src.graph.nodes.refiner import refine_draft
+        from src.core.constants import MAX_DRAFT_LENGTH
+
+        mock_llm = MagicMock()
+        mock_llm.generate.return_value = "OK"
+        mock_get_llm.return_value = mock_llm
+
+        long_draft = "字" * (MAX_DRAFT_LENGTH + 1000)
+        state = self._make_state(
+            draft=long_draft,
+            issues=[{"agent_name": "A", "issues": [{"severity": "error", "description": "x"}]}],
+        )
+        result = refine_draft(state)
+        call_args = mock_llm.generate.call_args[0][0]
+        assert "草稿已截斷" in call_args
+
+    @patch("src.api.dependencies.get_llm", side_effect=RuntimeError("LLM init failed"))
+    def test_exception_keeps_draft(self, mock_get_llm):
+        """例外時不阻斷流程，保留現有草稿"""
+        from src.graph.nodes.refiner import refine_draft
+
+        # 必須有 issues 才能走到 get_llm() 觸發例外
+        state = self._make_state(issues=[{
+            "agent_name": "A",
+            "issues": [{"severity": "error", "description": "x"}],
+        }])
+        result = refine_draft(state)
+        assert result["refined_draft"] == "測試草稿"
+        assert result["phase"] == "draft_refined"
+
+    @patch("src.api.dependencies.get_llm")
+    def test_refined_draft_priority(self, mock_get_llm):
+        """refined_draft 優先於 formatted_draft"""
+        from src.graph.nodes.refiner import refine_draft
+
+        state = {
+            "refined_draft": "第二版",
+            "formatted_draft": "第一版",
+            "refinement_round": 1,
+            "aggregated_report": {"agent_results": []},
+        }
+        result = refine_draft(state)
+        assert result["refined_draft"] == "第二版"
+
+    @patch("src.api.dependencies.get_llm")
+    def test_issue_suggestion_default(self, mock_get_llm):
+        """issue 缺少 suggestion 時使用預設值"""
+        from src.graph.nodes.refiner import refine_draft
+
+        mock_llm = MagicMock()
+        mock_llm.generate.return_value = "OK"
+        mock_get_llm.return_value = mock_llm
+
+        state = self._make_state(issues=[{
+            "agent_name": "Checker",
+            "issues": [{"severity": "info", "description": "小問題"}],
+        }])
+        refine_draft(state)
+        call_args = mock_llm.generate.call_args[0][0]
+        assert "請自行判斷修正方式" in call_args
+
+
+class TestVerifyRefinement:
+    """verify_refinement 節點覆蓋所有分支。"""
+
+    def test_valid_draft_passes(self):
+        """正常草稿通過驗證"""
+        from src.graph.nodes.refiner import verify_refinement
+        result = verify_refinement({"refined_draft": "這是一份正常的精煉草稿內容"})
+        assert result["phase"] == "verification_passed"
+
+    def test_empty_draft_warns(self):
+        """空草稿觸發警告"""
+        from src.graph.nodes.refiner import verify_refinement
+        result = verify_refinement({"refined_draft": ""})
+        assert result["phase"] == "verification_warning"
+
+    def test_short_draft_warns(self):
+        """過短草稿觸發警告"""
+        from src.graph.nodes.refiner import verify_refinement
+        result = verify_refinement({"refined_draft": "短"})
+        assert result["phase"] == "verification_warning"
+
+    def test_missing_draft_warns(self):
+        """缺少 refined_draft 觸發警告"""
+        from src.graph.nodes.refiner import verify_refinement
+        result = verify_refinement({})
+        assert result["phase"] == "verification_warning"
+
+    def test_exception_returns_warning(self):
+        """異常時回傳 verification_warning"""
+        from src.graph.nodes.refiner import verify_refinement
+        # state.get() 正常不會拋異常，用特殊物件觸發
+        bad_state = MagicMock()
+        bad_state.get.side_effect = RuntimeError("state broken")
+        result = verify_refinement(bad_state)
+        assert result["phase"] == "verification_warning"
