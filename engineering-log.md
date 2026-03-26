@@ -4,6 +4,19 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 32（PUA輪次）— 驗證器結構化修正建議
+**角度**: 🏗️ 架構（MISSION 功能缺口：審查意見的具體修改建議）
+**為什麼**: 9 個規則驗證器（日期、附件、引用格式、完整性、口語化、術語等）回傳純 `list[str]`，經 `auditor_result_to_review_result()` 轉為 `ReviewIssue` 時 `suggestion=None`。編輯器看到 `None` 就跳過自動修正——資訊卡在字串裡傳不出去，是「不只指出問題，還要給具體修改建議」這個 MISSION 功能缺口的核心阻塞點。
+**做了什麼**:
+- `validators.py`: 新增 `_issue()` 工廠函數，9 個驗證方法全部改為回傳 `list[dict]`（含 `description`/`location`/`suggestion` 三欄位）
+- 每個 suggestion 提供可直接操作的修正指引：術語→「將 X 改為 Y」、引用→「加書名號」、日期→「修正為當前民國年」、附件→「新增附件段落」
+- 更新 5 個測試檔案（test_validators.py、test_validators_coverage.py、test_citation_level.py、test_citation_quality.py、test_edge_cases.py）~120 個斷言適配新格式
+- 新增 `TestStructuredIssueFormat` 測試類（9 個測試）驗證 suggestion 非空
+**結果**: PASS — 3110 passed, 84 skipped, 0 failed（+9 新測試，零回歸）
+**下一步可能**:
+- 編輯器（editor.py）可基於結構化 suggestion 實作「一鍵套用」自動修正
+- 公文範本庫擴充（MISSION 剩餘功能缺口）
+
 ### [2026-03-27] Round 1（PUA輪次）— 法規自動更新機制
 **角度**: ✨ 功能缺口（MISSION 優先項目）
 **為什麼**: 知識庫 14 個資料來源全靠手動 `fetch_*` 指令維護，完全缺乏過期偵測。法規一旦超過 30 天沒更新，FactChecker 拿舊資料驗證引用，整個品質保障形同虛設——且無任何警告機制。這是 MISSION.md「功能缺口」中對核心價值影響最大的項目：法規引用準確性是政府公文 AI 的命脈。
