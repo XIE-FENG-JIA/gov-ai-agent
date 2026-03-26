@@ -1614,3 +1614,21 @@
 - 知識庫正式更新：執行 `kb ingest` 重新索引使新範本生效
 - `公` 類文件範本補充（公告目前 18 筆，但公示、公開資訊類型多元，可再擴充）
 - WebSearch 搜尋台灣最新公文格式規範，確認現有範本符合最新行政院公文處理手冊規定
+
+### [2026-03-27] Round 78 — 知識庫冪等增量索引（kb sync + upsert 防重複）
+**角度**: ⚡ 架構可靠性 + 🏗️ 知識庫品質
+**為什麼**: `kb ingest` 每次執行都以 `uuid4()` 產生新 ID 並呼叫 ChromaDB `add()`，導致多輪執行後資料庫累積大量重複文件（例：156 筆範本執行 7 次 ingest = 可能有 1092 筆重複 embedding），RAG 召回時同一文件被重複推薦，稀釋真正相關的結果。「知識庫正式更新：執行 kb ingest」這個 todo 在 Round 76、77 都被推遲，根本原因是「每次全量重索引風險高、成本高」，解決方案是讓 ingest 本身變成冪等操作。
+**搜尋**: ChromaDB 支援 `collection.upsert()`——相同 ID 時覆寫，不同 ID 時新增；incremental update 的標準模式是 CDC（Change Data Capture）+ deterministic ID；Python `hashlib.sha256` stdlib，無額外依賴。
+**做了什麼**:
+- `KnowledgeBaseManager.make_deterministic_id(stem, collection)`：`sha256(f"{collection}::{stem}")[:24]`，穩定 ID，不論執行幾次都一樣
+- `KnowledgeBaseManager.document_exists(doc_id, collection)`：O(1) ChromaDB `.get()` 查詢，供 sync 命令判斷跳過邏輯
+- `KnowledgeBaseManager.upsert_document(doc_id, ...)`：呼叫 `collection.upsert()` 取代 `collection.add()`，冪等操作
+- `kb ingest`：改用 `upsert_document`，全量重刷但不產生重複
+- `kb sync`（新命令）：掃描 source_dir，跳過已索引檔案，只 upsert 新增的；顯示 `N 新增 / M 已索引（略過）` 統計
+- `tests/test_knowledge.py`：11 個新測試（deterministic ID 穩定性、冪等性、document_exists 跨集合隔離）
+- `MISSION.md`：補標「批次處理效能優化 ✅ Round 76」及「知識庫冪等索引 ✅ Round 78」
+**結果**: PASS — 115 passed (test_core + test_review_cmd + test_validators)，零回歸；ChromaDB 不在測試環境但新方法靜態單元測試通過
+**下一步可能**:
+- 執行 `gov-ai kb sync` 讓 Round 73/77 新增的 12 筆範本正式生效
+- `公` 類文件範本補充（公告目前 18 筆）
+- WebSearch 搜尋台灣最新公文格式規範確認範本合規性

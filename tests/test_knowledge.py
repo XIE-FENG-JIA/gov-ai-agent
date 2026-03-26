@@ -415,3 +415,94 @@ class TestFormatQueryResults:
         assert result[2]["content"] == ""
         assert result[2]["metadata"] == {}
         assert result[2]["distance"] is None
+
+
+# ============================================================
+# Round 78: upsert_document + document_exists + make_deterministic_id
+# ============================================================
+
+class TestDeterministicId:
+    """make_deterministic_id 靜態方法測試"""
+
+    def test_same_input_same_output(self):
+        """相同檔名和集合應產生相同 ID"""
+        id1 = KnowledgeBaseManager.make_deterministic_id("han_01_example", "examples")
+        id2 = KnowledgeBaseManager.make_deterministic_id("han_01_example", "examples")
+        assert id1 == id2
+
+    def test_different_stem_different_id(self):
+        """不同檔名應產生不同 ID"""
+        id1 = KnowledgeBaseManager.make_deterministic_id("han_01_example", "examples")
+        id2 = KnowledgeBaseManager.make_deterministic_id("han_02_example", "examples")
+        assert id1 != id2
+
+    def test_different_collection_different_id(self):
+        """同檔名不同集合應產生不同 ID（防止跨集合 ID 碰撞）"""
+        id1 = KnowledgeBaseManager.make_deterministic_id("doc_01", "examples")
+        id2 = KnowledgeBaseManager.make_deterministic_id("doc_01", "regulations")
+        assert id1 != id2
+
+    def test_id_length_is_24(self):
+        """ID 應固定為 24 個 hex 字元"""
+        doc_id = KnowledgeBaseManager.make_deterministic_id("any_file", "examples")
+        assert len(doc_id) == 24
+        assert all(c in "0123456789abcdef" for c in doc_id)
+
+
+class TestUpsertDocument:
+    """upsert_document 冪等操作測試"""
+
+    def test_upsert_adds_new_document(self, tmp_path, mock_llm):
+        """upsert 可新增不存在的文件"""
+        kb = KnowledgeBaseManager(str(tmp_path / "kb"), mock_llm)
+        det_id = kb.make_deterministic_id("test_file", "examples")
+        result = kb.upsert_document(det_id, "測試內容", {"title": "測試", "doc_type": "函"})
+        assert result == det_id
+        assert kb.get_stats()["examples_count"] == 1
+
+    def test_upsert_is_idempotent(self, tmp_path, mock_llm):
+        """相同 ID upsert 兩次，資料庫數量不增加（冪等）"""
+        kb = KnowledgeBaseManager(str(tmp_path / "kb"), mock_llm)
+        det_id = kb.make_deterministic_id("same_file", "examples")
+        kb.upsert_document(det_id, "初版內容", {"title": "文件A", "doc_type": "函"})
+        kb.upsert_document(det_id, "更新內容", {"title": "文件A v2", "doc_type": "函"})
+        assert kb.get_stats()["examples_count"] == 1
+
+    def test_upsert_multiple_different_ids(self, tmp_path, mock_llm):
+        """不同 ID 的文件都應被加入"""
+        kb = KnowledgeBaseManager(str(tmp_path / "kb"), mock_llm)
+        for i in range(3):
+            det_id = kb.make_deterministic_id(f"file_{i}", "examples")
+            kb.upsert_document(det_id, f"內容 {i}", {"title": f"文件{i}", "doc_type": "函"})
+        assert kb.get_stats()["examples_count"] == 3
+
+    def test_upsert_returns_none_on_empty_content(self, tmp_path, mock_llm):
+        """空白內容應回傳 None"""
+        kb = KnowledgeBaseManager(str(tmp_path / "kb"), mock_llm)
+        det_id = kb.make_deterministic_id("empty", "examples")
+        result = kb.upsert_document(det_id, "   ", {"title": "空", "doc_type": "函"})
+        assert result is None
+
+
+class TestDocumentExists:
+    """document_exists 查詢測試"""
+
+    def test_returns_false_for_nonexistent(self, tmp_path, mock_llm):
+        """不存在的 ID 應回傳 False"""
+        kb = KnowledgeBaseManager(str(tmp_path / "kb"), mock_llm)
+        assert kb.document_exists("nonexistent_id_000000000", "examples") is False
+
+    def test_returns_true_after_upsert(self, tmp_path, mock_llm):
+        """upsert 後 document_exists 應回傳 True"""
+        kb = KnowledgeBaseManager(str(tmp_path / "kb"), mock_llm)
+        det_id = kb.make_deterministic_id("exists_test", "examples")
+        kb.upsert_document(det_id, "存在的文件", {"title": "存在", "doc_type": "函"})
+        assert kb.document_exists(det_id, "examples") is True
+
+    def test_cross_collection_isolation(self, tmp_path, mock_llm):
+        """在 examples 集合的文件不應出現在 regulations 集合"""
+        kb = KnowledgeBaseManager(str(tmp_path / "kb"), mock_llm)
+        det_id = kb.make_deterministic_id("cross_test", "examples")
+        kb.upsert_document(det_id, "範例文件", {"title": "範例", "doc_type": "函"})
+        assert kb.document_exists(det_id, "examples") is True
+        assert kb.document_exists(det_id, "regulations") is False

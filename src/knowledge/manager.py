@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import math
 import threading
@@ -168,6 +169,85 @@ class KnowledgeBaseManager:
             logger.error("文件寫入知識庫失敗: %s", e)
             return None
         # 新增文件後清除快取，確保後續搜尋能看到新資料
+        self.invalidate_cache()
+        return doc_id
+
+    @staticmethod
+    def make_deterministic_id(file_stem: str, collection_name: str = "examples") -> str:
+        """依據檔名 stem + 集合名稱產生穩定的 doc ID（24 hex chars）。
+
+        同一檔案不論執行幾次 sync/ingest，都會得到相同 ID，
+        使 ChromaDB upsert 能正確覆寫而不新增重複文件。
+        """
+        raw = f"{collection_name}::{file_stem}"
+        return hashlib.sha256(raw.encode()).hexdigest()[:24]
+
+    def document_exists(self, doc_id: str, collection_name: str = "examples") -> bool:
+        """檢查指定 ID 的文件是否已存在於集合中。"""
+        if not self._available:
+            return False
+        if collection_name == "regulations":
+            target_collection = self.regulations_collection
+        elif collection_name == "policies":
+            target_collection = self.policies_collection
+        else:
+            target_collection = self.examples_collection
+        try:
+            result = target_collection.get(ids=[doc_id], include=[])
+            return len(result.get("ids", [])) > 0
+        except Exception:
+            return False
+
+    def upsert_document(
+        self,
+        doc_id: str,
+        content: str,
+        metadata: dict[str, Any],
+        collection_name: str = "examples",
+        full_document: str | None = None,
+        chunk_index: int | None = None,
+        total_chunks: int | None = None,
+    ) -> str | None:
+        """以確定性 ID upsert 文件——冪等操作，可安全重複呼叫。
+
+        與 add_document 的差異：
+        - 使用呼叫方提供的 doc_id（應為 make_deterministic_id() 的輸出）
+        - 呼叫 ChromaDB upsert() 而非 add()，相同 ID 時更新而不重複寫入
+        """
+        if not self._available:
+            logger.warning("知識庫不可用，無法 upsert 文件。")
+            return None
+        if not content or not content.strip():
+            logger.warning("無法 upsert 空白內容的文件")
+            return None
+
+        if self.contextual_retrieval and full_document:
+            idx = chunk_index if chunk_index is not None else 0
+            total = total_chunks if total_chunks is not None else 1
+            content = self._enrich_with_context(content, full_document, idx, total)
+
+        embedding = self.llm_provider.embed(content)
+        if not embedding:
+            logger.warning("無法產生文件的嵌入向量: %s", metadata.get("title", "未知"))
+            return None
+
+        if collection_name == "regulations":
+            target_collection = self.regulations_collection
+        elif collection_name == "policies":
+            target_collection = self.policies_collection
+        else:
+            target_collection = self.examples_collection
+
+        try:
+            target_collection.upsert(
+                documents=[content],
+                embeddings=[embedding],
+                metadatas=[metadata],
+                ids=[doc_id],
+            )
+        except Exception as e:
+            logger.error("文件 upsert 知識庫失敗: %s", e)
+            return None
         self.invalidate_cache()
         return doc_id
 

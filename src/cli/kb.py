@@ -140,7 +140,9 @@ def ingest(
                     logger.warning("讀取完整文件 %s 失敗，使用片段 fallback：%s", file_path, exc)
                     full_doc_content = content  # fallback
 
-            doc_id = kb.add_document(
+            det_id = kb.make_deterministic_id(file_path.stem, collection)
+            doc_id = kb.upsert_document(
+                det_id,
                 content,
                 clean_metadata,
                 collection_name=collection,
@@ -160,7 +162,94 @@ def ingest(
             f"[bold red]警告：{failed_count} 筆文件因 embedding 產生失敗而未匯入。"
             "請確認 Embedding 服務已啟動（如 Ollama）。[/bold red]"
         )
-    console.print(f"[green]成功匯入 {success_count} 筆文件至 '{collection}'！[/green]")
+    console.print(f"[green]成功匯入（upsert）{success_count} 筆文件至 '{collection}'！[/green]")
+    stats = kb.get_stats()
+    console.print(f"目前資料庫統計：{stats}")
+
+
+@app.command()
+def sync(
+    source_dir: str = typer.Option("./kb_data/examples", help="要掃描的 Markdown 檔案目錄"),
+    collection: str = typer.Option("examples", "--collection", "-c", help="目標集合（examples/regulations/policies）"),
+) -> None:
+    """
+    增量同步知識庫——只匯入尚未索引的新檔案（冪等操作）。
+
+    與 ingest 的差異：
+    - ingest：全量 upsert（重新計算所有 embedding，適合強制刷新）
+    - sync：跳過已索引檔案，只處理新增檔案（快速，日常使用推薦）
+
+    範例：
+
+        gov-ai kb sync                          掃描預設範例目錄，補索引新檔
+
+        gov-ai kb sync --source-dir ./my_docs   掃描自訂目錄
+    """
+    kb = _init_kb()
+
+    source_path = Path(source_dir)
+    if not source_path.exists():
+        console.print(f"[red]找不到來源目錄：{source_dir}[/red]")
+        raise typer.Exit(1)
+
+    files = list(source_path.glob("*.md"))
+    console.print(f"掃描 {source_dir}：找到 {len(files)} 個 Markdown 檔案")
+
+    new_count = 0
+    skipped_count = 0
+    deprecated_count = 0
+    failed_count = 0
+
+    for file_idx, file_path in enumerate(files):
+        metadata, content = parse_markdown_with_metadata(file_path)
+
+        if metadata.get("deprecated"):
+            deprecated_count += 1
+            continue
+
+        if "title" not in metadata:
+            metadata["title"] = file_path.stem
+        if "doc_type" not in metadata:
+            metadata["doc_type"] = "unknown"
+
+        det_id = kb.make_deterministic_id(file_path.stem, collection)
+
+        # 已存在則跳過（sync 的核心邏輯）
+        if kb.document_exists(det_id, collection):
+            skipped_count += 1
+            continue
+
+        clean_metadata = _sanitize_metadata(metadata)
+        full_doc_content: str | None = None
+        if kb.contextual_retrieval:
+            try:
+                full_doc_content = file_path.read_text(encoding="utf-8")
+            except Exception as exc:
+                logger.warning("讀取完整文件 %s 失敗：%s", file_path, exc)
+                full_doc_content = content
+
+        doc_id = kb.upsert_document(
+            det_id,
+            content,
+            clean_metadata,
+            collection_name=collection,
+            full_document=full_doc_content,
+            chunk_index=file_idx,
+            total_chunks=len(files),
+        )
+        if doc_id:
+            new_count += 1
+            console.print(f"  [green]+[/green] {file_path.name}")
+        else:
+            failed_count += 1
+            console.print(f"  [red]✗[/red] {file_path.name} （embedding 失敗）")
+
+    console.print("")
+    console.print(f"[bold]同步完成：[/bold] {new_count} 新增 / {skipped_count} 已索引（略過）"
+                  + (f" / {deprecated_count} 已棄用" if deprecated_count else "")
+                  + (f" / [red]{failed_count} 失敗[/red]" if failed_count else ""))
+    if new_count == 0 and failed_count == 0:
+        console.print("[dim]知識庫已是最新狀態，無需更新。[/dim]")
     stats = kb.get_stats()
     console.print(f"目前資料庫統計：{stats}")
 
