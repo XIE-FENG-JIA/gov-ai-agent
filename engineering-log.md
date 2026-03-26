@@ -818,5 +818,17 @@
 **結果**: PASS — 2808 passed, 84 skipped, 0 failed（+2 新測試，零回歸）
 **下一步可能**:
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
-- `_find_available_font` 在 Linux 大型字體目錄下效能可優化（遞迴 iterdir）
+- ~~`_find_available_font` 在 Linux 大型字體目錄下效能可優化（遞迴 iterdir）~~ ✅ Round 49
 - 專案品質穩定，可開始規劃下一個里程碑
+
+### [2026-03-26] Round 49 — _find_available_font 子目錄快取優化
+**角度**: ⚡ 效能（字體搜尋 N×M 重複 iterdir 消除）
+**為什麼**: `_find_available_font()` 對每個 `candidate × stem × extension` 組合都呼叫 `font_dir.iterdir()` 遍歷子目錄。Linux 上 `/usr/share/fonts` 可能有上百個子目錄，worst case 做 72 次 iterdir()（4 candidates × 3 dirs × 2 stems × 3 exts），造成啟動延遲。
+**做了什麼**:
+- 新增 `_subdir_cache: dict[Path, list[Path]]`，每個 font_dir 只遍歷一次
+- iterdir() 呼叫次數從 O(candidates × stems × exts × dirs) 降至 O(dirs)
+- 加上 `try/except OSError` 防護目錄不可讀的情況
+**結果**: PASS — 15 字體相關測試全通過，144 核心測試全通過，零回歸
+**下一步可能**:
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+- 專案經過 49 輪打磨，品質穩定，可開始規劃下一個里程碑
