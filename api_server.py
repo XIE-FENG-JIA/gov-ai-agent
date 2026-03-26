@@ -226,9 +226,14 @@ def _cleanup_old_outputs() -> None:
     cutoff = _time.time() - 86400  # 24 hours
     count = 0
     for f in OUTPUT_DIR.glob("*.docx"):
-        if f.stat().st_mtime < cutoff:
-            f.unlink()
-            count += 1
+        try:
+            if f.stat().st_mtime < cutoff:
+                f.unlink()
+                count += 1
+        except OSError as exc:
+            # Windows 上檔案可能被其他程序鎖定（如 Word 開啟中），
+            # 跳過該檔案避免阻塞伺服器啟動
+            logger.debug("清理檔案 '%s' 失敗（可能被鎖定）: %s", f.name, exc)
     if count:
         logger.info("清理 %d 個超過 24 小時的輸出檔案", count)
 

@@ -763,3 +763,18 @@
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
 - agents.py 有一筆未提交的 scoring 重構（Round 40 遺留），需一併提交
 - 全 CLI 模組覆蓋率已達標，可轉向整合測試或功能開發
+
+### [2026-03-26] Round 45 — Windows 檔案鎖定防護（伺服器啟動崩潰修復）
+**角度**: 🐛 Bug（Windows 平台 PermissionError 導致伺服器無法啟動）
+**為什麼**: `_cleanup_old_outputs()` 在 lifespan 啟動時執行，若 output/ 中的 .docx 被 Word 等程序佔用，`f.stat()` 或 `f.unlink()` 拋出 `PermissionError` 會中斷整個初始化流程，導致 API 伺服器完全無法啟動。同類問題也存在於 3 個 CLI 命令。
+**做了什麼**:
+- `api_server.py`: `_cleanup_old_outputs` 每個檔案的 stat+unlink 包裹 try/except OSError，鎖定檔案跳過不阻塞
+- `src/cli/kb.py`: `kb_export` 空知識庫刪除空 zip 加 OSError 防護
+- `src/cli/profile_cmd.py`: `clear` 刪除設定檔加 OSError 防護+使用者提示
+- `src/cli/workflow_cmd.py`: `delete` 刪除範本加 OSError 防護+使用者提示
+- 新增 `TestCleanupOldOutputs` 5 個測試：正常刪除舊檔、保留新檔、鎖定檔案跳過、stat 失敗防護、目錄不存在
+**結果**: PASS — 2806 passed, 84 skipped, 0 failed（+5 新測試，零回歸）
+**下一步可能**:
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+- `_find_available_font` 在 Linux 大型字體目錄下效能可優化（遞迴 iterdir）
+- `src/cli/kb.py` 的 3 處 `stat()` 無 try/except 保護（P2，非致命）

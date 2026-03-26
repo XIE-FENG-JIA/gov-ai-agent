@@ -172,7 +172,11 @@ def delete(
         console.print(f"[red]錯誤：找不到範本 '{name}'。[/red]")
         raise typer.Exit(1)
 
-    os.remove(path)
+    try:
+        os.remove(path)
+    except OSError as exc:
+        console.print(f"[red]無法刪除範本（可能被其他程序佔用）: {exc}[/red]")
+        raise typer.Exit(1)
     console.print(f"[green]範本 '{name}' 已刪除。[/green]")
 
 

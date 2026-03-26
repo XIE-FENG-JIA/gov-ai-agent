@@ -3601,3 +3601,87 @@ class TestResolveBindHost:
         """自訂 IP + 認證關閉 → 強制 127.0.0.1"""
         from api_server import resolve_bind_host
         assert resolve_bind_host("192.168.1.100", auth_enabled=False, api_keys=[]) == "127.0.0.1"
+
+
+class TestCleanupOldOutputs:
+    """_cleanup_old_outputs 的 Windows 檔案鎖定防護測試。"""
+
+    def test_cleanup_deletes_old_files(self, tmp_path):
+        """超過 24 小時的 .docx 應被刪除。"""
+        import time
+        old_file = tmp_path / "old.docx"
+        old_file.write_text("test")
+        old_mtime = time.time() - 90000
+        import os
+        os.utime(old_file, (old_mtime, old_mtime))
+
+        with patch("src.core.constants.OUTPUT_DIR", tmp_path):
+            from api_server import _cleanup_old_outputs
+            _cleanup_old_outputs()
+
+        assert not old_file.exists()
+
+    def test_cleanup_keeps_recent_files(self, tmp_path):
+        """未超過 24 小時的 .docx 不應被刪除。"""
+        recent_file = tmp_path / "recent.docx"
+        recent_file.write_text("test")
+
+        with patch("src.core.constants.OUTPUT_DIR", tmp_path):
+            from api_server import _cleanup_old_outputs
+            _cleanup_old_outputs()
+
+        assert recent_file.exists()
+
+    def test_cleanup_handles_locked_file(self, tmp_path):
+        """被鎖定的檔案（PermissionError）應被跳過，不影響其他檔案。"""
+        import time
+        old_mtime = time.time() - 90000
+
+        locked = tmp_path / "locked.docx"
+        locked.write_text("locked")
+        import os
+        os.utime(locked, (old_mtime, old_mtime))
+
+        deletable = tmp_path / "deletable.docx"
+        deletable.write_text("deletable")
+        os.utime(deletable, (old_mtime, old_mtime))
+
+        original_unlink = type(locked).unlink
+
+        def mock_unlink(self_path, *args, **kwargs):
+            if self_path.name == "locked.docx":
+                raise PermissionError("file is locked")
+            return original_unlink(self_path, *args, **kwargs)
+
+        with patch("src.core.constants.OUTPUT_DIR", tmp_path), \
+             patch.object(type(locked), "unlink", mock_unlink):
+            from api_server import _cleanup_old_outputs
+            _cleanup_old_outputs()
+
+        assert locked.exists()
+        assert not deletable.exists()
+
+    def test_cleanup_handles_stat_error(self, tmp_path):
+        """stat() 失敗（如檔案在 glob 後被刪除）應被跳過。"""
+        old_file = tmp_path / "vanished.docx"
+        old_file.write_text("test")
+
+        original_stat = type(old_file).stat
+
+        def mock_stat(self_path, *args, **kwargs):
+            if self_path.name == "vanished.docx":
+                raise OSError("file vanished")
+            return original_stat(self_path, *args, **kwargs)
+
+        with patch("src.core.constants.OUTPUT_DIR", tmp_path), \
+             patch.object(type(old_file), "stat", mock_stat):
+            from api_server import _cleanup_old_outputs
+            _cleanup_old_outputs()  # 不應拋出例外
+
+    def test_cleanup_nonexistent_dir(self):
+        """輸出目錄不存在時應安靜返回。"""
+        from pathlib import Path
+        fake_dir = Path("/nonexistent_dir_test_12345")
+        with patch("src.core.constants.OUTPUT_DIR", fake_dir):
+            from api_server import _cleanup_old_outputs
+            _cleanup_old_outputs()  # 不應拋出例外

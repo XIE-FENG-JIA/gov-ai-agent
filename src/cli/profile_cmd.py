@@ -70,5 +70,9 @@ def profile_set(
 def clear() -> None:
     """清除個人設定檔。"""
     if os.path.isfile(_PROFILE_FILE):
-        os.remove(_PROFILE_FILE)
+        try:
+            os.remove(_PROFILE_FILE)
+        except OSError as exc:
+            console.print(f"[red]無法刪除設定檔（可能被其他程序佔用）: {exc}[/red]")
+            return
     console.print("[green]個人資料已清除[/green]")

@@ -1112,7 +1112,10 @@ def kb_export(
 
     if file_count == 0:
         console.print("[yellow]知識庫為空，無資料可匯出。[/yellow]")
-        os.remove(output)
+        try:
+            os.remove(output)
+        except OSError:
+            pass
         return
 
     zip_size = os.path.getsize(output)
