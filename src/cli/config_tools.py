@@ -10,6 +10,7 @@ from rich.table import Table
 from rich.prompt import Confirm, Prompt
 from src.core.config import ConfigManager
 from src.core.llm import LiteLLMProvider
+from src.cli.utils import atomic_yaml_write
 
 logger = logging.getLogger(__name__)
 
@@ -289,8 +290,7 @@ def fetch_models(
 
             raw_config["providers"]["openrouter"]["model"] = best_working_model
 
-            with open(cm.config_path, 'w', encoding='utf-8') as f:
-                yaml.dump(raw_config, f, default_flow_style=False, allow_unicode=True)
+            atomic_yaml_write(str(cm.config_path), raw_config)
 
             console.print("[green]設定檔更新成功！[/green]")
 
@@ -390,8 +390,7 @@ def init() -> None:
         "organizational_memory": {"enabled": True, "storage_path": f"{kb_path}/agency_preferences.json"},
     }
 
-    with open(config_path, "w", encoding="utf-8") as f:
-        yaml.dump(config_data, f, default_flow_style=False, allow_unicode=True)
+    atomic_yaml_write(str(config_path), config_data)
 
     console.print(f"\n[bold green]✓ 設定檔已建立：{config_path}[/bold green]")
     console.print("\n[bold]下一步：[/bold]")
@@ -462,8 +461,7 @@ def set_value(
         node = node[k]
     node[keys[-1]] = parsed_value
 
-    with open(cm.config_path, "w", encoding="utf-8") as f:
-        yaml.dump(raw_config, f, default_flow_style=False, allow_unicode=True)
+    atomic_yaml_write(str(cm.config_path), raw_config)
 
     console.print(f"[cyan]{key}[/cyan]: [red]{old_value}[/red] → [green]{parsed_value}[/green]")
 

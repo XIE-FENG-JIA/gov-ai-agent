@@ -4,6 +4,19 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 32 — config_tools YAML 寫入改用原子操作
+**角度**: 🐛 Bug（設定檔寫入中途崩潰會導致 config.yaml 永久損毀）
+**為什麼**: Round 31 修復了 JSON 狀態檔的原子寫入，但 `config_tools.py` 仍有 3 處裸 `open("w") + yaml.dump()` 寫入 config.yaml（:293, :394, :466）。config.yaml 是系統核心設定命脈，損毀後 LLM provider、API 認證、知識庫路徑全部遺失。另外 `switcher.py` 手動複製了 15 行原子寫入邏輯，違反 DRY。
+**做了什麼**:
+- `src/cli/utils.py`: 新增 `atomic_yaml_write()` 共用函式，與 `atomic_json_write()` 使用相同的 tempfile + os.replace 策略
+- `config_tools.py`: 3 處裸寫入全部改用 `atomic_yaml_write()`
+- `switcher.py`: 去除 15 行重複的手動原子寫入邏輯，改用共用函式（-15 行）
+- 新增 `TestAtomicYamlWrite`（6 個測試）覆蓋：正常寫入、Unicode 保留、暫存檔清理、失敗時原始檔保留、失敗時暫存檔清理、目錄自動建立
+**結果**: PASS — 3024 passed, 84 skipped, 0 failed（+6 新測試，零回歸）
+**下一步可能**:
+- `batch_tools.py:189` 的報告匯出也可改為原子寫入（長時間批次處理中崩潰的風險）
+- `knowledge/fetchers/base.py:162` 的 YAML frontmatter 寫入（影響較低，寫入的是中間產物）
+
 ### [2026-03-27] Round 31 — CLI 狀態檔原子寫入防損毀
 **角度**: 🐛 Bug（狀態檔寫入中途崩潰會導致資料永久損毀）
 **為什麼**: `config.py` 和 `org_memory.py` 已實作 tempfile + os.replace 原子寫入策略，但 CLI 層的 tags、pins、profile settings、workflow 定義、歷史記錄重命名仍使用裸 `open("w") + json.dump`。進程中途崩潰（OOM、斷電、Ctrl+C）會產生半寫入的 JSON 檔，下次讀取時 `json.load` 直接 decode 失敗，使用者資料不可逆地遺失。

@@ -5,6 +5,7 @@ from rich.prompt import Prompt
 from src.core.config import ConfigManager
 from src.core.constants import CONNECTIVITY_CHECK_TIMEOUT
 from src.core.llm import LiteLLMProvider, get_llm_factory
+from src.cli.utils import atomic_yaml_write
 
 console = Console()
 app = typer.Typer()
@@ -83,23 +84,7 @@ def switch(
         raw_config["llm"]["base_url"] = ""
 
     # 儲存設定（原子寫入：先寫暫存檔再 rename，防止中途崩潰損毀設定檔）
-    import tempfile
-    import os
-    fd, tmp_path = tempfile.mkstemp(
-        dir=str(cm.config_path.parent),
-        suffix=".tmp",
-        prefix=".config_",
-    )
-    try:
-        with os.fdopen(fd, 'w', encoding='utf-8') as f:
-            yaml.dump(raw_config, f, default_flow_style=False, allow_unicode=True)
-        os.replace(tmp_path, str(cm.config_path))
-    except BaseException:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
+    atomic_yaml_write(str(cm.config_path), raw_config)
 
     console.print(f"\n[bold green]已成功切換至：{selected_provider}[/bold green]")
     console.print(f"模型：{raw_config['llm'].get('model', '預設')}")

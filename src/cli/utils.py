@@ -1,6 +1,6 @@
 """CLI 共用工具函數。
 
-消除跨模組重複的 JSON 讀寫與檔案處理邏輯。
+消除跨模組重複的 JSON / YAML 讀寫與檔案處理邏輯。
 """
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import os
 import tempfile
 from typing import Any
 
+import yaml
 from rich.console import Console
 
 console = Console()
@@ -25,6 +26,26 @@ def atomic_json_write(path: str, data: Any) -> None:
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
+def atomic_yaml_write(path: str, data: Any) -> None:
+    """原子寫入 YAML 檔案（先寫暫存檔再 rename，防止中途崩潰損毀）。
+
+    與 atomic_json_write 使用相同的 tempfile + os.replace 策略。
+    """
+    parent = os.path.dirname(path) or "."
+    os.makedirs(parent, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(dir=parent, suffix=".tmp", prefix=".yaml_")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
         os.replace(tmp_path, path)
     except BaseException:
         try:

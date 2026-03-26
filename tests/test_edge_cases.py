@@ -12,6 +12,7 @@ import tempfile
 from unittest.mock import MagicMock, patch
 
 import pytest
+import yaml
 from pydantic import ValidationError
 
 from src.agents.requirement import RequirementAgent
@@ -956,3 +957,71 @@ class TestAtomicJsonWrite:
         store.save([{"id": 1}])
         result = store.load()
         assert result == [{"id": 1}]
+
+
+class TestAtomicYamlWrite:
+    """驗證 atomic_yaml_write 的原子性與容錯行為。"""
+
+    def test_basic_write_and_read(self, tmp_path):
+        """正常寫入後讀回應取得相同 YAML 資料。"""
+        from src.cli.utils import atomic_yaml_write
+        target = str(tmp_path / "test.yaml")
+        data = {"llm": {"provider": "ollama", "model": "mistral"}, "api": {"auth_enabled": True}}
+        atomic_yaml_write(target, data)
+        with open(target, "r", encoding="utf-8") as f:
+            result = yaml.safe_load(f)
+        assert result == data
+
+    def test_unicode_preserved(self, tmp_path):
+        """YAML 寫入應保留 Unicode（繁體中文）。"""
+        from src.cli.utils import atomic_yaml_write
+        target = str(tmp_path / "unicode.yaml")
+        data = {"description": "公文管理系統", "items": ["環保", "教育"]}
+        atomic_yaml_write(target, data)
+        with open(target, "r", encoding="utf-8") as f:
+            result = yaml.safe_load(f)
+        assert result == data
+        raw = open(target, "r", encoding="utf-8").read()
+        assert "公文管理系統" in raw  # allow_unicode=True 生效
+
+    def test_no_temp_file_left_on_success(self, tmp_path):
+        """成功寫入後不應殘留暫存檔。"""
+        from src.cli.utils import atomic_yaml_write
+        target = str(tmp_path / "clean.yaml")
+        atomic_yaml_write(target, {"key": "val"})
+        leftover = [f for f in os.listdir(tmp_path) if f.endswith(".tmp")]
+        assert leftover == []
+
+    def test_original_preserved_on_failure(self, tmp_path):
+        """寫入失敗時原始 YAML 檔案應保持不變。"""
+        from src.cli.utils import atomic_yaml_write
+        target = str(tmp_path / "preserve.yaml")
+        original = {"original": True}
+        atomic_yaml_write(target, original)
+
+        # 模擬 os.replace 失敗（如磁碟滿或權限問題）
+        with patch("src.cli.utils.os.replace", side_effect=OSError("disk full")):
+            with pytest.raises(OSError):
+                atomic_yaml_write(target, {"new": "data"})
+
+        with open(target, "r", encoding="utf-8") as f:
+            result = yaml.safe_load(f)
+        assert result == original
+
+    def test_no_temp_file_left_on_failure(self, tmp_path):
+        """寫入失敗後不應殘留暫存檔。"""
+        from src.cli.utils import atomic_yaml_write
+        target = str(tmp_path / "fail.yaml")
+        with patch("src.cli.utils.os.replace", side_effect=OSError("disk full")):
+            with pytest.raises(OSError):
+                atomic_yaml_write(target, {"data": 1})
+        leftover = [f for f in os.listdir(tmp_path) if f.endswith(".tmp")]
+        assert leftover == []
+
+    def test_creates_parent_dirs(self, tmp_path):
+        """目標目錄不存在時應自動建立。"""
+        from src.cli.utils import atomic_yaml_write
+        target = str(tmp_path / "sub" / "dir" / "data.yaml")
+        atomic_yaml_write(target, {"nested": True})
+        with open(target, "r", encoding="utf-8") as f:
+            assert yaml.safe_load(f) == {"nested": True}
