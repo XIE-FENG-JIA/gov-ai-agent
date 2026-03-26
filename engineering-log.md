@@ -1041,6 +1041,20 @@
 - `_execute_document_workflow()`：移除 `agency` 參數、docstring，簡化 `resolved_agency` 為直接使用 `requirement.sender`
 **結果**: PASS — 2975 passed, 84 skipped, 0 failed（零回歸）
 **下一步可能**:
-- `manager.py` 的 BM25 全量文件拉取快取（Round 62 提到的瓶頸，已有草稿在 stash）
+- ~~`manager.py` 的 BM25 全量文件拉取快取（Round 62 提到的瓶頸，已有草稿在 stash）~~ ✅ Round 66 已完成
+- MISSION.md 功能缺口：公文範本庫擴充、法規自動更新
+- 下一個里程碑：從品質打磨轉向功能開發
+
+### [2026-03-26] Round 66 — BM25/keyword 文件拉取共用方法 + TTL 快取
+**角度**: ⚡ 效能 + 🏗️ 架構（重複邏輯消除 + 快取）
+**為什麼**: `_bm25_search()` 和 `search_keyword()` 各自從 ChromaDB 拉取全量文件（`coll.get(limit=500)`），完全相同的邏輯重複兩次。一次 hybrid 搜尋連續呼叫兩者，同批文件被拉取兩次。Round 62 已標記此瓶頸。
+**做了什麼**:
+- 提取 `_fetch_filtered_docs()` 共用方法，帶 TTL 1 分鐘 / maxsize 32 的快取
+- `_bm25_search()` 和 `search_keyword()` 改用共用方法，消除 ~35 行重複程式碼
+- `invalidate_cache()` 同步清除文件集合快取
+- 新增 7 個測試覆蓋：快取命中、不同篩選分離快取、metadata 過濾、空集合、異常處理、invalidate
+- 3 個測試檔 fixture 補齊 `_doc_cache` 屬性
+**結果**: PASS — 2982 passed, 84 skipped, 0 failed（+7 新測試，零回歸）
+**下一步可能**:
 - MISSION.md 功能缺口：公文範本庫擴充、法規自動更新
 - 下一個里程碑：從品質打磨轉向功能開發
