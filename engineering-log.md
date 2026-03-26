@@ -582,3 +582,19 @@
 - generate.py 剩餘 84 行：`_read_interactive_input`（TTY 依賴）、`_export_document` 簡體中文偵測、`_run_core_pipeline` save_versions
 - `cli/config_tools.py`（82%，52 行未覆蓋）
 - MISSION.md 功能缺口：審查意見具體修改建議
+
+### [2026-03-26] Round 38 — auth 關閉時強制 localhost 綁定（安全漏洞修復）
+**角度**: 🔒 安全（未認證 API 對外暴露防護）
+**為什麼**: `api_server.py` 的 `__main__` 啟動邏輯中，`auth_enabled=false` 且綁定非 localhost 時只打 warning 不攔截。這意味著使用者可能意外將無認證的 API 服務暴露在外網，任何人都能呼叫公文生成、審查等敏感端點。
+**做了什麼**:
+- 從 `__main__` 中提取 `resolve_bind_host()` 函式，封裝安全綁定邏輯（可測試、可複用）
+- auth 關閉 + 非 localhost 綁定 → 預設強制回退到 127.0.0.1
+- 新增 `ALLOW_INSECURE_BIND=true` 環境變數作為明確逃生門（需使用者有意識地設定）
+- 新增 `TestResolveBindHost`（8 個測試案例）覆蓋全部分支
+**結果**: PASS
+- 2720 passed, 84 skipped, 0 failed（+8 新測試，零回歸）
+- 安全漏洞：auth 關閉時未認證 API 對外暴露 → **已修復**
+**下一步可能**:
+- `cli/config_tools.py`（82%，52 行未覆蓋）
+- `cli/workflow_cmd.py`（79%，40 行未覆蓋）— 最低覆蓋 CLI 模組
+- MISSION.md 功能缺口：審查意見具體修改建議

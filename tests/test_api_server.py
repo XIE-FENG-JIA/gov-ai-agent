@@ -3498,3 +3498,60 @@ class TestSSRFProtection:
         for host in ("http://localhost:8000", "http://127.0.0.1:8000", "http://[::1]:8000"):
             parsed = urlparse(host)
             assert parsed.hostname in ("localhost", "127.0.0.1", "0.0.0.0", "::1")
+
+
+# ============================================================
+# resolve_bind_host 安全綁定測試
+# ============================================================
+
+class TestResolveBindHost:
+    """測試 api_server.resolve_bind_host() 安全邏輯。"""
+
+    def test_localhost_always_passes(self):
+        """127.0.0.1 不論認證設定如何都應直接通過"""
+        from api_server import resolve_bind_host
+        assert resolve_bind_host("127.0.0.1", auth_enabled=False, api_keys=[]) == "127.0.0.1"
+        assert resolve_bind_host("127.0.0.1", auth_enabled=True, api_keys=[]) == "127.0.0.1"
+
+    def test_auth_enabled_with_keys_allows_external(self):
+        """認證啟用且有 key 時允許外部綁定"""
+        from api_server import resolve_bind_host
+        assert resolve_bind_host("0.0.0.0", auth_enabled=True, api_keys=["secret"]) == "0.0.0.0"
+
+    def test_auth_enabled_no_keys_forces_localhost(self):
+        """認證啟用但無 key 時強制 127.0.0.1"""
+        from api_server import resolve_bind_host
+        assert resolve_bind_host("0.0.0.0", auth_enabled=True, api_keys=[]) == "127.0.0.1"
+
+    def test_auth_disabled_external_forces_localhost(self):
+        """認證關閉 + 非 localhost 綁定 → 強制 127.0.0.1"""
+        from api_server import resolve_bind_host
+        assert resolve_bind_host("0.0.0.0", auth_enabled=False, api_keys=[]) == "127.0.0.1"
+
+    def test_auth_disabled_external_with_insecure_flag(self):
+        """認證關閉 + ALLOW_INSECURE_BIND=true → 允許外部綁定"""
+        from api_server import resolve_bind_host
+        result = resolve_bind_host(
+            "0.0.0.0", auth_enabled=False, api_keys=[],
+            allow_insecure_bind=True,
+        )
+        assert result == "0.0.0.0"
+
+    def test_auth_disabled_external_insecure_flag_false(self):
+        """認證關閉 + allow_insecure_bind=False → 強制 127.0.0.1"""
+        from api_server import resolve_bind_host
+        result = resolve_bind_host(
+            "0.0.0.0", auth_enabled=False, api_keys=[],
+            allow_insecure_bind=False,
+        )
+        assert result == "127.0.0.1"
+
+    def test_custom_host_with_valid_auth(self):
+        """自訂 IP + 有效認證 → 維持原 host"""
+        from api_server import resolve_bind_host
+        assert resolve_bind_host("192.168.1.100", auth_enabled=True, api_keys=["k1"]) == "192.168.1.100"
+
+    def test_custom_host_auth_disabled_blocked(self):
+        """自訂 IP + 認證關閉 → 強制 127.0.0.1"""
+        from api_server import resolve_bind_host
+        assert resolve_bind_host("192.168.1.100", auth_enabled=False, api_keys=[]) == "127.0.0.1"

@@ -337,6 +337,67 @@ app.include_router(knowledge.router)
 
 
 # ============================================================
+# 啟動安全檢查
+# ============================================================
+
+def resolve_bind_host(
+    host: str,
+    auth_enabled: bool,
+    api_keys: list[str],
+    *,
+    allow_insecure_bind: bool = False,
+) -> str:
+    """根據認證設定決定安全的綁定地址。
+
+    規則：
+    1. auth 啟用但無 key → 強制 127.0.0.1（防止未認證外部存取）
+    2. auth 關閉 + 非 localhost → 需 allow_insecure_bind=True 明確允許，
+       否則強制 127.0.0.1
+    3. 其他情況 → 維持原 host
+
+    Args:
+        host: 使用者指定的綁定地址
+        auth_enabled: 是否啟用 API 認證
+        api_keys: 已設定的 API key 列表
+        allow_insecure_bind: 是否明確允許無認證對外綁定
+
+    Returns:
+        安全的綁定地址
+    """
+    if host == "127.0.0.1":
+        return host
+
+    if auth_enabled and not api_keys:
+        logger.warning(
+            "SECURITY: API 認證已啟用但未設定任何 api_keys，"
+            "強制將綁定地址從 %s 改為 127.0.0.1 以防止外部存取。"
+            "請在 config.yaml 的 api.api_keys 中設定至少一組 key 後再開放外部連線。",
+            host,
+        )
+        return "127.0.0.1"
+
+    if not auth_enabled:
+        if allow_insecure_bind:
+            logger.warning(
+                "SECURITY: API 認證已停用且綁定地址為 %s，"
+                "已透過 ALLOW_INSECURE_BIND=true 明確允許。"
+                "所有端點將對外暴露且無需認證——請確保網路層有其他防護。",
+                host,
+            )
+            return host
+        else:
+            logger.warning(
+                "SECURITY: API 認證已停用 (auth_enabled=false) 且綁定地址為 %s，"
+                "強制將綁定地址改為 127.0.0.1 以防止未認證的外部存取。"
+                "如需對外開放無認證服務，請設定環境變數 ALLOW_INSECURE_BIND=true。",
+                host,
+            )
+            return "127.0.0.1"
+
+    return host
+
+
+# ============================================================
 # Main
 # ============================================================
 
@@ -396,10 +457,6 @@ class _BackwardCompatModule(types.ModuleType):
 sys.modules[__name__] = _BackwardCompatModule(sys.modules[__name__])
 
 
-# ============================================================
-# Main
-# ============================================================
-
 if __name__ == "__main__":
     import uvicorn
 
@@ -408,27 +465,15 @@ if __name__ == "__main__":
     _workers = int(os.environ.get("API_WORKERS", "1"))
     _log_level = os.environ.get("LOG_LEVEL", "info").lower()
 
-    # 安全檢查：無 API key 時強制限制為 localhost
     _startup_config = get_config()
     _startup_api = _startup_config.get("api", {})
-    _startup_auth = _startup_api.get("auth_enabled", True)
-    _startup_keys = _startup_api.get("api_keys", [])
 
-    if _startup_auth and not _startup_keys and _host != "127.0.0.1":
-        logger.warning(
-            "SECURITY: API 認證已啟用但未設定任何 api_keys，"
-            "強制將綁定地址從 %s 改為 127.0.0.1 以防止外部存取。"
-            "請在 config.yaml 的 api.api_keys 中設定至少一組 key 後再開放外部連線。",
-            _host,
-        )
-        _host = "127.0.0.1"
-
-    if not _startup_auth and _host != "127.0.0.1":
-        logger.warning(
-            "SECURITY: API 認證已停用 (auth_enabled=false) 且綁定地址為 %s，"
-            "所有端點將對外暴露且無需認證。生產環境請務必啟用認證。",
-            _host,
-        )
+    _host = resolve_bind_host(
+        _host,
+        auth_enabled=_startup_api.get("auth_enabled", True),
+        api_keys=_startup_api.get("api_keys", []),
+        allow_insecure_bind=os.environ.get("ALLOW_INSECURE_BIND", "").lower() == "true",
+    )
 
     uvicorn.run(
         "api_server:app",
