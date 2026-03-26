@@ -1584,3 +1584,22 @@
 **下一步可能**:
 - `呈`/`咨` 範本補齊（目前各 3 筆，其他類型通常 10+ 筆）
 - 知識庫正式更新：執行 `kb ingest` 重新索引使 Round 73 新範本生效
+
+### [2026-03-27] Round 77 — 可靠性 + 呈/咨範本補齊（RAG 上下文密度提升）
+**角度**: 🏗️ 架構可靠性 + ✨ 知識庫品質
+**為什麼**: 雙線並行——(1) `review --apply` 使用裸 `open()` 寫入，程序中途崩潰會產生損毀草稿，`atomic_text_write` 已在 utils 模組中存在但從未被呼叫，這是明確的介面缺口；(2) `呈`/`咨` 各只有 3 筆範本（`han` 有 45 筆，差距 15x），RAG 在使用者請求這兩類文件時幾乎無上下文可參考，直接影響草稿品質。
+**搜尋**: `atomic_text_write` 採用 tempfile + os.replace 策略（標準 POSIX 原子寫入慣例，Python stdlib 支援，無額外依賴）；`呈` 適用情境為向上級呈報，`咨` 適用於平行憲政機關橫向溝通（總統府↔立法院/監察院/考試院/司法院）。
+**做了什麼**:
+- `review_cmd.py` 改用 `atomic_text_write`（取代裸 `open()`），防止 --apply 產生損毀草稿
+- 新增測試 `test_apply_uses_atomic_write` 驗證呼叫路徑正確（22 個 review 測試全通過）
+- `chen_04_emergency_report.md`：颱風緊急應變呈報（最速件情境）
+- `chen_05_audit_response.md`：審計部決算審核報告處理情形呈報
+- `chen_06_policy_initiative.md`：國家 AI 發展策略計畫核定呈報
+- `zi_04_supervisory_yuan.md`：咨復監察院公務員懲戒調查意見
+- `zi_05_examination_yuan.md`：咨復考試院考試制度改革建議
+- `zi_06_judicial_yuan.md`：咨復司法院司法改革後續推動事項
+**結果**: PASS — `呈`/`咨` 各 3→6 筆（+100%）；kb_data/examples 共 156 筆；22 個 review 測試全通過
+**下一步可能**:
+- 知識庫正式更新：執行 `kb ingest` 重新索引使新範本生效
+- `公` 類文件範本補充（公告目前 18 筆，但公示、公開資訊類型多元，可再擴充）
+- WebSearch 搜尋台灣最新公文格式規範，確認現有範本符合最新行政院公文處理手冊規定
