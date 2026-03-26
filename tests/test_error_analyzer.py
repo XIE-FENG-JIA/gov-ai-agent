@@ -143,7 +143,7 @@ class TestDiagnoseEdgeCases:
         assert result["error_type"] == "KB_ERROR"
 
     def test_connection_subclass_not_matched(self):
-        """diagnose 使用 `is` 精確比對，自訂子類別不會匹配 ConnectionError。"""
+        """diagnose 使用 `in` 精確比對，自訂子類別不會匹配 ConnectionError。"""
 
         class CustomConnectionError(ConnectionError):
             pass
@@ -152,3 +152,31 @@ class TestDiagnoseEdgeCases:
         # `type(exc) in (ConnectionError, ...)` 用 `in` 不用 isinstance
         # 所以自訂子類別不匹配 → 走 UNKNOWN
         assert result["error_type"] == "UNKNOWN"
+
+    # --- LLM 自訂例外分支 ---
+
+    def test_llm_timeout_error(self):
+        """LLMTimeoutError 應正確診斷為 LLM_CONNECTION 逾時。"""
+        from src.core.llm import LLMTimeoutError
+        result = ErrorAnalyzer.diagnose(LLMTimeoutError("LLM 生成超時 (120s)"))
+        assert result["error_type"] == "LLM_CONNECTION"
+        assert "逾時" in result["root_cause"]
+
+    def test_llm_connection_error(self):
+        """LLMConnectionError 應正確診斷為 LLM_CONNECTION。"""
+        from src.core.llm import LLMConnectionError
+        result = ErrorAnalyzer.diagnose(LLMConnectionError("connection refused"))
+        assert result["error_type"] == "LLM_CONNECTION"
+
+    def test_llm_auth_error(self):
+        """LLMAuthError 應正確診斷為 LLM_AUTH。"""
+        from src.core.llm import LLMAuthError
+        result = ErrorAnalyzer.diagnose(LLMAuthError("invalid key"))
+        assert result["error_type"] == "LLM_AUTH"
+        assert "API Key" in result["root_cause"]
+
+    def test_llm_generic_error(self):
+        """LLMError 基礎類別應診斷為 LLM_ERROR。"""
+        from src.core.llm import LLMError
+        result = ErrorAnalyzer.diagnose(LLMError("unknown LLM error"))
+        assert result["error_type"] == "LLM_ERROR"

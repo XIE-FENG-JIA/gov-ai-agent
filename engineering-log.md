@@ -4,6 +4,18 @@
 
 ## 改善紀錄
 
+### [2026-03-26] Round 30 — ErrorAnalyzer 補齊 LLM 自訂例外診斷分支
+**角度**: 🐛 Bug（LLM 例外類型未被 ErrorAnalyzer 識別，診斷結果錯誤）
+**為什麼**: `ErrorAnalyzer.diagnose()` 只處理 Python 內建的 `TimeoutError` 和 `ConnectionError`，但 LLM 模組拋出的是自訂的 `LLMTimeoutError(LLMError)`、`LLMConnectionError(LLMError)`、`LLMAuthError(LLMError)`。這些都落入 "UNKNOWN" 分支，CLI 使用者看到的診斷建議是「請執行 gov-ai doctor」而不是具體的超時/連線/認證問題說明。
+**做了什麼**:
+- 新增 4 個 `isinstance` 分支：LLMTimeoutError、LLMConnectionError、LLMAuthError、LLMError（通用 fallback）
+- 放在 Python 內建類型前面優先匹配，用 `isinstance` 而非 `is` 確保子類也能正確匹配
+- 新增 4 個測試覆蓋所有新分支
+**結果**: PASS — 3012 passed, 84 skipped, 0 failed（+4 新測試，零回歸）
+**下一步可能**:
+- ErrorAnalyzer 的 Python 內建類型分支也改用 isinstance
+- CLI generate.py 的錯誤處理可進一步利用 ErrorAnalyzer 的結構化結果
+
 ### [2026-03-26] Round 29 — _ERROR_REGISTRY 結構完整性防護測試
 **角度**: 🧪 測試（防禦性測試覆蓋新架構的不變式）
 **為什麼**: Round 28 建立了 `_ERROR_REGISTRY` 單一真相來源，但沒有測試驗證其結構不變式（非空 code/message、UPPER_SNAKE_CASE 格式）。未來有人加新條目時可能寫錯格式，需要自動化防護。
