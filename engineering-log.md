@@ -474,3 +474,17 @@
 - `cli/doctor.py`（67%）、`cli/quickstart.py`（67%）可補測試
 - conftest 加 `mock_kb` 為 session-scope fixture
 - 整體覆蓋率已穩定在 88%+，可考慮門檻提升至 87%
+
+### [2026-03-26] Round 33 — doctor.py 67%→92% + quickstart.py 67%→100%
+**角度**: 🧪 測試（使用者入口指令覆蓋率盲區）
+**為什麼**: `doctor` 和 `quickstart` 是使用者首次接觸系統的診斷入口，67% 覆蓋率意味著 LLM 連線失敗、KB 初始化例外、套件缺失等關鍵降級路徑無測試保護。
+**做了什麼**: 新增 11 個測試案例（+5 quickstart, +6 doctor）：
+- quickstart: LLM 連線失敗+修復提示、非 LiteLLMProvider 分支、LLM 初始化例外、KB 無範例提示、KB 初始化例外
+- doctor: 全通過路徑、無 config、KB 目錄缺失 △ 分支、config 解析例外降級、套件缺失 ✗ 分支、完整執行驗證
+**結果**: PASS — 2646 passed, 84 skipped, 0 failed（+11 新測試，零回歸）
+- quickstart.py: 67% → **100%**（+33pp）
+- doctor.py: 67% → **92%**（+25pp，剩 Python<3.10 分支 + docx import fallback 共 5 行）
+**下一步可能**:
+- 所有核心模組覆蓋率 ≥ 90%，考慮提升 CI 門檻至 87%
+- conftest 加 `mock_kb` 為 session-scope fixture
+- 功能層面：考慮 Web UI 的批次處理頁面實作（目前只有空殼模板）
