@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 from src.core.llm import (
     MockLLMProvider, LiteLLMProvider, get_llm_factory,
-    LLMError, LLMConnectionError, LLMAuthError,
+    LLMError, LLMConnectionError, LLMAuthError, LLMTimeoutError,
 )
 
 
@@ -170,6 +170,22 @@ class TestLiteLLMProviderMethods:
 
         provider = LiteLLMProvider({"provider": "gemini", "api_key": "bad-key"})
         with pytest.raises(LLMAuthError):
+            provider.generate("測試")
+
+    @patch("src.core.llm.litellm")
+    def test_generate_timeout_raises_llm_timeout_error(self, mock_litellm):
+        """測試超時時拋出 LLMTimeoutError（而非泛用 LLMError）"""
+        mock_litellm.completion.side_effect = TimeoutError("Request timed out")
+        provider = LiteLLMProvider({"provider": "ollama", "model": "mistral"})
+        with pytest.raises(LLMTimeoutError):
+            provider.generate("測試")
+
+    @patch("src.core.llm.litellm")
+    def test_generate_timeout_string_match(self, mock_litellm):
+        """測試 error message 含 'timed out' 也觸發 LLMTimeoutError"""
+        mock_litellm.completion.side_effect = Exception("HTTPReadTimeout: timed out after 180s")
+        provider = LiteLLMProvider({"provider": "gemini", "api_key": "key"})
+        with pytest.raises(LLMTimeoutError):
             provider.generate("測試")
 
     @patch("src.core.llm.litellm")

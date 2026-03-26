@@ -26,6 +26,11 @@ class LLMAuthError(LLMError):
     """API Key 無效或認證失敗。"""
     pass
 
+
+class LLMTimeoutError(LLMError):
+    """LLM 生成超時。"""
+    pass
+
 # 抑制 LiteLLM 的冗長錯誤訊息，只在真正需要除錯時開啟
 litellm.suppress_debug_info = True
 litellm.set_verbose = False
@@ -173,6 +178,9 @@ class LiteLLMProvider(LLMProvider):
             if "AuthenticationError" in error_msg or "401" in error_msg or "Invalid API Key" in error_msg:
                 logger.error("API Key 無效或已過期，請檢查設定檔中的 api_key。")
                 raise LLMAuthError("API Key 無效，請檢查設定檔。") from e
+            if isinstance(e, (TimeoutError,)) or "Timeout" in type(e).__name__ or "timed out" in error_msg.lower():
+                logger.error("LLM 生成超時 (%ds)，請確認模型回應速度或調大 LLM_GENERATION_TIMEOUT。", LLM_GENERATION_TIMEOUT)
+                raise LLMTimeoutError(f"LLM 生成超時 ({LLM_GENERATION_TIMEOUT}s)") from e
             logger.error("LLM 生成失敗: %s", e)
             raise LLMError(f"LLM 生成失敗 — {error_msg}") from e
 

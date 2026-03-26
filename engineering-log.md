@@ -1122,6 +1122,19 @@
 - 新增 `TestBatchTotalTimeout::test_batch_total_timeout_returns_504` 測試
 **結果**: PASS — 2985 passed, 84 skipped, 0 failed（+1 新測試，零回歸）
 **下一步可能**:
-- LLM error handling 缺少 timeout 與 connection error 的區分
+- ~~LLM error handling 缺少 timeout 與 connection error 的區分~~ ✅ Round 71 已完成
 - MISSION.md 功能缺口：公文範本庫擴充、法規自動更新
 - 下一個里程碑：從品質打磨轉向功能開發
+
+### [2026-03-26] Round 71 — LLM 超時錯誤獨立分類
+**角度**: 🔧 DX（錯誤區分度）
+**為什麼**: `generate()` 的 error handler 把 timeout（可重試）和 auth/connection（不可重試）混在一起拋出泛用 `LLMError`。呼叫端無法實作智慧重試策略。
+**做了什麼**:
+- 新增 `LLMTimeoutError(LLMError)` 子類別
+- `generate()` except 區塊加入三路徑 timeout 偵測：`TimeoutError` 型別、類別名稱含 `Timeout`、訊息含 `timed out`
+- 新增 2 個測試覆蓋不同 timeout 觸發路徑
+**結果**: PASS — 2987 passed, 84 skipped, 0 failed（+2 新測試，零回歸）
+**觀察**: `llm.py` 覆蓋率 60%（全專案最低），主要是 `_LocalEmbedder` 和 provider 初始化分支未覆蓋
+**下一步可能**:
+- `llm.py` 覆蓋率 60% → 目標 85%（全專案最低短板）
+- MISSION.md 功能缺口：公文範本庫擴充、法規自動更新
