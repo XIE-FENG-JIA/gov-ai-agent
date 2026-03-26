@@ -354,3 +354,16 @@
 - `web_preview/app.py`（58%）和 `exam_yuan_fetcher.py`（56%）是剩餘低覆蓋模組
 - CI 加入 `--cov-fail-under=85` 門檻防止覆蓋率退化
 - `_format_examples` / `_build_prompt` / `_postprocess_draft` 可獨立寫邊界條件測試
+
+### [2026-03-26] Round 24 — _get_graph() race condition 修復 + 警告訊息格式統一
+**角度**: 🐛 Bug（執行緒安全）+ 🏗️ 架構（一致性）
+**為什麼**: `workflow.py` 的 `_get_graph()` docstring 聲稱 "thread-safe lazy init" 但沒有鎖。`_execute_document_workflow()` 跑在 `ThreadPoolExecutor` 中，多執行緒可同時通過 `if _GRAPH is None` 檢查，導致 `build_graph()` 重複執行。`dependencies.py` 的 `get_config/get_llm/get_kb` 正確使用 `_init_lock` + 雙重檢查鎖，此處為遺漏不一致。同時修正 `_display_format_options()` 警告訊息格式（移除多餘「設定」後綴），統一為 "未知的{標籤}：{值}" 格式。
+**做了什麼**:
+- `src/api/routes/workflow.py`: 新增 `threading.Lock()` + 雙重檢查鎖，與 `dependencies.py` 一致
+- `src/cli/generate.py`: 警告格式 "未知的{label}設定" → "未知的{label}"
+- `tests/test_cli_commands.py`: 5 個測試斷言同步更新
+**結果**: PASS — 2561 passed, 84 skipped, 0 failed（零回歸）
+**下一步可能**:
+- LLM mock / KB mock 統一到 conftest（反覆未處理，已 12 輪）
+- `web_preview/app.py`（58%）和 `exam_yuan_fetcher.py`（56%）是剩餘低覆蓋模組
+- CI 加入 `--cov-fail-under=85` 門檻防止覆蓋率退化

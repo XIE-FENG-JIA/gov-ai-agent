@@ -7,6 +7,7 @@ import asyncio
 import logging
 import os
 import re
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -46,17 +47,21 @@ router = APIRouter()
 # 批次處理並行度控制（模組級，避免每次請求重建）
 _BATCH_SEMAPHORE = asyncio.Semaphore(3)
 
-# LangGraph 單例（延遲初始化）
+# LangGraph 單例（延遲初始化，雙重檢查鎖）
 _GRAPH = None
+_graph_lock = threading.Lock()
 
 
 def _get_graph():
     """取得已編譯的 LangGraph 單例（thread-safe lazy init）。"""
     global _GRAPH
-    if _GRAPH is None:
-        logger.info("初始化 LangGraph 公文生成流程圖...")
-        _GRAPH = build_graph()
-        logger.info("LangGraph 流程圖初始化完成")
+    if _GRAPH is not None:
+        return _GRAPH
+    with _graph_lock:
+        if _GRAPH is None:
+            logger.info("初始化 LangGraph 公文生成流程圖...")
+            _GRAPH = build_graph()
+            logger.info("LangGraph 流程圖初始化完成")
     return _GRAPH
 
 
