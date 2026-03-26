@@ -247,6 +247,32 @@ class TestAggregateReviews:
         assert result["phase"] == "reviews_aggregated"
         assert report["error_count"] == 0
 
+    def test_no_review_results_key_returns_safe(self):
+        """state 完全沒有 review_results key 時應回傳 Safe（非 KeyError）"""
+        from src.graph.nodes.aggregator import aggregate_reviews
+        result = aggregate_reviews({})
+        report = result["aggregated_report"]
+        assert report["risk_summary"] == "Safe"
+        assert report["overall_score"] == 1.0
+
+    def test_review_issue_objects_preserved(self):
+        """issue 清單中混入 ReviewIssue 物件（非 dict）時應正確處理"""
+        from src.graph.nodes.aggregator import _dicts_to_review_results
+        from src.core.review_models import ReviewIssue
+        issue_obj = ReviewIssue(
+            category="format", severity="error", risk_level="high",
+            location="主旨", description="缺少主旨",
+        )
+        results = _dicts_to_review_results([{
+            "agent_name": "Format Auditor",
+            "issues": [issue_obj],
+            "score": 0.5,
+            "confidence": 1.0,
+        }])
+        assert len(results) == 1
+        assert len(results[0].issues) == 1
+        assert results[0].issues[0].severity == "error"
+
     def test_exception_returns_critical(self):
         """aggregator 內部例外時回傳 Critical 報告。"""
         from src.graph.nodes.aggregator import aggregate_reviews

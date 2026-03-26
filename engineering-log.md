@@ -17,6 +17,13 @@
 - MISSION 功能缺口：公文範本庫擴充（現有 12 種，可加入報告、陳情回覆、新聞稿等）
 - 審查意見的具體修改建議（Checkers 已有 suggestion，可加入「一鍵套用」CLI 功能）
 
+### [2026-03-27] Round 80 — aggregator 邊界路徑測試補齊
+**角度**: 🧪 測試（覆蓋盲區）
+**為什麼**: `_dicts_to_review_results()` 有兩條未覆蓋路徑：(1) ReviewIssue 物件直接傳入；(2) state 無 `review_results` key。
+**做了什麼**: 新增 2 個測試
+**結果**: PASS — TestAggregateReviews 10 passed（+2）
+**下一步可能**: 從品質打磨轉向功能開發
+
 ### [2026-03-27] Round 79 — batch_tools 原子寫入完結篇
 **角度**: 🏗️ 架構（寫入模式統一）
 **為什麼**: `batch_tools.py` 混用三種檔案寫入模式（`Path.write_text()`、裸 `open()` + `json.dump()`、`atomic_json_write()`），5 處非原子寫入。這是整個 CLI 原子寫入專項的最後一塊拼圖。
