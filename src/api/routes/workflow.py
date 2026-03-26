@@ -78,7 +78,6 @@ def _execute_document_workflow(
     max_rounds: int = 3,
     output_docx: bool = False,
     output_filename_hint: str | None = None,
-    agency: str | None = None,
     convergence: bool = False,
     skip_info: bool = False,
 ) -> tuple:
@@ -93,7 +92,6 @@ def _execute_document_workflow(
         max_rounds: 最大修改輪數（經典模式）
         output_docx: 是否輸出 docx 檔案
         output_filename_hint: 輸出檔名提示（未清理）
-        agency: 機構名稱（用於取得機構記憶偏好）
         convergence: 啟用分層收斂迭代模式
         skip_info: 分層收斂模式下是否跳過 info Phase
 
@@ -107,10 +105,8 @@ def _execute_document_workflow(
     # 步驟 1.5: 取得機構記憶偏好（若有啟用）
     writing_hints = ""
     org_mem = get_org_memory()
-    # 優先使用呼叫端指定的機構名稱，否則使用需求中的 sender
-    resolved_agency = agency or requirement.sender
-    if org_mem and resolved_agency:
-        writing_hints = org_mem.get_writing_hints(resolved_agency)
+    if org_mem and requirement.sender:
+        writing_hints = org_mem.get_writing_hints(requirement.sender)
 
     # 步驟 2: 撰寫草稿（注入機構偏好）
     writer = WriterAgent(llm, kb)
@@ -167,14 +163,14 @@ def _execute_via_graph(
     max_rounds: int = 3,
     output_docx: bool = False,
     output_filename_hint: str | None = None,
-    agency: str | None = None,
     convergence: bool = False,
     skip_info: bool = False,
 ) -> tuple:
     """透過 LangGraph 執行公文生成流程（同步，需在執行緒池中呼叫）。
 
-    介面與 _execute_document_workflow 相同，回傳相同的 tuple 結構，
-    以便呼叫端無縫切換。
+    回傳與 _execute_document_workflow 相同的 tuple 結構，以便呼叫端無縫切換。
+    機構記憶由 graph 內建的 fetch_org_memory node 處理（從 requirement.sender 讀取），
+    不需外部傳入 agency 參數。
 
     Args:
         user_input: 使用者的自然語言需求描述
@@ -183,7 +179,6 @@ def _execute_via_graph(
         max_rounds: 最大精煉輪數
         output_docx: 是否輸出 docx 檔案
         output_filename_hint: 輸出檔名提示（未清理）
-        agency: 機構名稱（用於取得機構記憶偏好）
         convergence: 啟用分層收斂迭代模式
         skip_info: 分層收斂模式下是否跳過 info Phase
 
