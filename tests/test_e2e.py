@@ -1171,7 +1171,8 @@ class TestScenario8_ParallelReviewTimeout:
         mock_llm.generate.side_effect = side_effect
 
         editor = EditorInChief(mock_llm, mock_kb)
-        refined, report = editor.review_and_refine("# 函\n### 主旨\n測試", "函")
+        draft = "# 函\n### 主旨\n依據相關法規辦理[^1]。\n### 說明\n測試內容。\n\n### 參考來源\n[^1]: [Level A] 測試法規"
+        refined, report = editor.review_and_refine(draft, "函")
 
         # 應該正常完成，不因單一代理失敗而崩潰
         assert report is not None
@@ -1194,7 +1195,8 @@ class TestScenario8_ParallelReviewTimeout:
         ]
 
         editor = EditorInChief(mock_llm, mock_kb)
-        refined, report = editor.review_and_refine("# 函\n### 主旨\n測試", "函")
+        draft = "# 函\n### 主旨\n依據相關法規辦理[^1]。\n### 說明\n測試內容。\n\n### 參考來源\n[^1]: [Level A] 測試法規"
+        refined, report = editor.review_and_refine(draft, "函")
 
         assert report.risk_summary in ["Safe", "Low"]
         assert report.overall_score > 0.9
@@ -1853,7 +1855,8 @@ class TestFullIntegrationFlow:
                 },
                 "draft": (
                     "### 主旨\n函轉加強校園資源回收一案\n### 說明\n"
-                    "一、為提升回收成效。\n### 辦法\n一、請加強宣導。"
+                    "一、依據相關法規辦理[^1]，為提升回收成效。\n### 辦法\n一、請加強宣導。\n\n"
+                    "### 參考來源\n[^1]: [Level A] 廢棄物清理法"
                 ),
             },
             {
@@ -1869,7 +1872,11 @@ class TestFullIntegrationFlow:
                     "action_items": ["停止清運", "恢復清運"],
                     "attachments": [],
                 },
-                "draft": "### 主旨\n公告春節期間垃圾清運時間調整\n### 公告事項\n一、停止清運日期。\n二、恢復清運日期。",
+                "draft": (
+                    "### 主旨\n公告春節期間垃圾清運時間調整\n### 公告事項\n"
+                    "一、依據相關規定辦理[^1]，停止清運日期。\n二、恢復清運日期。\n\n"
+                    "### 參考來源\n[^1]: [Level A] 廢棄物清理法"
+                ),
             },
             {
                 "type": "簽",
@@ -1886,7 +1893,8 @@ class TestFullIntegrationFlow:
                 },
                 "draft": (
                     "### 主旨\n擬辦理環保志工表揚大會一案，陳請核示。\n### 說明\n"
-                    "一、為肯定志工奉獻。\n### 擬辦\n一、活動日期。"
+                    "一、依據相關規定辦理[^1]，為肯定志工奉獻。\n### 擬辦\n一、活動日期。\n\n"
+                    "### 參考來源\n[^1]: [Level A] 志願服務法"
                 ),
             },
         ]
@@ -2185,7 +2193,7 @@ class TestUserSimulation:
 函轉有關加強校園資源回收工作一案，請查照。
 
 ### 說明
-一、依據行政院環境保護署114年1月15日環署廢字第1140001號函辦理[^1]。
+一、依據行政院環境部114年1月15日環部廢字第1140001號函辦理[^1]。
 二、為提升本市資源回收成效，落實環境教育。
 三、請各校配合辦理校園資源回收分類。
 
@@ -2193,6 +2201,9 @@ class TestUserSimulation:
 一、請各校加強宣導資源回收觀念，並納入校園環境教育課程。
 二、請落實垃圾分類，確實執行資源回收工作。
 三、請於每月底前彙報回收成果至本局。
+
+### 參考來源
+[^1]: [Level A] 行政院環境部114年1月15日環部廢字第1140001號函
 """
 
         mock_llm.generate.side_effect = [

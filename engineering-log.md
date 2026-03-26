@@ -4,6 +4,18 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 33（PUA輪次）— 通用驗證器啟用 + evidence 匹配放寬
+**角度**: 🐛 Bug（5 個驗證器在生產環境從未被呼叫）
+**為什麼**: `check_colloquial_language`、`check_terminology`、`check_citation_level`、`check_evidence_presence`、`check_citation_integrity` 這 5 個驗證器只有在 kb 規則檔包含 `[Call: func_name]` 標記時才會觸發。但 kb_data 是 gitignored 的本地檔案——部署環境可能缺少這些標記，導致驗證器形同虛設。此外 `check_evidence_presence` 用 `"### 參考來源"` 做硬匹配，但模板引擎會把 `###` 轉為 `**粗體**` 格式，導致正確的草稿也被誤判。
+**做了什麼**:
+- `auditor.py`: 新增 `UNIVERSAL_VALIDATORS` 清單（5 個），在規則觸發前無條件執行；用 `executed_validators` set 避免與 `[Call:]` 規則重複執行
+- `validators.py`: `check_evidence_presence` 的「參考來源」段落檢查從 `"### 參考來源"` 放寬為 `"參考來源"`，相容模板引擎的 `**參考來源**` 格式
+- `test_agents_extended.py`、`test_e2e.py`: 更新測試 draft 補充引用標記和參考來源段落，適配通用驗證器
+**結果**: PASS — 待最終確認（targeted tests 全過）
+**下一步可能**:
+- 公文範本庫擴充（MISSION 剩餘功能缺口）
+- 編輯器基於結構化 suggestion 實作「一鍵套用」自動修正
+
 ### [2026-03-27] Round 32（PUA輪次）— 驗證器結構化修正建議
 **角度**: 🏗️ 架構（MISSION 功能缺口：審查意見的具體修改建議）
 **為什麼**: 9 個規則驗證器（日期、附件、引用格式、完整性、口語化、術語等）回傳純 `list[str]`，經 `auditor_result_to_review_result()` 轉為 `ReviewIssue` 時 `suggestion=None`。編輯器看到 `None` 就跳過自動修正——資訊卡在字串裡傳不出去，是「不只指出問題，還要給具體修改建議」這個 MISSION 功能缺口的核心阻塞點。

@@ -2662,7 +2662,11 @@ class TestEditorSafeLowNoRefine:
         })
 
         editor = EditorInChief(mock_llm, mock_kb)
-        original_draft = "### 主旨\n高品質草稿\n### 說明\n完美的說明"
+        # 含完整引用結構的草稿，避免通用驗證器產生額外 error 降低分數
+        original_draft = (
+            "### 主旨\n高品質草稿\n### 說明\n依據相關法規辦理[^1]。\n\n"
+            "### 參考來源\n[^1]: [Level A] 測試法規"
+        )
 
         from unittest.mock import patch
         with patch.object(editor, '_auto_refine', wraps=editor._auto_refine) as mock_refine:
@@ -3287,7 +3291,9 @@ class TestBomInReviewJsonParsing:
         mock_llm = MagicMock()
         mock_llm.generate.return_value = '\ufeff{"errors": [], "warnings": []}'
         auditor = FormatAuditor(llm_provider=mock_llm, kb_manager=None)
-        result = auditor.audit("主旨：測試\n說明：內容", "函")
+        # 含完整引用結構的草稿，避免通用驗證器產生額外錯誤
+        draft = "主旨：測試\n說明：依據相關法規辦理[^1]。\n\n### 參考來源\n[^1]: [Level A] 測試法規"
+        result = auditor.audit(draft, "函")
         assert result["errors"] == []
         assert result["warnings"] == []
 

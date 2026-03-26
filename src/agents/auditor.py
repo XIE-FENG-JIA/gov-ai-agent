@@ -78,7 +78,6 @@ class FormatAuditor:
                 console.print(f"[yellow]知識庫查詢失敗：{str(e)[:50]}，將使用通用規則。[/yellow]")
 
         # 2. Execute Custom Validators (Function Calls)
-        # Scan rule_context for [Call: func_name]
         # 安全性：僅允許白名單內的驗證函數
         ALLOWED_VALIDATORS = {
             "check_date_logic",
@@ -89,10 +88,34 @@ class FormatAuditor:
             "check_evidence_presence",
             "check_citation_integrity",
             "check_terminology",
+            "check_colloquial_language",
         }
+
+        # 2a. 通用驗證器：無條件執行（適用所有公文類型）
+        UNIVERSAL_VALIDATORS = [
+            "check_colloquial_language",
+            "check_terminology",
+            "check_citation_level",
+            "check_evidence_presence",
+            "check_citation_integrity",
+        ]
+        executed_validators: set[str] = set()
+        for func_name in UNIVERSAL_VALIDATORS:
+            if hasattr(validator_registry, func_name):
+                func = getattr(validator_registry, func_name)
+                try:
+                    validation_errors = func(draft_text)
+                    errors.extend(validation_errors)
+                    executed_validators.add(func_name)
+                except Exception as e:
+                    logger.warning("通用驗證器 %s 執行失敗: %s", func_name, e)
+
+        # 2b. 規則觸發驗證器：掃描 rule_context 中的 [Call: func_name]
         if rule_context:
             call_matches = re.findall(r"\[Call:\s*(\w+)\]", rule_context)
             for func_name in call_matches:
+                if func_name in executed_validators:
+                    continue  # 已由通用驗證器執行，避免重複
                 if func_name not in ALLOWED_VALIDATORS:
                     console.print(f"[yellow]不允許的驗證器: {func_name}（已跳過）[/yellow]")
                     continue
@@ -102,6 +125,7 @@ class FormatAuditor:
                     try:
                         validation_errors = func(draft_text)
                         errors.extend(validation_errors)
+                        executed_validators.add(func_name)
                     except Exception as e:
                         logger.warning("驗證器 %s 執行失敗: %s", func_name, e)
                         console.print(f"[red]驗證器 {func_name} 失敗[/red]")

@@ -233,7 +233,7 @@ class ValidatorRegistry:
     def check_evidence_presence(self, draft_text: str, **kwargs) -> list[dict]:
         """檢查草稿是否包含至少一個 evidence-backed 引用。"""
         errors: list[dict] = []
-        if "### 參考來源" not in draft_text:
+        if "參考來源" not in draft_text:
             errors.append(_issue(
                 "草稿缺少「參考來源」段落，無法驗證引用來源。",
                 "文件結構",
