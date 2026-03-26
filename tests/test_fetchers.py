@@ -141,6 +141,46 @@ class TestBaseFetcher:
         assert parsed_meta["count"] == 42
         assert "# 內容" in parsed_body
 
+    def test_write_markdown_returns_none_on_oserror(self, tmp_path):
+        """_write_markdown 寫入失敗時回傳 None，不再回傳不存在的路徑"""
+        class DummyFetcher(BaseFetcher):
+            def fetch(self): return []
+            def name(self): return "dummy"
+
+        f = DummyFetcher(output_dir=tmp_path)
+        # 建立一個同名目錄來觸發 OSError（無法寫入檔案到目錄路徑）
+        blocked_path = tmp_path / "blocked"
+        blocked_path.mkdir()
+        file_path = blocked_path / "sub" / "test.md"
+        # 讓 mkdir 成功但 write_text 失敗：把目標路徑建成目錄
+        file_path.mkdir(parents=True)
+
+        result = f._write_markdown(file_path, {"title": "x"}, "body")
+        assert result is None
+
+    def test_write_markdown_failure_prevents_ghost_fetch_result(self, tmp_path):
+        """caller 在 _write_markdown 失敗時不應產生 FetchResult"""
+        from src.knowledge.fetchers.base import FetchResult
+
+        class DummyFetcher(BaseFetcher):
+            def fetch(self):
+                results = []
+                file_path = self.output_dir / "ghost.md"
+                # 強制讓 write_text 失敗
+                file_path.mkdir(parents=True)
+                if self._write_markdown(file_path, {"title": "ghost"}, "body") is not None:
+                    results.append(FetchResult(
+                        file_path=file_path,
+                        metadata={"title": "ghost"},
+                        collection="test",
+                    ))
+                return results
+            def name(self): return "dummy"
+
+        f = DummyFetcher(output_dir=tmp_path)
+        results = f.fetch()
+        assert len(results) == 0, "寫入失敗不應產生 FetchResult"
+
     def test_throttle_delays_requests(self, tmp_path):
         """測試 _throttle 確保最小請求間隔"""
         class DummyFetcher(BaseFetcher):

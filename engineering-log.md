@@ -4,6 +4,19 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 36 — _write_markdown 失敗時幽靈 FetchResult 修復
+**角度**: 🐛 Bug（寫入失敗仍回傳路徑，下游收到不存在的檔案參照）
+**為什麼**: `_write_markdown` 遇到 OSError 時記錄警告但仍回傳 `file_path`，18 個 caller 無條件將此路徑包進 `FetchResult`。下游 embedding 或查詢讀取不存在的檔案會崩潰。此 bug 已在 engineering-log 被標記多輪但未修復。
+**做了什麼**:
+- `base.py`: `_write_markdown` 回傳型別改為 `Path | None`，OSError 時回傳 `None`
+- 14 個 fetcher 檔案共 17 處 caller 加入 `if ... is not None:` 防護
+- `exam_yuan_fetcher.py` 的 `_item_to_result` 特殊處理（early return None）
+- 新增 2 個測試：`test_write_markdown_returns_none_on_oserror` + `test_write_markdown_failure_prevents_ghost_fetch_result`
+**結果**: PASS — 3035 passed, 84 skipped, 0 failed（+2 新測試，零回歸）
+**下一步可能**:
+- writer.py 的 LLM 錯誤偵測 regex 可能誤判合法中文草稿
+- fetcher 的 `_request_with_retry` 回傳的 response 沒有檢查 content-type
+
 ### [2026-03-27] Round 35 — 法規模糊比對單字元誤匹配修復
 **角度**: 🐛 Bug（引用驗證 false positive — 單字元匹配所有法規）
 **為什麼**: `_fuzzy_match()` 的包含關係檢查不設最短長度門檻，查詢「法」會匹配所有法規名稱（民法、刑法、行政程序法...）且強制給 0.8 信心度。這使引用驗證產生大量 false positive，降低引用品質報告的可信度。

@@ -93,15 +93,15 @@ class LawFetcher(BaseFetcher):
                     "content_hash": content_hash,
                 }
                 file_path = self.output_dir / f"{pcode}_{safe_name}.md"
-                self._write_markdown(file_path, metadata, body)
-                results.append(FetchResult(
-                    file_path=file_path,
-                    metadata=metadata,
-                    collection="regulations",
-                    source_level=SOURCE_LEVEL_A,
-                    source_url=source_url,
-                    content_hash=content_hash,
-                ))
+                if self._write_markdown(file_path, metadata, body) is not None:
+                    results.append(FetchResult(
+                        file_path=file_path,
+                        metadata=metadata,
+                        collection="regulations",
+                        source_level=SOURCE_LEVEL_A,
+                        source_url=source_url,
+                        content_hash=content_hash,
+                    ))
 
         logger.info("LawFetcher 擷取完成：%d 個檔案", len(results))
         return results
@@ -206,15 +206,15 @@ class LawFetcher(BaseFetcher):
                 "content_hash": content_hash,
             }
             file_path = self.output_dir / f"{pcode}_{safe_name}_part{part_num}.md"
-            self._write_markdown(file_path, metadata, body)
-            results.append(FetchResult(
-                file_path=file_path,
-                metadata=metadata,
-                collection="regulations",
-                source_level=SOURCE_LEVEL_A,
-                source_url=source_url,
-                content_hash=content_hash,
-            ))
+            if self._write_markdown(file_path, metadata, body) is not None:
+                results.append(FetchResult(
+                    file_path=file_path,
+                    metadata=metadata,
+                    collection="regulations",
+                    source_level=SOURCE_LEVEL_A,
+                    source_url=source_url,
+                    content_hash=content_hash,
+                ))
         return results
 
     def fetch_bulk(self, *, au_data: str = "CFM") -> list[FetchResult]:
@@ -279,15 +279,15 @@ class LawFetcher(BaseFetcher):
                     "content_hash": content_hash,
                 }
                 file_path = self.output_dir / f"{pcode}_{safe_name}.md"
-                self._write_markdown(file_path, metadata, body)
-                results.append(FetchResult(
-                    file_path=file_path,
-                    metadata=metadata,
-                    collection="regulations",
-                    source_level=SOURCE_LEVEL_A,
-                    source_url=source_url,
-                    content_hash=content_hash,
-                ))
+                if self._write_markdown(file_path, metadata, body) is not None:
+                    results.append(FetchResult(
+                        file_path=file_path,
+                        metadata=metadata,
+                        collection="regulations",
+                        source_level=SOURCE_LEVEL_A,
+                        source_url=source_url,
+                        content_hash=content_hash,
+                    ))
 
         logger.info("LawFetcher bulk 擷取完成：%d 個檔案", len(results))
         return results

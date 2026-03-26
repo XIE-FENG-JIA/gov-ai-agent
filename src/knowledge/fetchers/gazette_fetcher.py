@@ -134,15 +134,15 @@ class GazetteFetcher(BaseFetcher):
             metadata["content_hash"] = content_hash
 
             file_path = out_dir / f"gazette_{meta_id}_{safe_title}.md"
-            self._write_markdown(file_path, metadata, body)
-            results.append(FetchResult(
-                file_path=file_path,
-                metadata=metadata,
-                collection=collection,
-                source_level=SOURCE_LEVEL_A,
-                source_url=source_url,
-                content_hash=content_hash,
-            ))
+            if self._write_markdown(file_path, metadata, body) is not None:
+                results.append(FetchResult(
+                    file_path=file_path,
+                    metadata=metadata,
+                    collection=collection,
+                    source_level=SOURCE_LEVEL_A,
+                    source_url=source_url,
+                    content_hash=content_hash,
+                ))
 
         logger.info("GazetteFetcher 擷取完成：%d 個檔案", len(results))
         return results
@@ -263,15 +263,15 @@ class GazetteFetcher(BaseFetcher):
             }
 
             file_path = out_dir / f"gazette_{meta_id}_{safe_title}.md"
-            self._write_markdown(file_path, metadata, body)
-            results.append(FetchResult(
-                file_path=file_path,
-                metadata=metadata,
-                collection=collection,
-                source_level=SOURCE_LEVEL_A,
-                source_url=source_url,
-                content_hash=content_hash,
-            ))
+            if self._write_markdown(file_path, metadata, body) is not None:
+                results.append(FetchResult(
+                    file_path=file_path,
+                    metadata=metadata,
+                    collection=collection,
+                    source_level=SOURCE_LEVEL_A,
+                    source_url=source_url,
+                    content_hash=content_hash,
+                ))
 
         logger.info("GazetteFetcher bulk 擷取完成：%d 個檔案", len(results))
         return results

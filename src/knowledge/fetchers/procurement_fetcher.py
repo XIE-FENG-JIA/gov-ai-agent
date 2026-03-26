@@ -164,15 +164,15 @@ class ProcurementFetcher(BaseFetcher):
             }
 
             file_path = self.output_dir / f"procurement_{safe_title}.md"
-            self._write_markdown(file_path, metadata, body)
-            results.append(FetchResult(
-                file_path=file_path,
-                metadata=metadata,
-                collection="policies",
-                source_level=SOURCE_LEVEL_B,
-                source_url=source_url,
-                content_hash=content_hash,
-            ))
+            if self._write_markdown(file_path, metadata, body) is not None:
+                results.append(FetchResult(
+                    file_path=file_path,
+                    metadata=metadata,
+                    collection="policies",
+                    source_level=SOURCE_LEVEL_B,
+                    source_url=source_url,
+                    content_hash=content_hash,
+                ))
 
         logger.info("ProcurementFetcher 擷取完成：%d 個檔案", len(results))
         return results

@@ -150,11 +150,11 @@ class BaseFetcher(ABC):
             logger.error("JSON 解析失敗 %s：%s", url, exc)
             return None
 
-    def _write_markdown(self, file_path: Path, metadata: dict, body: str) -> Path:
+    def _write_markdown(self, file_path: Path, metadata: dict, body: str) -> Path | None:
         """輸出含 YAML frontmatter 的 Markdown 檔案。
 
         格式與 parse_markdown_with_metadata 完全相容。
-        寫入失敗時記錄警告但不中斷流程。
+        寫入失敗時記錄警告並回傳 None（不再回傳不存在的路徑）。
         """
         try:
             file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -167,6 +167,7 @@ class BaseFetcher(ABC):
             file_path.write_text(content, encoding="utf-8")
         except OSError as exc:
             logger.warning("寫入檔案失敗 '%s': %s", file_path, exc)
+            return None
         return file_path
 
     @staticmethod
