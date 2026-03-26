@@ -94,8 +94,22 @@ def fan_out_reviewers(state: GovDocState) -> list[Send]:
 
     Returns:
         Send 物件清單，每個對應一個審查 node
+
+    Raises:
+        ValueError: requirement 或 doc_type 缺失（表示上游 node 有 bug）
     """
-    doc_type = state.get("requirement", {}).get("doc_type", "函")
+    requirement = state.get("requirement")
+    if not requirement or not isinstance(requirement, dict):
+        raise ValueError(
+            "fan_out_reviewers: state 缺少 requirement，"
+            "表示 analyze_requirement node 未正確執行"
+        )
+    doc_type = requirement.get("doc_type")
+    if not doc_type:
+        raise ValueError(
+            "fan_out_reviewers: requirement 缺少 doc_type，"
+            "表示需求分析未產出公文類型"
+        )
 
     # 選取應啟用的審查 Agent
     selected = select_review_agents(doc_type)

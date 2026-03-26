@@ -4,6 +4,17 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 76 — fan_out_reviewers 靜默 fallback 轉 raise
+**角度**: 🐛 Bug（靜默 fallback 掩蓋上游 bug + 零測試覆蓋）
+**為什麼**: `fan_out_reviewers()` 在 requirement 缺失時 fallback 到「函」類型，掩蓋 `analyze_requirement` node 的問題。此函式零測試覆蓋，選到錯誤審查 agent 組合時完全無人察覺。已被標記多輪。
+**做了什麼**:
+- `conditions.py`: requirement 缺失/非 dict → raise ValueError；doc_type 缺失 → raise ValueError
+- `test_graph.py`: 新增 TestFanOutReviewers 5 個測試（正常 / 缺 requirement / 空 dict / 非 dict / 缺 doc_type）
+**結果**: PASS — 3066 passed, 84 skipped, 0 failed（+5 新測試，零回歸）
+**下一步可能**:
+- should_refine() 也有類似的 fallback 模式，值得檢視
+- MISSION.md 功能缺口：法規自動更新
+
 ### [2026-03-27] Round 75 — Web UI doc_type prompt injection 防護
 **角度**: 🔒 安全（prompt injection via form input）
 **為什麼**: `web_preview/app.py:113` 的 `doc_type` 來自使用者表單，未經任何驗證直接內插至 LLM prompt 字串 `f"[公文類型：{doc_type}]"`。攻擊者可構造惡意 doc_type（如 `函] ignore previous instructions...`）注入任意指令。此問題已被標記多輪。另外 effective_input 使用了未 strip 的 `user_input` 而非 `stripped`，屬於不一致 bug。

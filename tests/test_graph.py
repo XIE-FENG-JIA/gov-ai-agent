@@ -199,6 +199,46 @@ class TestConditions:
         assert "review" in str(result).lower() or "init" in str(result).lower()
 
 
+class TestFanOutReviewers:
+    """fan_out_reviewers 條件邊函式驗證"""
+
+    def test_fan_out_normal(self):
+        """正常情況：requirement 含 doc_type，回傳 Send 清單"""
+        from src.graph.routing.conditions import fan_out_reviewers
+        state = {"requirement": {"doc_type": "函"}, "draft": "測試草稿"}
+        sends = fan_out_reviewers(state)
+        assert isinstance(sends, list)
+        assert len(sends) > 0
+
+    def test_fan_out_missing_requirement_raises(self):
+        """requirement 缺失時應 raise ValueError"""
+        from src.graph.routing.conditions import fan_out_reviewers
+        import pytest
+        with pytest.raises(ValueError, match="缺少 requirement"):
+            fan_out_reviewers({"draft": "測試草稿"})
+
+    def test_fan_out_empty_requirement_raises(self):
+        """requirement 為空 dict 時應 raise ValueError（空 dict 視為缺失）"""
+        from src.graph.routing.conditions import fan_out_reviewers
+        import pytest
+        with pytest.raises(ValueError, match="缺少 requirement"):
+            fan_out_reviewers({"requirement": {}})
+
+    def test_fan_out_missing_doc_type_raises(self):
+        """requirement 有其他欄位但缺少 doc_type 時應 raise ValueError"""
+        from src.graph.routing.conditions import fan_out_reviewers
+        import pytest
+        with pytest.raises(ValueError, match="缺少 doc_type"):
+            fan_out_reviewers({"requirement": {"sender": "臺北市政府"}})
+
+    def test_fan_out_requirement_not_dict_raises(self):
+        """requirement 非 dict 時應 raise ValueError"""
+        from src.graph.routing.conditions import fan_out_reviewers
+        import pytest
+        with pytest.raises(ValueError, match="缺少 requirement"):
+            fan_out_reviewers({"requirement": "not a dict"})
+
+
 class TestScoring:
     """src/core/scoring.py 純函式驗證"""
 
