@@ -331,7 +331,18 @@ async def run_meeting(request: MeetingRequest) -> MeetingResponse:
     session_id = str(uuid.uuid4())[:SESSION_ID_LENGTH]
 
     try:
-        if request.use_graph:
+        # convergence 模式需要分層收斂迭代（error→warning→info phase），
+        # 目前僅傳統路徑的 EditorInChief 支援，LangGraph 的 should_refine
+        # 只做簡單 round-based 判定。自動 fallback 避免靜默忽略。
+        effective_use_graph = request.use_graph
+        if request.use_graph and request.convergence:
+            logger.info(
+                "convergence=True 與 use_graph=True 同時啟用，"
+                "自動切換至傳統路徑（LangGraph 尚未支援分層收斂迭代）"
+            )
+            effective_use_graph = False
+
+        if effective_use_graph:
             # ── 新路徑：LangGraph 流程圖 ──────────────────
             try:
                 requirement, final_draft, qa_report, output_filename, rounds_used = (

@@ -630,6 +630,66 @@ class TestMeetingEndpoint:
         })
         assert response.status_code == 422
 
+    def test_meeting_convergence_fallback_to_traditional(self, client, mock_api_deps):
+        """convergence=True + use_graph=True 應自動 fallback 到傳統路徑"""
+        call_count = [0]
+        def side_effect(prompt, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return json.dumps({
+                    "doc_type": "函",
+                    "sender": "測試機關",
+                    "receiver": "測試單位",
+                    "subject": "測試主旨"
+                })
+            else:
+                return "### 主旨\n測試公文\n### 說明\n測試說明"
+
+        mock_api_deps["llm"].generate.side_effect = side_effect
+
+        response = client.post("/api/v1/meeting", json={
+            "user_input": "寫一份函，環保局發給各學校",
+            "skip_review": True,
+            "output_docx": False,
+            "use_graph": True,
+            "convergence": True,
+        })
+        assert response.status_code == 200
+        data = response.json()
+        # 傳統路徑仍然成功處理（不會因 graph 不支援 convergence 而靜默忽略）
+        assert data["success"] is True
+        assert data["final_draft"] is not None
+        assert len(data["final_draft"]) > 0
+
+    def test_meeting_graph_without_convergence_uses_graph(self, client, mock_api_deps):
+        """use_graph=True + convergence=False 應正常走 graph 路徑"""
+        call_count = [0]
+        def side_effect(prompt, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return json.dumps({
+                    "doc_type": "函",
+                    "sender": "測試機關",
+                    "receiver": "測試單位",
+                    "subject": "測試主旨"
+                })
+            else:
+                return "### 主旨\n測試公文\n### 說明\n測試說明"
+
+        mock_api_deps["llm"].generate.side_effect = side_effect
+
+        # use_graph=True, convergence=False（預設行為），不應 fallback
+        response = client.post("/api/v1/meeting", json={
+            "user_input": "寫一份函，環保局發給各學校",
+            "skip_review": True,
+            "output_docx": False,
+            "use_graph": True,
+            "convergence": False,
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+
 
 # ==================== Input Validation ====================
 

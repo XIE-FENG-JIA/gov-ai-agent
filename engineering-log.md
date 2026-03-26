@@ -980,3 +980,14 @@
 **下一步可能**:
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
 - 專案品質穩定，可開始規劃下一個里程碑
+
+### [2026-03-26] Round 61 — convergence + use_graph 靜默忽略修復
+**角度**: 🐛 Bug（API 參數靜默忽略）
+**為什麼**: `_execute_via_graph()` 接受 `convergence` 和 `skip_info` 參數但從未寫入 graph 初始 state。LangGraph 的 `should_refine` 只做簡單 round-based 判定，不支援 EditorInChief 的分層收斂迭代（error→warning→info phase、stale detection、per-issue tracking）。由於 `use_graph=True` 是預設值，所有透過 API 使用 `convergence=True` 的請求都靜默 fallback 到非收斂行為，使用者不知道零錯誤制根本沒生效。
+**做了什麼**:
+- `workflow.py`: `run_meeting()` 偵測 `convergence=True + use_graph=True` 時自動設定 `effective_use_graph=False`，fallback 到傳統路徑（實際支援分層收斂），並記錄 info log
+- 新增 2 個測試：`test_meeting_convergence_fallback_to_traditional`（確認 fallback 成功）、`test_meeting_graph_without_convergence_uses_graph`（確認正常 graph 不受影響）
+**結果**: PASS — 2958 passed, 84 skipped, 0 failed（+2 新測試，零回歸）
+**下一步可能**:
+- LangGraph 路徑原生支援 convergence（在 state 加入 phase/stale 追蹤，重寫 should_refine）
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
