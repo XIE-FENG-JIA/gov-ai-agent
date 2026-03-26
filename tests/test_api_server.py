@@ -2482,6 +2482,20 @@ class TestAPIInputBoundaries:
         result = _sanitize_output_filename(None, "sess001")
         assert result == "output_sess001.docx"
 
+    def test_sanitize_output_filename_special_chars_rejected(self, client, mock_api_deps):
+        """測試 _sanitize_output_filename 拒絕含特殊字元的檔名（與 download endpoint regex 對齊）"""
+        from api_server import _sanitize_output_filename
+        # 空格
+        assert _sanitize_output_filename("my report.docx", "s1") == "output_s1.docx"
+        # 中文
+        assert _sanitize_output_filename("公文草稿.docx", "s1") == "output_s1.docx"
+        # null byte
+        assert _sanitize_output_filename("test\x00.docx", "s1") == "output_s1.docx"
+        # shell metachar
+        assert _sanitize_output_filename("$(whoami).docx", "s1") == "output_s1.docx"
+        # 合法字元仍可通過
+        assert _sanitize_output_filename("report-2026_03.docx", "s1") == "report-2026_03.docx"
+
     def test_requirement_whitespace_only_rejected(self, client, mock_api_deps):
         """測試 RequirementRequest.user_input 純空白被 422 攔截"""
         response = client.post("/api/v1/agent/requirement", json={

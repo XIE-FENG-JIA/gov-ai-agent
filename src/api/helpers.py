@@ -9,6 +9,7 @@ import asyncio
 import ipaddress
 import logging
 import os
+import re
 from typing import Any
 
 from fastapi import Request
@@ -112,14 +113,23 @@ def review_result_to_dict(result: ReviewResult) -> SingleAgentReviewResponse:
 
 
 def _sanitize_output_filename(filename: str | None, session_id: str) -> str:
-    """清理並驗證輸出檔名，防止路徑遍歷攻擊。"""
+    """清理並驗證輸出檔名，防止路徑遍歷攻擊。
+
+    驗證規則與 download endpoint 的 regex 對齊：只允許
+    ``[a-zA-Z0-9_\\-.]`` 字元，確保存下來的檔案一定可被下載。
+    """
+    fallback = f"output_{session_id}.docx"
     if not filename:
-        return f"output_{session_id}.docx"
+        return fallback
     basename = os.path.basename(filename)
     if not basename or basename.startswith("."):
-        return f"output_{session_id}.docx"
+        return fallback
+    # 去掉 .docx 後綴再驗證主名稱（與 download endpoint regex 一致）
+    stem = basename.removesuffix(".docx")
+    if not stem or not re.match(r"^[a-zA-Z0-9_\-\.]+$", stem):
+        return fallback
     if not basename.endswith(".docx"):
-        basename += ".docx"
+        basename = stem + ".docx"
     return basename
 
 

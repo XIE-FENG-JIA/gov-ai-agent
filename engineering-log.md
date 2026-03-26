@@ -1072,16 +1072,14 @@
 - `fan_out_reviewers()` 在 requirement 缺失時 raise 而非靜默 fallback 到「函」
 - MISSION.md 功能缺口：公文範本庫擴充、法規自動更新
 
-### [2026-03-26] Round 68 — 審查通過
-**結論**: 深度掃描後，專案品質已穩態收斂，未發現需要立即處理的問題。
-**審查範圍**:
-- 安全：`writer.py` prompt injection 防護驗證（`escape_prompt_tag` 對 example 和 requirement 都有做）✅
-- 安全：全域變數併發安全驗證（`dependencies.py` 用 `_init_lock`、`workflow.py` 用 `_graph_lock`、`middleware.py` 用 `_auto_key_lock`）✅
-- Bug：Windows 編碼——全專案 70+ 處 `open()` 呼叫均已指定 `encoding` ✅
-- 架構：graph state 重複取值（`refined_draft or formatted_draft or draft`）僅 4 處，提取收益不足一個 Round
-- 架構：`_SEGMENT_THRESHOLD` vs `MAX_DRAFT_LENGTH` 語義不同（分段路由 vs LLM 截斷），非真重複
-- Round 67「下一步」的 `_sanitize_output_filename()` regex 驗證已存在（line 129）
-**觀察**:
-- 94% 覆蓋率、2982 passed、0 failed、CI 門檻 88%
-- 連續多輪品質打磨已無明顯改善空間
-- **下一個里程碑建議**：從品質打磨轉向 MISSION.md 功能開發（公文範本庫擴充、法規自動更新機制）
+### [2026-03-26] Round 68 — _sanitize_output_filename() regex 驗證對齊 download endpoint
+**角度**: 🔒 安全（產存不一致）
+**為什麼**: `_sanitize_output_filename()` 只做 `os.path.basename()` + 隱藏檔檢查，但 download endpoint 用嚴格 regex `^[a-zA-Z0-9_\-\.]+\.docx$`。含空格、中文、null byte、shell metachar 的檔名能存檔但永遠無法被下載 — 產存不一致且有安全風險。
+**做了什麼**:
+- `helpers.py` `_sanitize_output_filename()` 加入與 download endpoint 同規格的 regex 驗證
+- 不合規則的檔名 fallback 為 `output_{session_id}.docx`
+- 新增 5 個邊界測試：空格、中文、null byte、shell metachar、合法字元
+**結果**: PASS — 2983 passed, 84 skipped, 0 failed（+1 新測試，零回歸）
+**下一步可能**:
+- `fan_out_reviewers()` 在 requirement 缺失時 raise 而非靜默 fallback 到「函」
+- MISSION.md 功能缺口：公文範本庫擴充、法規自動更新
