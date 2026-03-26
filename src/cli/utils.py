@@ -35,6 +35,26 @@ def atomic_json_write(path: str, data: Any) -> None:
         raise
 
 
+def atomic_text_write(path: str, content: str, encoding: str = "utf-8") -> None:
+    """原子寫入純文字檔案（先寫暫存檔再 rename，防止中途崩潰損毀）。
+
+    與 atomic_json_write 使用相同的 tempfile + os.replace 策略。
+    """
+    parent = os.path.dirname(path) or "."
+    os.makedirs(parent, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(dir=parent, suffix=".tmp", prefix=".txt_")
+    try:
+        with os.fdopen(fd, "w", encoding=encoding) as f:
+            f.write(content)
+        os.replace(tmp_path, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
 def atomic_yaml_write(path: str, data: Any) -> None:
     """原子寫入 YAML 檔案（先寫暫存檔再 rename，防止中途崩潰損毀）。
 

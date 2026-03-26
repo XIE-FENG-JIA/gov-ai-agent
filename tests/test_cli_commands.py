@@ -9768,6 +9768,38 @@ class TestReplaceBackup:
         assert bak.read_text(encoding="utf-8") == original
 
 
+    def test_replace_atomic_write_preserves_on_failure(self, tmp_path, monkeypatch):
+        """原子寫入失敗時原始檔案不應被損毀"""
+        monkeypatch.chdir(tmp_path)
+        doc = tmp_path / "doc.txt"
+        original = "主旨：加強回收"
+        doc.write_text(original, encoding="utf-8")
+        from unittest.mock import patch
+        with patch("src.cli.replace_cmd.atomic_text_write", side_effect=OSError("disk full")):
+            from src.cli.main import app
+            result = runner.invoke(app, ["replace", str(doc), "--old", "回收", "--new", "節能"])
+        assert doc.read_text(encoding="utf-8") == original
+
+    def test_atomic_text_write_creates_file(self, tmp_path):
+        """atomic_text_write 基本功能驗證"""
+        from src.cli.utils import atomic_text_write
+        target = tmp_path / "output.txt"
+        atomic_text_write(str(target), "測試內容")
+        assert target.read_text(encoding="utf-8") == "測試內容"
+
+    def test_atomic_text_write_no_partial_on_error(self, tmp_path):
+        """atomic_text_write 失敗時不應留下損毀檔案"""
+        from src.cli.utils import atomic_text_write
+        from unittest.mock import patch
+        target = tmp_path / "output.txt"
+        target.write_text("原始", encoding="utf-8")
+        with patch("src.cli.utils.os.replace", side_effect=OSError("perm denied")):
+            import pytest
+            with pytest.raises(OSError):
+                atomic_text_write(str(target), "新內容")
+        assert target.read_text(encoding="utf-8") == "原始"
+
+
 class TestFormatCheck:
     """gov-ai format --check 測試。"""
 

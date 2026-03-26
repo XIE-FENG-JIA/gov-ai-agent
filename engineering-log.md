@@ -4,6 +4,18 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 77 — replace_cmd 原子寫入防損毀
+**角度**: 🐛 Bug（資料遺失風險）
+**為什麼**: `replace_cmd` 用 `Path.write_text()` 直接覆寫使用者原始公文，寫入中途崩潰會永久遺失原檔。已有 `atomic_json_write` / `atomic_yaml_write` 但缺少純文字版本。
+**做了什麼**:
+- `utils.py`: 新增 `atomic_text_write()`（tempfile + `os.replace` 策略，與 JSON/YAML 版本一致）
+- `replace_cmd.py`: `write_text()` 改用 `atomic_text_write()`
+- 新增 3 個測試：寫入失敗原檔完整 / 基本功能 / replace 失敗不留損毀檔
+**結果**: PASS — 3069 passed, 84 skipped, 0 failed（+3 新測試，零回歸）
+**下一步可能**:
+- `format_cmd.py:68` / `diff_cmd.py:74` / `summarize_cmd.py:63` 也用非原子寫入
+- `batch_tools.py` 多處 `write_text()` 可改用 `atomic_text_write`
+
 ### [2026-03-27] Round 76 — fan_out_reviewers 靜默 fallback 轉 raise
 **角度**: 🐛 Bug（靜默 fallback 掩蓋上游 bug + 零測試覆蓋）
 **為什麼**: `fan_out_reviewers()` 在 requirement 缺失時 fallback 到「函」類型，掩蓋 `analyze_requirement` node 的問題。此函式零測試覆蓋，選到錯誤審查 agent 組合時完全無人察覺。已被標記多輪。

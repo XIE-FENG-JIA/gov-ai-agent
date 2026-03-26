@@ -3,6 +3,8 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
+from src.cli.utils import atomic_text_write
+
 console = Console()
 
 
@@ -38,5 +40,5 @@ def replace_text(
         shutil.copy2(str(path), backup_path)
         console.print(f"[dim]已備份至：{backup_path}[/dim]")
 
-    path.write_text(replaced, encoding="utf-8")
+    atomic_text_write(str(path), replaced)
     console.print(f"[green]已替換 {n} 處[/green]")
