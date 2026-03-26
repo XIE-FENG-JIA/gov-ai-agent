@@ -161,6 +161,8 @@ class TestGenerateCommand:
         mock_qa_report.risk_summary = "Low"
         mock_qa_report.rounds_used = 1
         mock_editor_instance = mock_editor.return_value
+        mock_editor_instance.__enter__ = MagicMock(return_value=mock_editor_instance)
+        mock_editor_instance.__exit__ = MagicMock(return_value=False)
         mock_editor_instance.review_and_refine.return_value = ("修改後草稿", mock_qa_report)
 
         mock_exporter_instance = mock_exporter.return_value
@@ -3190,6 +3192,8 @@ class TestPreviewAndExportReport:
         mock_qa.overall_score = 0.9
         mock_qa.risk_summary = "Safe"
         mock_qa.rounds_used = 1
+        mock_editor.return_value.__enter__ = MagicMock(return_value=mock_editor.return_value)
+        mock_editor.return_value.__exit__ = MagicMock(return_value=False)
         mock_editor.return_value.review_and_refine.return_value = ("### 主旨\n測試預覽內容", mock_qa)
         mock_exporter.return_value.export.return_value = "output.docx"
         mock_detect.return_value = []
@@ -5430,6 +5434,8 @@ class TestSummaryParameter:
         mock_qa.risk_summary = "Safe"
         mock_qa.rounds_used = 1
         mock_qa.audit_log = "log"
+        mock_editor.return_value.__enter__ = MagicMock(return_value=mock_editor.return_value)
+        mock_editor.return_value.__exit__ = MagicMock(return_value=False)
         mock_editor.return_value.review_and_refine.return_value = ("最終草稿", mock_qa)
         mock_exporter.return_value.export.return_value = "output.docx"
 
