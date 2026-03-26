@@ -379,3 +379,16 @@
 - LLM mock / KB mock 統一到 conftest
 - `web_preview/app.py`（58%）和 `exam_yuan_fetcher.py`（56%）是剩餘低覆蓋模組
 - CI 加入 `--cov-fail-under=85` 門檻防止覆蓋率退化
+
+### [2026-03-26] Round 26 — reviewers.py 227→151 行，decorator 消除 boilerplate
+**角度**: 🏗️ 架構（DRY + 可維護性）
+**為什麼**: 5 個審查 node 函式結構幾乎完全相同——try/except 錯誤處理、結果序列化、降級回傳共 55 行重複 boilerplate。新增第 6 個審查器需複製整塊模板。Round 25 修復 reducer bug 時發現精煉迴圈邏輯與審查系統緊密耦合，需要確保審查 node 行為一致。
+**做了什麼**:
+- 提取 `_review_node(agent_name)` decorator 封裝錯誤處理 + 序列化 + 降級回傳
+- 5 個 node 函式僅保留業務邏輯（import + 建構 agent + 呼叫），使用 `functools.wraps` 保留函式名
+- `tests/test_graph.py`: 新增 `TestReviewNodeDecorator`（4 個測試）覆蓋成功/Pydantic/錯誤/名稱保留
+**結果**: PASS — 227→151 行（-33%），2570 passed, 84 skipped, 0 failed（+4 新測試，零回歸）
+**下一步可能**:
+- LLM mock / KB mock 統一到 conftest
+- `web_preview/app.py`（58%）低覆蓋
+- CI 加入 `--cov-fail-under=85` 門檻

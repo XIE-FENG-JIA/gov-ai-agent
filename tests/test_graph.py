@@ -4,6 +4,57 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 
+class TestReviewNodeDecorator:
+    """_review_node decorator 行為驗證"""
+
+    def test_success_wraps_result_in_review_results(self):
+        """成功時應將結果序列化並包在 review_results list 中"""
+        from src.graph.nodes.reviewers import _review_node
+
+        @_review_node("Test Agent")
+        def dummy_reviewer(state):
+            return {"agent_name": "Test Agent", "score": 0.95, "issues": []}
+
+        result = dummy_reviewer({"draft": "test"})
+        assert "review_results" in result
+        assert len(result["review_results"]) == 1
+        assert result["review_results"][0]["score"] == 0.95
+
+    def test_success_with_pydantic_model(self):
+        """回傳有 model_dump 的物件應正確序列化"""
+        from src.graph.nodes.reviewers import _review_node
+
+        class FakeModel:
+            def model_dump(self):
+                return {"agent_name": "Fake", "score": 0.8}
+
+        @_review_node("Fake Agent")
+        def dummy_reviewer(state):
+            return FakeModel()
+
+        result = dummy_reviewer({})
+        assert result["review_results"][0]["score"] == 0.8
+
+    def test_error_returns_degraded_result(self):
+        """例外時應回傳降級結果，不中斷流程"""
+        from src.graph.nodes.reviewers import _review_node
+
+        @_review_node("Failing Agent")
+        def broken_reviewer(state):
+            raise RuntimeError("LLM 連線失敗")
+
+        result = broken_reviewer({"draft": "test"})
+        assert result["review_results"][0]["agent_name"] == "Failing Agent"
+        assert result["review_results"][0]["score"] == 0.0
+        assert "LLM 連線失敗" in result["review_results"][0]["error"]
+
+    def test_preserves_function_name(self):
+        """decorator 應保留原函式名稱（LangGraph 註冊用）"""
+        from src.graph.nodes.reviewers import review_format, review_style
+        assert review_format.__name__ == "review_format"
+        assert review_style.__name__ == "review_style"
+
+
 class TestReviewResultsReducer:
     """_review_results_reducer 行為驗證"""
 
