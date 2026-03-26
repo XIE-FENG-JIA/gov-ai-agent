@@ -426,3 +426,34 @@ class TestRenderApplyDiff:
             )
 
         mock_diff.assert_called_once_with(original_text, revised)
+
+    def test_apply_uses_atomic_write(self, tmp_path):
+        """--apply 寫出修正草稿時應使用 atomic_text_write，而非裸 open()。"""
+        draft = tmp_path / "draft.md"
+        draft.write_text("主旨：測試\n", encoding="utf-8")
+        report = _make_qa_report()
+        revised = "主旨：測試\n說明：修正後。\n"
+
+        mock_editor = MagicMock()
+        mock_editor.__enter__ = MagicMock(return_value=mock_editor)
+        mock_editor.__exit__ = MagicMock(return_value=False)
+        mock_editor.review_and_refine.return_value = (revised, report)
+
+        output_path = str(tmp_path / "out.md")
+
+        with patch("src.cli.review_cmd.get_llm", return_value=MagicMock()), \
+             patch("src.cli.review_cmd.get_kb", return_value=MagicMock()), \
+             patch("src.cli.review_cmd.EditorInChief", return_value=mock_editor), \
+             patch("src.cli.review_cmd.atomic_text_write") as mock_atomic, \
+             patch("src.cli.review_cmd.console"):
+            review(
+                draft_file=str(draft),
+                doc_type="函",
+                apply=True,
+                output=output_path,
+                max_rounds=1,
+                show_diff=False,
+                json_output=False,
+            )
+
+        mock_atomic.assert_called_once_with(output_path, revised)

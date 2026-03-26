@@ -21,6 +21,8 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
+from src.cli.utils import atomic_text_write
+
 logger = logging.getLogger(__name__)
 console = Console()
 
@@ -302,8 +304,7 @@ def review(
             base = os.path.splitext(draft_file)[0]
             output = f"{base}_revised.md"
         try:
-            with open(output, "w", encoding="utf-8") as f:
-                f.write(refined_draft)
+            atomic_text_write(output, refined_draft)
             console.print(f"\n[bold green]✓ 修正後草稿已寫入：{output}[/bold green]")
         except OSError as exc:
             console.print(f"[red]警告：無法寫入輸出檔案 {output}：{exc}[/red]")
