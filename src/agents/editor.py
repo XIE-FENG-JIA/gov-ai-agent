@@ -66,6 +66,27 @@ class EditorInChief:
         self.consistency_checker = ConsistencyChecker(llm)
         self.compliance_checker = ComplianceChecker(llm, kb_manager, policy_fetcher=policy_fetcher)
 
+        # 共用執行緒池：避免每輪審查都建/銷毀 ThreadPoolExecutor
+        # convergence 模式最多 30 輪審查，每次建池開銷不可忽略
+        self._executor = ThreadPoolExecutor(max_workers=EDITOR_MAX_WORKERS)
+
+    def close(self) -> None:
+        """關閉共用執行緒池，釋放 worker threads。"""
+        self._executor.shutdown(wait=False)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        self.close()
+
+    def __del__(self) -> None:
+        # 安全網：GC 回收時確保 executor 被關閉
+        try:
+            self._executor.shutdown(wait=False)
+        except Exception:
+            pass
+
     # 超長草稿分段審查的字元門檻
     _SEGMENT_THRESHOLD = 15000
     # 每段最大字元數
@@ -141,46 +162,45 @@ class EditorInChief:
 
         _PARALLEL_TIMEOUT = PARALLEL_REVIEW_TIMEOUT  # 比 LLM timeout 稍長，確保不會永遠掛起
 
-        with ThreadPoolExecutor(max_workers=EDITOR_MAX_WORKERS) as executor:
-            future_to_agent = {
-                executor.submit(task): name
-                for name, task in parallel_tasks.items()
-            }
+        future_to_agent = {
+            self._executor.submit(task): name
+            for name, task in parallel_tasks.items()
+        }
 
-            try:
-                for future in as_completed(future_to_agent, timeout=_PARALLEL_TIMEOUT):
-                    agent_name = future_to_agent[future]
-                    try:
-                        result = future.result()
-                        results.append(result)
-                        console.print(f"[green]v {agent_name} 完成[/green]")
-                    except Exception as exc:
-                        logger.error("審查 Agent '%s' 執行失敗: %s", agent_name, exc)
-                        console.print(f"[red]x {agent_name} 失敗: {str(exc)[:50]}[/red]")
-                        results.append(ReviewResult(
-                            agent_name=agent_name,
-                            issues=[],
-                            score=DEFAULT_FAILED_SCORE,
-                            confidence=DEFAULT_FAILED_CONFIDENCE,
-                        ))
-            except TimeoutError:
-                logger.error("並行審查逾時（%ds），保留已完成結果", _PARALLEL_TIMEOUT)
-                console.print("[red]並行審查逾時，將以已完成的結果繼續。[/red]")
-                for future, name in future_to_agent.items():
-                    if not future.done():
-                        cancelled = future.cancel()
-                        logger.warning(
-                            "逾時取消 Agent '%s': %s",
-                            name,
-                            "已取消" if cancelled else "取消失敗（任務正在執行）",
-                        )
-                        timed_out_agents.append(name)
-                        results.append(ReviewResult(
-                            agent_name=name,
-                            issues=[],
-                            score=DEFAULT_FAILED_SCORE,
-                            confidence=DEFAULT_FAILED_CONFIDENCE,
-                        ))
+        try:
+            for future in as_completed(future_to_agent, timeout=_PARALLEL_TIMEOUT):
+                agent_name = future_to_agent[future]
+                try:
+                    result = future.result()
+                    results.append(result)
+                    console.print(f"[green]v {agent_name} 完成[/green]")
+                except Exception as exc:
+                    logger.error("審查 Agent '%s' 執行失敗: %s", agent_name, exc)
+                    console.print(f"[red]x {agent_name} 失敗: {str(exc)[:50]}[/red]")
+                    results.append(ReviewResult(
+                        agent_name=agent_name,
+                        issues=[],
+                        score=DEFAULT_FAILED_SCORE,
+                        confidence=DEFAULT_FAILED_CONFIDENCE,
+                    ))
+        except TimeoutError:
+            logger.error("並行審查逾時（%ds），保留已完成結果", _PARALLEL_TIMEOUT)
+            console.print("[red]並行審查逾時，將以已完成的結果繼續。[/red]")
+            for future, name in future_to_agent.items():
+                if not future.done():
+                    cancelled = future.cancel()
+                    logger.warning(
+                        "逾時取消 Agent '%s': %s",
+                        name,
+                        "已取消" if cancelled else "取消失敗（任務正在執行）",
+                    )
+                    timed_out_agents.append(name)
+                    results.append(ReviewResult(
+                        agent_name=name,
+                        issues=[],
+                        score=DEFAULT_FAILED_SCORE,
+                        confidence=DEFAULT_FAILED_CONFIDENCE,
+                    ))
 
         return results, timed_out_agents
 
@@ -493,39 +513,38 @@ class EditorInChief:
 
         _PARALLEL_TIMEOUT = PARALLEL_REVIEW_TIMEOUT
 
-        with ThreadPoolExecutor(max_workers=EDITOR_MAX_WORKERS) as executor:
-            future_to_agent = {
-                executor.submit(task): name
-                for name, task in tasks_to_run.items()
-            }
-            try:
-                for future in as_completed(future_to_agent, timeout=_PARALLEL_TIMEOUT):
-                    agent_name = future_to_agent[future]
-                    try:
-                        result = future.result()
-                        results.append(result)
-                        console.print(f"[green]v {agent_name} 驗證完成[/green]")
-                    except Exception as exc:
-                        logger.error("驗證 Agent '%s' 失敗: %s", agent_name, exc)
-                        results.append(ReviewResult(
-                            agent_name=agent_name, issues=[], score=DEFAULT_FAILED_SCORE,
-                            confidence=DEFAULT_FAILED_CONFIDENCE,
-                        ))
-            except TimeoutError:
-                logger.error("Targeted 驗證逾時（%ds）", _PARALLEL_TIMEOUT)
-                for future, name in future_to_agent.items():
-                    if not future.done():
-                        cancelled = future.cancel()
-                        logger.warning(
-                            "逾時取消 Agent '%s': %s",
-                            name,
-                            "已取消" if cancelled else "取消失敗（任務正在執行）",
-                        )
-                        timed_out_agents.append(name)
-                        results.append(ReviewResult(
-                            agent_name=name, issues=[], score=DEFAULT_FAILED_SCORE,
-                            confidence=DEFAULT_FAILED_CONFIDENCE,
-                        ))
+        future_to_agent = {
+            self._executor.submit(task): name
+            for name, task in tasks_to_run.items()
+        }
+        try:
+            for future in as_completed(future_to_agent, timeout=_PARALLEL_TIMEOUT):
+                agent_name = future_to_agent[future]
+                try:
+                    result = future.result()
+                    results.append(result)
+                    console.print(f"[green]v {agent_name} 驗證完成[/green]")
+                except Exception as exc:
+                    logger.error("驗證 Agent '%s' 失敗: %s", agent_name, exc)
+                    results.append(ReviewResult(
+                        agent_name=agent_name, issues=[], score=DEFAULT_FAILED_SCORE,
+                        confidence=DEFAULT_FAILED_CONFIDENCE,
+                    ))
+        except TimeoutError:
+            logger.error("Targeted 驗證逾時（%ds）", _PARALLEL_TIMEOUT)
+            for future, name in future_to_agent.items():
+                if not future.done():
+                    cancelled = future.cancel()
+                    logger.warning(
+                        "逾時取消 Agent '%s': %s",
+                        name,
+                        "已取消" if cancelled else "取消失敗（任務正在執行）",
+                    )
+                    timed_out_agents.append(name)
+                    results.append(ReviewResult(
+                        agent_name=name, issues=[], score=DEFAULT_FAILED_SCORE,
+                        confidence=DEFAULT_FAILED_CONFIDENCE,
+                    ))
 
         return results, timed_out_agents
 
