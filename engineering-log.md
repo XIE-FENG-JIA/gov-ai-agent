@@ -860,3 +860,16 @@
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
 - `test_api_server.py` 的 `reset_api_globals` fixture 設定值未經 proxy 傳遞（低優先）
 - 專案品質穩定，可開始規劃下一個里程碑
+
+### [2026-03-26] Round 52 — _parse_laws() JSONDecodeError 防護
+**角度**: 🐛 Bug（外部 API 異常資料導致服務 crash）
+**為什麼**: `LawVerifier._parse_laws()` 有兩處 `json.loads()` 未捕獲 `JSONDecodeError`：(1) ZIP 內 JSON 檔案損壞時直接拋出；(2) fallback 路徑（非 ZIP 格式）解析失敗時也直接拋出。異常傳播到 `_ensure_cache()` → 法規驗證整個掛掉 → Fact Checker / Compliance Checker 無法運作 → API 回傳 500。外部 API 回傳格式不保證穩定，這是系統邊界未做防護的 bug。
+**做了什麼**:
+- ZIP 內 `json.loads()` 加上 `try/except (JSONDecodeError, ValueError)`，損壞的 JSON 檔案跳過並 log warning
+- fallback 路徑 `json.loads()` 同樣加上防護，回傳空 list 而非拋出例外
+- 新增 `TestParseLaws` 5 個測試：正常 ZIP、純 JSON、異常資料、ZIP 內損壞 JSON、空 bytes
+**結果**: PASS — 2707 passed, 75 skipped, 0 failed（+5 新測試，零回歸）
+**下一步可能**:
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+- `test_api_server.py` 的 `reset_api_globals` fixture 設定值未經 proxy 傳遞（低優先）
+- 專案品質穩定，可開始規劃下一個里程碑
