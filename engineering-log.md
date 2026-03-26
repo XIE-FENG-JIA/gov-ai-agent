@@ -913,3 +913,14 @@
 **下一步可能**:
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
 - 專案品質穩定，可開始規劃下一個里程碑
+
+### [2026-03-26] Round 56 — CORS 預設來源補齊 127.0.0.1
+**角度**: 🐛 Bug（CORS 配置與實際部署不一致）
+**為什麼**: 預設 CORS 允許來源只有 `http://localhost:{5678,3000,8080}`，但 Python urllib 將 localhost 解析為 IPv6 (::1)，服務實際綁定 `127.0.0.1`。用戶透過 `127.0.0.1` 存取 Web UI 或 n8n 前端時，瀏覽器 Origin 為 `http://127.0.0.1:port`，不在允許清單中，CORS 攔截所有 API 跨域請求（preflight 返回無 `Access-Control-Allow-Origin`），Web UI 無法運作。
+**做了什麼**:
+- `api_server.py`: 預設 CORS 來源新增 `http://127.0.0.1:{5678,3000,8080}`（與 localhost 對稱）
+- 新增 `TestCORSOrigins` 3 個測試：localhost 通過、127.0.0.1 通過、外部來源被拒
+**結果**: PASS — 238/238 API 測試通過，零回歸
+**下一步可能**:
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+- 專案品質穩定，可開始規劃下一個里程碑
