@@ -33,9 +33,15 @@ class FetchResult:
 class BaseFetcher(ABC):
     """所有政府 API fetcher 的抽象基底類別。"""
 
-    def __init__(self, output_dir: Path, rate_limit: float = 1.0) -> None:
+    def __init__(
+        self,
+        output_dir: Path,
+        rate_limit: float = 1.0,
+        allow_ssl_fallback: bool = False,
+    ) -> None:
         self.output_dir = output_dir
         self.rate_limit = rate_limit
+        self.allow_ssl_fallback = allow_ssl_fallback
         self._last_request_time: float = 0.0
 
     def _throttle(self) -> None:
@@ -89,15 +95,22 @@ class BaseFetcher(ABC):
                     f"HTTP {resp.status_code}", response=resp,
                 )
             except requests.ConnectionError as e:
-                # SSL 憑證錯誤時自動降級為 verify=False
                 if "SSL" in str(e) or "CERTIFICATE" in str(e):
                     if not ssl_fallback:
-                        ssl_fallback = True
-                        last_exc = e
-                        logger.warning(
-                            "SSL 憑證驗證失敗 %s，降級為不驗證模式重試", url,
-                        )
-                        continue  # 立即重試，不消耗重試次數
+                        if self.allow_ssl_fallback:
+                            ssl_fallback = True
+                            last_exc = e
+                            logger.error(
+                                "SSL 憑證驗證失敗 %s，已啟用 allow_ssl_fallback，降級為不驗證模式重試。"
+                                "注意：這會停用 MITM 防護。", url,
+                            )
+                            continue  # 立即重試，不消耗重試次數
+                        else:
+                            logger.error(
+                                "SSL 憑證驗證失敗 %s。如需連線此端點，"
+                                "請設定 allow_ssl_fallback=True 或修正憑證。", url,
+                            )
+                            raise
                 logger.warning("連線失敗 %s（第 %d/%d 次）: %s", url, attempt + 1, max_retries, e)
                 last_exc = e
             except requests.Timeout as e:

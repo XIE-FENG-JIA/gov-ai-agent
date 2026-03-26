@@ -67,19 +67,18 @@ class CitationCheck:
 def _request_with_retry(url: str, *, timeout: int = _HTTP_TIMEOUT) -> requests.Response:
     """帶重試的 HTTP GET（獨立於 BaseFetcher，供本模組使用）。"""
     last_exc: Exception | None = None
-    ssl_fallback = False
     for attempt in range(_MAX_RETRIES + 1):
         try:
-            resp = requests.get(url, timeout=timeout, verify=not ssl_fallback)
+            resp = requests.get(url, timeout=timeout)
             resp.raise_for_status()
             return resp
         except (requests.ConnectionError, requests.Timeout, requests.HTTPError) as exc:
-            # SSL 憑證錯誤時自動降級
-            if not ssl_fallback and ("SSL" in str(exc) or "CERTIFICATE" in str(exc)):
-                ssl_fallback = True
-                last_exc = exc
-                logger.warning("SSL 憑證驗證失敗 %s，降級為不驗證模式", url)
-                continue  # 立即重試，不消耗重試次數
+            if "SSL" in str(exc) or "CERTIFICATE" in str(exc):
+                logger.error(
+                    "SSL 憑證驗證失敗 %s，拒絕降級以防止 MITM 攻擊。"
+                    "請確認目標伺服器憑證或網路環境。", url,
+                )
+                raise
             last_exc = exc
             if attempt < _MAX_RETRIES:
                 time.sleep(_BACKOFF_BASE ** attempt)

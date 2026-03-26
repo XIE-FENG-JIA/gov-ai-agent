@@ -196,3 +196,17 @@
 - 同樣手法可用於 LLM mock 和 KB mock 的統一（目前也是各檔重複定義）
 - `workflow.py` 的 `asyncio.gather()` 未用 `return_exceptions=True`，單項失敗中斷全部
 - `base.py` SSL 驗證降級為 `verify=False` 需評估安全影響
+
+### [2026-03-26] Round 13 — SSL 驗證降級改為 secure-by-default
+**角度**: 🔒 安全（MITM 防護）
+**為什麼**: `base.py` 和 `realtime_lookup.py` 在 SSL 憑證錯誤時自動降級為 `verify=False`，開啟 MITM 攻擊向量。政府公文 API 含敏感資料，不應靜默關閉 TLS 驗證。
+**做了什麼**:
+- `BaseFetcher.__init__()`: 新增 `allow_ssl_fallback` 參數，預設 `False`（secure by default）
+- `BaseFetcher._request_with_retry()`: SSL 錯誤時檢查 `allow_ssl_fallback`，未開啟則直接 raise
+- 日誌從 WARNING 提升為 ERROR 級別，含 MITM 風險警告
+- `realtime_lookup.py`: 完全移除 SSL 降級邏輯，SSL 失敗直接 raise
+**結果**: PASS — 2221 passed, 82 skipped, 0 failed
+**下一步可能**:
+- 9 處 `except Exception` 靜默吞噬錯誤，影響生產環境可觀測性
+- `workflow.py` 的 `asyncio.gather()` 未用 `return_exceptions=True`
+- `parse_draft()` 274 行、`write_draft()` 256 行等超長函式可考慮拆分
