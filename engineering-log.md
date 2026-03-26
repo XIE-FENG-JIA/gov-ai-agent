@@ -678,6 +678,16 @@
 - MISSION.md 功能缺口：公文範本庫擴充、法規自動更新機制
 - LangGraph state schema validation
 
+### [2026-03-26] Round 43 — cachetools 缺失依賴宣告修復
+**角度**: 🐛 Bug（依賴宣告缺失導致全新環境 crash）
+**為什麼**: `KnowledgeBaseManager`（manager.py）使用 `cachetools.TTLCache` 做搜尋快取，但 `cachetools` 未宣告在 `pyproject.toml` / `requirements.txt` 中。目前靠 `google-auth` 間接帶入。全新環境安裝後若無該間接依賴鏈，知識庫初始化會 `ModuleNotFoundError` crash。
+**做了什麼**: `pyproject.toml` + `requirements.txt` 新增 `cachetools>=5.0.0,<6.0.0`
+**結果**: PASS — 2801 passed, 84 skipped, 0 failed
+**下一步可能**:
+- 檢查 `langgraph` / `langchain-core` 是否也缺少版本上限（目前無上限）
+- `cli/config_tools.py`（82%，52 行未覆蓋）
+- MISSION.md 功能缺口
+
 ### [2026-03-26] Round 40 — Format Auditor 新增具體修改建議
 **角度**: ✨ 功能（MISSION.md 功能缺口修復）
 **為什麼**: MISSION.md 列出的「審查意見的具體修改建議」功能缺口。其他 4 個審查 agent（Style/Fact/Consistency/Compliance）都在 LLM prompt 中要求 suggestion 欄位，唯獨 Format Auditor 只回傳純字串的 errors/warnings，使用者看到問題但不知道怎麼修。
