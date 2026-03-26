@@ -536,6 +536,17 @@
 - `cli/generate.py`（75%，156 行未覆蓋）— 最大絕對缺口
 - MISSION.md 功能缺口：審查意見具體修改建議
 
+### [2026-03-26] Round 36 — CI 測試噪音清除
+**角度**: 🔧 DX（CI 輸出品質）
+**為什麼**: 每次測試輸出 4 條 `DeprecationWarning`（httpx._models 被 litellm 觸發），非本專案代碼問題。CI 噪音降低對警告的敏感度。
+**做了什麼**: `pyproject.toml` 新增 filterwarnings 過濾 httpx 內部 DeprecationWarning
+**結果**: PASS — 2681 passed, 84 skipped, **0 warnings**（原 4 warnings）
+**本輪整體審查**:
+- 全量 2681 passed, 0 failed, 0 warnings, 90%+ 覆蓋率, CI 門檻 88%
+- 安全零漏洞，架構 DRY 債務已清
+- CLI 工具群覆蓋率全面提升至 93-100%
+- 專案品質已收斂至穩態
+
 ### [2026-03-26] Round 36 — batch_tools.py 77%→98% + CI 門檻 85%→88%
 **角度**: 🧪 測試（全專案最低覆蓋模組消除）+ 🏗️ 架構（品質門檻自動化）
 **為什麼**: `batch_tools.py` 是全專案覆蓋率最低模組（77%，48 行未覆蓋），CSV 載入路徑、JSON 格式驗證、互動式建立、UnicodeDecodeError 降級等核心分支完全無測試保護。同時整體覆蓋率已穩定在 90%，CI 門檻 85% 過於寬鬆。

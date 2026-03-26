@@ -58,6 +58,9 @@ select = ["E", "F", "W"]
 testpaths = ["tests"]
 python_files = "test_*.py"
 addopts = "-v"
+filterwarnings = [
+    "ignore::DeprecationWarning:httpx._models",
+]
 
 [tool.coverage.run]
 source = ["src"]
