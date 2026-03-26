@@ -7,6 +7,7 @@ import pytest
 pytest.importorskip("multipart", reason="python-multipart 未安裝，跳過 API 測試")
 
 import json
+import threading
 from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
@@ -1450,43 +1451,68 @@ class TestRefineEdgeCases:
 
 # ==================== Meeting with Review Loop ====================
 
+
+def _detect_agent(prompt: str) -> str:
+    """根據 prompt 內容偵測呼叫的 agent 類型。
+
+    並行審查 agent 在 ThreadPoolExecutor 中執行，順序不確定。
+    用 prompt 關鍵字而非 call_count 來判斷，避免 flaky test。
+    """
+    p = prompt.lower()
+    if "compliance engine" in p or "rule set" in p:
+        return "format"
+    if "style editor" in p:
+        return "style"
+    if "regulation auditor" in p or "verify the facts" in p:
+        return "fact"
+    if "contradiction" in p or "consistent" in p:
+        return "consistency"
+    if "policy compliance" in p:
+        return "compliance"
+    if "editor-in-chief" in p or "refine" in p:
+        return "refine"
+    if "document secretary" in p:
+        return "requirement"
+    return "unknown"
+
+
 class TestMeetingReviewLoop:
     """完整開會流程含審查迴圈的測試"""
 
     def test_meeting_with_review_loop_safe(self, client, mock_api_deps):
         """測試 skip_review=False 且第一輪即 Safe 的流程"""
+        # 使用 Lock 保護 call_count（並行 agent 跨線程存取）
+        lock = threading.Lock()
         call_count = [0]
 
         def side_effect(prompt, **kwargs):
-            call_count[0] += 1
-            if call_count[0] == 1:
-                # 步驟 1: 需求分析
-                return json.dumps({
-                    "doc_type": "函",
-                    "sender": "測試機關",
-                    "receiver": "測試單位",
-                    "subject": "測試主旨"
-                })
-            elif call_count[0] == 2:
-                # 步驟 2: 撰寫草稿
-                return "### 主旨\n測試公文\n### 說明\n測試說明"
-            elif call_count[0] == 3:
-                # FormatAuditor
+            with lock:
+                call_count[0] += 1
+                n = call_count[0]
+
+            if n <= 2:
+                # 前兩次呼叫是循序的：需求分析 → 撰寫草稿
+                if n == 1:
+                    return json.dumps({
+                        "doc_type": "函",
+                        "sender": "測試機關",
+                        "receiver": "測試單位",
+                        "subject": "測試主旨"
+                    })
+                else:
+                    return "### 主旨\n測試公文\n### 說明\n測試說明"
+
+            # 並行審查 agent — 用 prompt 內容偵測，不依賴執行順序
+            agent = _detect_agent(prompt)
+            if agent == "format":
                 return json.dumps({"errors": [], "warnings": []})
-            elif call_count[0] == 4:
-                # StyleChecker
-                return json.dumps({"issues": [], "score": 0.95})
-            elif call_count[0] == 5:
-                # FactChecker
-                return json.dumps({"issues": [], "score": 0.95})
-            elif call_count[0] == 6:
-                # ConsistencyChecker
-                return json.dumps({"issues": [], "score": 0.95})
-            elif call_count[0] == 7:
-                # ComplianceChecker
+            elif agent == "compliance":
                 return json.dumps({"issues": [], "score": 0.95, "confidence": 0.9})
-            else:
+            elif agent == "refine":
                 return "已修正內容"
+            else:
+                # style / fact / consistency 共用格式
+                return json.dumps({"issues": [], "score": 0.95})
 
         mock_api_deps["llm"].generate.side_effect = side_effect
 
@@ -1505,41 +1531,55 @@ class TestMeetingReviewLoop:
 
     def test_meeting_with_multiple_review_rounds(self, client, mock_api_deps):
         """測試 risk_summary 非 Safe/Low 時繼續多輪審查"""
+        lock = threading.Lock()
         call_count = [0]
+        # 追蹤審查輪次（每 5 個 agent 呼叫 = 一輪）
+        review_agent_count = [0]
 
         def side_effect(prompt, **kwargs):
-            call_count[0] += 1
-            if call_count[0] == 1:
-                # 步驟 1: 需求分析
-                return json.dumps({
-                    "doc_type": "函",
-                    "sender": "測試機關",
-                    "receiver": "測試單位",
-                    "subject": "測試主旨"
-                })
-            elif call_count[0] == 2:
-                # 步驟 2: 撰寫草稿
-                return "### 主旨\n測試公文\n### 說明\n測試說明"
-            elif call_count[0] <= 7:
-                # 第一輪審查 - 回傳有問題的結果使 risk 為 High
-                if "format" in prompt.lower() or call_count[0] == 3:
+            with lock:
+                call_count[0] += 1
+                n = call_count[0]
+
+            if n <= 2:
+                if n == 1:
+                    return json.dumps({
+                        "doc_type": "函",
+                        "sender": "測試機關",
+                        "receiver": "測試單位",
+                        "subject": "測試主旨"
+                    })
+                else:
+                    return "### 主旨\n測試公文\n### 說明\n測試說明"
+
+            agent = _detect_agent(prompt)
+
+            if agent == "refine":
+                # refine 後重置 agent 計數，進入下一輪審查
+                with lock:
+                    review_agent_count[0] = 0
+                return "### 主旨\n修正後公文\n### 說明\n修正後說明"
+
+            # 審查 agent：根據累計呼叫次數判斷第幾輪
+            with lock:
+                review_agent_count[0] += 1
+                is_first_round = call_count[0] <= 7  # 前 5 個審查 agent = 第一輪
+
+            if is_first_round:
+                # 第一輪 — 回傳有問題的結果使 risk 為 High
+                if agent == "format":
                     return json.dumps({"errors": ["缺少欄位", "格式錯誤", "嚴重問題"], "warnings": []})
                 else:
                     return json.dumps({
                         "issues": [{"severity": "error", "location": "全文", "description": "問題"}],
                         "score": 0.3,
                     })
-            elif call_count[0] == 8:
-                # EditorInChief auto-refine
-                return "### 主旨\n修正後公文\n### 說明\n修正後說明"
-            elif call_count[0] <= 13:
-                # 第二輪審查 - 全部通過
-                if call_count[0] == 9:
+            else:
+                # 後續輪次 — 全部通過
+                if agent == "format":
                     return json.dumps({"errors": [], "warnings": []})
                 else:
                     return json.dumps({"issues": [], "score": 0.95, "confidence": 0.9})
-            else:
-                return "最終修正"
 
         mock_api_deps["llm"].generate.side_effect = side_effect
 
@@ -1619,31 +1659,37 @@ class TestMeetingReviewLoop:
 
     def test_meeting_max_rounds_exhausted(self, client, mock_api_deps):
         """測試到達 max_rounds 上限後仍未通過時，回傳最後版本（非失敗）"""
+        lock = threading.Lock()
         call_count = [0]
 
         def side_effect(prompt, **kwargs):
-            call_count[0] += 1
-            if call_count[0] == 1:
-                return json.dumps({
-                    "doc_type": "函",
-                    "sender": "測試機關",
-                    "receiver": "測試單位",
-                    "subject": "測試主旨"
-                })
-            elif call_count[0] == 2:
-                return "### 主旨\n初始草稿\n### 說明\n測試說明"
-            else:
-                # 所有審查輪都回傳嚴重問題，使 risk 永遠是 High/Critical
-                if "format" in prompt.lower() or "compliance" in prompt.lower() or "rule" in prompt.lower():
-                    return json.dumps({"errors": ["嚴重錯誤", "格式問題", "結構缺陷"], "warnings": []})
-                elif "refine" in prompt.lower() or "editor" in prompt.lower():
-                    return "### 主旨\n嘗試修正但仍有問題\n### 說明\n修正說明"
-                else:
+            with lock:
+                call_count[0] += 1
+                n = call_count[0]
+
+            if n <= 2:
+                if n == 1:
                     return json.dumps({
-                        "issues": [{"severity": "error", "location": "全文", "description": "問題"}],
-                        "score": 0.3,
-                        "confidence": 0.9
+                        "doc_type": "函",
+                        "sender": "測試機關",
+                        "receiver": "測試單位",
+                        "subject": "測試主旨"
                     })
+                else:
+                    return "### 主旨\n初始草稿\n### 說明\n測試說明"
+
+            # 並行審查 agent — 用 prompt 內容偵測
+            agent = _detect_agent(prompt)
+            if agent == "format":
+                return json.dumps({"errors": ["嚴重錯誤", "格式問題", "結構缺陷"], "warnings": []})
+            elif agent == "refine":
+                return "### 主旨\n嘗試修正但仍有問題\n### 說明\n修正說明"
+            else:
+                return json.dumps({
+                    "issues": [{"severity": "error", "location": "全文", "description": "問題"}],
+                    "score": 0.3,
+                    "confidence": 0.9
+                })
 
         mock_api_deps["llm"].generate.side_effect = side_effect
 
