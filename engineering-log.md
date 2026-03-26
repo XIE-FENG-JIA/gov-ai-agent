@@ -224,3 +224,29 @@
 - 9 處 `except Exception` 靜默吞噬錯誤，影響生產環境可觀測性
 - `workflow.py` 的 `asyncio.gather()` — 經分析 `_process_item` 內部已 try/except，實際安全
 - LLM mock / KB mock 統一到 conftest（與 auth config 同手法）
+
+### [2026-03-26] Round 15 — 8 處靜默異常補上 logger 記錄
+**角度**: 🔧 DX / 可觀測性
+**為什麼**: 8 個 `except Exception` 區塊靜默吞噬錯誤（pass/continue/空 fallback），生產環境出問題時完全無 log 可查。影響檔案：fact_checker、explain_cmd、kb(×2)、org_memory_cmd、reviewers(×2)、llm。
+**做了什麼**:
+- 7 處加 `logger.warning()` 含失敗上下文（檔名、操作、錯誤訊息）
+- 1 處加 `logger.debug()`（llm.py 連線測試，已有邏輯處理）
+- 3 個檔案新增 `import logging` + `logger = logging.getLogger(__name__)`
+**結果**: PASS — 2221 passed, 82 skipped, 0 failed
+**下一步可能**:
+- `parse_draft()` 274 行、`write_draft()` 256 行等超長函式拆分
+- LLM mock / KB mock 統一到 conftest
+- 考慮加入結構化日誌（JSON format）提升 log 可解析性
+
+### [2026-03-26] Round 16 — 修復 8 個 fetcher 測試重試退避 timeout
+**角度**: 🐛 Bug（測試穩定性 / CI 定時炸彈）
+**為什麼**: Round 9 修了 `ProcurementFetcher` 的 `time.sleep` mock，但其餘 8 個 fetcher 的 `test_fetch_network_error` 同樣缺少 mock。重試退避（1+2+4=7s）× 多端點 × throttle 延遲，在 CI 環境可超過 30s timeout。`judicial_fetcher` 已實際觸發 timeout。
+**做了什麼**:
+- 8 個 fetcher 測試統一加 `@patch("src.knowledge.fetchers.base.time.sleep")`
+- 統一設 `rate_limit=0` 消除 throttle 延遲
+- 受影響：legislative、legislative_debate、judicial、interpretation、local_regulation、exam_yuan、statistics、control_yuan
+**結果**: PASS — test_fetchers.py 124/124 passed（72s），核心測試 2377 passed, 75 skipped, 0 failed
+**下一步可能**:
+- 考慮將 `time.sleep` mock 提升到 conftest 級別的 autouse fixture，避免逐測試重複
+- `parse_draft()` 274 行、`write_draft()` 256 行等超長函式拆分
+- LLM mock / KB mock 統一到 conftest（與 auth config 同手法）

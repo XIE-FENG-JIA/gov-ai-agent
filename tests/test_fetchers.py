@@ -1634,15 +1634,16 @@ class TestLegislativeFetcher:
         results = fetcher.fetch()
         assert len(results) == 0
 
+    @patch("src.knowledge.fetchers.base.time.sleep")
     @patch("src.knowledge.fetchers.legislative_fetcher.requests.get")
-    def test_fetch_network_error(self, mock_get, tmp_path):
+    def test_fetch_network_error(self, mock_get, mock_sleep, tmp_path):
         """測試網路錯誤"""
         from src.knowledge.fetchers.legislative_fetcher import LegislativeFetcher
         import requests as req
 
         mock_get.side_effect = req.ConnectionError("Connection refused")
 
-        fetcher = LegislativeFetcher(output_dir=tmp_path, limit=5)
+        fetcher = LegislativeFetcher(output_dir=tmp_path, limit=5, rate_limit=0)
         results = fetcher.fetch()
         assert len(results) == 0
 
@@ -1731,15 +1732,16 @@ class TestLegislativeDebateFetcher:
         results = fetcher.fetch()
         assert len(results) == 0
 
+    @patch("src.knowledge.fetchers.base.time.sleep")
     @patch("src.knowledge.fetchers.legislative_debate_fetcher.requests.get")
-    def test_fetch_network_error(self, mock_get, tmp_path):
+    def test_fetch_network_error(self, mock_get, mock_sleep, tmp_path):
         """測試網路錯誤"""
         from src.knowledge.fetchers.legislative_debate_fetcher import LegislativeDebateFetcher
         import requests as req
 
         mock_get.side_effect = req.ConnectionError("Connection refused")
 
-        fetcher = LegislativeDebateFetcher(output_dir=tmp_path, limit=5)
+        fetcher = LegislativeDebateFetcher(output_dir=tmp_path, limit=5, rate_limit=0)
         results = fetcher.fetch()
         assert len(results) == 0
 
@@ -1913,15 +1915,16 @@ class TestJudicialFetcher:
         content = results[0].file_path.read_text(encoding="utf-8")
         assert "最高行政法院" in content
 
+    @patch("src.knowledge.fetchers.base.time.sleep")
     @patch("src.knowledge.fetchers.judicial_fetcher.requests.get")
-    def test_fetch_network_error(self, mock_get, tmp_path):
-        """測試網路錯誤"""
+    def test_fetch_network_error(self, mock_get, mock_sleep, tmp_path):
+        """測試網路錯誤（需 mock time.sleep 避免重試退避導致 timeout）"""
         from src.knowledge.fetchers.judicial_fetcher import JudicialFetcher
         import requests as req
 
         mock_get.side_effect = req.ConnectionError("Connection refused")
 
-        fetcher = JudicialFetcher(output_dir=tmp_path, limit=5)
+        fetcher = JudicialFetcher(output_dir=tmp_path, limit=5, rate_limit=0)
         results = fetcher.fetch()
         assert len(results) == 0
 
@@ -2004,15 +2007,16 @@ class TestInterpretationFetcher:
         results = fetcher.fetch()
         assert len(results) == 0
 
+    @patch("src.knowledge.fetchers.base.time.sleep")
     @patch("src.knowledge.fetchers.interpretation_fetcher.requests.get")
-    def test_fetch_network_error(self, mock_get, tmp_path):
+    def test_fetch_network_error(self, mock_get, mock_sleep, tmp_path):
         """測試網路錯誤"""
         from src.knowledge.fetchers.interpretation_fetcher import InterpretationFetcher
         import requests as req
 
         mock_get.side_effect = req.ConnectionError("Connection refused")
 
-        fetcher = InterpretationFetcher(output_dir=tmp_path, limit=5)
+        fetcher = InterpretationFetcher(output_dir=tmp_path, limit=5, rate_limit=0)
         results = fetcher.fetch()
         assert len(results) == 0
 
@@ -2077,15 +2081,16 @@ class TestLocalRegulationFetcher:
         assert results[0].collection == "regulations"
         assert results[0].source_level == "A"
 
+    @patch("src.knowledge.fetchers.base.time.sleep")
     @patch("src.knowledge.fetchers.local_regulation_fetcher.requests.get")
-    def test_fetch_network_error(self, mock_get, tmp_path):
+    def test_fetch_network_error(self, mock_get, mock_sleep, tmp_path):
         """測試網路錯誤"""
         from src.knowledge.fetchers.local_regulation_fetcher import LocalRegulationFetcher
         import requests as req
 
         mock_get.side_effect = req.ConnectionError("Connection refused")
 
-        fetcher = LocalRegulationFetcher(output_dir=tmp_path, limit=5)
+        fetcher = LocalRegulationFetcher(output_dir=tmp_path, limit=5, rate_limit=0)
         results = fetcher.fetch()
         assert len(results) == 0
 
@@ -2145,15 +2150,16 @@ class TestExamYuanFetcher:
         content = results[0].file_path.read_text(encoding="utf-8")
         assert "公務人員任用法施行細則" in content
 
+    @patch("src.knowledge.fetchers.base.time.sleep")
     @patch("src.knowledge.fetchers.exam_yuan_fetcher.requests.get")
-    def test_fetch_network_error(self, mock_get, tmp_path):
+    def test_fetch_network_error(self, mock_get, mock_sleep, tmp_path):
         """測試網路錯誤"""
         from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
         import requests as req
 
         mock_get.side_effect = req.ConnectionError("Connection refused")
 
-        fetcher = ExamYuanFetcher(output_dir=tmp_path, limit=5)
+        fetcher = ExamYuanFetcher(output_dir=tmp_path, limit=5, rate_limit=0)
         results = fetcher.fetch()
         assert len(results) == 0
 
@@ -2208,15 +2214,16 @@ class TestStatisticsFetcher:
         content = results[0].file_path.read_text(encoding="utf-8")
         assert "CPI" in content or "物價" in content
 
+    @patch("src.knowledge.fetchers.base.time.sleep")
     @patch("src.knowledge.fetchers.statistics_fetcher.requests.get")
-    def test_fetch_network_error(self, mock_get, tmp_path):
+    def test_fetch_network_error(self, mock_get, mock_sleep, tmp_path):
         """測試網路錯誤"""
         from src.knowledge.fetchers.statistics_fetcher import StatisticsFetcher
         import requests as req
 
         mock_get.side_effect = req.ConnectionError("Connection refused")
 
-        fetcher = StatisticsFetcher(output_dir=tmp_path)
+        fetcher = StatisticsFetcher(output_dir=tmp_path, rate_limit=0)
         results = fetcher.fetch()
         assert len(results) == 0
 
@@ -2286,15 +2293,16 @@ class TestControlYuanFetcher:
         results = fetcher.fetch()
         assert len(results) == 0
 
+    @patch("src.knowledge.fetchers.base.time.sleep")
     @patch("src.knowledge.fetchers.control_yuan_fetcher.requests.get")
-    def test_fetch_network_error(self, mock_get, tmp_path):
+    def test_fetch_network_error(self, mock_get, mock_sleep, tmp_path):
         """測試網路錯誤"""
         from src.knowledge.fetchers.control_yuan_fetcher import ControlYuanFetcher
         import requests as req
 
         mock_get.side_effect = req.ConnectionError("Connection refused")
 
-        fetcher = ControlYuanFetcher(output_dir=tmp_path, limit=5)
+        fetcher = ControlYuanFetcher(output_dir=tmp_path, limit=5, rate_limit=0)
         results = fetcher.fetch()
         assert len(results) == 0
 
