@@ -1,5 +1,7 @@
-"""formatter.py / memory.py graph node 邊界測試。"""
+"""formatter.py / memory.py / aggregator.py graph node 邊界測試。"""
 from unittest.mock import patch, MagicMock
+
+import pytest
 
 
 class TestFormatDocument:
@@ -64,3 +66,152 @@ class TestFetchOrgMemory:
             result = fetch_org_memory({"requirement": {"sender": "X"}})
         assert result["phase"] == "memory_fetched"
         assert result["org_hints"] == ""
+
+
+class TestAggregateReviews:
+    """aggregate_reviews node 測試——驗證委派 scoring.py 共用函式。"""
+
+    def test_empty_results_returns_safe(self):
+        from src.graph.nodes.aggregator import aggregate_reviews
+        result = aggregate_reviews({"review_results": []})
+        report = result["aggregated_report"]
+        assert report["risk_summary"] == "Safe"
+        assert report["overall_score"] == 1.0
+        assert report["error_count"] == 0
+
+    def test_single_perfect_result(self):
+        from src.graph.nodes.aggregator import aggregate_reviews
+        result = aggregate_reviews({"review_results": [
+            {
+                "agent_name": "Format Auditor",
+                "issues": [],
+                "score": 1.0,
+                "confidence": 1.0,
+            }
+        ]})
+        report = result["aggregated_report"]
+        assert report["overall_score"] == 1.0
+        assert report["risk_summary"] == "Safe"
+        assert result["phase"] == "reviews_aggregated"
+
+    def test_errors_affect_risk(self):
+        from src.graph.nodes.aggregator import aggregate_reviews
+        result = aggregate_reviews({"review_results": [
+            {
+                "agent_name": "Format Auditor",
+                "issues": [{
+                    "category": "format",
+                    "severity": "error",
+                    "risk_level": "high",
+                    "location": "主旨",
+                    "description": "缺少主旨",
+                }],
+                "score": 0.5,
+                "confidence": 1.0,
+            }
+        ]})
+        report = result["aggregated_report"]
+        assert report["error_count"] == 1
+        assert report["risk_summary"] != "Safe"
+
+    def test_warnings_counted(self):
+        from src.graph.nodes.aggregator import aggregate_reviews
+        result = aggregate_reviews({"review_results": [
+            {
+                "agent_name": "Style Checker",
+                "issues": [{
+                    "category": "style",
+                    "severity": "warning",
+                    "risk_level": "low",
+                    "location": "說明",
+                    "description": "口語化",
+                }],
+                "score": 0.8,
+                "confidence": 1.0,
+            }
+        ]})
+        report = result["aggregated_report"]
+        assert report["warning_count"] == 1
+        assert report["error_count"] == 0
+
+    def test_multiple_agents_weighted(self):
+        """驗證不同類別的 agent 使用不同權重（format > style）。"""
+        from src.graph.nodes.aggregator import aggregate_reviews
+        result = aggregate_reviews({"review_results": [
+            {
+                "agent_name": "Format Auditor",
+                "issues": [],
+                "score": 0.5,
+                "confidence": 1.0,
+            },
+            {
+                "agent_name": "Style Checker",
+                "issues": [],
+                "score": 1.0,
+                "confidence": 1.0,
+            },
+        ]})
+        report = result["aggregated_report"]
+        # format weight=3.0, style weight=1.0 → avg = (0.5*3 + 1.0*1) / (3+1) = 2.5/4 = 0.625
+        assert report["overall_score"] == pytest.approx(0.625, abs=0.001)
+
+    def test_scoring_consistency_with_core_module(self):
+        """確保 aggregator 使用的評分邏輯與 scoring.py 一致。"""
+        from src.graph.nodes.aggregator import aggregate_reviews, _dicts_to_review_results
+        from src.core.scoring import calculate_weighted_scores, calculate_risk_scores
+
+        raw = [
+            {
+                "agent_name": "Fact Checker",
+                "issues": [{
+                    "category": "fact",
+                    "severity": "error",
+                    "risk_level": "high",
+                    "location": "依據",
+                    "description": "法規不存在",
+                }],
+                "score": 0.3,
+                "confidence": 0.9,
+            },
+        ]
+        # 直接呼叫 scoring.py 計算
+        models = _dicts_to_review_results(raw)
+        expected_ws, expected_tw = calculate_weighted_scores(models)
+        expected_es, expected_wws = calculate_risk_scores(models)
+
+        # 透過 aggregator 計算
+        result = aggregate_reviews({"review_results": raw})
+        report = result["aggregated_report"]
+
+        expected_avg = expected_ws / expected_tw if expected_tw > 0 else 0.0
+        assert report["overall_score"] == pytest.approx(round(expected_avg, 4), abs=0.0001)
+        assert report["weighted_error_score"] == pytest.approx(round(expected_es, 2), abs=0.01)
+
+    def test_malformed_issue_dict_handled_gracefully(self):
+        """格式不完整的 issue dict 不應阻斷流程。"""
+        from src.graph.nodes.aggregator import aggregate_reviews
+        result = aggregate_reviews({"review_results": [
+            {
+                "agent_name": "Unknown Agent",
+                "issues": [{"bad_key": "value"}],  # 缺少必要欄位
+                "score": 0.5,
+                "confidence": 1.0,
+            }
+        ]})
+        # 轉換失敗時 issue 被跳過，但不應 crash
+        report = result["aggregated_report"]
+        assert result["phase"] == "reviews_aggregated"
+        assert report["error_count"] == 0
+
+    def test_exception_returns_critical(self):
+        """aggregator 內部例外時回傳 Critical 報告。"""
+        from src.graph.nodes.aggregator import aggregate_reviews
+        with patch(
+            "src.graph.nodes.aggregator.calculate_weighted_scores",
+            side_effect=RuntimeError("boom"),
+        ):
+            result = aggregate_reviews({"review_results": [
+                {"agent_name": "X", "issues": [], "score": 1.0, "confidence": 1.0}
+            ]})
+        assert result["aggregated_report"]["risk_summary"] == "Critical"
+        assert result["phase"] == "failed"

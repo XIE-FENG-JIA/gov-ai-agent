@@ -632,6 +632,22 @@
 - `graph/nodes/formatter.py`（81%）、`graph/nodes/memory.py`（81%）
 - ~~MISSION.md 功能缺口：審查意見具體修改建議~~ ✅ Round 40 已完成
 
+### [2026-03-26] Round 40 — aggregator.py 評分邏輯消除重複
+**角度**: 🏗️ 架構（重複邏輯消除 + 單一事實來源）
+**為什麼**: `aggregator.py` 完全 copy-paste 了 `scoring.py` 的 `_get_agent_category()` 和加權計算邏輯。若修改權重或公式，LangGraph pipeline 和 EditorInChief 會產出不一致的評分結果——同一份草稿走不同路徑可能得到不同風險等級。
+**做了什麼**:
+- 刪除 `aggregator.py` 的 `_get_agent_category()` 重複函式
+- 加權計算委派 `scoring.py` 的 `calculate_weighted_scores` / `calculate_risk_scores`
+- 新增 `_dicts_to_review_results()` 做 LangGraph dict → ReviewResult model 安全轉換
+- 新增 8 個 aggregator 測試（含 scoring 模組一致性驗證、格式異常降級）
+**結果**: PASS
+- 2778 passed, 84 skipped, 0 failed（+27 新測試，零回歸）
+- 評分邏輯單一事實來源：`src/core/scoring.py`
+**下一步可能**:
+- `cli/config_tools.py`（82%，52 行未覆蓋）
+- MISSION.md 功能缺口：公文範本庫擴充、法規自動更新機制
+- 考慮 LangGraph state schema validation（目前全靠 dict.get 的預設值）
+
 ### [2026-03-26] Round 40 — Format Auditor 新增具體修改建議
 **角度**: ✨ 功能（MISSION.md 功能缺口修復）
 **為什麼**: MISSION.md 列出的「審查意見的具體修改建議」功能缺口。其他 4 個審查 agent（Style/Fact/Consistency/Compliance）都在 LLM prompt 中要求 suggestion 欄位，唯獨 Format Auditor 只回傳純字串的 errors/warnings，使用者看到問題但不知道怎麼修。
