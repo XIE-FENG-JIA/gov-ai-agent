@@ -656,5 +656,14 @@
 - 異常路徑（agent_results 含 None）、多 agent 組合
 **結果**: PASS — reporter.py 89% → **100%**（全分支覆蓋）
 **下一步可能**:
-- `cli/config_tools.py`（82%）、`graph/nodes/formatter.py`（81%）
+- `cli/config_tools.py`（82%）、~~`graph/nodes/formatter.py`（81%）~~ ✅ Round 42
 - 其他 MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化
+
+### [2026-03-26] Round 42 — formatter.py + memory.py 81%→100%
+**角度**: 🧪 測試（graph node 防禦路徑覆蓋）
+**為什麼**: formatter.py 和 memory.py 各 81%，缺少需求/草稿缺失、異常處理等防禦路徑測試。
+**做了什麼**: 新增 `test_graph_nodes_extra.py` 7 個測試案例
+**結果**: PASS — formatter.py 81% → **100%**，memory.py 81% → **100%**
+**下一步可能**:
+- `cli/config_tools.py`（82%）
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
