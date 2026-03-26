@@ -15,7 +15,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from src.cli.utils import JSONStore
+from src.cli.utils import JSONStore, atomic_json_write
 
 app = typer.Typer()
 console = Console()
@@ -378,10 +378,7 @@ def _load_tags() -> dict[str, list[str]]:
 
 
 def _save_tags(tags: dict[str, list[str]]) -> None:
-    path = _get_tags_path()
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(tags, f, ensure_ascii=False, indent=2)
+    atomic_json_write(_get_tags_path(), tags)
 
 
 @app.command(name="tag-add")
@@ -522,8 +519,7 @@ def rename(
 
     data["subject"] = new_name
 
-    with open(record_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    atomic_json_write(record_path, data)
 
     console.print(f"[green]已重命名記錄 {record_id} 的主旨為「{new_name}」。[/green]")
 
@@ -547,10 +543,7 @@ def _load_pins() -> list[str]:
 
 
 def _save_pins(pins: list[str]) -> None:
-    path = _get_pins_path()
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(pins, f, ensure_ascii=False, indent=2)
+    atomic_json_write(_get_pins_path(), pins)
 
 
 @app.command(name="pin")

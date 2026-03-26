@@ -12,6 +12,8 @@ import yaml
 from rich.console import Console
 from rich.table import Table
 
+from src.cli.utils import atomic_json_write
+
 app = typer.Typer()
 console = Console()
 
@@ -80,8 +82,7 @@ def create(
     }
 
     _ensure_dir()
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(workflow, f, ensure_ascii=False, indent=2)
+    atomic_json_write(path, workflow)
 
     console.print(f"[green]範本 '{name}' 已建立。[/green]")
 

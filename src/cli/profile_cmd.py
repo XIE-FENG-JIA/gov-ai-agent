@@ -7,7 +7,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from src.cli.utils import JSONStore
+from src.cli.utils import JSONStore, atomic_json_write
 
 app = typer.Typer()
 console = Console()
@@ -61,8 +61,7 @@ def profile_set(
     else:
         data = {}
     data[key] = value
-    with open(settings_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    atomic_json_write(settings_path, data)
     console.print(f"[green]已設定 {key} = {value}[/green]")
 
 

@@ -889,3 +889,70 @@ class TestCrossModuleEdgeCases:
         assert assess_risk_level(0.0, 1.0, 0.85) == "Moderate"
         assert assess_risk_level(0.0, 0.0, 0.92) == "Low"
         assert assess_risk_level(0.0, 0.0, 0.96) == "Safe"
+
+
+# ====================================================================
+# 9. TestAtomicJsonWrite — 原子寫入防損毀測試
+# ====================================================================
+
+class TestAtomicJsonWrite:
+    """驗證 atomic_json_write 的原子性與容錯行為。"""
+
+    def test_basic_write_and_read(self, tmp_path):
+        """正常寫入後讀回應取得相同資料。"""
+        from src.cli.utils import atomic_json_write
+        target = str(tmp_path / "test.json")
+        data = {"key": "值", "list": [1, 2, 3]}
+        atomic_json_write(target, data)
+        with open(target, "r", encoding="utf-8") as f:
+            result = json.load(f)
+        assert result == data
+
+    def test_no_temp_file_left_on_success(self, tmp_path):
+        """成功寫入後不應殘留暫存檔。"""
+        from src.cli.utils import atomic_json_write
+        target = str(tmp_path / "clean.json")
+        atomic_json_write(target, [1, 2])
+        leftover = [f for f in os.listdir(tmp_path) if f.endswith(".tmp")]
+        assert leftover == []
+
+    def test_original_preserved_on_failure(self, tmp_path):
+        """寫入失敗時原始檔案應保持不變。"""
+        from src.cli.utils import atomic_json_write
+        target = str(tmp_path / "preserve.json")
+        original = {"original": True}
+        atomic_json_write(target, original)
+
+        # 用無法序列化的物件觸發失敗
+        with pytest.raises(TypeError):
+            atomic_json_write(target, {"bad": object()})
+
+        with open(target, "r", encoding="utf-8") as f:
+            result = json.load(f)
+        assert result == original
+
+    def test_no_temp_file_left_on_failure(self, tmp_path):
+        """寫入失敗後不應殘留暫存檔。"""
+        from src.cli.utils import atomic_json_write
+        target = str(tmp_path / "fail.json")
+        with pytest.raises(TypeError):
+            atomic_json_write(target, {"bad": object()})
+        leftover = [f for f in os.listdir(tmp_path) if f.endswith(".tmp")]
+        assert leftover == []
+
+    def test_creates_parent_dirs(self, tmp_path):
+        """目標目錄不存在時應自動建立。"""
+        from src.cli.utils import atomic_json_write
+        target = str(tmp_path / "sub" / "dir" / "data.json")
+        atomic_json_write(target, {"nested": True})
+        with open(target, "r", encoding="utf-8") as f:
+            assert json.load(f) == {"nested": True}
+
+    def test_json_store_uses_atomic_write(self, tmp_path, monkeypatch):
+        """JSONStore.save() 應走 atomic_json_write 路徑。"""
+        from src.cli.utils import JSONStore
+        monkeypatch.chdir(tmp_path)
+        store = JSONStore("store_test.json", default=[])
+        store.save([{"id": 1}])
+        result = store.load()
+        assert result == [{"id": 1}]

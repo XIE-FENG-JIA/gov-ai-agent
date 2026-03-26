@@ -4,6 +4,21 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 31 — CLI 狀態檔原子寫入防損毀
+**角度**: 🐛 Bug（狀態檔寫入中途崩潰會導致資料永久損毀）
+**為什麼**: `config.py` 和 `org_memory.py` 已實作 tempfile + os.replace 原子寫入策略，但 CLI 層的 tags、pins、profile settings、workflow 定義、歷史記錄重命名仍使用裸 `open("w") + json.dump`。進程中途崩潰（OOM、斷電、Ctrl+C）會產生半寫入的 JSON 檔，下次讀取時 `json.load` 直接 decode 失敗，使用者資料不可逆地遺失。
+**做了什麼**:
+- `src/cli/utils.py`: 新增 `atomic_json_write()` 共用函式，使用 `tempfile.mkstemp` + `os.replace` 策略，失敗時自動清理暫存檔
+- `JSONStore.save()` 改為委派給 `atomic_json_write()`，所有使用 JSONStore 的模組自動受惠
+- `history.py`: `_save_tags()`、`_save_pins()`、record rename 共 3 處改用原子寫入
+- `profile_cmd.py`: `profile_set()` 改用原子寫入
+- `workflow_cmd.py`: workflow create 改用原子寫入
+- 新增 `TestAtomicJsonWrite`（6 個測試）覆蓋：正常寫入、暫存檔清理、失敗時原始檔保留、目錄自動建立、JSONStore 整合
+**結果**: PASS — 3018 passed, 84 skipped, 0 failed（+6 新測試，零回歸）
+**下一步可能**:
+- `config_tools.py:465` 的 YAML 寫入也可改為原子操作（需要 `atomic_yaml_write` 變體）
+- `batch_tools.py:189` 的報告匯出雖非狀態檔，長時間批次處理中也可能受益於原子寫入
+
 ### [2026-03-26] Round 30 — ErrorAnalyzer 補齊 LLM 自訂例外診斷分支
 **角度**: 🐛 Bug（LLM 例外類型未被 ErrorAnalyzer 識別，診斷結果錯誤）
 **為什麼**: `ErrorAnalyzer.diagnose()` 只處理 Python 內建的 `TimeoutError` 和 `ConnectionError`，但 LLM 模組拋出的是自訂的 `LLMTimeoutError(LLMError)`、`LLMConnectionError(LLMError)`、`LLMAuthError(LLMError)`。這些都落入 "UNKNOWN" 分支，CLI 使用者看到的診斷建議是「請執行 gov-ai doctor」而不是具體的超時/連線/認證問題說明。

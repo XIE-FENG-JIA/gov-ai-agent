@@ -6,11 +6,32 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from typing import Any
 
 from rich.console import Console
 
 console = Console()
+
+
+def atomic_json_write(path: str, data: Any) -> None:
+    """原子寫入 JSON 檔案（先寫暫存檔再 rename，防止中途崩潰損毀）。
+
+    與 config.py / org_memory.py 使用相同的 tempfile + os.replace 策略。
+    """
+    parent = os.path.dirname(path) or "."
+    os.makedirs(parent, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(dir=parent, suffix=".tmp", prefix=".json_")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 class JSONStore:
@@ -48,12 +69,8 @@ class JSONStore:
             return _copy_default(self._default)
 
     def save(self, data: Any) -> None:
-        """將資料寫入 JSON 檔案。"""
-        parent = os.path.dirname(self.path)
-        if parent:
-            os.makedirs(parent, exist_ok=True)
-        with open(self.path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        """原子寫入 JSON 檔案（防止中途崩潰損毀）。"""
+        atomic_json_write(self.path, data)
 
 
 def _copy_default(default: Any) -> Any:
