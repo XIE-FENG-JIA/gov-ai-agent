@@ -1,9 +1,14 @@
 import json
+import logging
 from pathlib import Path
 
 import typer
 from rich.console import Console
 from rich.table import Table
+
+from src.cli.utils import atomic_json_write
+
+logger = logging.getLogger(__name__)
 
 app = typer.Typer()
 console = Console()
@@ -85,6 +90,23 @@ def search(
         console.print(f"[yellow]找不到包含「{keyword}」的語彙。[/yellow]")
 
 
+def _load_glossary_entries(path: Path) -> list[dict]:
+    """從 JSON 檔案載入語彙清單，損壞時回傳空清單並警告。"""
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, ValueError) as exc:
+        logger.warning("語彙檔案損壞 %s：%s，將以空清單重建", path, exc)
+        console.print(f"[yellow]警告：語彙檔案 {path} 格式損壞，將從空白開始。[/yellow]")
+        return []
+    if not isinstance(data, list):
+        logger.warning("語彙檔案 %s 非陣列格式，將以空清單重建", path)
+        console.print(f"[yellow]警告：語彙檔案 {path} 格式不正確，將從空白開始。[/yellow]")
+        return []
+    return data
+
+
 @app.command(name="add")
 def glossary_add(
     term: str = typer.Argument(..., help="語彙"),
@@ -97,20 +119,18 @@ def glossary_add(
     path = Path(glossary_file)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    entries: list[dict] = []
-    if path.exists():
-        entries = json.loads(path.read_text(encoding="utf-8"))
+    entries: list[dict] = _load_glossary_entries(path)
 
     # 檢查是否已有相同 term
     for entry in entries:
-        if entry["term"] == term:
+        if entry.get("term") == term:
             entry["definition"] = definition
-            path.write_text(json.dumps(entries, ensure_ascii=False, indent=2), encoding="utf-8")
+            atomic_json_write(str(path), entries)
             console.print(f"[green]已更新語彙：{term}[/green]")
             return
 
     entries.append({"term": term, "definition": definition})
-    path.write_text(json.dumps(entries, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_json_write(str(path), entries)
     console.print(f"[green]已新增語彙：{term}[/green]")
 
 
@@ -127,7 +147,7 @@ def glossary_remove(
         console.print("[red]找不到語彙檔案。[/red]")
         raise typer.Exit(1)
 
-    entries = json.loads(path.read_text(encoding="utf-8"))
+    entries = _load_glossary_entries(path)
     original_len = len(entries)
     entries = [e for e in entries if e.get("term") != term]
 
@@ -135,5 +155,5 @@ def glossary_remove(
         console.print(f"[yellow]找不到語彙「{term}」。[/yellow]")
         raise typer.Exit(1)
 
-    path.write_text(json.dumps(entries, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_json_write(str(path), entries)
     console.print(f"[green]已刪除語彙：{term}[/green]")

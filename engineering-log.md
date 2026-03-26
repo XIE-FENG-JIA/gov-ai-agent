@@ -4,6 +4,19 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 38 — glossary_cmd JSON 解析容錯與原子寫入
+**角度**: 🐛 Bug（語彙檔案損壞導致 CLI crash + 非原子寫入損毀風險）
+**為什麼**: `glossary add/remove` 的 `json.loads()` 無 try-except，語彙檔案損壞時 CLI 顯示 traceback 而非友善訊息。`write_text()` 非原子操作，中途崩潰（OOM/斷電/Ctrl+C）會永久損毀語彙檔案。`entry["term"]` 不用 `.get()` 在格式異常時 KeyError。
+**做了什麼**:
+- 新增 `_load_glossary_entries()` 共用函式：處理 JSONDecodeError + 非陣列格式，優雅降級
+- 3 處 `write_text()` 改用 `atomic_json_write()`
+- `entry["term"]` 改為 `entry.get("term")`
+- 新增 4 個測試覆蓋損壞/格式錯誤/原子寫入
+**結果**: PASS — 3053 passed, 84 skipped, 0 failed（+4 新測試，零回歸）
+**下一步可能**:
+- `batch_tools.py:189` 的報告匯出可改為原子寫入
+- `web_preview/app.py:113` 的 doc_type 使用者輸入未經 escape_prompt_tag 處理
+
 ### [2026-03-27] Round 37 — LLM 錯誤偵測統一化並支援中文
 **角度**: 🐛 Bug（中文 LLM 錯誤/拒絕回應未被偵測，洩漏至使用者）
 **為什麼**: 6 處 agent 各自用 `startswith("Error")` 或 `re.match(r"^[Ee]rror\s*:")` 檢查 LLM 錯誤回應，只能偵測英文 `Error` 前綴。中文 LLM 回傳「錯誤：」「很抱歉，我無法」「無法生成」等拒絕回應全部通過檢查，被當成有效草稿送出。此問題在 Round 33–36 連續標記為「下一步可能」。

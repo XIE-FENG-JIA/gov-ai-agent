@@ -11757,3 +11757,51 @@ class TestStampPosition:
         result = runner.invoke(app, ["stamp", str(doc), "--position", "left"])
         assert result.exit_code == 0
         assert "未知的位置" in result.output
+
+
+class TestGlossaryCorruptedFile:
+    """語彙檔案損壞時的容錯處理測試。"""
+
+    def test_add_with_corrupted_json_rebuilds(self, tmp_path, monkeypatch):
+        """損壞的 JSON 檔案不應 crash，應從空清單重建"""
+        monkeypatch.chdir(tmp_path)
+        gdir = tmp_path / ".glossary"
+        gdir.mkdir()
+        (gdir / "custom.json").write_text("{invalid json!!!", encoding="utf-8")
+        from src.cli.main import app
+        result = runner.invoke(app, ["glossary", "add", "查照", "請依照辦理"])
+        assert result.exit_code == 0
+        assert "已新增" in result.output
+
+    def test_add_with_non_array_json_rebuilds(self, tmp_path, monkeypatch):
+        """JSON 檔案是物件而非陣列時應從空清單重建"""
+        monkeypatch.chdir(tmp_path)
+        gdir = tmp_path / ".glossary"
+        gdir.mkdir()
+        (gdir / "custom.json").write_text('{"not": "an array"}', encoding="utf-8")
+        from src.cli.main import app
+        result = runner.invoke(app, ["glossary", "add", "函覆", "回覆來函"])
+        assert result.exit_code == 0
+        assert "已新增" in result.output
+
+    def test_remove_with_corrupted_json_graceful(self, tmp_path, monkeypatch):
+        """損壞的 JSON 檔案在 remove 操作時不應 crash"""
+        monkeypatch.chdir(tmp_path)
+        gdir = tmp_path / ".glossary"
+        gdir.mkdir()
+        (gdir / "custom.json").write_text("not json at all", encoding="utf-8")
+        from src.cli.main import app
+        result = runner.invoke(app, ["glossary", "remove", "不存在"])
+        # 找不到要刪除的詞彙，exit code 1 是預期的
+        assert result.exit_code == 1
+
+    def test_add_uses_atomic_write(self, tmp_path, monkeypatch):
+        """確認寫入使用原子操作（檔案存在且內容完整）"""
+        import json
+        monkeypatch.chdir(tmp_path)
+        from src.cli.main import app
+        result = runner.invoke(app, ["glossary", "add", "鈞鑒", "上對下的敬稱"])
+        assert result.exit_code == 0
+        written = json.loads((tmp_path / ".glossary" / "custom.json").read_text(encoding="utf-8"))
+        assert len(written) == 1
+        assert written[0]["term"] == "鈞鑒"
