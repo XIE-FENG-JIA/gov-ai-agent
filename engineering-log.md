@@ -945,6 +945,24 @@
 - 同時提交 Round 55 未閉環的 `workflow.py`/`generate.py` EditorInChief context manager 修復
 **結果**: PASS — 2855 passed, 84 skipped, 0 failed（+35 新測試，零回歸）
 **下一步可能**:
-- `core/error_analyzer.py` 也是零測試覆蓋的核心模組，可補測試
+- ~~`core/error_analyzer.py` 也是零測試覆蓋的核心模組，可補測試~~ ✅ Round 59 已完成
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+- 專案品質穩定，可開始規劃下一個里程碑
+
+### [2026-03-26] Round 59 — core/error_analyzer.py 單元測試覆蓋（0%→100%）
+**角度**: 🧪 測試（核心模組零覆蓋）
+**為什麼**: `ErrorAnalyzer.diagnose()` 被 `generate.py` 兩處呼叫做使用者友善的錯誤訊息，6 種例外分支零測試。延續 Round 58 的測試缺口補齊策略。
+**做了什麼**:
+- 新增 `tests/test_error_analyzer.py`，27 個測試案例覆蓋 7 個類別：
+  - 連線類（3+1）：ConnectionError/Refused/Reset + TimeoutError
+  - 回應類（1）：JSONDecodeError
+  - 設定類（1）：FileNotFoundError
+  - 知識庫類（2）：含 'knowledge' 的 ValueError + 不含的 fallthrough
+  - 未知類（3）：RuntimeError/KeyError/TypeError
+  - 回傳結構（12）：全分支 4-key 完整性 + severity 值域驗證
+  - 邊界情況（4）：空訊息、大小寫、子類別精確匹配行為
+**結果**: PASS — 27 passed, 0 failed
+**下一步可能**:
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+- `agents/review_parser.py` 完全缺少測試
 - 專案品質穩定，可開始規劃下一個里程碑
