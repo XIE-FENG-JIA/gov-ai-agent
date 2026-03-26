@@ -43,7 +43,10 @@ htmlcov/
 
 # Project specific
 *.log
-kb_data/
+kb_data/*
+!kb_data/examples/
+kb_data/examples/*
+!kb_data/examples/*.md
 *.docx
 *.pdf
 .chroma/
