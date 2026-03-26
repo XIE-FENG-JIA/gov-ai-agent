@@ -222,7 +222,7 @@ class TestCheckCitationLevel:
 
 class TestCheckEvidencePresence:
     def test_no_ref_section(self, vr):
-        text = "文字，無參考來源段落。"
+        text = "本案請查照辦理。"
         errors = vr.check_evidence_presence(text)
         assert any("缺少「參考來源」段落" in _d(e) for e in errors)
 

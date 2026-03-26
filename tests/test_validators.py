@@ -405,6 +405,86 @@ class TestCheckTerminology:
         errors = registry.check_terminology(draft)
         assert any("公路總局" in _d(e) or "交通部公路總局" in _d(e) for e in errors)
 
+    def test_long_name_suppresses_short_name_duplicate(self, registry):
+        """「內政部營建署」已匹配時，不應重複報告「營建署」"""
+        draft = "內政部營建署辦理都市計畫。"
+        errors = registry.check_terminology(draft)
+        # 只應有一條：長名「內政部營建署」
+        descs = [_d(e) for e in errors]
+        assert any("內政部營建署" in d for d in descs)
+        # 不應有獨立的「營建署」報告
+        short_only = [d for d in descs if "營建署" in d and "內政部營建署" not in d]
+        assert short_only == [], f"不應重複報告短名：{short_only}"
+
+    def test_tourism_long_name_no_duplicate(self, registry):
+        """「交通部觀光局」已匹配時，不應重複報告「觀光局」"""
+        draft = "交通部觀光局推動觀光產業。"
+        errors = registry.check_terminology(draft)
+        descs = [_d(e) for e in errors]
+        short_only = [d for d in descs if "觀光局" in d and "交通部觀光局" not in d]
+        assert short_only == [], f"不應重複報告短名：{short_only}"
+
+
+# ==================== check_colloquial_language 假陽性修正 ====================
+
+class TestColloquialFalsePositives:
+    """驗證單字語氣詞不會在複合詞中誤判"""
+
+    def test_batai_no_false_positive(self, registry):
+        """「吧台」不應觸發語氣詞「吧」"""
+        draft = "會議室旁設有吧台供休息使用。"
+        errors = registry.check_colloquial_language(draft)
+        assert not any("吧" in _d(e) for e in errors)
+
+    def test_mafei_no_false_positive(self, registry):
+        """「嗎啡」不應觸發語氣詞「嗎」"""
+        draft = "依據管制藥品管理條例，嗎啡屬第一級管制藥品。"
+        errors = registry.check_colloquial_language(draft)
+        assert not any("嗎" in _d(e) for e in errors)
+
+    def test_lala_dui_no_false_positive(self, registry):
+        """「啦啦隊」不應觸發語氣詞「啦」"""
+        draft = "本校啦啦隊參加全國競賽。"
+        errors = registry.check_colloquial_language(draft)
+        assert not any("啦" in _d(e) for e in errors)
+
+    def test_yesu_no_false_positive(self, registry):
+        """「耶穌」不應觸發語氣詞「耶」"""
+        draft = "耶穌基督教會申請設立登記。"
+        errors = registry.check_colloquial_language(draft)
+        assert not any("耶" in _d(e) for e in errors)
+
+    def test_particle_before_punctuation_still_detected(self, registry):
+        """語氣詞出現在標點前仍應被偵測"""
+        draft = "請問這樣可以嗎？"
+        errors = registry.check_colloquial_language(draft)
+        assert any("嗎" in _d(e) for e in errors)
+
+    def test_particle_before_period_detected(self, registry):
+        """語氣詞「吧」後接句號仍應被偵測"""
+        draft = "就這樣辦吧。"
+        errors = registry.check_colloquial_language(draft)
+        assert any("吧" in _d(e) for e in errors)
+
+    def test_particle_at_end_of_text_detected(self, registry):
+        """語氣詞在文末（無標點）仍應被偵測"""
+        draft = "好啦"
+        errors = registry.check_colloquial_language(draft)
+        assert any("啦" in _d(e) for e in errors)
+
+    def test_multi_char_pattern_still_works(self, registry):
+        """多字口語詞「幫我」「搞定」仍正常偵測"""
+        draft = "請幫我搞定這件事。"
+        errors = registry.check_colloquial_language(draft)
+        assert any("幫我" in _d(e) for e in errors)
+        assert any("搞定" in _d(e) for e in errors)
+
+    def test_jiuba_no_false_positive(self, registry):
+        """「酒吧」不應觸發語氣詞「吧」"""
+        draft = "查獲違規營業之酒吧共三家。"
+        errors = registry.check_colloquial_language(draft)
+        assert not any("吧" in _d(e) for e in errors)
+
 
 # ==================== check_attachment_consistency 增強測試 ====================
 

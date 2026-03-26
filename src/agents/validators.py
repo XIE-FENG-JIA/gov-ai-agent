@@ -328,37 +328,63 @@ class ValidatorRegistry:
         ("哦", ""),
     ]
 
+    # 單字語氣詞在句尾出現的上下文：後接中文標點、空白或文末
+    _CLAUSE_END_RE = re.compile(r"(?=[，。、；：！？」）\s\n]|$)")
+
     def check_colloquial_language(self, draft_text: str, **kwargs) -> list[dict]:
-        """檢查草稿中是否含有口語化用詞，公文應使用正式書面語。"""
+        """檢查草稿中是否含有口語化用詞，公文應使用正式書面語。
+
+        單字語氣詞（啦、喔、嗎、吧、耶、欸、哦）僅在後接標點或文末時
+        才視為口語語氣詞，避免「吧台」「嗎啡」「啦啦隊」「耶穌」等誤判。
+        """
         errors: list[dict] = []
         for pattern, replacement in self._COLLOQUIAL_PATTERNS:
-            if pattern in draft_text:
-                if replacement:
-                    errors.append(_issue(
-                        f"口語化用詞：「{pattern}」建議改為「{replacement}」。",
-                        f"用詞「{pattern}」",
-                        f"將「{pattern}」改為「{replacement}」",
-                    ))
-                else:
-                    errors.append(_issue(
-                        f"口語化語氣詞：「{pattern}」不應出現在正式公文中。",
-                        f"語氣詞「{pattern}」",
-                        f"刪除「{pattern}」",
-                    ))
+            if len(pattern) == 1:
+                # 單字語氣詞：僅匹配句尾位置（後接標點/空白/文末）
+                if not re.search(re.escape(pattern) + self._CLAUSE_END_RE.pattern, draft_text):
+                    continue
+            else:
+                if pattern not in draft_text:
+                    continue
+            if replacement:
+                errors.append(_issue(
+                    f"口語化用詞：「{pattern}」建議改為「{replacement}」。",
+                    f"用詞「{pattern}」",
+                    f"將「{pattern}」改為「{replacement}」",
+                ))
+            else:
+                errors.append(_issue(
+                    f"口語化語氣詞：「{pattern}」不應出現在正式公文中。",
+                    f"語氣詞「{pattern}」",
+                    f"刪除「{pattern}」",
+                ))
         return errors
 
     def check_terminology(self, draft_text: str, **kwargs) -> list[dict]:
-        """檢查草稿中是否使用了過時的機關名稱，提供更正建議。"""
+        """檢查草稿中是否使用了過時的機關名稱，提供更正建議。
+
+        長名優先：「內政部營建署」已匹配時，不再重複報告「營建署」。
+        """
         errors: list[dict] = []
-        seen: set[str] = set()
-        for old_name, new_name in self._OUTDATED_AGENCY_MAP.items():
-            if old_name in draft_text and old_name not in seen:
-                seen.add(old_name)
-                errors.append(_issue(
-                    f"術語更新建議：「{old_name}」已更名為「{new_name}」，請更新用語。",
-                    f"機關名稱「{old_name}」",
-                    f"將「{old_name}」改為「{new_name}」",
-                ))
+        # 依名稱長度降序處理，確保長名優先匹配
+        sorted_entries = sorted(
+            self._OUTDATED_AGENCY_MAP.items(),
+            key=lambda x: len(x[0]),
+            reverse=True,
+        )
+        matched_names: list[str] = []
+        for old_name, new_name in sorted_entries:
+            if old_name not in draft_text:
+                continue
+            # 若此短名是某個已匹配長名的子字串，跳過以避免重複報告
+            if any(old_name in longer for longer in matched_names):
+                continue
+            matched_names.append(old_name)
+            errors.append(_issue(
+                f"術語更新建議：「{old_name}」已更名為「{new_name}」，請更新用語。",
+                f"機關名稱「{old_name}」",
+                f"將「{old_name}」改為「{new_name}」",
+            ))
         return errors
 
 
