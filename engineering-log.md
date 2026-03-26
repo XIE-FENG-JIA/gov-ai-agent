@@ -663,6 +663,21 @@
 - MISSION.md 功能缺口：公文範本庫擴充、法規自動更新機制
 - LangGraph state schema validation
 
+### [2026-03-26] Round 42 — API parallel-review 評分邏輯統一
+**角度**: 🏗️ 架構（評分邏輯單一事實來源——最後一處）
+**為什麼**: Round 40 修復 aggregator.py 後，API `routes/agents.py` 的 `parallel_review` 端點仍然手寫加權計算迴圈。這是全專案最後一處重複的評分邏輯。
+**做了什麼**:
+- 移除 `CATEGORY_WEIGHTS` / `WARNING_WEIGHT_FACTOR` 的直接 import
+- 手寫加權迴圈 → `calculate_weighted_scores()` / `calculate_risk_scores()`
+- 保留 API 特有的 `any_agent_failed` 風險提升邏輯
+**結果**: PASS
+- 2801 passed, 84 skipped, 0 failed（零回歸）
+- 全專案評分邏輯單一事實來源完成：EditorInChief ✅ aggregator ✅ API ✅
+**下一步可能**:
+- `cli/config_tools.py`（82%，52 行未覆蓋）
+- MISSION.md 功能缺口：公文範本庫擴充、法規自動更新機制
+- LangGraph state schema validation
+
 ### [2026-03-26] Round 40 — Format Auditor 新增具體修改建議
 **角度**: ✨ 功能（MISSION.md 功能缺口修復）
 **為什麼**: MISSION.md 列出的「審查意見的具體修改建議」功能缺口。其他 4 個審查 agent（Style/Fact/Consistency/Compliance）都在 LLM prompt 中要求 suggestion 欄位，唯獨 Format Auditor 只回傳純字串的 errors/warnings，使用者看到問題但不知道怎麼修。

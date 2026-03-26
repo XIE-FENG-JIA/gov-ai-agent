@@ -11,8 +11,6 @@ from typing import Any
 from fastapi import APIRouter
 
 from src.core.constants import (
-    CATEGORY_WEIGHTS,
-    WARNING_WEIGHT_FACTOR,
     DEFAULT_FAILED_SCORE,
     DEFAULT_FAILED_CONFIDENCE,
     MAX_FEEDBACK_LENGTH,
@@ -20,6 +18,7 @@ from src.core.constants import (
     assess_risk_level,
     escape_prompt_tag,
 )
+from src.core.scoring import calculate_weighted_scores, calculate_risk_scores
 from src.core.models import PublicDocRequirement
 from src.core.review_models import ReviewResult
 from src.agents.requirement import RequirementAgent
@@ -330,17 +329,15 @@ async def parallel_review(
             timeout=ENDPOINT_TIMEOUT,
         )
 
-        # 處理結果並計算加權分數
-        weighted_score = 0.0
-        total_weight = 0.0
-        weighted_error_score = 0.0
-        weighted_warning_score = 0.0
+        # 處理結果：分離成功與失敗
+        successful_results: list[ReviewResult] = []
+        any_agent_failed = False
 
         for i, result in enumerate(review_results):
             agent_name = agent_names[i]
 
             if isinstance(result, Exception):
-                # 僅記錄到伺服器日誌，不向用戶洩漏例外細節
+                any_agent_failed = True
                 logger.error("Agent %s 執行失敗: %s", agent_name, result)
                 display_name = _AGENT_DISPLAY_NAMES.get(agent_name, agent_name)
                 results[agent_name] = SingleAgentReviewResponse(
@@ -361,30 +358,17 @@ async def parallel_review(
                 )
             else:
                 results[agent_name] = review_result_to_dict(result)
+                successful_results.append(result)
 
-                # 使用共用常數計算加權分數
-                weight = CATEGORY_WEIGHTS.get(agent_name, 1.0)
-                weighted_score += result.score * weight * result.confidence
-                total_weight += weight * result.confidence
-
-                for issue in result.issues:
-                    if issue.severity == "error":
-                        weighted_error_score += weight
-                    elif issue.severity == "warning":
-                        weighted_warning_score += weight * WARNING_WEIGHT_FACTOR
-
+        # 使用 scoring.py 共用函式計算加權分數（與 EditorInChief 一致）
+        weighted_score, total_weight = calculate_weighted_scores(successful_results)
+        weighted_error_score, weighted_warning_score = calculate_risk_scores(successful_results)
         avg_score = weighted_score / total_weight if total_weight > 0 else 0.0
 
-        # 檢查是否有 Agent 執行失敗（例外）
-        any_agent_failed = any(
-            isinstance(r, Exception) for r in review_results
-        )
-
-        # 特殊情況：所有 Agent 都失敗（total_weight=0 表示無有效結果）
+        # 風險等級判定
         if total_weight == 0.0:
             risk = "Critical"
         else:
-            # 使用共用函式判定風險等級（與 EditorInChief 一致）
             risk = assess_risk_level(
                 weighted_error_score, weighted_warning_score, avg_score
             )
