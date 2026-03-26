@@ -4,6 +4,8 @@ from datetime import datetime
 import typer
 from rich.console import Console
 
+from src.cli.utils import atomic_text_write
+
 console = Console()
 
 
@@ -20,8 +22,12 @@ def stamp(
         console.print(f"[red]錯誤：找不到檔案：{file_path}[/red]")
         raise typer.Exit(1)
 
-    with open(file_path, "r", encoding="utf-8") as f:
-        content = f.read()
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except OSError as exc:
+        console.print(f"[red]錯誤：無法讀取檔案：{exc}[/red]")
+        raise typer.Exit(1)
 
     if verify:
         has_stamp = "[戳記]" in content
@@ -54,8 +60,11 @@ def stamp(
         stamp_line += f" | {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     stamp_line += "\n"
 
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(content + stamp_line)
+    try:
+        atomic_text_write(file_path, content + stamp_line)
+    except OSError as exc:
+        console.print(f"[red]錯誤：無法寫入檔案：{exc}[/red]")
+        raise typer.Exit(1)
 
     console.print(f"[green]已成功加蓋戳記至：{file_path}[/green]")
     console.print(f"  [dim]戳記位置：{pos_label}[/dim]")

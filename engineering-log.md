@@ -4,6 +4,15 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 79 — stamp_cmd 錯誤處理 + 原子寫入
+**角度**: 🐛 Bug（錯誤處理缺口 + 資料損毀風險）
+**為什麼**: `stamp_cmd.py` 讀取檔案無異常處理，寫入用裸 `open()` 而非原子寫入，與專案規範不一致。
+**做了什麼**:
+- 檔案讀取加入 `try-except OSError` + 友善錯誤提示
+- 寫入改用 `atomic_text_write()`
+**結果**: PASS — import 驗證正常，12 個相關測試全通過
+**下一步可能**: `merge_cmd`/`split_cmd` 也需要相同的防護
+
 ### [2026-03-27] Round 78 — convert_cmd 三重防護補齊
 **角度**: 🐛 Bug + 🔒 安全（錯誤處理缺口）
 **為什麼**: `convert_cmd.py` 是唯一一個引用 `python-docx` 卻沒有 ImportError 處理的 CLI 命令（`validate_cmd`、`checklist_cmd`、`explain_cmd` 都有）。同時缺少 DOCX 開啟異常處理和原子寫入，不符合專案既有規範。
