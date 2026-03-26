@@ -1706,3 +1706,17 @@
 - 執行 `gov-ai kb sync` 讓 Round 73/77 新增的 12 筆範本正式生效
 - `公` 類文件範本補充（announcement 目前 18 筆）
 - 將 `cite` 建議整合進 `generate` 流程：生成完成後自動附上適用法規清單
+
+### [2026-03-27] Round 11 — generate + cite 整合：生成後自動附上法規引用建議
+**角度**: ✨ 功能缺口（MISSION 第 2 條「自動引用正確的法規依據」閉環）
+**為什麼**: Round 10 新增 `gov-ai cite` 命令，但它是獨立工具——使用者必須手動執行兩條命令（generate → cite），體驗分裂。第一性原理：「自動引用法規依據」的本意是讓使用者生成公文時自動得到法規建議，而非額外學一條命令。Round 10 是抓手，Round 11 才是閉環。
+**搜尋**: 確認 `requirement.doc_type` 回傳繁中類型字串（函/公告/簽/令...）；確認 `cite_cmd._filter_applicable` 接受相同字串；確認靜默降級（FileNotFoundError catch）是正確的降級策略——generate 不應因 cite 映射表缺失而失敗。
+**做了什麼**:
+- `src/cli/generate.py`：新增 `_show_cite_suggestions(doc_type)` helper——從 cite_cmd 匯入 `_load_mapping`/`_filter_applicable`，顯示最多 5 條「依據《xxx》」於 Rich Panel；靜默降級（Exception catch-all），不影響主流程
+- `generate()` 新增 `--cite/--no-cite` 旗標（預設開啟），`--quiet` 或 `--batch` 模式自動略過
+- `tests/test_cli_commands.py`：新增 `TestShowCiteSuggestions` 6 個測試——面板渲染、未知類型靜默、映射表缺失靜默、最多 5 條上限、`--no-cite` 不呼叫、預設呼叫並傳入正確 doc_type
+**結果**: PASS — 37 tests (22 cite_cmd + 9 TestGenerateCommand + 6 TestShowCiteSuggestions)，零回歸
+**下一步可能**:
+- 執行 `gov-ai kb sync` 讓 Round 73/77 新增的 12 筆範本正式生效
+- `公` 類文件範本補充（announcement 目前 18 筆）
+- WebSearch 確認範本符合最新行政院公文處理手冊規定

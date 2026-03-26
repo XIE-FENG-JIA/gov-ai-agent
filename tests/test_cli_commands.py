@@ -11840,3 +11840,172 @@ class TestGlossaryCorruptedFile:
         written = json.loads((tmp_path / ".glossary" / "custom.json").read_text(encoding="utf-8"))
         assert len(written) == 1
         assert written[0]["term"] == "鈞鑒"
+
+
+# ==================== Generate + Cite 整合 ====================
+
+class TestShowCiteSuggestions:
+    """_show_cite_suggestions() 及 generate --cite/--no-cite 整合測試"""
+
+    def test_show_cite_known_doc_type_renders_panel(self, tmp_path, monkeypatch, capsys):
+        """已知公文類型（函）應顯示法規引用面板。"""
+        import io
+        from pathlib import Path
+        import yaml
+        from rich.console import Console
+        from unittest.mock import patch
+
+        # 建立最小映射表
+        mapping = {
+            "regulations": {
+                "行政程序法": {
+                    "applicable_doc_types": ["函"],
+                    "pcode": "A0030055",
+                    "description": "行政機關行使職權規範",
+                    "source_level": "A",
+                },
+            }
+        }
+        mapping_file = tmp_path / "mapping.yaml"
+        mapping_file.write_text(yaml.dump(mapping, allow_unicode=True), encoding="utf-8")
+
+        buf = io.StringIO()
+        test_console = Console(file=buf, width=120)
+
+        with patch("src.cli.generate.console", test_console), \
+             patch("src.cli.cite_cmd._MAPPING_PATH", mapping_file):
+            from src.cli.generate import _show_cite_suggestions
+            _show_cite_suggestions("函")
+
+        output = buf.getvalue()
+        assert "行政程序法" in output
+        assert "適用法規" in output
+
+    def test_show_cite_unknown_doc_type_silent(self, tmp_path, monkeypatch):
+        """不在映射表中的公文類型應靜默略過（不拋出例外）。"""
+        import io
+        from pathlib import Path
+        import yaml
+        from rich.console import Console
+        from unittest.mock import patch
+
+        mapping = {"regulations": {}}
+        mapping_file = tmp_path / "mapping.yaml"
+        mapping_file.write_text(yaml.dump(mapping), encoding="utf-8")
+
+        buf = io.StringIO()
+        test_console = Console(file=buf, width=120)
+        with patch("src.cli.generate.console", test_console), \
+             patch("src.cli.cite_cmd._MAPPING_PATH", mapping_file):
+            from src.cli.generate import _show_cite_suggestions
+            _show_cite_suggestions("不存在的類型")
+
+        # 應完全靜默——不拋出例外，輸出為空
+        assert buf.getvalue().strip() == ""
+
+    def test_show_cite_missing_mapping_silent(self, tmp_path):
+        """映射表不存在時應靜默略過（不讓主流程失敗）。"""
+        import io
+        from pathlib import Path
+        from rich.console import Console
+        from unittest.mock import patch
+
+        nonexistent = tmp_path / "no_such_file.yaml"
+
+        buf = io.StringIO()
+        test_console = Console(file=buf, width=120)
+        with patch("src.cli.generate.console", test_console), \
+             patch("src.cli.cite_cmd._MAPPING_PATH", nonexistent):
+            from src.cli.generate import _show_cite_suggestions
+            _show_cite_suggestions("函")
+
+        assert buf.getvalue().strip() == ""
+
+    def test_show_cite_max_five_entries(self, tmp_path):
+        """映射表有 8 部法規時，面板只顯示前 5 部。"""
+        import io
+        import yaml
+        from rich.console import Console
+        from unittest.mock import patch
+
+        regs = {f"法規{i}號": {"applicable_doc_types": ["公告"], "pcode": f"P{i:04d}",
+                                "description": "說明", "source_level": "A"}
+                for i in range(1, 9)}
+        mapping_file = tmp_path / "mapping.yaml"
+        mapping_file.write_text(yaml.dump({"regulations": regs}, allow_unicode=True), encoding="utf-8")
+
+        buf = io.StringIO()
+        test_console = Console(file=buf, width=120)
+        with patch("src.cli.generate.console", test_console), \
+             patch("src.cli.cite_cmd._MAPPING_PATH", mapping_file):
+            from src.cli.generate import _show_cite_suggestions
+            _show_cite_suggestions("公告")
+
+        output = buf.getvalue()
+        # 確認只出現 5 條「依據《》」
+        cite_count = output.count("依據《")
+        assert cite_count == 5
+
+    @patch("src.cli.generate._show_cite_suggestions")
+    @patch("src.cli.generate.DocxExporter")
+    @patch("src.cli.generate.TemplateEngine")
+    @patch("src.cli.generate.WriterAgent")
+    @patch("src.cli.generate.RequirementAgent")
+    @patch("src.cli.generate.KnowledgeBaseManager")
+    @patch("src.cli.generate.get_llm_factory")
+    @patch("src.cli.generate.ConfigManager")
+    def test_no_cite_flag_skips_suggestions(
+        self, mock_cm, mock_factory, mock_kb, mock_req, mock_writer,
+        mock_template, mock_exporter, mock_show_cite,
+    ):
+        """--no-cite 旗標應使 _show_cite_suggestions 不被呼叫。"""
+        from src.cli.main import app
+
+        mock_cm.return_value.config = {
+            "llm": {"provider": "mock"},
+            "knowledge_base": {"path": "./test_kb"},
+        }
+        mock_req.return_value.analyze.return_value = MagicMock(doc_type="函", subject="測試")
+        mock_writer.return_value.write_draft.return_value = "主旨：測試"
+        mock_template.return_value.parse_draft.return_value = {"subject": "測試"}
+        mock_template.return_value.apply_template.return_value = "格式化草稿"
+        mock_exporter.return_value.export.return_value = "out.docx"
+
+        result = runner.invoke(app, [
+            "generate", "--input", "寫一份函測試法規整合", "--output", "out.docx",
+            "--skip-review", "--no-cite",
+        ])
+        assert result.exit_code == 0
+        mock_show_cite.assert_not_called()
+
+    @patch("src.cli.generate._show_cite_suggestions")
+    @patch("src.cli.generate.DocxExporter")
+    @patch("src.cli.generate.TemplateEngine")
+    @patch("src.cli.generate.WriterAgent")
+    @patch("src.cli.generate.RequirementAgent")
+    @patch("src.cli.generate.KnowledgeBaseManager")
+    @patch("src.cli.generate.get_llm_factory")
+    @patch("src.cli.generate.ConfigManager")
+    def test_default_cite_flag_calls_suggestions(
+        self, mock_cm, mock_factory, mock_kb, mock_req, mock_writer,
+        mock_template, mock_exporter, mock_show_cite,
+    ):
+        """預設（--cite）應呼叫 _show_cite_suggestions 並傳入正確的 doc_type。"""
+        from src.cli.main import app
+
+        mock_cm.return_value.config = {
+            "llm": {"provider": "mock"},
+            "knowledge_base": {"path": "./test_kb"},
+        }
+        mock_req.return_value.analyze.return_value = MagicMock(doc_type="公告", subject="環保公告測試")
+        mock_writer.return_value.write_draft.return_value = "主旨：公告測試"
+        mock_template.return_value.parse_draft.return_value = {"subject": "公告測試"}
+        mock_template.return_value.apply_template.return_value = "格式化草稿"
+        mock_exporter.return_value.export.return_value = "out.docx"
+
+        result = runner.invoke(app, [
+            "generate", "--input", "內政部發布一份公告", "--output", "out.docx",
+            "--skip-review",
+        ])
+        assert result.exit_code == 0
+        mock_show_cite.assert_called_once_with("公告")

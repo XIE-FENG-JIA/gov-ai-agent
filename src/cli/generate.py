@@ -981,6 +981,27 @@ def _handle_confirm(
     return final_draft, qa_report, qa_report_str
 
 
+def _show_cite_suggestions(doc_type: str) -> None:
+    """生成完成後自動顯示適用法規引用建議（靜默降級：找不到映射表或類型不在清單則略過）。"""
+    try:
+        from src.cli.cite_cmd import _load_mapping, _filter_applicable, _MAPPING_PATH
+        regulations = _load_mapping(_MAPPING_PATH)
+        applicable = _filter_applicable(regulations, doc_type)
+        if not applicable:
+            return
+        console.print()
+        cite_lines = [f"  依據《{reg['name']}》" for reg in applicable[:5]]
+        console.print(Panel(
+            "\n".join(cite_lines),
+            title=f"[bold]📋 適用法規引用建議（{doc_type}，共 {len(applicable)} 部）[/bold]",
+            subtitle="[dim]完整建議：gov-ai cite <草稿檔案>[/dim]",
+            border_style="dim cyan",
+            padding=(0, 2),
+        ))
+    except Exception:  # noqa: BLE001
+        pass  # 靜默降級，不影響主流程
+
+
 def _display_summary(
     requirement, qa_report, gen_elapsed: float, full_output_path: str,
     *, summary_flag: bool,
@@ -1083,6 +1104,7 @@ def generate(
     lang: str = typer.Option("zh-TW", "--lang", help="公文語言（zh-TW/zh-CN/en）"),
     header_logo: str = typer.Option("", "--header-logo", help="頁首 logo 圖片路徑"),
     disclaimer: str = typer.Option("", "--disclaimer", help="免責聲明文字"),
+    cite: bool = typer.Option(True, "--cite/--no-cite", help="生成後自動顯示適用法規引用建議（預設開啟）"),
 ):
     """
     根據自然語言輸入產生完整的政府公文。
@@ -1181,6 +1203,10 @@ def generate(
 
     # 摘要與歷史記錄
     _display_summary(requirement, qa_report, gen_elapsed, full_output_path, summary_flag=summary)
+
+    # 法規引用建議（--no-cite 可關閉；不可用時靜默略過）
+    if cite and not batch and not quiet:
+        _show_cite_suggestions(requirement.doc_type)
 
     try:
         append_record(
