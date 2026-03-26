@@ -675,3 +675,28 @@ class TestXXEPrevention:
         records = RecentPolicyFetcher._parse_xml(safe_xml)
         assert len(records) == 1
         assert records[0]["Title"] == "Test Title"
+
+
+class TestFuzzyMatchShortString:
+    """驗證 _fuzzy_match 不會因短字串導致誤匹配。"""
+
+    def test_single_char_no_containment_boost(self):
+        """單一字元不應觸發包含關係加分。"""
+        candidates = ["民法", "刑法", "行政程序法", "商事法"]
+        best, ratio = LawVerifier._fuzzy_match("法", candidates)
+        # 不應因「法」包含在所有法規中而給 0.8
+        assert ratio < 0.8
+
+    def test_two_char_match_still_works(self):
+        """兩字以上的包含關係匹配應正常運作。"""
+        candidates = ["行政程序法", "民法", "刑法"]
+        best, ratio = LawVerifier._fuzzy_match("行政程序", candidates)
+        assert best == "行政程序法"
+        assert ratio >= 0.8
+
+    def test_exact_match_always_works(self):
+        """完全匹配不受影響。"""
+        candidates = ["民法", "刑法", "行政程序法"]
+        best, ratio = LawVerifier._fuzzy_match("民法", candidates)
+        assert best == "民法"
+        assert ratio >= 0.8  # 完全匹配，len(2) >= 2，包含關係正常

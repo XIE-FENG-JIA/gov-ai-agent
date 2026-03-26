@@ -351,8 +351,9 @@ class LawVerifier:
         best_ratio = 0.0
 
         for name in candidates:
-            # 優先檢查包含關係
-            if target in name or name in target:
+            # 優先檢查包含關係（短字串至少 2 字元才啟用，避免單字如「法」匹配所有法規）
+            shorter = min(len(target), len(name))
+            if shorter >= 2 and (target in name or name in target):
                 ratio = len(min(target, name, key=len)) / len(max(target, name, key=len))
                 ratio = max(ratio, 0.8)  # 包含關係至少給 0.8
             else:

@@ -4,6 +4,18 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 35 — 法規模糊比對單字元誤匹配修復
+**角度**: 🐛 Bug（引用驗證 false positive — 單字元匹配所有法規）
+**為什麼**: `_fuzzy_match()` 的包含關係檢查不設最短長度門檻，查詢「法」會匹配所有法規名稱（民法、刑法、行政程序法...）且強制給 0.8 信心度。這使引用驗證產生大量 false positive，降低引用品質報告的可信度。
+**做了什麼**:
+- 包含關係加分條件增加 `shorter >= 2` 門檻
+- 單字元 fallback 到 SequenceMatcher 精確比對（不再強制 0.8）
+- 新增 `TestFuzzyMatchShortString`（3 個測試）驗證單字元不加分、雙字元正常、完全匹配不受影響
+**結果**: PASS — 3033 passed, 84 skipped, 0 failed（+3 新測試，零回歸）
+**下一步可能**:
+- writer.py:432 的 LLM 錯誤偵測 regex 改為也偵測中文錯誤回覆
+- knowledge/fetchers/base.py 的 `_write_markdown` 失敗後仍回傳檔案路徑
+
 ### [2026-03-27] Round 34 — OrganizationalMemory stored prompt injection 防護強化
 **角度**: 🔒 安全（stored prompt injection — 使用者偏好注入 LLM prompt）
 **為什麼**: `get_writing_hints()` 產生的文字直接拼入 LLM prompt，但 `preferred_terms` 只移除 `'` 和 `\n`（漏了控制字元、反斜線、花括號等），`signature_format` 完全沒消毒。`update_preference()` 也沒有 key 白名單，可寫入任意欄位。
