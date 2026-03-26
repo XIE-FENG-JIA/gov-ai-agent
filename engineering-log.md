@@ -4,6 +4,26 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 75 — gov-ai review 指令（多 Agent 審查 + 具體修改建議 CLI）
+**角度**: ✨ 功能缺口（MISSION 最後一塊：審查意見具體修改建議的使用者入口）
+**為什麼**: Round 32 已為所有 reviewer 的 LLM prompt 強制要求 `suggestion`，Round 32（PUA）已讓 validator 回傳結構化 dict。但「審查意見的具體修改建議」這個 MISSION 功能缺口仍有一個關鍵缺口：**使用者無法獨立對現有草稿執行多 Agent 審查**——必須透過 `generate` 走全流程。對於手寫草稿或外部來源草稿，沒有任何審查入口。
+**搜尋**: 確認所有 5 個 reviewer 的 prompt 已強制 suggestion（style/fact/consistency/compliance/format 全部有 `IMPORTANT: Each issue MUST include a concrete suggestion`）。確認 `editor.py` 已有 `_execute_review()` 私有方法可直接復用。
+**做了什麼**:
+- `EditorInChief.run_review_only(draft, doc_type) → QAReport`：新增公開方法，單輪審查不修正，直接包裝 `_execute_review` + `_generate_qa_report` + `_print_report`
+- `src/cli/review_cmd.py`：新增 `gov-ai review <draft.md>` 指令
+  - `--doc-type`：明確指定公文類型（省略時自動從內容偵測 13 種）
+  - `--apply / -a`：套用修改建議並輸出修正後草稿
+  - `--output / -o`：指定輸出路徑（預設 `<原檔名>_revised.md`）
+  - `--json`：JSON 格式輸出（含 `suggestion` 欄位，適合程式化串接）
+  - Rich Table 顯示：每個 issue 包含「嚴重度 / Agent / 位置 / 問題描述 / **具體修改建議**」5 欄
+- `src/cli/main.py`：註冊 `review` 指令
+- `tests/test_review_cmd.py`：16 個測試：`_detect_doc_type`（7）、主流程（8：review-only、apply、預設輸出路徑、JSON、file-not-found、empty-file、LLM 失敗、doc-type override）、`run_review_only` 整合（1）
+**結果**: PASS — 16 新測試全通過，3120 既有測試無回歸（e2e 6 個失敗為預存在的 test_e2e.py 修改所致，與本輪改動無關，隔離驗證確認）
+**下一步可能**:
+- `gov-ai review` 輸出可加入 `--output-report` 選項，直接寫出 Markdown 報告
+- 批次處理效能優化（MISSION 剩餘功能缺口）
+- `呈` 和 `咨` 的範本數量偏少（各 3 筆），可補充
+
 ### [2026-03-27] Round 33（PUA輪次）— 通用驗證器啟用 + evidence 匹配放寬
 **角度**: 🐛 Bug（5 個驗證器在生產環境從未被呼叫）
 **為什麼**: `check_colloquial_language`、`check_terminology`、`check_citation_level`、`check_evidence_presence`、`check_citation_integrity` 這 5 個驗證器只有在 kb 規則檔包含 `[Call: func_name]` 標記時才會觸發。但 kb_data 是 gitignored 的本地檔案——部署環境可能缺少這些標記，導致驗證器形同虛設。此外 `check_evidence_presence` 用 `"### 參考來源"` 做硬匹配，但模板引擎會把 `###` 轉為 `**粗體**` 格式，導致正確的草稿也被誤判。

@@ -93,6 +93,25 @@ class EditorInChief:
     # 每段最大字元數
     _SEGMENT_SIZE = 12000
 
+    def run_review_only(self, draft: str, doc_type: str) -> QAReport:
+        """執行一次完整多 Agent 審查，不進行任何草稿修正。
+
+        適用於對現有草稿取得結構化審查意見（含具體修改建議），
+        不觸發迭代修正流程。
+
+        Args:
+            draft: 待審查的草稿文本
+            doc_type: 公文類型
+
+        Returns:
+            QAReport，含各 Agent 的 issues 與 suggestion 欄位
+        """
+        console.rule("[bold cyan]多 Agent 審查（單輪，不修正）[/bold cyan]")
+        results, timed_out = self._execute_review(draft, doc_type)
+        report = self._generate_qa_report(results, timed_out)
+        self._print_report(report)
+        return report
+
     def review_and_refine(
         self, draft: str, doc_type: str, max_rounds: int = DEFAULT_MAX_REVIEW_ROUNDS,
         *, convergence: bool = False, skip_info: bool = False,
