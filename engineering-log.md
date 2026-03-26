@@ -391,4 +391,16 @@
 **下一步可能**:
 - LLM mock / KB mock 統一到 conftest
 - `web_preview/app.py`（58%）低覆蓋
-- CI 加入 `--cov-fail-under=85` 門檻
+- ~~CI 加入 `--cov-fail-under=85` 門檻~~ ✅ Round 27 已完成
+
+### [2026-03-26] Round 27 — CI 覆蓋率門檻 85% 啟用
+**角度**: 🧪 測試（品質門檻自動化）
+**為什麼**: Round 17 建立 86% 覆蓋率基線後，連續 10 輪（Round 17-26）列為「下一步可能」未執行。沒有自動門檻 = 沒有防護，任何 PR 都可能無聲降低覆蓋率。
+**做了什麼**:
+- `pyproject.toml`: `[tool.coverage.report]` 加 `fail_under = 85`
+- `.github/workflows/ci.yml`: pytest 指令加 `--cov=src --cov-report=term-missing`
+**結果**: PASS — 覆蓋率 88.49%（門檻 85%，留 3.5% 緩衝），2570 passed
+**下一步可能**:
+- LLM mock / KB mock 統一到 conftest
+- `web_preview/app.py`（58%）是唯一低於 70% 的核心模組
+- 考慮 CI 加 coverage badge 到 README
