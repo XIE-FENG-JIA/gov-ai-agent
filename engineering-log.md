@@ -4,6 +4,16 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 35 — merge_cmd/split_cmd 原子寫入 + OSError 閉環
+**角度**: 🐛 Bug（資料損毀風險 + 異常處理缺口）
+**為什麼**: Round 79 日誌明確標記「merge_cmd/split_cmd 也需要相同的防護」但一直未閉環。兩者用裸 `open()` 寫檔（斷電即損毀），且只捕獲 `UnicodeDecodeError`，權限拒絕/磁碟滿等 `OSError` 會直接 traceback 給使用者。這是 CLI 原子寫入專項的最後兩個漏網之魚。
+**做了什麼**:
+- `merge_cmd.py`: 輸出寫入改用 `atomic_text_write()`，讀取補 `OSError` 異常處理
+- `split_cmd.py`: 段落檔案寫入改用 `atomic_text_write()`，讀取補 `OSError` 異常處理
+**結果**: PASS — 26 個 merge/split 測試全通過，732 CLI 測試零回歸
+**觀察**: CLI 原子寫入專項現已 100% 閉環，所有寫入操作均使用 `atomic_text_write()` 或 `atomic_json_write()`
+**下一步可能**: 從品質打磨轉向功能開發，或檢視其餘 CLI 命令的 edge case 處理
+
 ### [2026-03-27] Round 79 — stamp_cmd 錯誤處理 + 原子寫入
 **角度**: 🐛 Bug（錯誤處理缺口 + 資料損毀風險）
 **為什麼**: `stamp_cmd.py` 讀取檔案無異常處理，寫入用裸 `open()` 而非原子寫入，與專案規範不一致。

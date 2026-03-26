@@ -3,6 +3,8 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from src.cli.utils import atomic_text_write
+
 console = Console()
 
 _SECTION_NAMES = ["主旨", "說明", "辦法", "擬辦", "正本", "副本", "備註", "附件"]
@@ -24,6 +26,9 @@ def split(
             text = f.read()
     except UnicodeDecodeError:
         console.print("[red]錯誤：檔案編碼不支援。[/red]")
+        raise typer.Exit(1)
+    except OSError as e:
+        console.print(f"[red]錯誤：無法讀取檔案：{file}（{e}）[/red]")
         raise typer.Exit(1)
 
     # 解析段落
@@ -73,8 +78,7 @@ def split(
     for i, (name, content) in enumerate(sections, 1):
         fname = f"{prefix}_{i:02d}_{name}.txt"
         fpath = os.path.join(output_dir, fname)
-        with open(fpath, "w", encoding="utf-8") as f:
-            f.write(content.strip())
+        atomic_text_write(fpath, content.strip())
         table.add_row(name, fname, str(len(content.strip())))
 
     console.print(table)

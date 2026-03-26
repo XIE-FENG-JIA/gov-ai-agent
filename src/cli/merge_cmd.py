@@ -3,6 +3,8 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 
+from src.cli.utils import atomic_text_write
+
 console = Console()
 
 
@@ -30,6 +32,9 @@ def merge(
         except UnicodeDecodeError:
             console.print(f"[red]錯誤：檔案編碼不支援：{f}[/red]")
             raise typer.Exit(1)
+        except OSError as e:
+            console.print(f"[red]錯誤：無法讀取檔案：{f}（{e}）[/red]")
+            raise typer.Exit(1)
 
     # 智慧合併
     merged = _smart_merge(contents)
@@ -40,8 +45,7 @@ def merge(
 
     # 輸出到檔案
     if output:
-        with open(output, "w", encoding="utf-8") as fh:
-            fh.write(merged)
+        atomic_text_write(output, merged)
         console.print(f"[green]已儲存至：{output}[/green]")
 
 
