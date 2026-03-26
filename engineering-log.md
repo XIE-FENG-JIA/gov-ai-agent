@@ -924,3 +924,27 @@
 **下一步可能**:
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
 - 專案品質穩定，可開始規劃下一個里程碑
+
+### [2026-03-26] Round 57 — 審查通過
+**結論**: 經 Round 54–56 連續三輪安全/bug 修復後，專案狀態良好。快速掃描未發現需要立即處理的問題。
+**觀察**:
+- config.yaml 中 Ollama base_url 仍使用 localhost:9090（用戶本地設定，不應自動修改）
+- 本次 session 共完成 4 輪改善（Round 54–57）
+- 下一個里程碑建議：從 bug/安全打磨轉向 MISSION.md 的功能缺口
+
+### [2026-03-26] Round 58 — core/scoring.py 單元測試覆蓋（0%→100%）
+**角度**: 🧪 測試（核心模組零覆蓋）
+**為什麼**: `scoring.py` 是審查系統的評分核心 — `editor.py`、`aggregator.py`、`agents.py` 三處都依賴它的純函式做加權計算和風險判定。55 輪改善後唯一零測試覆蓋的核心模組。純函式模組測試 ROI 最高。
+**做了什麼**:
+- 新增 `tests/test_scoring.py`，35 個測試案例覆蓋 5 個類別：
+  - `TestGetAgentCategory`（12 個）：名稱→類別對應、大小寫不敏感、fallback
+  - `TestCalculateWeightedScores`（6 個）：空結果、單/多結果、信心度權重、零信心排除
+  - `TestCalculateRiskScores`（7 個）：error/warning/info 分離、跨 Agent 累加、權重因子
+  - `TestAssessRiskLevel`（7 個）：5 級風險判定、優先級覆蓋、邊界值
+  - `TestScoringEndToEnd`（3 個）：完整計算→判定端到端場景
+- 同時提交 Round 55 未閉環的 `workflow.py`/`generate.py` EditorInChief context manager 修復
+**結果**: PASS — 2855 passed, 84 skipped, 0 failed（+35 新測試，零回歸）
+**下一步可能**:
+- `core/error_analyzer.py` 也是零測試覆蓋的核心模組，可補測試
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+- 專案品質穩定，可開始規劃下一個里程碑
