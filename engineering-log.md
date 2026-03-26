@@ -4,6 +4,15 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 74 — config.yaml 意外刪除修復
+**角度**: 🐛 Bug（應用啟動失敗）
+**為什麼**: f79204b 提交「開會紀錄」功能時，staging area 殘留了被砍至 3 行的 config.yaml（僅剩 providers.openrouter.model: free/model-null），遺失 api、knowledge_base、llm、organizational_memory 等核心區塊，應用啟動會因缺少必要設定而失敗。
+**做了什麼**: 從 cbeba0b 還原 config.yaml 至完整的 44 行設定
+**結果**: PASS — 3059 passed, 84 skipped, 0 failed（零回歸）
+**下一步可能**:
+- batch_tools.py:189 的報告匯出可改為原子寫入
+- web_preview/app.py:113 的 doc_type 使用者輸入未經 escape_prompt_tag 處理
+
 ### [2026-03-27] Round 73 — 新增「開會紀錄」公文範本（功能開發）
 **角度**: ✨ 功能缺口（MISSION.md: 公文範本庫擴充）
 **為什麼**: 系統已有「開會通知單」但缺「開會紀錄」。每次會議後都要撰寫紀錄，這是高頻使用場景。依行政院文書格式規範，開會紀錄需包含主席、出列席人員、報告事項、討論事項、決議、臨時動議等標準欄位。連續 4 輪品質打磨後強制切換到功能開發。
