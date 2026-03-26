@@ -40,7 +40,7 @@ import src.api.dependencies as _deps
 import src.api.middleware as _mw
 
 from src.api.dependencies import get_config, get_llm, get_kb, executor
-from src.api.middleware import security_middleware
+from src.api.middleware import security_middleware, RequestBodyLimitMiddleware
 
 # 路由模組
 from src.api.routes import health, agents, workflow, knowledge
@@ -329,6 +329,11 @@ except ImportError:
 # ============================================================
 
 app.middleware("http")(security_middleware)
+
+# ASGI 層請求體大小限制（攔截無 Content-Length 的 chunked request）
+# 必須在 HTTP middleware 之後 add（ASGI 洋蔥模型：後加的先執行），
+# 確保超大 chunked payload 在進入 JSON 解析前即被截斷。
+app.add_middleware(RequestBodyLimitMiddleware)
 
 
 # ============================================================

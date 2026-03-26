@@ -1,6 +1,6 @@
 """
-中介層 — 限流、指標收集、安全標頭、API Key 認證
-===============================================
+中介層 — 限流、指標收集、安全標頭、API Key 認證、請求體大小限制
+===============================================================
 """
 
 import logging
@@ -16,6 +16,7 @@ from typing import Any
 import hmac
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send, Message
 
 from src.core.constants import API_VERSION, MAX_REQUEST_BODY_SIZE
 from src.api.dependencies import get_config
@@ -377,3 +378,87 @@ async def security_middleware(request: Request, call_next):
         )
 
     return response
+
+
+# ============================================================
+# ASGI 請求體大小限制（攔截 chunked transfer encoding）
+# ============================================================
+
+class RequestBodyLimitMiddleware:
+    """ASGI 中介層：串流計算請求體實際位元組數，超限時回傳 413。
+
+    與 security_middleware 中的 Content-Length 預檢互補：
+    - Content-Length 預檢：快速攔截宣告超限的請求（零成本）。
+    - 本中介層：攔截無 Content-Length 的 chunked 請求，
+      防止攻擊者繞過 Content-Length 檢查推送超大 payload。
+    """
+
+    def __init__(self, app: ASGIApp, max_body_size: int = MAX_REQUEST_BODY_SIZE) -> None:
+        self.app = app
+        self.max_body_size = max_body_size
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or scope["method"] in ("GET", "HEAD", "OPTIONS"):
+            await self.app(scope, receive, send)
+            return
+
+        # 若 Content-Length 已宣告且在限制內，跳過串流檢查（避免雙重計算）
+        headers = dict(scope.get("headers", []))
+        content_length_raw = headers.get(b"content-length")
+        if content_length_raw is not None:
+            try:
+                if int(content_length_raw) <= self.max_body_size:
+                    await self.app(scope, receive, send)
+                    return
+            except (ValueError, TypeError):
+                pass
+            # Content-Length 超限的情況已由 security_middleware 處理，
+            # 這裡讓請求繼續流入 security_middleware 以取得統一的 413 回應格式
+
+        # 包裝 receive：串流計數位元組
+        bytes_received = 0
+        body_exceeded = False
+
+        async def limiting_receive() -> Message:
+            nonlocal bytes_received, body_exceeded
+            message = await receive()
+            if message["type"] == "http.request":
+                chunk = message.get("body", b"")
+                bytes_received += len(chunk)
+                if bytes_received > self.max_body_size:
+                    body_exceeded = True
+                    # 清空 body 並標記結束，阻止後續讀取
+                    message["body"] = b""
+                    message["more_body"] = False
+            return message
+
+        # 攔截回應：若超限則替換為 413
+        response_started = False
+
+        async def limiting_send(message: Message) -> None:
+            nonlocal response_started
+            if body_exceeded and not response_started:
+                if message["type"] == "http.response.start":
+                    response_started = True
+                    import json as _json
+                    error_body = _json.dumps({
+                        "detail": f"請求體過大，上限為 {self.max_body_size // (1024 * 1024)} MB。",
+                    }).encode("utf-8")
+                    await send({
+                        "type": "http.response.start",
+                        "status": 413,
+                        "headers": [
+                            [b"content-type", b"application/json"],
+                            [b"content-length", str(len(error_body)).encode()],
+                        ],
+                    })
+                    await send({
+                        "type": "http.response.body",
+                        "body": error_body,
+                    })
+                    return
+                elif message["type"] == "http.response.body":
+                    return  # 已發送 413，丟棄後續 body chunks
+            await send(message)
+
+        await self.app(scope, limiting_receive, limiting_send)

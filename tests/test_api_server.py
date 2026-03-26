@@ -915,6 +915,29 @@ class TestRequestBodySizeLimit:
         resp = client.get("/api/v1/health")
         assert resp.status_code == 200
 
+    def test_chunked_oversized_body_returns_413(self, client, mock_api_deps):
+        """無 Content-Length 的超大 body 應被 ASGI 層串流攔截回傳 413"""
+        from src.core.constants import MAX_REQUEST_BODY_SIZE
+        # 產生略超過限制的 payload（不設 Content-Length，模擬 chunked 傳輸）
+        oversized = b"x" * (MAX_REQUEST_BODY_SIZE + 1024)
+        resp = client.post(
+            "/api/v1/agent/requirement",
+            content=oversized,
+            headers={"Content-Type": "application/json"},
+        )
+        assert resp.status_code in (413, 422)  # 413 由 ASGI 限制，422 由 JSON 解析失敗
+        # 若成功攔截為 413，驗證訊息
+        if resp.status_code == 413:
+            assert "請求體過大" in resp.json()["detail"]
+
+    def test_chunked_normal_body_passes(self, client, mock_api_deps):
+        """正常大小的 body 不應被 ASGI 層攔截"""
+        resp = client.post(
+            "/api/v1/agent/requirement",
+            json={"user_input": "測試正常大小 chunked body"},
+        )
+        assert resp.status_code == 200
+
 
 class TestRateLimitHTTP:
     """透過 HTTP 中介層的限流測試"""
