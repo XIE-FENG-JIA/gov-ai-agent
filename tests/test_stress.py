@@ -52,6 +52,7 @@ def mock_api_deps():
     mock_config = {
         "llm": {"provider": "mock", "model": "test"},
         "knowledge_base": {"path": "./test_kb"},
+        "api": {"auth_enabled": False},
     }
     api_server._config = mock_config
 
@@ -438,6 +439,7 @@ class TestMemoryAndResource:
 
     def test_repeated_kb_manager_creation(self):
         """反覆建立/銷毀 KnowledgeBaseManager（記憶體洩漏檢測概念）。"""
+        pytest.importorskip("chromadb", reason="chromadb 未安裝，跳過 KB 記憶體測試")
         from src.knowledge.manager import KnowledgeBaseManager
 
         mock_llm = MagicMock(spec=LLMProvider)
@@ -463,6 +465,7 @@ class TestMemoryAndResource:
 
     def test_repeated_search_hybrid_cache_hits(self):
         """反覆呼叫 search_hybrid 100 次同一查詢應有快取命中。"""
+        pytest.importorskip("chromadb", reason="chromadb 未安裝，跳過 KB 快取測試")
         from src.knowledge.manager import KnowledgeBaseManager
 
         mock_llm = MagicMock(spec=LLMProvider)

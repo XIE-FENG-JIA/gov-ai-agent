@@ -152,3 +152,19 @@
 - stress 測試（已 ignore）仍需 chromadb skip 標記
 - 考慮將 executor 管理抽為 `reset_executor()` 工具函式
 - 可能需要為 `from...import` mock 問題建立 fixture 最佳實踐文件
+
+### [2026-03-26] Round 10 — 修復 stress 測試 9 失敗 + 清理 pycache 消除假失敗
+**角度**: 🐛 Bug（測試配置缺失 + bytecache 殘留 + 可選依賴跳過）
+**為什麼**: Round 9 後全量跑仍有 21 個失敗。分析發現三類根因：
+1. e2e 12 個失敗是 `__pycache__` 殘留舊 bytecode（清理後全 PASS）
+2. stress 7 個 401 是 `mock_config` 缺 `auth_enabled: False`（Round 4/9 修了 e2e 但 stress 未同步）
+3. stress 2 個 KB 測試是 `patch("chromadb.PersistentClient")` 在 chromadb 未安裝時無法解析模組
+**做了什麼**:
+- 清理全專案 `__pycache__`
+- `tests/test_stress.py`: `mock_api_deps` fixture 加 `"api": {"auth_enabled": False}`
+- `tests/test_stress.py`: 2 個 KB 測試加 `pytest.importorskip("chromadb")`
+**結果**: PASS — 0 failed, 2485 passed, 84 skipped
+**下一步可能**:
+- CI 中加 pycache 清理步驟避免 bytecache 殘留
+- 統一 auth 配置到共用 conftest fixture，避免各測試檔重複且不同步
+- 84 個 skip 中部分可加條件式 CI matrix（chromadb 環境跑 KB 測試）
