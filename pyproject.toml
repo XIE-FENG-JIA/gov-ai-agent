@@ -29,16 +29,16 @@ dependencies = [
 
 [project.optional-dependencies]
 pdf = ["pdfplumber>=0.9.0,<1.0.0"]
-search = ["jieba>=0.42"]
-local-embedding = ["sentence-transformers>=2.0"]
+search = ["jieba>=0.42,<1.0.0"]
+local-embedding = ["sentence-transformers>=2.0,<4.0.0"]
 dev = [
     "pytest>=7.0.0,<9.0.0",
     "pytest-cov>=4.0.0,<8.0.0",
     "httpx>=0.25.0,<1.0.0",
     "ruff>=0.1.0,<1.0.0",
     "mypy>=1.0.0,<2.0.0",
-    "types-PyYAML>=6.0",
-    "types-requests>=2.31",
+    "types-PyYAML>=6.0,<7.0",
+    "types-requests>=2.31,<3.0",
     "pdfplumber>=0.9.0,<1.0.0"
 ]
 
