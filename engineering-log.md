@@ -1032,3 +1032,15 @@
 - `test_knowledge_manager_unit.py` 32 個既有失敗修復（Round 62 embedding TTL 快取導致 mock 過時）
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
 - 下一個里程碑：從品質打磨轉向功能開發
+
+### [2026-03-26] Round 65 — 移除 workflow.py 死碼 agency 參數
+**角度**: 🏗️ 架構（死碼清理）
+**為什麼**: Round 63 已標記 `_execute_via_graph()` 的 `agency` 參數為死碼。分析後發現 `_execute_document_workflow()` 的 `agency` 同樣是死碼 — `MeetingRequest` model 無此欄位，所有呼叫端（`run_meeting`、batch、fallback）都未傳入，`resolved_agency = agency or requirement.sender` 永遠等價於 `requirement.sender`。LangGraph 路徑的 `fetch_org_memory` node 已正確從 `requirement.sender` 讀取，不需外部 override。
+**做了什麼**:
+- `_execute_via_graph()`：移除 `agency` 參數及 docstring
+- `_execute_document_workflow()`：移除 `agency` 參數、docstring，簡化 `resolved_agency` 為直接使用 `requirement.sender`
+**結果**: PASS — 2975 passed, 84 skipped, 0 failed（零回歸）
+**下一步可能**:
+- `manager.py` 的 BM25 全量文件拉取快取（Round 62 提到的瓶頸，已有草稿在 stash）
+- MISSION.md 功能缺口：公文範本庫擴充、法規自動更新
+- 下一個里程碑：從品質打磨轉向功能開發
