@@ -1,0 +1,84 @@
+**{{ meeting_name | default(sender + "會議紀錄") }}**
+
+**時間**：{{ meeting_time }}
+**地點**：{{ meeting_location }}
+**主席（主持人）**：{{ chairperson }}
+{%- if attendees %}
+**出席人員**：{{ attendees }}
+{%- endif %}
+{%- if observers %}
+**列席人員**：{{ observers }}
+{%- endif %}
+{%- if absentees %}
+**請假人員**：{{ absentees }}
+{%- endif %}
+**紀錄**：{{ recorder }}
+{%- if attachments %}
+**附件**：{{ attachments | join('、') }}
+{%- endif %}
+
+---
+{%- if opening_remarks %}
+
+壹、主席致詞：
+{{ opening_remarks }}
+{%- endif %}
+{%- if previous_minutes %}
+
+{{ "貳" if opening_remarks else "壹" }}、確認上次會議紀錄：
+{{ previous_minutes }}
+{%- endif %}
+{%- if report_items_points or report_items_text %}
+
+{% if opening_remarks and previous_minutes %}參{% elif opening_remarks or previous_minutes %}貳{% else %}壹{% endif %}、報告事項：
+{%- if report_items_points|length > 1 %}
+{%- for item in report_items_points %}
+{{ loop.index|cn }}、{{ item }}
+{%- endfor %}
+{%- else %}
+{{ report_items_text }}
+{%- endif %}
+{%- endif %}
+{%- if discussion_items_points or discussion_items_text %}
+
+{% if opening_remarks and previous_minutes and (report_items_points or report_items_text) %}肆{% elif (opening_remarks or previous_minutes) and (report_items_points or report_items_text) %}參{% elif opening_remarks or previous_minutes or report_items_points or report_items_text %}貳{% else %}壹{% endif %}、討論事項：
+{%- if discussion_items_points|length > 1 %}
+{%- for item in discussion_items_points %}
+{{ loop.index|cn }}、{{ item }}
+{%- endfor %}
+{%- else %}
+{{ discussion_items_text }}
+{%- endif %}
+{%- endif %}
+{%- if resolutions_points or resolutions_text %}
+
+**決議**：
+{%- if resolutions_points|length > 1 %}
+{%- for item in resolutions_points %}
+{{ loop.index|cn }}、{{ item }}
+{%- endfor %}
+{%- else %}
+{{ resolutions_text }}
+{%- endif %}
+{%- endif %}
+{%- if motions_text %}
+
+{% if opening_remarks and previous_minutes and (report_items_points or report_items_text) and (discussion_items_points or discussion_items_text) %}伍{% elif not opening_remarks and not previous_minutes and not (report_items_points or report_items_text) and not (discussion_items_points or discussion_items_text) %}壹{% else %}參{% endif %}、臨時動議：
+{{ motions_text }}
+{%- endif %}
+{%- if chairman_conclusion %}
+
+**主席結論**：
+{{ chairman_conclusion }}
+{%- endif %}
+{%- if adjournment_time %}
+
+散會時間：{{ adjournment_time }}
+{%- endif %}
+{%- if copies_to %}
+
+正本：{{ copies_to }}
+{%- endif %}
+{%- if cc_copies %}
+副本：{{ cc_copies }}
+{%- endif %}

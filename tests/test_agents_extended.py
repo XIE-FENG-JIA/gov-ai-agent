@@ -298,6 +298,91 @@ class TestTemplateEngineEdgeCases:
         assert "召開年度預算" in result
         assert "開會通知單" in result
 
+    def test_apply_template_meeting_minutes_type(self, sample_meeting_minutes_requirement):
+        """測試開會紀錄類型的模板套用"""
+        engine = TemplateEngine()
+        sections = {
+            "subject": "115年度第1次預算審查會議紀錄",
+            "explanation": "",
+            "provisions": "",
+            "meeting_time": "中華民國115年3月15日上午10時",
+            "meeting_location": "市府大樓10樓會議室",
+            "meeting_name": "臺北市政府115年度第1次預算審查會議紀錄",
+            "chairperson": "陳局長○○",
+            "attendees": "王科長○○、李專員○○",
+            "observers": "張主任○○",
+            "recorder": "林科員○○",
+            "report_items": "一、上期預算執行進度報告\n二、本期預算編列說明",
+            "discussion_items": "一、115年度資本門預算配置\n二、人事費用調整方案",
+            "resolutions": "一、資本門預算依原案通過\n二、人事費用調整案擇期再議",
+            "motions": "無",
+            "adjournment_time": "上午12時",
+            "attachments": "",
+            "references": ""
+        }
+        result = engine.apply_template(sample_meeting_minutes_requirement, sections)
+        assert "開會紀錄" in result
+        assert "臺北市政府" in result
+        assert "陳局長" in result
+        assert "會議室" in result
+        assert "報告事項" in result
+        assert "討論事項" in result
+        assert "決議" in result
+        assert "散會時間" in result
+
+    def test_apply_template_meeting_minutes_minimal(self, sample_meeting_minutes_requirement):
+        """測試開會紀錄最小欄位（只有必要欄位）"""
+        engine = TemplateEngine()
+        sections = {
+            "subject": "會議紀錄",
+            "explanation": "",
+            "provisions": "",
+            "meeting_time": "中華民國115年4月1日",
+            "meeting_location": "第一會議室",
+            "chairperson": "王主席",
+            "recorder": "李紀錄",
+            "discussion_items": "討論年度計畫",
+            "resolutions": "照案通過",
+            "attachments": "",
+            "references": ""
+        }
+        result = engine.apply_template(sample_meeting_minutes_requirement, sections)
+        assert "開會紀錄" in result
+        assert "王主席" in result
+        assert "李紀錄" in result
+        assert "討論" in result
+        assert "照案通過" in result
+
+    def test_parse_draft_meeting_minutes(self):
+        """測試 parse_draft 能正確解析開會紀錄格式的草稿"""
+        engine = TemplateEngine()
+        draft = """會議名稱：臺北市政府第3次協調會紀錄
+主席：王局長○○
+出席人員：張科長、李專員
+列席人員：陳主任
+紀錄人：林書記
+報告事項：
+一、前次會議決議執行情形
+二、本季業務推動成果
+討論事項：
+一、下半年度工作計畫
+二、預算調整案
+決議：
+一、工作計畫照案通過
+二、預算調整案修正後通過
+臨時動議：無
+散會時間：下午3時30分"""
+        result = engine.parse_draft(draft)
+        assert result["meeting_name"] == "臺北市政府第3次協調會紀錄"
+        assert result["chairperson"] == "王局長○○"
+        assert result["attendees"] == "張科長、李專員"
+        assert result["observers"] == "陳主任"
+        assert result["recorder"] == "林書記"
+        assert "前次會議決議執行情形" in result["report_items"]
+        assert "下半年度工作計畫" in result["discussion_items"]
+        assert "工作計畫照案通過" in result["resolutions"]
+        assert result["adjournment_time"] == "下午3時30分"
+
     def test_apply_template_letter_type(self, sample_letter_requirement):
         """測試書函類型的模板套用（使用函模板）"""
         engine = TemplateEngine()

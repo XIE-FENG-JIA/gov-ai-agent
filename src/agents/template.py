@@ -165,6 +165,11 @@ _SECTION_KEYS = (
     "follow_up_items", "recorder", "reviewer",
     # 手令
     "directive_content", "deadline", "cc_list",
+    # 開會紀錄
+    "meeting_name", "chairperson", "observers", "absentees",
+    "opening_remarks", "previous_minutes", "report_items",
+    "discussion_items", "resolutions", "motions",
+    "chairman_conclusion", "adjournment_time",
     # 通用
     "copies_to", "cc_copies",
 )
@@ -185,7 +190,19 @@ _KEYWORD_TO_SECTION: dict[str, str] = {
         ("通話摘要", "call_summary"), ("追蹤事項", "follow_up_items"),
         ("紀錄人", "recorder"), ("核閱", "reviewer"),
         ("指示事項", "directive_content"), ("完成期限", "deadline"),
-        ("副知", "cc_list"), ("正本", "copies_to"), ("副本", "cc_copies"),
+        ("副知", "cc_list"),
+        # 開會紀錄
+        ("會議名稱", "meeting_name"), ("主席", "chairperson"),
+        ("主持人", "chairperson"), ("主席（主持人）", "chairperson"),
+        ("出席人員", "attendees"), ("列席人員", "observers"),
+        ("請假人員", "absentees"), ("紀錄人", "recorder"),
+        ("主席致詞", "opening_remarks"),
+        ("確認上次會議紀錄", "previous_minutes"),
+        ("報告事項", "report_items"), ("討論事項", "discussion_items"),
+        ("決議", "resolutions"), ("決定", "resolutions"),
+        ("臨時動議", "motions"), ("主席結論", "chairman_conclusion"),
+        ("散會時間", "adjournment_time"), ("散會", "adjournment_time"),
+        ("正本", "copies_to"), ("副本", "cc_copies"),
     ], key=lambda pair: len(pair[0]), reverse=True)
 }
 
@@ -196,6 +213,7 @@ _HEADER_FIELDS = (
     "發令人", "受令人", "發令日期", "發令字號",
     "發信人", "收信人", "紀錄日期", "紀錄字號",
     "日期", "字號", "會銜機關",
+    "時間", "地點",
 )
 
 # 用於行內內容擷取的關鍵字清單（長度降序）
@@ -365,6 +383,7 @@ class TemplateEngine:
             "公務電話紀錄": "phone_record.j2",
             "手令": "directive.j2",
             "箋函": "memo.j2",
+            "開會紀錄": "meeting_minutes.j2",
         }
         template_name = _DOC_TYPE_TEMPLATE_MAP.get(requirement.doc_type)
         if template_name is None:
@@ -423,6 +442,22 @@ class TemplateEngine:
             "reviewer": sections.get("reviewer") or "",
             # 手令：副知
             "cc_list": sections.get("cc_list") or "",
+            # 開會紀錄專用欄位
+            "meeting_name": sections.get("meeting_name") or sections.get("subject") or "",
+            "chairperson": sections.get("chairperson") or "",
+            "observers": sections.get("observers") or "",
+            "absentees": sections.get("absentees") or "",
+            "opening_remarks": sections.get("opening_remarks") or "",
+            "previous_minutes": sections.get("previous_minutes") or "",
+            "report_items_text": sections.get("report_items") or "",
+            "report_items_points": self._parse_list_items(sections.get("report_items") or ""),
+            "discussion_items_text": sections.get("discussion_items") or "",
+            "discussion_items_points": self._parse_list_items(sections.get("discussion_items") or ""),
+            "resolutions_text": sections.get("resolutions") or "",
+            "resolutions_points": self._parse_list_items(sections.get("resolutions") or ""),
+            "motions_text": sections.get("motions") or "",
+            "chairman_conclusion": sections.get("chairman_conclusion") or "",
+            "adjournment_time": sections.get("adjournment_time") or "",
             # 通用：正本、副本
             "copies_to": sections.get("copies_to") or "",
             "cc_copies": sections.get("cc_copies") or "",

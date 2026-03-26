@@ -163,6 +163,20 @@ def sample_meeting_notice_requirement():
 
 
 @pytest.fixture
+def sample_meeting_minutes_requirement():
+    """回傳一個開會紀錄類型的 PublicDocRequirement 物件。"""
+    return PublicDocRequirement(
+        doc_type="開會紀錄",
+        sender="臺北市政府",
+        receiver="相關單位",
+        subject="115年度第1次預算審查會議紀錄",
+        reason="為審議115年度預算案召開會議",
+        action_items=["請各單位依決議事項辦理"],
+        attachments=["出席人員簽到表"]
+    )
+
+
+@pytest.fixture
 def sample_letter_requirement():
     """回傳一個書函類型的 PublicDocRequirement 物件。"""
     return PublicDocRequirement(

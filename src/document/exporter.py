@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 # 所有已知的公文類型（用於識別標題行）
 KNOWN_DOC_TYPES = frozenset([
-    "函", "公告", "簽", "書函", "令", "開會通知單",
+    "函", "公告", "簽", "書函", "令", "開會通知單", "開會紀錄",
     "呈", "咨", "會勘通知單", "公務電話紀錄", "手令", "箋函",
 ])
 
@@ -324,6 +324,20 @@ class DocxExporter:
                 ("說明", "explanation"),
                 ("完成期限", "deadline"),
                 ("副知", "cc_list"),
+            ]
+        elif doc_type == "開會紀錄":
+            body_order = [
+                ("主席（主持人）", "chairperson"),
+                ("出席人員", "attendees"),
+                ("列席人員", "observers"),
+                ("請假人員", "absentees"),
+                ("紀錄", "recorder"),
+                ("報告事項", "report_items"),
+                ("討論事項", "discussion_items"),
+                ("決議", "resolutions"),
+                ("臨時動議", "motions"),
+                ("主席結論", "chairman_conclusion"),
+                ("散會時間", "adjournment_time"),
             ]
         elif doc_type == "箋函":
             body_order = [

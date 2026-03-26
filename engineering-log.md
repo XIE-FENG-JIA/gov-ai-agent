@@ -4,6 +4,23 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 73 — 新增「開會紀錄」公文範本（功能開發）
+**角度**: ✨ 功能缺口（MISSION.md: 公文範本庫擴充）
+**為什麼**: 系統已有「開會通知單」但缺「開會紀錄」。每次會議後都要撰寫紀錄，這是高頻使用場景。依行政院文書格式規範，開會紀錄需包含主席、出列席人員、報告事項、討論事項、決議、臨時動議等標準欄位。連續 4 輪品質打磨後強制切換到功能開發。
+**搜尋**: 搜尋台灣政府開會紀錄標準格式，參考國家發展委員會檔案管理局《政府文書格式參考規範》（105 年 4 月修正版），確認必要欄位與議程結構。
+**做了什麼**:
+- 新增 `src/assets/templates/meeting_minutes.j2` Jinja2 模板（支援主席、出列席人員、報告事項、討論事項、決議、臨時動議、散會時間等完整欄位）
+- `src/core/models.py`: `VALID_DOC_TYPES` + `DocTypeLiteral` 加入「開會紀錄」
+- `src/agents/template.py`: 新增 12 個 section keys、15 個 keyword mappings、template mapping、17 個 context variables
+- `src/document/exporter.py`: `KNOWN_DOC_TYPES` + `_write_body` 加入開會紀錄欄位排序
+- `tests/conftest.py`: 新增 `sample_meeting_minutes_requirement` fixture
+- `tests/test_agents_extended.py`: 新增 3 個測試（完整欄位渲染、最小欄位渲染、parse_draft 解析）
+**結果**: PASS — 3059 passed, 84 skipped, 0 failed（+3 新測試，零回歸）
+**下一步可能**:
+- MISSION.md 功能缺口：法規自動更新機制
+- 開會紀錄的 DOCX 匯出格式微調（標題置中、分隔線樣式）
+- 公文範本庫繼續擴充：報告、提案等類型
+
 ### [2026-03-27] Round 39 — LawVerifier 下載失敗空快取 fallback
 **角度**: ⚡ 效能（法規 API 不可用時每次請求阻塞 2+ 分鐘）
 **為什麼**: `LawVerifier._ensure_cache()` 沒有 try-except，法規 API 不可用時每次 `verify_citations()` 都重新嘗試下載（含 3 次重試 + 指數退避），每次阻塞 2+ 分鐘。對比 `RecentPolicyFetcher` 已正確實作空快取 fallback。FactChecker 的外層 try-except 雖能防止崩潰，但無法避免阻塞延遲。
