@@ -1720,3 +1720,17 @@
 - 執行 `gov-ai kb sync` 讓 Round 73/77 新增的 12 筆範本正式生效
 - `公` 類文件範本補充（announcement 目前 18 筆）
 - WebSearch 確認範本符合最新行政院公文處理手冊規定
+
+### [2026-03-27] Round 12 — 新功能：gov-ai wizard 互動式公文精靈
+**角度**: ✨ 體驗（UX 缺口直接對應 MISSION 第 1 條）
+**為什麼**: `generate` 有 65+ 個 CLI 參數，對首次使用者是一堵牆——他們不知道 `--doc-type` 有哪些值、哪些欄位必填、什麼是速別。Round 10-11 已閉環「自動引用法規」，下一個體驗缺口就是「零門檻生成」。第一性原理：MISSION「快速產生符合格式的公文草稿」的「快速」不只是速度，也是認知負荷低。
+**搜尋**: WebSearch 確認台灣政府公文 6 大法定類型（令/呈/咨/函/公告/其他公文）+ 常用延伸類型（簽/書函/開會通知單等）共 12 種；Typer + Rich.Prompt 為 CLI 精靈的標準做法，無需額外依賴。
+**做了什麼**:
+- `src/cli/wizard_cmd.py`（新增）：12 種類型 Rich 表格選單（序號 or 名稱輸入）、`_build_input_text` 依類型差異化組合自然語言描述、`_show_summary` 生成前摘要、`wizard()` 支援 `--dry-run`（顯示等效命令不執行）/`--quick`（略過選用欄位）/`--preview`/`--no-cite`
+- `src/cli/main.py`：import + 註冊 `app.command("wizard")`
+- `tests/test_wizard_cmd.py`（新增）：21 個測試（類型清單結構 3、_build_input_text 10、CLI 整合 8）
+**結果**: PASS — 21 passed (test_wizard_cmd) + 43 passed (+ cite_cmd)；零回歸
+**下一步可能**:
+- 執行 `gov-ai kb sync` 讓 Round 73/77 新增的 12 筆範本正式生效
+- `公` 類文件範本補充（公示/公開資訊/環境影響等類型）
+- wizard 加入 `--from-profile` 旗標：自動從 profile_cmd 讀取常用機關名稱預填
