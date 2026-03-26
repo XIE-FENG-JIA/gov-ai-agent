@@ -128,8 +128,8 @@ def review_fact(state: GovDocState) -> dict:
         try:
             from src.knowledge.realtime_lookup import LawVerifier
             law_verifier = LawVerifier()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("LawVerifier 初始化失敗，略過即時法規驗證：%s", exc)
 
         checker = FactChecker(llm, law_verifier=law_verifier)
         result = checker.check(draft, doc_type=doc_type)
@@ -206,8 +206,8 @@ def review_compliance(state: GovDocState) -> dict:
         try:
             from src.knowledge.realtime_lookup import RecentPolicyFetcher
             policy_fetcher = RecentPolicyFetcher()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("RecentPolicyFetcher 初始化失敗，略過即時政策查詢：%s", exc)
 
         checker = ComplianceChecker(llm, kb, policy_fetcher=policy_fetcher)
         result = checker.check(draft)

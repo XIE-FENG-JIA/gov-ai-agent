@@ -211,7 +211,8 @@ JSON format only:
                 if not emb_draft or not emb_law:
                     continue
                 sim = self._cosine_similarity(emb_draft, emb_law)
-            except Exception:
+            except Exception as exc:
+                logger.warning("語義相似度計算失敗，跳過此引用：%s", exc)
                 continue
 
             law_name = chk.citation.law_name

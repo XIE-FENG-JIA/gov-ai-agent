@@ -97,6 +97,7 @@ class LiteLLMProvider(LLMProvider):
             )
             return True, ""
         except Exception as e:
+            logger.debug("LLM 連線測試失敗：%s", e)
             error_msg = str(e)
             if "ConnectionError" in error_msg or "10061" in error_msg or "拒絕連線" in error_msg:
                 if self.provider == "ollama":

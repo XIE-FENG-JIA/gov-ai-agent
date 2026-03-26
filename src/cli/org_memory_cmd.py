@@ -3,11 +3,14 @@
 查看、管理和匯出機構偏好設定。
 """
 import json
+import logging
 from pathlib import Path
 
 import typer
 from rich.console import Console
 from rich.table import Table
+
+logger = logging.getLogger(__name__)
 
 app = typer.Typer()
 console = Console()
@@ -207,7 +210,8 @@ def org_memory_search(
             continue
         try:
             content = fp.read_text(encoding="utf-8")
-        except Exception:
+        except Exception as exc:
+            logger.warning("讀取機構記憶檔案 %s 失敗：%s", fp.name, exc)
             continue
         matched_lines = [
             line for line in content.splitlines() if keyword in line

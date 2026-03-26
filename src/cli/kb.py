@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 import os
 import typer
 from pathlib import Path
@@ -8,6 +9,8 @@ from rich.console import Console
 from rich.table import Table
 from src.core.config import ConfigManager
 from src.core.llm import get_llm_factory
+
+logger = logging.getLogger(__name__)
 from src.knowledge.manager import KnowledgeBaseManager
 
 console = Console()
@@ -133,7 +136,8 @@ def ingest(
             if kb.contextual_retrieval:
                 try:
                     full_doc_content = file_path.read_text(encoding="utf-8")
-                except Exception:
+                except Exception as exc:
+                    logger.warning("讀取完整文件 %s 失敗，使用片段 fallback：%s", file_path, exc)
                     full_doc_content = content  # fallback
 
             doc_id = kb.add_document(
@@ -244,7 +248,8 @@ def _ingest_fetch_results(results: list, kb: KnowledgeBaseManager) -> int:
         if kb.contextual_retrieval:
             try:
                 full_doc = r.file_path.read_text(encoding="utf-8")
-            except Exception:
+            except Exception as exc:
+                logger.warning("讀取完整文件 %s 失敗，使用片段 fallback：%s", r.file_path, exc)
                 full_doc = content
 
         if kb.add_document(

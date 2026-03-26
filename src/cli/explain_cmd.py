@@ -1,5 +1,6 @@
 """gov-ai explain — 解析公文結構並列出段落資訊。"""
 import json
+import logging
 import typer
 from rich.console import Console
 from rich.markdown import Markdown
@@ -7,6 +8,8 @@ from rich.table import Table
 from src.agents.template import TemplateEngine
 from src.core.config import ConfigManager
 from src.core.llm import get_llm_factory
+
+logger = logging.getLogger(__name__)
 
 console = Console()
 
@@ -121,7 +124,8 @@ def explain(
         llm = get_llm_factory(config.get("llm", {}), full_config=config)
         prompt = f"請解釋以下公文的內容與用途：\n\n{content}"
         llm_explanation = llm.generate(prompt)
-    except Exception:
+    except Exception as exc:
+        logger.warning("LLM 解釋產生失敗，略過：%s", exc)
         llm_explanation = ""
 
     # 收集段落資料
