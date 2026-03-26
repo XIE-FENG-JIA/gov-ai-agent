@@ -648,6 +648,21 @@
 - MISSION.md 功能缺口：公文範本庫擴充、法規自動更新機制
 - 考慮 LangGraph state schema validation（目前全靠 dict.get 的預設值）
 
+### [2026-03-26] Round 41 — explain/rewrite CLI prompt injection 防護
+**角度**: 🔒 安全（LLM prompt injection 漏洞修復）
+**為什麼**: 全專案所有 agent（writer, auditor, style_checker 等）都已使用 `escape_prompt_tag` 防護使用者內容注入，唯獨 `explain_cmd.py` 和 `rewrite_cmd.py` 將檔案內容直接 f-string 拼接進 LLM prompt。若使用者提供的檔案包含 `</document-data>` 等惡意 XML 標籤，可突破標籤邊界操控 LLM 行為。
+**做了什麼**:
+- `explain_cmd.py`：加入 `escape_prompt_tag` + 安全指示 + `MAX_DRAFT_LENGTH` 截斷
+- `rewrite_cmd.py`：同上
+- 新增 4 個 prompt injection 防護測試（惡意標籤 escape 驗證 + 安全指示存在性）
+**結果**: PASS
+- 2801 passed, 84 skipped, 0 failed（+23 新測試，零回歸）
+- 全專案所有 LLM prompt 呼叫點均已具備 prompt injection 防護 ✅
+**下一步可能**:
+- `cli/config_tools.py`（82%，52 行未覆蓋）
+- MISSION.md 功能缺口：公文範本庫擴充、法規自動更新機制
+- LangGraph state schema validation
+
 ### [2026-03-26] Round 40 — Format Auditor 新增具體修改建議
 **角度**: ✨ 功能（MISSION.md 功能缺口修復）
 **為什麼**: MISSION.md 列出的「審查意見的具體修改建議」功能缺口。其他 4 個審查 agent（Style/Fact/Consistency/Compliance）都在 LLM prompt 中要求 suggestion 欄位，唯獨 Format Auditor 只回傳純字串的 errors/warnings，使用者看到問題但不知道怎麼修。
