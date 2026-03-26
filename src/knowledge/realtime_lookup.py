@@ -256,7 +256,8 @@ class LawVerifier:
 
     def _verify_single(self, citation: Citation) -> CitationCheck:
         """驗證單一法規引用。"""
-        assert LawVerifier._cache is not None
+        if LawVerifier._cache is None:
+            raise RuntimeError("法規快取未初始化，請先呼叫 _ensure_cache()")
         cache = LawVerifier._cache.data
 
         # 精確比對

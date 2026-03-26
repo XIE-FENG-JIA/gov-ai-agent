@@ -404,3 +404,14 @@
 - LLM mock / KB mock 統一到 conftest
 - `web_preview/app.py`（58%）是唯一低於 70% 的核心模組
 - 考慮 CI 加 coverage badge 到 README
+
+### [2026-03-26] Round 28 — assert 改 RuntimeError + 審查通過
+**角度**: 🐛 Bug（防禦性程式碼）
+**為什麼**: `realtime_lookup.py:259` 使用 `assert` 驗證快取初始化。Python `-O`（優化模式）會跳過所有 assert，導致 `_cache` 為 None 時產生 `AttributeError: 'NoneType' has no attribute 'data'` 而非清晰錯誤訊息。這是全專案唯一一處在生產程式碼中使用 assert 做運行時防護。
+**做了什麼**: `assert X is not None` → `if X is None: raise RuntimeError("...")` 含具體說明
+**結果**: PASS — 82 passed（相關模組），零回歸
+**整體審查**: 經四輪（Round 25-28）深度掃描，專案品質已穩定：
+- 0 failed, 2570+ passed, 84 skipped, 88.49% coverage
+- 安全審計無關鍵漏洞
+- 唯一未處理：LLM mock/KB mock conftest 統一（架構 DRY，非阻斷）、web_preview 覆蓋率
+- httpx DeprecationWarning 源自 litellm 內部，非本專案可修
