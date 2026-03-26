@@ -134,13 +134,13 @@ def _execute_document_workflow(
 
     # 步驟 4: 審查（迭代邏輯已內建於 review_and_refine）
     if not skip_review:
-        editor = EditorInChief(llm, kb)
-        final_draft, qa_report = editor.review_and_refine(
-            final_draft, requirement.doc_type, max_rounds=max_rounds,
-            convergence=convergence, skip_info=skip_info,
-            show_rounds=False,
-        )
-        rounds_used = qa_report.rounds_used
+        with EditorInChief(llm, kb) as editor:
+            final_draft, qa_report = editor.review_and_refine(
+                final_draft, requirement.doc_type, max_rounds=max_rounds,
+                convergence=convergence, skip_info=skip_info,
+                show_rounds=False,
+            )
+            rounds_used = qa_report.rounds_used
 
     # 步驟 5: 匯出（使用固定輸出目錄，避免依賴 cwd）
     output_filename = None

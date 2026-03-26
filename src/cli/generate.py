@@ -521,12 +521,12 @@ def _run_batch(
                 final_draft = formatted_draft
                 qa_report_str = None
                 if not skip_review:
-                    editor = EditorInChief(llm, kb)
-                    final_draft, qa_report = editor.review_and_refine(
-                        formatted_draft, requirement.doc_type, max_rounds=max_rounds,
-                        convergence=convergence, skip_info=skip_info,
-                    )
-                    qa_report_str = qa_report.audit_log
+                    with EditorInChief(llm, kb) as editor:
+                        final_draft, qa_report = editor.review_and_refine(
+                            formatted_draft, requirement.doc_type, max_rounds=max_rounds,
+                            convergence=convergence, skip_info=skip_info,
+                        )
+                        qa_report_str = qa_report.audit_log
 
                 # 匯出
                 safe_filename = os.path.basename(output_path)
@@ -848,13 +848,13 @@ def _run_core_pipeline(
 
     if not skip_review:
         console.rule("[bold blue]步驟 4/5 · 多 Agent 審查[/bold blue]")
-        editor = EditorInChief(llm, kb)
-        final_draft, qa_report = editor.review_and_refine(
-            formatted_draft, requirement.doc_type, max_rounds=max_rounds,
-            convergence=convergence, skip_info=skip_info,
-            show_rounds=show_rounds,
-        )
-        qa_report_str = qa_report.audit_log
+        with EditorInChief(llm, kb) as editor:
+            final_draft, qa_report = editor.review_and_refine(
+                formatted_draft, requirement.doc_type, max_rounds=max_rounds,
+                convergence=convergence, skip_info=skip_info,
+                show_rounds=show_rounds,
+            )
+            qa_report_str = qa_report.audit_log
         if save_versions:
             ver_num += 1
             _save_version(final_draft, output_path, ver_num, "審查修正後")
@@ -891,13 +891,13 @@ def _handle_confirm(
             formatted_draft = template_engine.apply_template(requirement, sections)
             final_draft = formatted_draft
             if not skip_review:
-                editor = EditorInChief(llm, kb)
-                final_draft, qa_report = editor.review_and_refine(
-                    formatted_draft, requirement.doc_type, max_rounds=max_rounds,
-                    convergence=convergence, skip_info=skip_info,
-                    show_rounds=show_rounds,
-                )
-                qa_report_str = qa_report.audit_log
+                with EditorInChief(llm, kb) as editor:
+                    final_draft, qa_report = editor.review_and_refine(
+                        formatted_draft, requirement.doc_type, max_rounds=max_rounds,
+                        convergence=convergence, skip_info=skip_info,
+                        show_rounds=show_rounds,
+                    )
+                    qa_report_str = qa_report.audit_log
             console.print(Panel(
                 Markdown(final_draft[:500] + ("\n..." if len(final_draft) > 500 else "")),
                 title="[bold cyan]新草稿預覽[/bold cyan]",
