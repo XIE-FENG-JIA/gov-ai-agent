@@ -4,6 +4,18 @@
 
 ## 改善紀錄
 
+### [2026-03-26] Round 25 — RequirementAgent fallback 丟失使用者輸入修復
+**角度**: 🐛 Bug（解析失敗時 reason 欄位遺失）
+**為什麼**: RequirementAgent 有 4 層 JSON 解析策略，最後兩層（regex fallback 和完全失敗 fallback）未保留 `reason` 欄位。當 LLM 回傳格式異常時（弱模型或高延遲情境常見），`reason=None` 導致 WriterAgent 的說明段輸出「（未提供）」，公文品質嚴重下降。
+**做了什麼**:
+- **fallback（策略 4）**：將完整 `user_input` 設為 `reason`，確保 WriterAgent 有完整上下文
+- **regex fallback（策略 3）**：新增 `reason` 正則提取，失敗時回退到 `user_input`
+- **測試**：新增 `test_requirement_agent_regex_fallback_with_reason` 驗證 regex 提取 reason；更新 `test_requirement_agent_failure` 驗證 fallback 保留完整輸入
+**結果**: PASS — 139 個核心測試全通過（+2 新測試，0 回歸）
+**下一步可能**:
+- 策略 3 也可嘗試提取 `action_items`（JSON 陣列，regex 較複雜）
+- 考慮加入 LLM 回應品質監控指標（追蹤各策略命中率）
+
 ### [2026-03-26] Round 68 — 審查 Agent 具體修改建議強化
 **角度**: ✨ 功能缺口（MISSION.md「審查意見的具體修改建議」）
 **為什麼**: 5 個審查 Agent 中只有 FormatAuditor 明確要求 LLM 輸出「將 X 改為 Y」格式的具體修正建議。其餘 4 個（StyleChecker、FactChecker、ConsistencyChecker、ComplianceChecker）的 prompt 僅要求 `"suggestion": "string"`，LLM 傾向輸出模糊建議如「請確認引用是否正確」「統一立場」，使用者無法直接採用。Editor 修正流程也未指示優先遵循具體建議文字。

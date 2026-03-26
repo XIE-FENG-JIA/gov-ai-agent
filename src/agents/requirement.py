@@ -168,11 +168,13 @@ Output JSON (Traditional Chinese):"""
                 logger.warning(
                     "JSON 解析降級至策略 3（正則提取），可能遺失部分欄位"
                 )
+                reason_m = re.search(r'"reason"\s*:\s*"([^"]*(?:\\.[^"]*)*)"', response_text)
                 return PublicDocRequirement(
                     doc_type=doc_type_m.group(1),
                     sender=sender_m.group(1),
                     receiver=receiver_m.group(1),
                     subject=subject_m.group(1),
+                    reason=reason_m.group(1) if reason_m else user_input,
                 )
         except (ValueError, TypeError, ValidationError) as exc:
             logger.debug("JSON 解析策略 3 (regex fields) 失敗: %s", exc)
@@ -187,4 +189,5 @@ Output JSON (Traditional Chinese):"""
             sender="（未指定）",
             receiver="（未指定）",
             subject=subject,
+            reason=user_input,
         )

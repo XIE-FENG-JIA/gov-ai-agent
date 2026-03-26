@@ -64,6 +64,22 @@ def test_requirement_agent_regex_fallback(mock_llm):
     req = agent.analyze("fake input")
     assert req.doc_type == "簽"
     assert req.subject == "簽呈測試"
+    # regex fallback 無法提取 reason 時，應使用原始使用者輸入
+    assert req.reason == "fake input"
+
+
+def test_requirement_agent_regex_fallback_with_reason(mock_llm):
+    """Test regex fallback preserves reason when extractable."""
+    agent = RequirementAgent(mock_llm)
+
+    mock_llm.generate.return_value = '''
+    "doc_type": "函", "sender": "教育局", "receiver": "各學校",
+    "subject": "校園安全", "reason": "為強化校園安全管理"
+    '''
+
+    req = agent.analyze("some input")
+    assert req.doc_type == "函"
+    assert req.reason == "為強化校園安全管理"
 
 
 def test_requirement_agent_failure(mock_llm):
@@ -72,11 +88,14 @@ def test_requirement_agent_failure(mock_llm):
     mock_llm.generate.return_value = "I don't know what you want."
 
     # 不再拋出 ValueError，改為回傳 fallback 需求
-    result = agent.analyze("fake input for testing")
+    user_text = "fake input for testing with important details about 環保局"
+    result = agent.analyze(user_text)
     assert result.doc_type == "函"
     assert result.sender == "（未指定）"
     assert result.receiver == "（未指定）"
     assert "fake input" in result.subject
+    # fallback 應保留完整使用者輸入作為 reason，供 WriterAgent 使用
+    assert result.reason == user_text
 
 
 # ==================== TemplateEngine ====================
