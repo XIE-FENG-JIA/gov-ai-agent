@@ -688,6 +688,12 @@
 - `cli/config_tools.py`（82%，52 行未覆蓋）
 - MISSION.md 功能缺口
 
+### [2026-03-26] Round 44 — langgraph/langchain-core 版本上限
+**角度**: 🐛 Bug（依賴版本無上限導致未來 breaking change 風險）
+**為什麼**: `langgraph>=0.2.0` 和 `langchain-core>=0.3.0` 無版本上限，LangChain 生態系 breaking changes 頻繁（0.x → 1.x 已有大量 API 變動），未來 `pip install` 可能拉到不相容的 2.x 版本。其他 12 個依賴都有 `<X.0.0` 上限，這兩個是唯一例外。
+**做了什麼**: 加入 `<2.0.0` 上限約束
+**結果**: PASS — 2801 passed, 84 skipped, 0 failed
+
 ### [2026-03-26] Round 40 — Format Auditor 新增具體修改建議
 **角度**: ✨ 功能（MISSION.md 功能缺口修復）
 **為什麼**: MISSION.md 列出的「審查意見的具體修改建議」功能缺口。其他 4 個審查 agent（Style/Fact/Consistency/Compliance）都在 LLM prompt 中要求 suggestion 欄位，唯獨 Format Auditor 只回傳純字串的 errors/warnings，使用者看到問題但不知道怎麼修。
