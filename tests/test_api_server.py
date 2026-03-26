@@ -939,6 +939,43 @@ class TestRequestBodySizeLimit:
         assert resp.status_code == 200
 
 
+class TestCORSOrigins:
+    """CORS 來源設定測試"""
+
+    def test_localhost_origin_allowed(self, client, mock_api_deps):
+        """localhost 來源應被允許"""
+        resp = client.options(
+            "/api/v1/agent/requirement",
+            headers={
+                "Origin": "http://localhost:5678",
+                "Access-Control-Request-Method": "POST",
+            },
+        )
+        assert resp.headers.get("access-control-allow-origin") == "http://localhost:5678"
+
+    def test_127_0_0_1_origin_allowed(self, client, mock_api_deps):
+        """127.0.0.1 來源應被允許（服務預設綁定 127.0.0.1）"""
+        resp = client.options(
+            "/api/v1/agent/requirement",
+            headers={
+                "Origin": "http://127.0.0.1:5678",
+                "Access-Control-Request-Method": "POST",
+            },
+        )
+        assert resp.headers.get("access-control-allow-origin") == "http://127.0.0.1:5678"
+
+    def test_unknown_origin_rejected(self, client, mock_api_deps):
+        """未列入的外部來源不應被允許"""
+        resp = client.options(
+            "/api/v1/agent/requirement",
+            headers={
+                "Origin": "http://evil.example.com",
+                "Access-Control-Request-Method": "POST",
+            },
+        )
+        assert resp.headers.get("access-control-allow-origin") != "http://evil.example.com"
+
+
 class TestRateLimitHTTP:
     """透過 HTTP 中介層的限流測試"""
 

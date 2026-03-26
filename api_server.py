@@ -109,7 +109,12 @@ _ALLOWED_ORIGINS: list[str] = [
     origin.strip()
     for origin in os.environ.get(
         "CORS_ALLOWED_ORIGINS",
-        "http://localhost:5678,http://localhost:3000,http://localhost:8080",
+        # 同時包含 localhost 和 127.0.0.1：Python urllib 將 localhost 解析為
+        # IPv6 (::1) 但服務只綁定 127.0.0.1，瀏覽器端 origin 取決於用戶
+        # 輸入的位址，必須兩者都列入才能確保 CORS 不誤擋。
+        "http://localhost:5678,http://127.0.0.1:5678,"
+        "http://localhost:3000,http://127.0.0.1:3000,"
+        "http://localhost:8080,http://127.0.0.1:8080",
     ).split(",")
     if origin.strip()
 ]
