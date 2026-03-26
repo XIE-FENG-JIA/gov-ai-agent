@@ -455,3 +455,22 @@
 - `web_preview/app.py`（58%）是剩餘唯一低於 70% 的核心模組
 - `cli/doctor.py`（67%）、`cli/quickstart.py`（67%）可補測試
 - 考慮 conftest 加 `mock_kb` 為 session-scope fixture，減少重複建立開銷
+
+### [2026-03-26] Round 32 — web_preview/app.py 覆蓋率 58%→99%
+**角度**: 🧪 測試（連續 8 輪未處理的最低覆蓋核心模組）
+**為什麼**: `web_preview/app.py` 自 Round 24 起每輪標為「剩餘唯一低於 70% 的核心模組」，58% 覆蓋率意味著所有 HTTP 路由的錯誤處理、輸入驗證、例外降級均無測試保護。作為面向使用者的 Web UI 層，未覆蓋的程式碼直接影響使用者體驗（錯誤訊息洩漏內部資訊、連線失敗白屏等）。
+**做了什麼**: 新增 `tests/test_web_preview.py` 共 35 個測試案例，使用 `httpx.ASGITransport` 直接測 FastAPI app：
+- `_api_headers()` 3 種配置分支（有 key/空 key/無 api 區段）
+- `_sanitize_web_error()` 4 種例外類型（ConnectError/Timeout/HTTPStatus/未知）
+- `POST /generate` 6 種場景（輸入過短/過長/成功/API 錯誤/連線失敗/doc_type 附加驗證）
+- `GET /kb` + `POST /kb/search` 成功/API 錯誤/連線例外
+- `GET /history` 有紀錄/無檔案/JSON 解析錯誤
+- 靜態頁面 `/batch` `/guide` `/metrics`
+- `GET /config` + `GET /metrics/data` 成功/API 錯誤/例外
+- `GET /api/v1/detailed-review` 缺少 ID/格式無效/成功/連線例外
+- 404 HTTP exception handler 回傳 HTML 錯誤頁面
+**結果**: PASS — 2635 passed, 84 skipped, 0 failed（+35 新測試，零回歸）。web_preview/app.py 58% → **99%**（+41pp，僅剩模組層級 SSRF raise 2 行由 test_api_server 覆蓋）
+**下一步可能**:
+- `cli/doctor.py`（67%）、`cli/quickstart.py`（67%）可補測試
+- conftest 加 `mock_kb` 為 session-scope fixture
+- 整體覆蓋率已穩定在 88%+，可考慮門檻提升至 87%
