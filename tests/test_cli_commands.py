@@ -3357,6 +3357,114 @@ class TestBatchTools:
         result = runner.invoke(app, ["batch", "validate", str(p)])
         assert result.exit_code == 1
 
+    def test_batch_validate_csv(self, tmp_path, monkeypatch):
+        """validate 指令應接受有效 CSV"""
+        from src.cli.main import app
+        monkeypatch.chdir(tmp_path)
+        p = tmp_path / "batch.csv"
+        p.write_text("input,output\n測試公文,out.docx\n", encoding="utf-8")
+        result = runner.invoke(app, ["batch", "validate", str(p)])
+        assert result.exit_code == 0
+        assert "驗證通過" in result.stdout
+
+    def test_batch_validate_csv_missing_input_column(self, tmp_path, monkeypatch):
+        """CSV 缺少 input 欄位應報錯"""
+        from src.cli.main import app
+        monkeypatch.chdir(tmp_path)
+        p = tmp_path / "bad.csv"
+        p.write_text("name,output\n測試,out.docx\n", encoding="utf-8")
+        result = runner.invoke(app, ["batch", "validate", str(p)])
+        assert result.exit_code == 1
+        assert "input" in result.stdout
+
+    def test_batch_validate_csv_empty_rows(self, tmp_path, monkeypatch):
+        """CSV 有空 input 行時應跳過"""
+        from src.cli.main import app
+        monkeypatch.chdir(tmp_path)
+        p = tmp_path / "sparse.csv"
+        p.write_text("input,output\n測試公文,out.docx\n,\n另一筆,\n", encoding="utf-8")
+        result = runner.invoke(app, ["batch", "validate", str(p)])
+        assert result.exit_code == 0
+
+    def test_batch_validate_json_not_list(self, tmp_path, monkeypatch):
+        """JSON 非陣列應報錯"""
+        from src.cli.main import app
+        monkeypatch.chdir(tmp_path)
+        p = tmp_path / "obj.json"
+        p.write_text('{"input": "test"}', encoding="utf-8")
+        result = runner.invoke(app, ["batch", "validate", str(p)])
+        assert result.exit_code == 1
+        assert "陣列" in result.stdout
+
+    def test_batch_validate_file_not_exist(self, tmp_path, monkeypatch):
+        """驗證不存在的檔案應報錯"""
+        from src.cli.main import app
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(app, ["batch", "validate", "nonexist.json"])
+        assert result.exit_code == 1
+        assert "不存在" in result.stdout
+
+    def test_batch_validate_empty_data(self, tmp_path, monkeypatch):
+        """空陣列 JSON 應報錯"""
+        from src.cli.main import app
+        monkeypatch.chdir(tmp_path)
+        p = tmp_path / "empty.json"
+        p.write_text("[]", encoding="utf-8")
+        result = runner.invoke(app, ["batch", "validate", str(p)])
+        assert result.exit_code == 1
+        assert "至少一筆" in result.stdout
+
+    def test_batch_validate_missing_fields(self, tmp_path, monkeypatch):
+        """JSON 項目缺少 output 欄位應報錯"""
+        from src.cli.main import app
+        monkeypatch.chdir(tmp_path)
+        p = tmp_path / "nooutput.json"
+        p.write_text('[{"input": "test"}]', encoding="utf-8")
+        result = runner.invoke(app, ["batch", "validate", str(p)])
+        assert result.exit_code == 1
+        assert "output" in result.stdout
+
+    def test_batch_create_interactive(self, tmp_path, monkeypatch):
+        """create 指令互動式建立批次檔"""
+        from src.cli.main import app
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(app, ["batch", "create"], input="測試需求\nbatch_1.docx\n\n")
+        assert result.exit_code == 0
+        assert (tmp_path / "batch.json").exists()
+        data = json.loads((tmp_path / "batch.json").read_text(encoding="utf-8"))
+        assert len(data) == 1
+        assert data[0]["input"] == "測試需求"
+
+    def test_batch_create_no_input(self, tmp_path, monkeypatch):
+        """create 指令不輸入任何需求應取消"""
+        from src.cli.main import app
+        monkeypatch.chdir(tmp_path)
+        result = runner.invoke(app, ["batch", "create"], input="\n")
+        assert result.exit_code == 1
+        assert "取消建立" in result.stdout
+
+
+class TestBatchToolsEdgeCases:
+    """batch_tools 邊界條件覆蓋。"""
+
+    def test_validate_docs_unicode_error(self, tmp_path, monkeypatch):
+        """validate-docs 遇到編碼問題應報「編碼不支援」"""
+        from src.cli.main import app
+        monkeypatch.chdir(tmp_path)
+        f = tmp_path / "binary.txt"
+        f.write_bytes(b"\xff\xfe" + bytes(range(128, 256)))
+        result = runner.invoke(app, ["batch", "validate-docs", str(f)])
+        assert result.exit_code == 1
+
+    def test_lint_unicode_error(self, tmp_path, monkeypatch):
+        """lint 遇到編碼問題應報「編碼錯誤」"""
+        from src.cli.main import app
+        monkeypatch.chdir(tmp_path)
+        f = tmp_path / "binary.txt"
+        f.write_bytes(b"\xff\xfe" + bytes(range(128, 256)))
+        result = runner.invoke(app, ["batch", "lint", str(f)])
+        assert result.exit_code == 1
+
 
 # ==================== Config Set Command ====================
 
@@ -3529,6 +3637,135 @@ class TestOrgMemoryCommand:
         result = runner.invoke(app, ["org-memory", "report"])
         assert result.exit_code == 0
         assert "統計報告" in result.stdout
+
+    @patch("src.cli.org_memory_cmd._get_org_memory", side_effect=RuntimeError("config broken"))
+    def test_list_load_error(self, mock_get):
+        """_get_org_memory 失敗時 list 應報錯"""
+        from src.cli.main import app
+        result = runner.invoke(app, ["org-memory", "list"])
+        assert result.exit_code == 1
+        assert "無法載入" in result.stdout
+
+    @patch("src.cli.org_memory_cmd._get_org_memory", side_effect=RuntimeError("broken"))
+    def test_show_load_error(self, mock_get):
+        """_get_org_memory 失敗時 show 應報錯"""
+        from src.cli.main import app
+        result = runner.invoke(app, ["org-memory", "show", "測試局"])
+        assert result.exit_code == 1
+        assert "無法載入" in result.stdout
+
+    @patch("src.cli.org_memory_cmd._get_org_memory")
+    def test_show_not_found_with_available(self, mock_get):
+        """show 找不到但有其他機構時應列出可用機構"""
+        from src.cli.main import app
+        mock_get.return_value = self._make_mock_om({
+            "台北市環保局": {"formal_level": "formal"},
+            "新北市教育局": {"formal_level": "standard"},
+        })
+        result = runner.invoke(app, ["org-memory", "show", "不存在局"])
+        assert result.exit_code == 1
+        assert "可用機構" in result.stdout
+
+    @patch("src.cli.org_memory_cmd._get_org_memory")
+    def test_show_with_details(self, mock_get):
+        """show 顯示 last_updated 和 preferred_terms"""
+        from src.cli.main import app
+        mock_get.return_value = self._make_mock_om({
+            "台北市環保局": {
+                "formal_level": "formal",
+                "signature_format": "局長",
+                "usage_count": 10,
+                "last_updated": "2026-03-26",
+                "preferred_terms": {"廢棄物": "廢棄物資源", "垃圾": "廢棄物"},
+            }
+        })
+        result = runner.invoke(app, ["org-memory", "show", "台北市環保局"])
+        assert result.exit_code == 0
+        assert "2026-03-26" in result.stdout
+        assert "偏好詞彙" in result.stdout
+        assert "廢棄物" in result.stdout
+
+    @patch("src.cli.org_memory_cmd._get_org_memory")
+    def test_set_invalid_formal_level(self, mock_get):
+        """formal_level 設定無效值應報錯"""
+        from src.cli.main import app
+        mock_get.return_value = self._make_mock_om()
+        result = runner.invoke(app, [
+            "org-memory", "set", "測試局",
+            "--key", "formal_level", "--value", "invalid_level",
+        ])
+        assert result.exit_code == 1
+        assert "standard" in result.stdout or "formal" in result.stdout
+
+    @patch("src.cli.org_memory_cmd._get_org_memory")
+    def test_set_update_exception(self, mock_get):
+        """set 更新失敗時應報錯"""
+        from src.cli.main import app
+        mock_om = self._make_mock_om()
+        mock_om.update_preference.side_effect = RuntimeError("disk full")
+        mock_get.return_value = mock_om
+        result = runner.invoke(app, [
+            "org-memory", "set", "測試局",
+            "--key", "signature_format", "--value", "局長",
+        ])
+        assert result.exit_code == 1
+        assert "設定失敗" in result.stdout
+
+    @patch("src.cli.org_memory_cmd._get_org_memory")
+    def test_add_term_success(self, mock_get):
+        """add-term 正常新增偏好詞彙"""
+        from src.cli.main import app
+        mock_om = self._make_mock_om({"測試局": {"preferred_terms": {}}})
+        mock_om.get_agency_profile.return_value = {"preferred_terms": {}}
+        mock_get.return_value = mock_om
+        result = runner.invoke(app, [
+            "org-memory", "add-term", "測試局",
+            "--from", "垃圾", "--to", "廢棄物",
+        ])
+        assert result.exit_code == 0
+        assert "已新增" in result.stdout
+        mock_om.update_preference.assert_called_once()
+
+    @patch("src.cli.org_memory_cmd._get_org_memory")
+    def test_add_term_exception(self, mock_get):
+        """add-term 失敗時應報錯"""
+        from src.cli.main import app
+        mock_om = self._make_mock_om()
+        mock_om.get_agency_profile.side_effect = RuntimeError("broken")
+        mock_get.return_value = mock_om
+        result = runner.invoke(app, [
+            "org-memory", "add-term", "測試局",
+            "--from", "垃圾", "--to", "廢棄物",
+        ])
+        assert result.exit_code == 1
+        assert "設定失敗" in result.stdout
+
+    @patch("src.cli.org_memory_cmd._get_org_memory", side_effect=RuntimeError("broken"))
+    def test_export_load_error(self, mock_get):
+        """export 載入失敗時應報錯"""
+        from src.cli.main import app
+        result = runner.invoke(app, ["org-memory", "export"])
+        assert result.exit_code == 1
+        assert "無法載入" in result.stdout
+
+    @patch("src.cli.org_memory_cmd._get_org_memory")
+    def test_export_write_error(self, mock_get):
+        """export 寫入失敗時應報錯"""
+        from src.cli.main import app
+        mock_get.return_value = self._make_mock_om({"測試局": {}})
+        result = runner.invoke(app, [
+            "org-memory", "export", "--output", "/nonexistent/dir/out.json",
+        ])
+        assert result.exit_code == 1
+        assert "匯出失敗" in result.stdout
+
+    @patch("src.cli.org_memory_cmd._get_org_memory", side_effect=RuntimeError("broken"))
+    def test_report_load_error(self, mock_get):
+        """report 載入失敗時應報錯"""
+        from src.cli.main import app
+        result = runner.invoke(app, ["org-memory", "report"])
+        assert result.exit_code == 1
+        assert "無法載入" in result.stdout
 
 
 # ==================== Explain Command ====================
@@ -6970,6 +7207,31 @@ class TestOrgMemorySearch:
         result = runner.invoke(app, ["org-memory", "search", "回收"])
         assert result.exit_code == 0
         assert "2" in result.stdout
+
+    def test_search_skips_unreadable_file(self, tmp_path, monkeypatch):
+        """無法讀取的檔案應被跳過而非 crash"""
+        monkeypatch.chdir(tmp_path)
+        mem = tmp_path / ".org_memory"
+        mem.mkdir()
+        (mem / "good.txt").write_text("回收政策", encoding="utf-8")
+        bad = mem / "bad.txt"
+        bad.write_bytes(b"\xff\xfe" + b"\x00" * 100)  # invalid UTF-8
+        from src.cli.main import app
+        result = runner.invoke(app, ["org-memory", "search", "回收"])
+        assert result.exit_code == 0
+        assert "找到" in result.stdout
+
+    def test_search_skips_non_text_files(self, tmp_path, monkeypatch):
+        """非文字檔案（如 .db）應被忽略"""
+        monkeypatch.chdir(tmp_path)
+        mem = tmp_path / ".org_memory"
+        mem.mkdir()
+        (mem / "data.db").write_bytes(b"binary data")
+        (mem / "policy.json").write_text('{"key": "回收"}', encoding="utf-8")
+        from src.cli.main import app
+        result = runner.invoke(app, ["org-memory", "search", "回收"])
+        assert result.exit_code == 0
+        assert "找到" in result.stdout
 
 
 class TestClassificationParameter:
