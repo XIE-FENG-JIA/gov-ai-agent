@@ -4,6 +4,16 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 79 — batch_tools 原子寫入完結篇
+**角度**: 🏗️ 架構（寫入模式統一）
+**為什麼**: `batch_tools.py` 混用三種檔案寫入模式（`Path.write_text()`、裸 `open()` + `json.dump()`、`atomic_json_write()`），5 處非原子寫入。這是整個 CLI 原子寫入專項的最後一塊拼圖。
+**做了什麼**: 5 處寫入全部改用 `atomic_json_write()` 或 `atomic_text_write()`，消除第三種模式
+**結果**: PASS — 3069 passed, 84 skipped, 0 failed（零回歸）
+**觀察**: CLI 層所有檔案寫入操作現已全面原子化（replace_cmd、format_cmd、diff_cmd、summarize_cmd、batch_tools、glossary_cmd、config_tools、workflow_cmd、profile_cmd、history）。原子寫入專項可關閉。
+**下一步可能**:
+- 從品質打磨轉向功能開發：MISSION.md「審查意見具體修改建議」功能缺口
+- 法規自動更新機制
+
 ### [2026-03-27] Round 78 — format/diff/summarize 原子寫入收網
 **角度**: 🐛 Bug（資料遺失風險收網）
 **為什麼**: Round 77 修了 replace_cmd，但 `format_cmd`（`--in-place` 覆寫原檔）、`diff_cmd`（`--output`）、`summarize_cmd`（`--output`）仍用 `Path.write_text()` 非原子寫入。`format_cmd` 風險等同 replace_cmd——斷電即失去原始公文。

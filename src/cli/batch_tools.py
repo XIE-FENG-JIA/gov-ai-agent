@@ -8,6 +8,8 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from src.cli.utils import atomic_json_write, atomic_text_write
+
 app = typer.Typer()
 console = Console()
 
@@ -60,7 +62,7 @@ def _load_items(file_path: Path) -> list[dict]:
 def template() -> None:
     """產生批次 JSON 範本檔案。"""
     path = Path("batch_template.json")
-    path.write_text(json.dumps(_TEMPLATE_ITEMS, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_json_write(str(path), _TEMPLATE_ITEMS)
     console.print(f"[green]已產生範本：{path}[/green]")
     console.print("請修改內容後執行 [bold]gov-ai generate --batch batch_template.json[/bold]")
 
@@ -113,7 +115,7 @@ def create() -> None:
         raise typer.Exit(code=1)
 
     path = Path("batch.json")
-    path.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_json_write(str(path), items)
     console.print(f"[green]已儲存 {len(items)} 筆至 {path}[/green]")
 
 
@@ -186,8 +188,7 @@ def validate_docs(
             "failed": failed,
             "results": results,
         }
-        with open(report, "w", encoding="utf-8") as f:
-            json.dump(report_data, f, ensure_ascii=False, indent=2)
+        atomic_json_write(report, report_data)
         console.print(f"[green]驗證報告已匯出至：{report}[/green]")
 
     if has_failure:
@@ -284,7 +285,7 @@ def batch_convert(
             out_path = Path(output_dir) / new_name
         else:
             out_path = p.parent / new_name
-        out_path.write_text(content, encoding="utf-8")
+        atomic_text_write(str(out_path), content)
         console.print(f"[green]{p.name} → {out_path.name}[/green]")
         converted += 1
 
@@ -309,5 +310,5 @@ def batch_merge(
         contents.append(text)
 
     merged = separator.join(contents)
-    Path(output).write_text(merged, encoding="utf-8")
+    atomic_text_write(output, merged)
     console.print(f"[green]已合併 {len(files)} 個檔案至 {output}[/green]")
