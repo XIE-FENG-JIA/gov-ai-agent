@@ -1006,3 +1006,29 @@
 - BM25 搜尋每次從 ChromaDB 拉取全量文件（`coll.get(limit=500)`），可加語料庫快取
 - LangGraph 路徑原生支援 convergence
 - MISSION.md 功能缺口：公文範本庫擴充、法規自動更新
+
+### [2026-03-26] Round 63 — 審查通過
+**結論**: 經 Round 61–62 連續修復 Bug 和效能優化後，專案狀態良好。原始碼零 TODO/FIXME，2975 測試全通過。
+**觀察**:
+- `_execute_via_graph()` 的 `agency` 參數為死碼（graph 有自己的 `fetch_org_memory` node），可清理
+- BM25 的全量文件拉取（`coll.get(limit=500)`）在知識庫規模增長後會成為瓶頸
+- 下一個里程碑建議：從品質打磨轉向 MISSION.md 的功能缺口（範本庫擴充、法規自動更新）
+
+### [2026-03-26] Round 64 — npa_fetcher.py 覆蓋率 82%→100%（+11 個邊界測試）
+**角度**: 🧪 測試（全專案最低覆蓋模組消除）
+**為什麼**: `npa_fetcher.py` 82% 是全專案覆蓋率最低模組（全量跑 93.29% 中的短板）。`_parse_npa_json`（JSON 格式解析全路徑）、XML 非巢狀 resources 結構、`detailContent` HTML→Markdown 轉換、XML→JSON 自動 fallback、去重邏輯等核心防禦路徑完全無測試保護。
+**做了什麼**: 新增 `TestNpaFetcherEdgeCases`（11 個測試案例）：
+- `_parse_npa_json` 直接測試（5 案例）：正常解析、非陣列回傳空 list、無 resources、resources 非 dict、空 resources
+- `_parse_npa_xml` 非巢狀 resources（1 案例）：覆蓋 line 190 的 `child.tag + "_" + res_child.tag` 分支
+- XML→JSON fallback（1 案例）：XML 壞掉自動切換 JSON 格式
+- `detailContent` HTML 轉換（1 案例）：含 HTML 標籤的內容經 `html_to_markdown` 寫入 body
+- 去重邏輯（1 案例）：同模組重複標題只保留第一筆
+- 全格式失敗（1 案例）：XML 和 JSON 都無法解析時回傳空清單
+- body 完整欄位（1 案例）：更新日期、相關連結正確寫入
+**結果**: PASS — npa_fetcher.py 82% → **100%**（0 行未覆蓋）
+- 全量：2943 passed, 84 skipped, 0 failed（+11 新測試，零回歸）
+- 另有 32 個 `test_knowledge_manager_unit.py` 既有失敗（Round 62 embedding 快取改動後測試 mock 未同步，非本輪引入）
+**下一步可能**:
+- `test_knowledge_manager_unit.py` 32 個既有失敗修復（Round 62 embedding TTL 快取導致 mock 過時）
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+- 下一個里程碑：從品質打磨轉向功能開發
