@@ -675,9 +675,9 @@ class TestKBCommands:
         ])
 
         assert result.exit_code == 0
-        assert "成功匯入 2 筆" in result.stdout
+        assert "成功匯入（upsert）2 筆" in result.stdout
         assert "test_col" in result.stdout
-        assert mock_kb_instance.add_document.call_count == 2
+        assert mock_kb_instance.upsert_document.call_count == 2
 
     @patch("src.cli.kb.KnowledgeBaseManager")
     @patch("src.cli.kb.get_llm_factory")
@@ -702,12 +702,13 @@ class TestKBCommands:
         ])
 
         assert result.exit_code == 0
-        assert "成功匯入 1 筆" in result.stdout
+        assert "成功匯入（upsert）1 筆" in result.stdout
 
-        # 驗證 add_document 傳入的 metadata 正確
-        call_args = mock_kb_instance.add_document.call_args
-        content_arg = call_args[0][0]
-        metadata_arg = call_args[0][1]
+        # 驗證 upsert_document 傳入的 metadata 正確
+        # upsert_document(doc_id, content, metadata, ...)
+        call_args = mock_kb_instance.upsert_document.call_args
+        content_arg = call_args[0][1]   # 第二個位置參數是 content
+        metadata_arg = call_args[0][2]  # 第三個位置參數是 metadata
         assert content_arg == "公文主體內容"
         assert metadata_arg["title"] == "測試函文"
         assert metadata_arg["doc_type"] == "函"
@@ -741,9 +742,9 @@ class TestKBCommands:
         assert result.exit_code == 0
         assert "跳過已棄用" in result.stdout
         assert "已跳過 1 筆" in result.stdout
-        assert "成功匯入 1 筆" in result.stdout
+        assert "成功匯入（upsert）1 筆" in result.stdout
         # 只有一個檔案應被匯入
-        assert mock_kb_instance.add_document.call_count == 1
+        assert mock_kb_instance.upsert_document.call_count == 1
 
     @patch("src.cli.kb.KnowledgeBaseManager")
     @patch("src.cli.kb.get_llm_factory")
@@ -792,8 +793,9 @@ class TestKBCommands:
         ])
 
         assert result.exit_code == 0
-        call_args = mock_kb_instance.add_document.call_args
-        metadata_arg = call_args[0][1]
+        # upsert_document(doc_id, content, metadata, ...)
+        call_args = mock_kb_instance.upsert_document.call_args
+        metadata_arg = call_args[0][2]  # 第三個位置參數是 metadata
         # YAML 解析的 date 會變成 datetime.date，應被轉為 ISO 字串
         assert metadata_arg["date"] == "2025-06-15"
         assert metadata_arg["count"] == 42
@@ -820,8 +822,9 @@ class TestKBCommands:
         ])
 
         assert result.exit_code == 0
-        call_args = mock_kb_instance.add_document.call_args
-        metadata_arg = call_args[0][1]
+        # upsert_document(doc_id, content, metadata, ...)
+        call_args = mock_kb_instance.upsert_document.call_args
+        metadata_arg = call_args[0][2]  # 第三個位置參數是 metadata
         # 自動填入 title 為檔名 stem、doc_type 為 unknown
         assert metadata_arg["title"] == "no_meta"
         assert metadata_arg["doc_type"] == "unknown"
@@ -1007,15 +1010,15 @@ class TestParseMarkdownWithMetadata:
                 "knowledge_base": {"path": str(tmp_path / "kb")}
             }
             mock_kb_instance = mock_kb_class.return_value
-            mock_kb_instance.add_document.return_value = "doc_id"
+            mock_kb_instance.upsert_document.return_value = "doc_id"
 
             result = cli_runner.invoke(kb_app, [
                 "ingest", "--source-dir", str(tmp_path), "--collection", "examples"
             ])
             assert result.exit_code == 0
-            # 確認 add_document 被呼叫
-            call_args = mock_kb_instance.add_document.call_args
-            metadata = call_args[0][1]  # 第二個位置引數
+            # 確認 upsert_document 被呼叫（upsert_document(doc_id, content, metadata, ...)）
+            call_args = mock_kb_instance.upsert_document.call_args
+            metadata = call_args[0][2]  # 第三個位置引數
             # None 值不應出現在清理後的 metadata 中
             assert "nullable_field" not in metadata
             assert metadata["title"] == "測試"
@@ -4044,12 +4047,12 @@ class TestKBEdgeCases:
     # ---- ingest 失敗計數 ----
 
     def test_ingest_add_document_failure(self, monkeypatch, tmp_path):
-        """ingest 時 add_document 返回 False 應計入失敗"""
+        """ingest 時 upsert_document 返回 None 應計入失敗"""
         from src.cli import kb as kb_module
         from src.cli.kb import app as kb_app
 
         mock_kb = self._make_available_kb()
-        mock_kb.add_document.return_value = False
+        mock_kb.upsert_document.return_value = None  # 失敗時回傳 None
         monkeypatch.setattr(kb_module, "_init_kb", lambda: mock_kb)
 
         md_file = tmp_path / "test.md"

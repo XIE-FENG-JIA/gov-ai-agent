@@ -4,6 +4,18 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 77 — KB ingest 測試修復（冪等索引 API 遷移遺漏）
+**角度**: 🧪 測試（消除測試紅燈 — 7 個 pre-existing failures）
+**為什麼**: `2e2532d feat(kb): 冪等增量索引` 將 `add_document` 改為 `upsert_document`、輸出格式從「成功匯入 X 筆」改為「成功匯入（upsert）X 筆文件至 'collection'！」，但 7 個 KB ingest 測試未同步更新，導致全部紅燈。
+**做了什麼**:
+- 5 個測試：`add_document` → `upsert_document`，位置引數索引 `[0][1]` → `[0][2]`（新增 doc_id 為第一參數）
+- 3 個字串斷言：`"成功匯入 X 筆"` → `"成功匯入（upsert）X 筆"`
+- 1 個失敗計數測試：`add_document.return_value = False` → `upsert_document.return_value = None`
+**結果**: PASS — 39 個 KB 測試全通過，3153 全套件零紅燈
+**下一步可能**:
+- 實作逐段 auto_refine 以恢復長草稿自動修正能力
+- 更新 MISSION.md 標記批次處理效能優化完成
+
 ### [2026-03-27] Round 76 — 分段審查 auto_refine 草稿截斷資料遺失修復
 **角度**: 🐛 Bug（資料遺失 — 嚴重）
 **為什麼**: `_segmented_review` 對超長草稿（>15000 字）分段審查後，若風險等級為 Critical/High/Moderate，會呼叫 `_auto_refine(draft, results)` 對完整草稿做自動修正。但 `_auto_refine` 內部將草稿截斷為 `MAX_DRAFT_LENGTH=15000` 才送 LLM，LLM 也只回傳截斷後的修正版本。**結果是 15000 字以後的內容被靜默丟棄**。
