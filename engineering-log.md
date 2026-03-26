@@ -696,5 +696,23 @@
 **做了什麼**: 新增 `test_graph_nodes_extra.py` 7 個測試案例
 **結果**: PASS — formatter.py 81% → **100%**，memory.py 81% → **100%**
 **下一步可能**:
-- `cli/config_tools.py`（82%）
+- ~~`cli/config_tools.py`（82%）~~ ✅ Round 43 已完成
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+
+### [2026-03-26] Round 43 — config_tools.py 覆蓋率 82%→100%
+**角度**: 🧪 測試（全 CLI 最後未達標模組消除）
+**為什麼**: `config_tools.py` 82%（52 行未覆蓋）是全 CLI 最後低於門檻的模組。`init()` 互動式引導（67 行）完全無測試、`show` section+json 格式分支、`fetch-models` 超時/斷線例外、`_parse_value` 布林/浮點解析、`set` 設定檔載入失敗、`_mask_sensitive` list 遞迴、`export` yaml 格式等關鍵防禦路徑全部裸奔。
+**做了什麼**: 新增 `test_config_tools_extra.py` 19 個測試案例：
+- show 邊界（3）：不支援格式、section+json、section 非 dict 值
+- fetch-models 例外（2）：Timeout、ConnectionError
+- init 互動式（6）：取消覆蓋、ollama 新建、gemini、openrouter、覆蓋既有、環境變數偵測
+- _parse_value（3）：true/yes、false/no、浮點數
+- set_value 例外（1）：設定檔載入失敗
+- _mask_sensitive（2）：list 含 dict、巢狀 list
+- export yaml（2）：標準輸出、寫入檔案+敏感遮蔽
+**結果**: PASS — config_tools.py 82% → **100%**（全分支覆蓋）
+- 全量：2800 passed, 84 skipped, 0 failed（+19 新測試，零回歸；1 個既有 flaky test 隔離通過）
+**下一步可能**:
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+- 全 CLI 模組覆蓋率已全部達標，可轉向整合測試或功能開發
+- 既有 flaky test（TestMeetingReviewLoop）值得調查 test ordering 問題
