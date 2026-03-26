@@ -58,3 +58,20 @@ select = ["E", "F", "W"]
 testpaths = ["tests"]
 python_files = "test_*.py"
 addopts = "-v"
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "src/*/test_*",
+    "src/gov_ai_agent.egg-info/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]

@@ -250,3 +250,17 @@
 - 考慮將 `time.sleep` mock 提升到 conftest 級別的 autouse fixture，避免逐測試重複
 - `parse_draft()` 274 行、`write_draft()` 256 行等超長函式拆分
 - LLM mock / KB mock 統一到 conftest（與 auth config 同手法）
+
+### [2026-03-26] Round 17 — 測試覆蓋率基線建立
+**角度**: 🧪 測試（可量化品質指標）
+**為什麼**: 2221 個測試全 passed 但從未量化覆蓋率。沒有數字就無法判斷哪些生產路徑缺少測試保護，也無法在 CI 中設門檻。
+**做了什麼**:
+- `pyproject.toml`: 新增 `[tool.coverage.run]` 和 `[tool.coverage.report]` 配置
+- 首次執行 `pytest --cov=src` 建立基線
+**結果**: PASS — **覆蓋率 86%**（10931 行，1484 行未覆蓋）
+- 高覆蓋（>90%）：validators(99%), api routes(96%), fetchers(82-99%), agents(84-99%)
+- 低覆蓋需關注：`knowledge/manager.py`(40%), `web_preview/app.py`(58%), `cli/kb.py`(50%)
+**下一步可能**:
+- `knowledge/manager.py` 覆蓋率 40% 是最大盲區（chromadb 相關），需 mock chromadb 寫測試
+- CI 加入 `--cov-fail-under=80` 門檻防止覆蓋率退化
+- `web_preview/app.py` 58% 需加 API endpoint 整合測試
