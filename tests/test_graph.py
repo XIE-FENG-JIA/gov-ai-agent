@@ -401,6 +401,31 @@ class TestExecuteViaGraphExtraction:
         assert dump["error_count"] == 1
 
 
+    @patch("src.api.routes.workflow._get_graph")
+    def test_cleans_up_graph_temp_export(self, mock_get_graph, tmp_path):
+        """graph 產生的臨時匯出檔應被 API 層清理"""
+        from src.api.routes.workflow import _execute_via_graph
+
+        # 模擬 graph 產生的臨時檔案
+        temp_file = tmp_path / "gov_doc_tmp.docx"
+        temp_file.write_text("temp")
+
+        req_dict = self._make_valid_requirement_dict()
+        mock_graph = MagicMock()
+        mock_graph.invoke.return_value = {
+            "requirement": req_dict,
+            "formatted_draft": "# 草稿",
+            "phase": "exported",
+            "output_path": str(temp_file),
+        }
+        mock_get_graph.return_value = mock_graph
+
+        _execute_via_graph("測試輸��", "test-session", skip_review=True)
+
+        # 臨時檔案應已被清理
+        assert not temp_file.exists()
+
+
 # ============================================================
 # refine_draft / verify_refinement 單元測試
 # ============================================================

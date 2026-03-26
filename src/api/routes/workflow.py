@@ -248,6 +248,15 @@ def _execute_via_graph(
             audit_log=report_md,
         )
 
+    # 清理 graph 自動產生的臨時匯出檔（API 層自行控制匯出命名）
+    _graph_output = final_state.get("output_path")
+    if _graph_output and os.path.isfile(_graph_output):
+        try:
+            os.remove(_graph_output)
+            logger.debug("已清理 graph 臨時匯出檔: %s", _graph_output)
+        except OSError:
+            pass
+
     # 步驟 5: 匯出 DOCX（沿用原始 workflow 的匯出邏輯，不依賴 graph 的 export_docx node）
     output_filename = None
     if output_docx:

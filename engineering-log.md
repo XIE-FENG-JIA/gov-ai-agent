@@ -1100,3 +1100,15 @@
 **下一步可能**:
 - `fan_out_reviewers()` 在 requirement 缺失時 raise 而非靜默 fallback 到「函」
 - MISSION.md 功能缺口：公文範本庫擴充、法規自動更新
+
+### [2026-03-26] Round 69 — 清理 LangGraph 路徑孤立臨時匯出檔
+**角度**: 🐛 Bug（資源洩漏）
+**為什麼**: `_execute_via_graph()` 呼叫 `graph.invoke()` 時，graph 的 `export_docx` node 永遠建立 tempfile（`gov_doc_*.docx`），但 API 層不使用該檔案而是自行匯出命名。每次 graph 執行都在 `output/` 洩漏一個永不被引用的臨時檔。長期運行下磁碟空間持續消耗。
+**做了什麼**:
+- `workflow.py` `_execute_via_graph()` 在 `graph.invoke()` 後檢查 `output_path`，若為實體檔案則 `os.remove()`
+- 新增 `test_cleans_up_graph_temp_export` 測試驗證清理邏輯
+**結果**: PASS — 2984 passed, 84 skipped, 0 failed（+1 新測試，零回歸）
+**下一步可能**:
+- 批次處理 `asyncio.gather()` 缺少總體 timeout（50 筆 × 600s = 最長可掛 2.8 小時）
+- LLM error handling 缺少 timeout 與 connection error 的區分
+- MISSION.md 功能缺口：公文範本庫擴充、法規自動更新
