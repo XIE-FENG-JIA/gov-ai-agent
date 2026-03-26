@@ -6,6 +6,8 @@ import os
 import typer
 from rich.console import Console
 
+from src.cli.utils import atomic_text_write
+
 console = Console()
 
 
@@ -28,9 +30,20 @@ def convert(
         console.print(f"[red]錯誤：不支援的輸出格式「{format}」，請使用 md 或 txt。[/red]")
         raise typer.Exit(1)
 
-    from docx import Document
+    try:
+        from docx import Document
+    except ImportError:
+        console.print(
+            "[red]錯誤：需要 python-docx 套件。請執行：pip install python-docx[/red]"
+        )
+        raise typer.Exit(1)
 
-    doc = Document(input_file)
+    try:
+        doc = Document(input_file)
+    except Exception as exc:
+        console.print(f"[red]錯誤：無法開啟 DOCX 檔案：{exc}[/red]")
+        raise typer.Exit(1)
+
     paragraphs = [p.text for p in doc.paragraphs]
 
     if format == "md":
@@ -50,8 +63,11 @@ def convert(
         console.print(f"[yellow]不支援的編碼 '{encoding}'，使用 utf-8。[/yellow]")
         enc = "utf-8"
 
-    with open(out_path, "w", encoding=enc) as f:
-        f.write(content)
+    try:
+        atomic_text_write(out_path, content, encoding=enc)
+    except OSError as exc:
+        console.print(f"[red]錯誤：無法寫入輸出檔案 {out_path}：{exc}[/red]")
+        raise typer.Exit(1)
 
     char_count = sum(len(p) for p in paragraphs)
     console.print(f"[green]轉換完成：{out_path}[/green]")

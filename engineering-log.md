@@ -4,6 +4,18 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 78 — convert_cmd 三重防護補齊
+**角度**: 🐛 Bug + 🔒 安全（錯誤處理缺口）
+**為什麼**: `convert_cmd.py` 是唯一一個引用 `python-docx` 卻沒有 ImportError 處理的 CLI 命令（`validate_cmd`、`checklist_cmd`、`explain_cmd` 都有）。同時缺少 DOCX 開啟異常處理和原子寫入，不符合專案既有規範。
+**做了什麼**:
+- 新增 `from docx import Document` 的 ImportError 處理，顯示友善安裝提示
+- 新增 `Document(input_file)` 的 try-except，捕獲損毀/無權限等異常
+- 輸出寫入改用 `atomic_text_write()`，與其他 CLI 模組一致
+**結果**: PASS — 12 個相關測試全通過，import 驗證正常
+**下一步可能**:
+- 為 30+ 無測試 CLI 命令補基礎測試覆蓋
+- `stamp_cmd`/`merge_cmd`/`split_cmd` 也缺少錯誤處理和原子寫入
+
 ### [2026-03-27] Round 77 — KB ingest 測試修復（冪等索引 API 遷移遺漏）
 **角度**: 🧪 測試（消除測試紅燈 — 7 個 pre-existing failures）
 **為什麼**: `2e2532d feat(kb): 冪等增量索引` 將 `add_document` 改為 `upsert_document`、輸出格式從「成功匯入 X 筆」改為「成功匯入（upsert）X 筆文件至 'collection'！」，但 7 個 KB ingest 測試未同步更新，導致全部紅燈。
