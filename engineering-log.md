@@ -804,6 +804,19 @@
 - `types-requests>=2.31` → `types-requests>=2.31,<3.0`
 **結果**: PASS — 13/13 核心依賴正常 import，314 核心測試全通過
 **下一步可能**:
-- `src/cli/kb.py` 的 3 處 `stat()` 無 try/except 保護（P2，非致命）
+- ~~`src/cli/kb.py` 的 3 處 `stat()` 無 try/except 保護（P2，非致命）~~ ✅ Round 48 已修復
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+- 專案品質穩定，可開始規劃下一個里程碑
+
+### [2026-03-26] Round 48 — kb.py stat() OSError 防護
+**角度**: 🐛 Bug（Windows 檔案鎖定導致 CLI 指令崩潰）
+**為什麼**: `kb details` 和 `kb stats-detail` 指令中 3 處 `stat()` 呼叫無 try/except 保護。Windows 上若 kb_data 目錄中的檔案被 Word 等程式佔用，`stat()` 拋 `PermissionError` 會導致整個指令崩潰。此為 Round 45（`_cleanup_old_outputs`）同一 pattern 的遺留項，已被連續 3 輪標記為 P2 待修。
+**做了什麼**:
+- `kb details`: `f.stat().st_size` 包裹 `try/except OSError`，鎖定檔案跳過不計入大小
+- `kb stats-detail`: 新增 `_safe_stat()` 輔助函式，stat 失敗的檔案從 size/mtime 統計中排除
+- 新增 2 個測試：mock `rglob` 注入 stat 失敗的檔案，驗證指令正常完成不崩潰
+**結果**: PASS — 2808 passed, 84 skipped, 0 failed（+2 新測試，零回歸）
+**下一步可能**:
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+- `_find_available_font` 在 Linux 大型字體目錄下效能可優化（遞迴 iterdir）
 - 專案品質穩定，可開始規劃下一個里程碑

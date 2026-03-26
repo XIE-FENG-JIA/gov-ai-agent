@@ -3965,6 +3965,36 @@ class TestKBEdgeCases:
         assert "知識庫詳細資訊" in result.stdout
         assert "1" in result.stdout  # examples_count
 
+    def test_details_stat_oserror(self, monkeypatch, tmp_path):
+        """details 命令中 stat() 拋 OSError 時不應崩潰"""
+        from src.cli import kb as kb_module
+        from src.cli.kb import app as kb_app
+
+        kb_dir = tmp_path / "kb_data"
+        kb_dir.mkdir()
+        (kb_dir / "good.txt").write_text("ok", encoding="utf-8")
+
+        mock_kb = self._make_available_kb()
+        mock_kb.persist_path = str(kb_dir)
+        monkeypatch.setattr(kb_module, "_init_kb", lambda: mock_kb)
+
+        # 模擬一個 is_file()=True 但 stat() 會拋 OSError 的檔案
+        bad_file = MagicMock(spec=Path)
+        bad_file.is_file.return_value = True
+        bad_file.stat.side_effect = OSError("檔案被佔用")
+
+        good_file = kb_dir / "good.txt"
+        original_rglob = Path.rglob
+
+        def _mock_rglob(self_path, pattern):
+            yield from original_rglob(self_path, pattern)
+            yield bad_file
+
+        monkeypatch.setattr(Path, "rglob", _mock_rglob)
+        result = runner.invoke(kb_app, ["details"])
+        assert result.exit_code == 0
+        assert "知識庫詳細資訊" in result.stdout
+
     # ---- _init_kb 缺 llm ----
 
     def test_init_kb_no_llm(self, monkeypatch):
@@ -8192,6 +8222,29 @@ class TestKBStatsDetail:
         from src.cli.main import app
         result = runner.invoke(app, ["kb", "stats-detail", "--path", str(kb)])
         assert result.exit_code == 0
+
+    def test_stats_detail_stat_oserror(self, tmp_path, monkeypatch):
+        """stats-detail 中 stat() 拋 OSError 時不應崩潰"""
+        kb = tmp_path / "kb_data"
+        (kb / "laws").mkdir(parents=True)
+        (kb / "laws" / "good.txt").write_text("ok", encoding="utf-8")
+
+        # 模擬一個 is_file()=True 但 stat() 會拋 OSError 的檔案
+        bad_file = MagicMock(spec=Path)
+        bad_file.is_file.return_value = True
+        bad_file.stat.side_effect = OSError("檔案被佔用")
+
+        original_rglob = Path.rglob
+
+        def _mock_rglob(self_path, pattern):
+            yield from original_rglob(self_path, pattern)
+            yield bad_file
+
+        monkeypatch.setattr(Path, "rglob", _mock_rglob)
+        from src.cli.main import app
+        result = runner.invoke(app, ["kb", "stats-detail", "--path", str(kb)])
+        assert result.exit_code == 0
+        assert "統計" in result.stdout
 
 
 class TestTemplateNameParameter:

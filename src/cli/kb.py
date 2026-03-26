@@ -1001,7 +1001,10 @@ def details() -> None:
     if persist_path.exists():
         for f in persist_path.rglob("*"):
             if f.is_file():
-                total_size += f.stat().st_size
+                try:
+                    total_size += f.stat().st_size
+                except OSError:
+                    pass  # 檔案被佔用或權限不足，跳過
 
     if total_size >= 1024 * 1024:
         size_str = f"{total_size / (1024 * 1024):.2f} MB"
@@ -1217,11 +1220,19 @@ def stats_detail(
     for subdir in subdirs:
         files = [f for f in subdir.rglob("*") if f.is_file()]
         file_count = len(files)
-        total_size = sum(f.stat().st_size for f in files)
+
+        def _safe_stat(f):
+            try:
+                return f.stat()
+            except OSError:
+                return None
+
+        stats = [s for s in (_safe_stat(f) for f in files) if s is not None]
+        total_size = sum(s.st_size for s in stats)
         size_kb = f"{total_size / 1024:.1f}"
 
-        if files:
-            latest_mtime = max(f.stat().st_mtime for f in files)
+        if stats:
+            latest_mtime = max(s.st_mtime for s in stats)
             last_modified = datetime.fromtimestamp(latest_mtime).strftime("%Y-%m-%d %H:%M:%S")
         else:
             last_modified = "-"
