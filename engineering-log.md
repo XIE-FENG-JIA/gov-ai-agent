@@ -630,4 +630,19 @@
 **下一步可能**:
 - `cli/config_tools.py`（82%，52 行未覆蓋）
 - `graph/nodes/formatter.py`（81%）、`graph/nodes/memory.py`（81%）
-- MISSION.md 功能缺口：審查意見具體修改建議
+- ~~MISSION.md 功能缺口：審查意見具體修改建議~~ ✅ Round 40 已完成
+
+### [2026-03-26] Round 40 — Format Auditor 新增具體修改建議
+**角度**: ✨ 功能（MISSION.md 功能缺口修復）
+**為什麼**: MISSION.md 列出的「審查意見的具體修改建議」功能缺口。其他 4 個審查 agent（Style/Fact/Consistency/Compliance）都在 LLM prompt 中要求 suggestion 欄位，唯獨 Format Auditor 只回傳純字串的 errors/warnings，使用者看到問題但不知道怎麼修。
+**做了什麼**:
+- `auditor.py`: LLM prompt 從 `{"errors": ["字串"]}` 改為 `{"errors": [{"description":"...", "location":"...", "suggestion":"..."}]}`
+- `auditor.py`: 新增 `_normalize_audit_items()` 函式，支援新舊格式混合解析
+- `review_parser.py`: `format_audit_to_review_result()` 支援 dict 項目，提取 location/suggestion 填入 ReviewIssue
+- 完全向後相容：舊的純字串格式仍正常解析
+- 新增 4 個測試（結構化/混合/空值/缺欄位）
+**結果**: PASS — 2755 passed, 84 skipped, 0 failed（+4 新測試，零回歸）
+**下一步可能**:
+- `cli/config_tools.py`（82%）、`graph/nodes/formatter.py`（81%）
+- reporter.py 可增強 suggestion 為空時的 fallback 顯示
+- 其他 MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化

@@ -1246,6 +1246,68 @@ class TestReviewParserEdgeCases:
         )
         assert result.agent_name == "Custom Auditor"
 
+    def test_format_audit_structured_errors_with_suggestions(self):
+        """測試結構化格式審查結果（含 suggestion 欄位）"""
+        fmt_raw = {
+            "errors": [
+                {
+                    "description": "缺少主旨段落",
+                    "location": "文件開頭",
+                    "suggestion": "請在公文開頭加入「主旨：」段落，簡述公文目的",
+                }
+            ],
+            "warnings": [
+                {
+                    "description": "說明段落過短",
+                    "location": "說明段",
+                    "suggestion": "建議說明段至少包含兩點，詳述背景與做法",
+                }
+            ],
+        }
+        result = format_audit_to_review_result(fmt_raw)
+        assert len(result.issues) == 2
+        err = [i for i in result.issues if i.severity == "error"][0]
+        assert err.location == "文件開頭"
+        assert err.suggestion == "請在公文開頭加入「主旨：」段落，簡述公文目的"
+        warn = [i for i in result.issues if i.severity == "warning"][0]
+        assert warn.location == "說明段"
+        assert warn.suggestion is not None
+
+    def test_format_audit_mixed_string_and_dict(self):
+        """測試混合格式（字串 + 結構化 dict）的向後相容"""
+        fmt_raw = {
+            "errors": [
+                "舊格式純字串錯誤",
+                {"description": "新格式結構化錯誤", "location": "辦法段", "suggestion": "修正建議"},
+            ],
+            "warnings": [],
+        }
+        result = format_audit_to_review_result(fmt_raw)
+        assert len(result.issues) == 2
+        # 舊格式：location 預設為「文件結構」，無 suggestion
+        assert result.issues[0].location == "文件結構"
+        assert result.issues[0].suggestion is None
+        # 新格式：帶 location 和 suggestion
+        assert result.issues[1].location == "辦法段"
+        assert result.issues[1].suggestion == "修正建議"
+
+    def test_normalize_audit_items_handles_empty_and_none(self):
+        """測試 _normalize_audit_items 過濾空值"""
+        from src.agents.auditor import _normalize_audit_items
+        items = [None, "", {"description": "有效項目", "suggestion": "建議"}, "純字串"]
+        result = _normalize_audit_items(items)
+        assert len(result) == 2
+        assert isinstance(result[0], dict)
+        assert result[0]["description"] == "有效項目"
+        assert result[1] == "純字串"
+
+    def test_normalize_audit_items_dict_without_description(self):
+        """測試 dict 缺少 description 時被過濾"""
+        from src.agents.auditor import _normalize_audit_items
+        items = [{"location": "某處", "suggestion": "建議"}]
+        result = _normalize_audit_items(items)
+        assert len(result) == 0
+
     def test_parse_review_response_confidence_from_json(self):
         """測試從 JSON 正確讀取 confidence 值"""
         response = json.dumps({

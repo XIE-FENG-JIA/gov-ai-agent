@@ -264,25 +264,49 @@ def format_audit_to_review_result(
     """
     fmt_issues = []
     for err in fmt_raw.get("errors", []):
-        fmt_issues.append(
-            ReviewIssue(
-                category="format",
-                severity="error",
-                risk_level="high",
-                location="文件結構",
-                description=err,
+        if isinstance(err, dict):
+            fmt_issues.append(
+                ReviewIssue(
+                    category="format",
+                    severity="error",
+                    risk_level="high",
+                    location=err.get("location", "文件結構"),
+                    description=err.get("description", str(err)),
+                    suggestion=err.get("suggestion"),
+                )
             )
-        )
+        else:
+            fmt_issues.append(
+                ReviewIssue(
+                    category="format",
+                    severity="error",
+                    risk_level="high",
+                    location="文件結構",
+                    description=str(err),
+                )
+            )
     for warn in fmt_raw.get("warnings", []):
-        fmt_issues.append(
-            ReviewIssue(
-                category="format",
-                severity="warning",
-                risk_level="medium",
-                location="文件結構",
-                description=warn,
+        if isinstance(warn, dict):
+            fmt_issues.append(
+                ReviewIssue(
+                    category="format",
+                    severity="warning",
+                    risk_level="medium",
+                    location=warn.get("location", "文件結構"),
+                    description=warn.get("description", str(warn)),
+                    suggestion=warn.get("suggestion"),
+                )
             )
-        )
+        else:
+            fmt_issues.append(
+                ReviewIssue(
+                    category="format",
+                    severity="warning",
+                    risk_level="medium",
+                    location="文件結構",
+                    description=str(warn),
+                )
+            )
 
     # 依嚴重度動態計算分數，而非硬編碼 0.5
     if not fmt_issues:
