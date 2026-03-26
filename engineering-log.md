@@ -4,16 +4,18 @@
 
 ## 改善紀錄
 
-### [2026-03-27] Round 76 — review_cmd --apply 非原子寫入修復
-**角度**: 🐛 Bug（資料損毀風險）
-**為什麼**: Round 25-27 已確立「所有 CLI 檔案輸出必須使用原子寫入」規範（tempfile + os.replace），防止寫入中途崩潰損毀使用者檔案。但 Round 75 新增的 `review_cmd.py --apply` 使用裸 `open(..., "w")` 寫出修正草稿，違反此規範。一旦寫入中途斷電或程序崩潰，使用者的修正草稿會被截斷為空或半成品。
+### [2026-03-27] Round 76 — 分段審查 auto_refine 草稿截斷資料遺失修復
+**角度**: 🐛 Bug（資料遺失 — 嚴重）
+**為什麼**: `_segmented_review` 對超長草稿（>15000 字）分段審查後，若風險等級為 Critical/High/Moderate，會呼叫 `_auto_refine(draft, results)` 對完整草稿做自動修正。但 `_auto_refine` 內部將草稿截斷為 `MAX_DRAFT_LENGTH=15000` 才送 LLM，LLM 也只回傳截斷後的修正版本。**結果是 15000 字以後的內容被靜默丟棄**。
+- 例如：25000 字草稿 → 分段審查 → auto_refine → LLM 只看到前 15000 字 → 回傳 ~15000 字 → 後 10000 字消失
+- `_SEGMENT_THRESHOLD` 和 `MAX_DRAFT_LENGTH` 同為 15000，代表分段審查場景下 auto_refine **必然截斷**
 **做了什麼**:
-- `review_cmd.py`: 將 `open(..., "w").write()` 替換為 `atomic_text_write()`，與其他 CLI 模組一致
-- 新增 1 個測試 `test_apply_uses_atomic_write`：mock `atomic_text_write` 確認被正確呼叫
-**結果**: PASS — 22 個 review_cmd 測試全通過（+1 新測試），3153 全套件零回歸
+- `editor.py`: `_segmented_review` 不再呼叫 `_auto_refine`，改為顯示警告提示使用者依審查建議手動修正
+- 更新 1 個測試（`test_segmented_review_high_risk_preserves_full_draft`）：驗證高風險時仍回傳完整原始草稿
+**結果**: PASS — 14 個分段審查相關測試全通過，3145 passed（6 個 pre-existing KB failures 非本次引入）
 **下一步可能**:
-- 批次處理效能優化（MISSION 剩餘功能缺口）
-- `呈`/`咨` 範本補齊（目前各 3 筆）
+- 實作逐段 auto_refine（每段用該段的 issues 修正，再合併）以恢復長草稿自動修正能力
+- 修復 6 個 KB ingest pre-existing test failures（冪等增量索引改了輸出格式但測試未更新）
 
 ### [2026-03-27] Round 35 — _segmented_review 逾時資訊遺失 + 浪費 refine
 **角度**: 🐛 Bug（超長草稿審查品質盲區）

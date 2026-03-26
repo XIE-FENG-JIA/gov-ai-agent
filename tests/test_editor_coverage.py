@@ -456,21 +456,21 @@ class TestReviewSingleAndSegmented:
         assert isinstance(report, QAReport)
         assert len(report.agent_results) > 0
 
-    def test_segmented_review_high_risk_refines_full_draft(self, mock_llm):
-        """分段審查風險高時對完整草稿進行修正"""
+    def test_segmented_review_high_risk_preserves_full_draft(self, mock_llm):
+        """分段審查風險高時應保留原始草稿（不做 auto_refine 以防截斷導致資料遺失）"""
         editor = EditorInChief(mock_llm)
         err = _error_results()
 
         def mock_execute_review(draft, doc_type):
             return err, []
 
-        mock_llm.generate.return_value = "### 完整修正"
-
         with patch.object(editor, '_execute_review', side_effect=mock_execute_review):
             long_draft = "### 主旨\n" + "B\n" * 8000
             draft, report = editor._segmented_review(long_draft, "函")
 
-        assert draft == "### 完整修正"
+        # 應保留完整原始草稿，不截斷、不修正
+        assert draft == long_draft
+        assert isinstance(report, QAReport)
 
     def test_segmented_review_collects_timed_out(self, mock_llm):
         """分段審查應收集各段的逾時 Agent 資訊"""

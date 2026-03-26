@@ -721,19 +721,20 @@ Return ONLY the corrected draft markdown.
         )
         self._print_report(report)
 
-        # 判定是否需要自動修正（對完整草稿）
+        # 超長草稿不做自動修正：_auto_refine 會將草稿截斷為 MAX_DRAFT_LENGTH，
+        # 而分段審查的草稿必然超過此限制，修正後的草稿會遺失後半部分內容。
+        # 僅回報審查結果，由使用者根據具體建議手動修正。
         if report.risk_summary in ["Critical", "High", "Moderate"]:
             console.print(
                 f"\n[bold yellow]風險等級：{report.risk_summary}。"
-                "正在啟動自動修正...[/bold yellow]"
+                f"草稿長度（{len(draft)} 字）超過自動修正上限，"
+                "請依據上方審查建議手動修正。[/bold yellow]"
             )
-            refined_draft = self._auto_refine(draft, all_results)
-            return refined_draft, report
-
-        console.print(
-            f"\n[bold green]品質分數（{report.overall_score:.2f}）優良，"
-            "無需修改。[/bold green]"
-        )
+        else:
+            console.print(
+                f"\n[bold green]品質分數（{report.overall_score:.2f}）優良，"
+                "無需修改。[/bold green]"
+            )
         return draft, report
 
     @staticmethod
