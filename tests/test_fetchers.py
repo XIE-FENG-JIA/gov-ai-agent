@@ -872,6 +872,232 @@ class TestNpaFetcher:
             assert r.metadata.get("content_hash") == r.content_hash
 
 
+# ==================== TestNpaFetcherEdgeCases ====================
+
+class TestNpaFetcherEdgeCases:
+    """NpaFetcher 未覆蓋路徑的邊界測試。"""
+
+    # ---- _parse_npa_json 直接測試 ----
+
+    def test_parse_npa_json_basic(self):
+        """測試 JSON 格式正確解析"""
+        from src.knowledge.fetchers.npa_fetcher import NpaFetcher
+        data = json.dumps([
+            {
+                "subject": "交通統計",
+                "pubUnitName": "交通組",
+                "posterDate": "2026-01-01",
+                "updateDate": "2026-02-01",
+                "detailContent": "<p>內容</p>",
+                "resources": [{"relateURL": "https://example.com"}],
+            }
+        ]).encode()
+        items = NpaFetcher._parse_npa_json(data)
+        assert len(items) == 1
+        assert items[0]["subject"] == "交通統計"
+        assert items[0]["pubUnitName"] == "交通組"
+        assert items[0]["posterDate"] == "2026-01-01"
+        assert items[0]["updateDate"] == "2026-02-01"
+        assert items[0]["detailContent"] == "<p>內容</p>"
+        assert items[0]["relateURL"] == "https://example.com"
+
+    def test_parse_npa_json_non_list(self):
+        """JSON 回傳非陣列時回傳空 list"""
+        from src.knowledge.fetchers.npa_fetcher import NpaFetcher
+        data = json.dumps({"error": "not found"}).encode()
+        assert NpaFetcher._parse_npa_json(data) == []
+
+    def test_parse_npa_json_no_resources(self):
+        """缺少 resources 欄位時不設 relateURL"""
+        from src.knowledge.fetchers.npa_fetcher import NpaFetcher
+        data = json.dumps([{"subject": "無資源"}]).encode()
+        items = NpaFetcher._parse_npa_json(data)
+        assert len(items) == 1
+        assert "relateURL" not in items[0]
+
+    def test_parse_npa_json_resources_not_dict(self):
+        """resources 第一項非 dict 時不設 relateURL"""
+        from src.knowledge.fetchers.npa_fetcher import NpaFetcher
+        data = json.dumps([{"subject": "異常", "resources": ["not_a_dict"]}]).encode()
+        items = NpaFetcher._parse_npa_json(data)
+        assert "relateURL" not in items[0]
+
+    def test_parse_npa_json_empty_resources(self):
+        """空 resources 陣列時不設 relateURL"""
+        from src.knowledge.fetchers.npa_fetcher import NpaFetcher
+        data = json.dumps([{"subject": "空", "resources": []}]).encode()
+        items = NpaFetcher._parse_npa_json(data)
+        assert "relateURL" not in items[0]
+
+    # ---- _parse_npa_xml 非巢狀 resources ----
+
+    def test_parse_npa_xml_non_nested_resources(self):
+        """XML resources 非巢狀結構（child.tag + '_' + res_child.tag）"""
+        from src.knowledge.fetchers.npa_fetcher import NpaFetcher
+        xml_data = """<?xml version="1.0" encoding="UTF-8"?>
+        <List>
+          <item>
+            <subject>non-nested-test</subject>
+            <resources>
+              <format>CSV</format>
+              <size>1024</size>
+            </resources>
+          </item>
+        </List>""".encode("utf-8")
+        items = NpaFetcher._parse_npa_xml(xml_data)
+        assert len(items) == 1
+        assert items[0]["subject"] == "non-nested-test"
+        assert items[0]["resources_format"] == "CSV"
+        assert items[0]["resources_size"] == "1024"
+
+    # ---- JSON fallback（XML 失敗自動切換 JSON）----
+
+    @patch("src.knowledge.fetchers.base.time.sleep")
+    @patch("src.knowledge.fetchers.npa_fetcher.requests.get")
+    def test_fetch_xml_fail_json_fallback(self, mock_get, _mock_sleep, tmp_path):
+        """XML 解析失敗時自動回退 JSON"""
+        from src.knowledge.fetchers.npa_fetcher import NpaFetcher
+
+        json_data = json.dumps([{
+            "subject": "JSON回退測試",
+            "pubUnitName": "測試單位",
+            "posterDate": "2026-03-01",
+        }]).encode()
+
+        xml_resp = MagicMock()
+        xml_resp.content = b"<broken xml"  # noqa: invalid XML
+        xml_resp.raise_for_status = MagicMock()
+        xml_resp.status_code = 200
+
+        json_resp = MagicMock()
+        json_resp.content = json_data
+        json_resp.raise_for_status = MagicMock()
+        json_resp.status_code = 200
+
+        # 第一次呼叫（xml）返回壞 XML，第二次呼叫（json）返回有效 JSON
+        mock_get.side_effect = [xml_resp, json_resp]
+
+        fetcher = NpaFetcher(output_dir=tmp_path, rate_limit=0, modules=["test_module"])
+        results = fetcher.fetch()
+        assert len(results) == 1
+        assert results[0].metadata["title"] == "JSON回退測試"
+
+    # ---- detailContent HTML→Markdown 轉換 ----
+
+    @patch("src.knowledge.fetchers.base.time.sleep")
+    @patch("src.knowledge.fetchers.npa_fetcher.requests.get")
+    def test_fetch_with_detail_content(self, mock_get, _mock_sleep, tmp_path):
+        """detailContent 含 HTML 時應轉換為 Markdown 並寫入 body"""
+        from src.knowledge.fetchers.npa_fetcher import NpaFetcher
+
+        xml_data = """<?xml version="1.0" encoding="UTF-8"?>
+        <List>
+          <item>
+            <subject>HTML內容測試</subject>
+            <pubUnitName>測試單位</pubUnitName>
+            <posterDate>2026-03-01</posterDate>
+            <detailContent>&lt;p&gt;這是&lt;b&gt;重要&lt;/b&gt;的內容&lt;/p&gt;</detailContent>
+            <resources>
+              <resources>
+                <relateURL>https://data.gov.tw/dataset/99999</relateURL>
+              </resources>
+            </resources>
+          </item>
+        </List>""".encode("utf-8")
+        mock_resp = MagicMock()
+        mock_resp.content = xml_data
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.status_code = 200
+        mock_get.return_value = mock_resp
+
+        fetcher = NpaFetcher(output_dir=tmp_path, rate_limit=0, modules=["test"])
+        results = fetcher.fetch()
+        assert len(results) == 1
+
+        md_content = results[0].file_path.read_text(encoding="utf-8")
+        assert "## 內容" in md_content
+        assert "重要" in md_content
+
+    # ---- 去重邏輯 ----
+
+    @patch("src.knowledge.fetchers.base.time.sleep")
+    @patch("src.knowledge.fetchers.npa_fetcher.requests.get")
+    def test_fetch_dedup_across_modules(self, mock_get, _mock_sleep, tmp_path):
+        """跨模組相同標題應去重"""
+        from src.knowledge.fetchers.npa_fetcher import NpaFetcher
+
+        xml_data = """<?xml version="1.0" encoding="UTF-8"?>
+        <List>
+          <item><subject>dup-title</subject></item>
+          <item><subject>dup-title</subject></item>
+          <item><subject>unique-title</subject></item>
+        </List>""".encode("utf-8")
+        mock_resp = MagicMock()
+        mock_resp.content = xml_data
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.status_code = 200
+        mock_get.return_value = mock_resp
+
+        fetcher = NpaFetcher(output_dir=tmp_path, rate_limit=0, modules=["m1"])
+        results = fetcher.fetch()
+        assert len(results) == 2
+        titles = {r.metadata["title"] for r in results}
+        assert "dup-title" in titles
+        assert "unique-title" in titles
+
+    # ---- 全部模組失敗 ----
+
+    @patch("src.knowledge.fetchers.base.time.sleep")
+    @patch("src.knowledge.fetchers.npa_fetcher.requests.get")
+    def test_fetch_module_all_formats_fail(self, mock_get, _mock_sleep, tmp_path):
+        """XML 和 JSON 都失敗時 _fetch_module 回傳 None"""
+        from src.knowledge.fetchers.npa_fetcher import NpaFetcher
+
+        # XML 和 JSON 都返回無法解析的內容
+        bad_resp = MagicMock()
+        bad_resp.content = b"not valid data"
+        bad_resp.raise_for_status = MagicMock()
+        bad_resp.status_code = 200
+        mock_get.return_value = bad_resp
+
+        fetcher = NpaFetcher(output_dir=tmp_path, rate_limit=0, modules=["broken"])
+        results = fetcher.fetch()
+        assert results == []
+
+    # ---- updateDate + relateURL 顯示 ----
+
+    @patch("src.knowledge.fetchers.base.time.sleep")
+    @patch("src.knowledge.fetchers.npa_fetcher.requests.get")
+    def test_fetch_body_includes_update_date_and_url(self, mock_get, _mock_sleep, tmp_path):
+        """body 應包含更新日期和相關連結"""
+        from src.knowledge.fetchers.npa_fetcher import NpaFetcher
+
+        json_data = json.dumps([{
+            "subject": "完整欄位",
+            "pubUnitName": "單位A",
+            "posterDate": "2026-01-01",
+            "updateDate": "2026-02-15",
+            "resources": [{"relateURL": "https://example.com/link"}],
+        }]).encode()
+        # 直接走 JSON（XML 失敗）
+        import requests as req
+        xml_fail = req.ConnectionError("fail")
+        json_resp = MagicMock()
+        json_resp.content = json_data
+        json_resp.raise_for_status = MagicMock()
+        json_resp.status_code = 200
+        mock_get.side_effect = [xml_fail, json_resp]
+
+        fetcher = NpaFetcher(output_dir=tmp_path, rate_limit=0, modules=["m1"])
+        results = fetcher.fetch()
+        assert len(results) == 1
+        md = results[0].file_path.read_text(encoding="utf-8")
+        assert "更新日期" in md
+        assert "2026-02-15" in md
+        assert "相關連結" in md
+        assert "https://example.com/link" in md
+
+
 # ==================== TestContentHash ====================
 
 class TestContentHash:
