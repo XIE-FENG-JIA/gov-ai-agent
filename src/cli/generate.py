@@ -231,7 +231,7 @@ def _display_format_options(
                 console.print(f"  [dim]{label}：{display}[/dim]")
         else:
             opts = hint or "/".join(choices)
-            console.print(f"[yellow]未知的{label}設定：{values[key]}（可用：{opts}）[/yellow]")
+            console.print(f"[yellow]未知的{label}：{values[key]}（可用：{opts}）[/yellow]")
 
     # copy_count — 需要 int 範圍檢查
     try:

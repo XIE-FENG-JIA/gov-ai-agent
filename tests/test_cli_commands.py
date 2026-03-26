@@ -7546,7 +7546,7 @@ class TestSpeedParameter:
             "--skip-review", "--speed", "turbo",
         ])
         assert result.exit_code == 0
-        assert "未知的速度模式" in result.output
+        assert "未知的生成模式" in result.output
 
 
 class TestAliasRename:
@@ -8518,7 +8518,7 @@ class TestDuplexExtra:
         result = runner.invoke(app, ["generate", "-i", "台北市環保局函請各校加強回收",
                                      "--skip-review", "--duplex", "invalid"])
         assert result.exit_code == 0
-        assert "未知的雙面列印設定" in result.output
+        assert "未知的列印模式" in result.output
 
 
 class TestStampVerify:
@@ -9123,7 +9123,7 @@ class TestColumnsParameter:
         result = runner.invoke(app, ["generate", "-i", "台北市環保局函請各校加強回收",
                                      "--skip-review", "--columns", "3"])
         assert result.exit_code == 0
-        assert "未知的欄數設定" in result.output
+        assert "未知的排版" in result.output
 
 
 class TestDiffOutput:
@@ -9332,7 +9332,7 @@ class TestSealParameter:
         result = runner.invoke(app, ["generate", "-i", "台北市環保局函請各校加強回收",
                                      "--skip-review", "--seal", "invalid"])
         assert result.exit_code == 0
-        assert "未知的用印設定" in result.output
+        assert "未知的用印" in result.output
 
 
 # ==================== Explain Format ====================
@@ -10089,7 +10089,7 @@ class TestLangParameter:
         result = runner.invoke(app, ["generate", "-i", "台北市環保局函請各校加強回收",
                                      "--skip-review", "--lang", "ja"])
         assert result.exit_code == 0
-        assert "未知的語言設定" in result.output
+        assert "未知的公文語言" in result.output
 
 
 # ==================== Org Memory Category Filter ====================
