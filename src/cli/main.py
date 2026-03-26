@@ -45,6 +45,7 @@ from src.cli.summarize_cmd import summarize as summarize_cmd
 from src.cli.replace_cmd import replace_text as replace_cmd
 from src.cli.highlight_cmd import highlight as highlight_cmd
 from src.cli.review_cmd import review as review_cmd
+from src.cli.cite_cmd import cite as cite_cmd
 from src.core.logging_config import setup_logging
 
 app = typer.Typer(
@@ -95,6 +96,7 @@ app.command(name="summarize")(summarize_cmd)
 app.command(name="replace")(replace_cmd)
 app.command(name="highlight")(highlight_cmd)
 app.command(name="review")(review_cmd)
+app.command(name="cite")(cite_cmd)
 
 console = Console()
 
