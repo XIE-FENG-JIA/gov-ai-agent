@@ -644,5 +644,17 @@
 **結果**: PASS — 2755 passed, 84 skipped, 0 failed（+4 新測試，零回歸）
 **下一步可能**:
 - `cli/config_tools.py`（82%）、`graph/nodes/formatter.py`（81%）
-- reporter.py 可增強 suggestion 為空時的 fallback 顯示
+- ~~reporter.py 可增強 suggestion 為空時的 fallback 顯示~~ ✅ Round 41 已補測試
+- 其他 MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化
+
+### [2026-03-26] Round 41 — reporter.py 89%→100% 全分支覆蓋
+**角度**: 🧪 測試（品質報告節點零單測補齊）
+**為什麼**: `reporter.py` 是品質報告的最終輸出節點，suggestion 顯示分支和異常處理路徑沒有專屬單元測試。Round 40 新增了 suggestion 功能，需要確保 reporter 端正確顯示。
+**做了什麼**: 新增 `test_reporter.py` 8 個測試案例：
+- 基本結構、無問題 agent（通過）、有 suggestion 的 issue
+- 無 suggestion 不顯示建議行、info [I] 圖示、空 state
+- 異常路徑（agent_results 含 None）、多 agent 組合
+**結果**: PASS — reporter.py 89% → **100%**（全分支覆蓋）
+**下一步可能**:
+- `cli/config_tools.py`（82%）、`graph/nodes/formatter.py`（81%）
 - 其他 MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化
