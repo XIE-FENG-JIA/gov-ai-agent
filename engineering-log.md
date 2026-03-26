@@ -415,3 +415,18 @@
 - 安全審計無關鍵漏洞
 - 唯一未處理：LLM mock/KB mock conftest 統一（架構 DRY，非阻斷）、web_preview 覆蓋率
 - httpx DeprecationWarning 源自 litellm 內部，非本專案可修
+
+### [2026-03-26] Round 29 — exam_yuan_fetcher JSON 串接偏移 bug + 覆蓋率 56%→98%
+**角度**: 🐛 Bug（資料遺漏）+ 🧪 測試（覆蓋率盲區消除）
+**為什麼**: `_parse_json_text()` 使用 `pos = next_brace + end_idx` 計算下一個解析位置，但 `raw_decode()` 回傳的 `end_idx` 已是絕對位置，導致第二筆之後偏移量翻倍、跳過後續 JSON 物件。考試院 Open Data 以串接 `{...}{...}` 格式回傳時，部分法規會被靜默遺漏。同時 `exam_yuan_fetcher.py` 覆蓋率 56% 是全 fetcher 家族最低（其他 82-99%）。
+**做了什麼**:
+- `pos = next_brace + end_idx` → `pos = end_idx`（修復偏移 bug）
+- 新增 17 個測試案例覆蓋：JSON 6 種格式解析、limit 截斷、fallback 備用路徑、_parse_list_page HTML 解析、_extract_content 內容提取、空標題過濾、網路錯誤處理
+**結果**: PASS
+- 2587 passed, 84 skipped, 0 failed（+17 新測試）
+- exam_yuan_fetcher.py 覆蓋率：56% → 98%（+42pp，僅剩 3 行未覆蓋）
+- 同時修復 `_get_graph()` race condition（`threading.Lock` + 雙重檢查鎖）
+**下一步可能**:
+- `web_preview/app.py`（58%）是剩餘最低覆蓋核心模組
+- LLM mock / KB mock 統一到 conftest
+- `graph/nodes/refiner.py`（63%）可快速補測試

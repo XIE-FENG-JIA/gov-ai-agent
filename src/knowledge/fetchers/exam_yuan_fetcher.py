@@ -122,7 +122,7 @@ class ExamYuanFetcher(BaseFetcher):
                 obj, end_idx = decoder.raw_decode(text, next_brace)
                 if isinstance(obj, dict):
                     items.append(obj)
-                pos = next_brace + end_idx
+                pos = end_idx
             except json.JSONDecodeError:
                 pos = next_brace + 1
 

@@ -2169,6 +2169,236 @@ class TestExamYuanFetcher:
         fetcher = ExamYuanFetcher(output_dir=tmp_path)
         assert fetcher.name() == "考試院人事法規"
 
+    @patch("src.knowledge.fetchers.exam_yuan_fetcher.requests.get")
+    def test_fetch_limit_break(self, mock_get, tmp_path):
+        """測試 limit 截斷（fetch 迴圈中 results >= limit 時提前跳出）"""
+        from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
+
+        opendata_html = '<a href="https://law.exam.gov.tw/data.json">JSON</a>'
+        json_text = json.dumps([
+            {"法規名稱": f"法規{i}", "法規內容": f"內容{i}"} for i in range(10)
+        ])
+
+        def side_effect(url, **kwargs):
+            resp = MagicMock()
+            resp.status_code = 200
+            resp.raise_for_status = MagicMock()
+            resp.text = opendata_html if "OpenDataWeb" in url else json_text
+            return resp
+
+        mock_get.side_effect = side_effect
+        fetcher = ExamYuanFetcher(output_dir=tmp_path, limit=3)
+        results = fetcher.fetch()
+        assert len(results) == 3
+
+    @patch("src.knowledge.fetchers.base.time.sleep")
+    @patch("src.knowledge.fetchers.exam_yuan_fetcher.requests.get")
+    def test_fetch_json_download_error(self, mock_get, mock_sleep, tmp_path):
+        """測試個別 JSON 下載失敗（跳過該 URL 繼續下一個）"""
+        from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
+        import requests as req
+
+        opendata_html = (
+            '<a href="https://bad.example/fail.json">失敗</a>'
+            '<a href="https://good.example/ok.json">成功</a>'
+        )
+        json_text = json.dumps([{"法規名稱": "成功法規", "法規內容": "OK"}])
+
+        call_count = 0
+
+        def side_effect(url, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            resp = MagicMock()
+            resp.status_code = 200
+            resp.raise_for_status = MagicMock()
+            if "OpenDataWeb" in url:
+                resp.text = opendata_html
+            elif "fail" in url:
+                raise req.ConnectionError("timeout")
+            else:
+                resp.text = json_text
+            return resp
+
+        mock_get.side_effect = side_effect
+        fetcher = ExamYuanFetcher(output_dir=tmp_path, limit=10, rate_limit=0)
+        results = fetcher.fetch()
+        assert len(results) == 1
+        assert "成功法規" in results[0].metadata["title"]
+
+    def test_parse_json_text_list(self, tmp_path):
+        """測試 _parse_json_text 標準 JSON list"""
+        from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
+        items = ExamYuanFetcher._parse_json_text('[{"法規名稱": "A"}, {"法規名稱": "B"}]')
+        assert len(items) == 2
+
+    def test_parse_json_text_dict_with_law_name(self, tmp_path):
+        """測試 _parse_json_text 單一法規 dict"""
+        from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
+        items = ExamYuanFetcher._parse_json_text('{"法規名稱": "任用法"}')
+        assert len(items) == 1
+        assert items[0]["法規名稱"] == "任用法"
+
+    def test_parse_json_text_dict_with_nested_key(self, tmp_path):
+        """測試 _parse_json_text dict 含 Laws/data/records key"""
+        from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
+        for key in ("Laws", "data", "records"):
+            text = json.dumps({key: [{"法規名稱": "X"}]})
+            items = ExamYuanFetcher._parse_json_text(text)
+            assert len(items) == 1, f"key={key} 應解析出 1 筆"
+
+    def test_parse_json_text_dict_unknown_structure(self, tmp_path):
+        """測試 _parse_json_text dict 無已知 key 時回傳整個 dict"""
+        from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
+        items = ExamYuanFetcher._parse_json_text('{"foo": "bar"}')
+        assert len(items) == 1
+        assert items[0]["foo"] == "bar"
+
+    def test_parse_json_text_concatenated(self, tmp_path):
+        """測試 _parse_json_text 串接 JSON（{...}{...}格式）"""
+        from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
+        text = '{"法規名稱": "A"}{"法規名稱": "B"}garbage{"法規名稱": "C"}'
+        items = ExamYuanFetcher._parse_json_text(text)
+        assert len(items) == 3
+
+    def test_parse_json_text_invalid(self, tmp_path):
+        """測試 _parse_json_text 完全無效文字"""
+        from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
+        items = ExamYuanFetcher._parse_json_text("not json at all")
+        assert items == []
+
+    def test_item_to_result_empty_title(self, tmp_path):
+        """測試 _item_to_result 空標題回傳 None"""
+        from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
+        fetcher = ExamYuanFetcher(output_dir=tmp_path)
+        assert fetcher._item_to_result({}) is None
+        assert fetcher._item_to_result({"法規名稱": ""}) is None
+
+    @patch("src.knowledge.fetchers.exam_yuan_fetcher.requests.get")
+    def test_fetch_from_category_fallback(self, mock_get, tmp_path):
+        """測試 _fetch_from_category 備用路徑（無 JSON URL 時觸發）"""
+        from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
+
+        list_html = '''
+        <html><body>
+        <a href="/LawContent.aspx?id=FL001">公務人員任用法</a>
+        <a href="/LawContent.aspx?id=FL002">公務人員俸給法</a>
+        </body></html>
+        '''
+        detail_html = '<div class="law-content">第 1 條 本法依考試院組織法制定之。</div>'
+
+        def side_effect(url, **kwargs):
+            resp = MagicMock()
+            resp.status_code = 200
+            resp.raise_for_status = MagicMock()
+            if "OpenDataWeb" in url:
+                resp.text = "<html>no json links</html>"  # 無 JSON URL 觸發 fallback
+            elif "LawCategoryContentList" in url:
+                resp.text = list_html
+            elif "LawContent" in url:
+                resp.text = detail_html
+            return resp
+
+        mock_get.side_effect = side_effect
+        fetcher = ExamYuanFetcher(output_dir=tmp_path, limit=5)
+        results = fetcher.fetch()
+        assert len(results) == 2
+        assert "公務人員任用法" in results[0].metadata["title"]
+
+    @patch("src.knowledge.fetchers.base.time.sleep")
+    @patch("src.knowledge.fetchers.exam_yuan_fetcher.requests.get")
+    def test_fetch_from_category_network_error(self, mock_get, mock_sleep, tmp_path):
+        """測試 _fetch_from_category 列表頁網路失敗"""
+        from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
+        import requests as req
+
+        def side_effect(url, **kwargs):
+            if "OpenDataWeb" in url:
+                resp = MagicMock()
+                resp.status_code = 200
+                resp.raise_for_status = MagicMock()
+                resp.text = "<html>no json</html>"
+                return resp
+            raise req.ConnectionError("fail")
+
+        mock_get.side_effect = side_effect
+        fetcher = ExamYuanFetcher(output_dir=tmp_path, limit=5, rate_limit=0)
+        results = fetcher.fetch()
+        assert len(results) == 0
+
+    @patch("src.knowledge.fetchers.base.time.sleep")
+    @patch("src.knowledge.fetchers.exam_yuan_fetcher.requests.get")
+    def test_fetch_from_category_detail_error(self, mock_get, mock_sleep, tmp_path):
+        """測試 _fetch_from_category 詳情頁下載失敗（仍產出結果但無內容）"""
+        from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
+        import requests as req
+
+        list_html = '<a href="/LawContent.aspx?id=FL001">測試法規</a>'
+
+        def side_effect(url, **kwargs):
+            resp = MagicMock()
+            resp.status_code = 200
+            resp.raise_for_status = MagicMock()
+            if "OpenDataWeb" in url:
+                resp.text = "<html>no json</html>"
+            elif "LawCategoryContentList" in url:
+                resp.text = list_html
+            elif "LawContent" in url:
+                raise req.Timeout("timeout")
+            return resp
+
+        mock_get.side_effect = side_effect
+        fetcher = ExamYuanFetcher(output_dir=tmp_path, limit=5, rate_limit=0)
+        results = fetcher.fetch()
+        assert len(results) == 1
+        content = results[0].file_path.read_text(encoding="utf-8")
+        assert "測試法規" in content
+        # 沒有法規內容區塊（詳情頁失敗）
+        assert "法規內容" not in content
+
+    def test_parse_list_page(self, tmp_path):
+        """測試 _parse_list_page HTML 解析"""
+        from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
+        html = '''
+        <a href="/LawContent.aspx?id=1">公務人員考績法</a>
+        <a href="https://law.exam.gov.tw/LawContent.aspx?id=2">俸給法</a>
+        <a href="relative/LawContent.aspx?id=3">保障法</a>
+        <a href="/Other.aspx?id=4">非法規連結</a>
+        '''
+        items = ExamYuanFetcher._parse_list_page(html)
+        assert len(items) == 3
+        # 相對路徑補全
+        assert items[0]["url"].startswith("https://")
+        assert items[1]["url"].startswith("https://")
+        assert items[2]["url"].startswith("https://")
+
+    def test_parse_list_page_empty_title(self, tmp_path):
+        """測試 _parse_list_page 跳過空標題連結"""
+        from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
+        html = '<a href="/LawContent.aspx?id=1">  </a>'
+        items = ExamYuanFetcher._parse_list_page(html)
+        assert len(items) == 0
+
+    def test_extract_content_law_content_class(self, tmp_path):
+        """測試 _extract_content 解析 law-content div"""
+        from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
+        html = '<html><div class="law-content"><p>第一條 本法依憲法制定。</p></div></html>'
+        content = ExamYuanFetcher._extract_content(html)
+        assert "第一條" in content
+
+    def test_extract_content_id_content(self, tmp_path):
+        """測試 _extract_content 解析 id=content div"""
+        from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
+        html = '<html><div id="content"><p>第二條 文字</p></div></html>'
+        content = ExamYuanFetcher._extract_content(html)
+        assert "第二條" in content
+
+    def test_extract_content_no_match(self, tmp_path):
+        """測試 _extract_content 無匹配時回傳空字串"""
+        from src.knowledge.fetchers.exam_yuan_fetcher import ExamYuanFetcher
+        content = ExamYuanFetcher._extract_content("<html><body>random</body></html>")
+        assert content == ""
+
 
 # ==================== TestStatisticsFetcher ====================
 
