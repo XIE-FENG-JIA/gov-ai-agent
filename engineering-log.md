@@ -168,3 +168,17 @@
 - CI 中加 pycache 清理步驟避免 bytecache 殘留
 - 統一 auth 配置到共用 conftest fixture，避免各測試檔重複且不同步
 - 84 個 skip 中部分可加條件式 CI matrix（chromadb 環境跑 KB 測試）
+
+### [2026-03-26] Round 11 — ZipFile 資源洩漏修復
+**角度**: 🐛 Bug（資源管理）
+**為什麼**: `gazette_fetcher.py` 和 `law_fetcher.py` 的 `fetch_bulk()` 使用 `zf = ZipFile(...)` + `zf.close()` 模式。若中間解析 XML/PDF 過程拋出未預期異常，`close()` 不會執行，造成 file descriptor 洩漏。同檔案的 `_parse_from_data()` 正確使用了 `with zipfile.ZipFile(...) as zf:`，存在不一致。
+**做了什麼**:
+- `gazette_fetcher.py`: `fetch_bulk()` 的 ZipFile 改為 `with zf:` context manager
+- `law_fetcher.py`: `fetch_bulk()` 的 ZipFile 改為 `with zf:` context manager
+**結果**: PASS
+- test_fetchers.py: 124/124 passed
+- 全量測試: 2221 passed, 82 skipped, 0 failed
+**下一步可能**:
+- `base.py` SSL 驗證失敗自動降級為 `verify=False`（HIGH 安全風險），需評估是否為政府 API 所需
+- 9 處 `except Exception` 靜默吞噬錯誤（無 logger），影響生產環境可觀測性
+- `workflow.py` 的 `asyncio.gather()` 未用 `return_exceptions=True`，單項失敗中斷全部

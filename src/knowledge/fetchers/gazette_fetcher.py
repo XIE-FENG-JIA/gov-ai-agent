@@ -165,34 +165,33 @@ class GazetteFetcher(BaseFetcher):
             logger.error("公報 bulk ZIP 檔案損壞")
             return []
 
-        # 先解析所有 XML，建立 MetaId → record 對照
-        xml_records: dict[str, dict] = {}
-        for name in zf.namelist():
-            if name.lower().endswith(".xml"):
-                try:
-                    xml_data = zf.read(name)
-                    for rec in self._parse_xml(xml_data):
-                        meta_id = rec.get("MetaId", "")
-                        if meta_id:
-                            xml_records[meta_id] = rec
-                except Exception as exc:
-                    logger.warning("解析 ZIP 內 XML %s 失敗：%s", name, exc)
-
-        # 收集 PDF bytes，以檔名（不含副檔名）為 key
-        pdf_texts: dict[str, str] = {}
-        if extract_pdf:
+        with zf:
+            # 先解析所有 XML，建立 MetaId → record 對照
+            xml_records: dict[str, dict] = {}
             for name in zf.namelist():
-                if name.lower().endswith(".pdf"):
+                if name.lower().endswith(".xml"):
                     try:
-                        pdf_bytes = zf.read(name)
-                        text = self._extract_pdf_text(pdf_bytes)
-                        # 以檔名 stem 作為 key（嘗試用 MetaId 匹配）
-                        stem = Path(name).stem
-                        pdf_texts[stem] = text
+                        xml_data = zf.read(name)
+                        for rec in self._parse_xml(xml_data):
+                            meta_id = rec.get("MetaId", "")
+                            if meta_id:
+                                xml_records[meta_id] = rec
                     except Exception as exc:
-                        logger.warning("讀取 ZIP 內 PDF %s 失敗：%s", name, exc)
+                        logger.warning("解析 ZIP 內 XML %s 失敗：%s", name, exc)
 
-        zf.close()
+            # 收集 PDF bytes，以檔名（不含副檔名）為 key
+            pdf_texts: dict[str, str] = {}
+            if extract_pdf:
+                for name in zf.namelist():
+                    if name.lower().endswith(".pdf"):
+                        try:
+                            pdf_bytes = zf.read(name)
+                            text = self._extract_pdf_text(pdf_bytes)
+                            # 以檔名 stem 作為 key（嘗試用 MetaId 匹配）
+                            stem = Path(name).stem
+                            pdf_texts[stem] = text
+                        except Exception as exc:
+                            logger.warning("讀取 ZIP 內 PDF %s 失敗：%s", name, exc)
 
         cutoff = datetime.now() - timedelta(days=self.days)
         results: list[FetchResult] = []

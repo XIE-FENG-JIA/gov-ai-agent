@@ -226,14 +226,14 @@ class LawFetcher(BaseFetcher):
             return []
 
         all_laws: list[dict] = []
-        for name in zf.namelist():
-            if name.lower().endswith(".xml"):
-                try:
-                    xml_data = zf.read(name)
-                    all_laws.extend(self._parse_bulk_xml(xml_data))
-                except Exception as exc:
-                    logger.warning("解析 ZIP 內 XML %s 失敗：%s", name, exc)
-        zf.close()
+        with zf:
+            for name in zf.namelist():
+                if name.lower().endswith(".xml"):
+                    try:
+                        xml_data = zf.read(name)
+                        all_laws.extend(self._parse_bulk_xml(xml_data))
+                    except Exception as exc:
+                        logger.warning("解析 ZIP 內 XML %s 失敗：%s", name, exc)
 
         results: list[FetchResult] = []
         for law in all_laws:
