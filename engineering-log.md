@@ -964,5 +964,19 @@
 **結果**: PASS — 27 passed, 0 failed
 **下一步可能**:
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
-- `agents/review_parser.py` 完全缺少測試
+- ~~`agents/review_parser.py` 完全缺少測試~~ ✅ Round 60 已完成
+- 專案品質穩定，可開始規劃下一個里程碑
+
+### [2026-03-26] Round 60 — agents/review_parser.py 單元測試覆蓋（0%→100%）
+**角度**: 🧪 測試（共用模組零覆蓋）
+**為什麼**: `review_parser.py` 是 StyleChecker、FactChecker、ConsistencyChecker 三個 Agent 共用的 JSON 解析核心（328 行、4 個公開函式），Round 59 的「下一步」已標記此缺口。共用模組的 bug 影響三個下游 Agent，測試 ROI 最高。
+**做了什麼**:
+- 新增 `tests/test_review_parser.py`，71 個測試案例覆蓋 4 個類別：
+  - `TestSanitizeJsonString`（12 個）：8 種不可見 Unicode 字元清理 + None/空/中文保留
+  - `TestExtractJsonObject`（12 個）：巢狀物件、轉義引號、雙反斜線、不平衡括號、markdown code block
+  - `TestParseReviewResponse`（30 個）：空值/Error 前綴/severity 驗證/derive_risk_from_severity/分數鉗位(NaN/Inf/超範圍)/信心度鉗位/缺欄位預設/容錯(非 list/非 dict/無 JSON/壞 JSON)/BOM 清理
+  - `TestFormatAuditToReviewResult`（17 個）：dict/string 型 error+warning、動態評分公式、多 error 歸零、多 warning 下限 0.5、缺欄位預設
+**結果**: PASS — 71/71 passed (0.81s)，全量 2885 passed + 84 skipped，零回歸
+**下一步可能**:
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
 - 專案品質穩定，可開始規劃下一個里程碑
