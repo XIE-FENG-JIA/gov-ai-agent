@@ -4,6 +4,15 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 78 — format/diff/summarize 原子寫入收網
+**角度**: 🐛 Bug（資料遺失風險收網）
+**為什麼**: Round 77 修了 replace_cmd，但 `format_cmd`（`--in-place` 覆寫原檔）、`diff_cmd`（`--output`）、`summarize_cmd`（`--output`）仍用 `Path.write_text()` 非原子寫入。`format_cmd` 風險等同 replace_cmd——斷電即失去原始公文。
+**做了什麼**: 三個檔案的 `write_text()` 全部改用 `atomic_text_write()`
+**結果**: PASS — 3069 passed, 84 skipped, 0 failed（零回歸）
+**下一步可能**:
+- `batch_tools.py` 4 處 `write_text()` 仍為非原子（影響較低，輸出為新檔非覆寫）
+- 從品質打磨轉向功能開發：法規自動更新
+
 ### [2026-03-27] Round 77 — replace_cmd 原子寫入防損毀
 **角度**: 🐛 Bug（資料遺失風險）
 **為什麼**: `replace_cmd` 用 `Path.write_text()` 直接覆寫使用者原始公文，寫入中途崩潰會永久遺失原檔。已有 `atomic_json_write` / `atomic_yaml_write` 但缺少純文字版本。

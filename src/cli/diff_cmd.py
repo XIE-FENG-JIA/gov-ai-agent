@@ -9,6 +9,8 @@ import typer
 from rich.console import Console
 from rich.text import Text
 
+from src.cli.utils import atomic_text_write
+
 console = Console()
 
 
@@ -71,5 +73,5 @@ def diff(
 
     if output:
         plain = "".join(line.rstrip("\n") + "\n" for line in diff_lines)
-        Path(output).write_text(plain, encoding="utf-8")
+        atomic_text_write(output, plain)
         console.print(f"[green]已匯出差異至：{output}[/green]")

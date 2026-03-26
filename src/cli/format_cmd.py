@@ -3,6 +3,8 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
+from src.cli.utils import atomic_text_write
+
 console = Console()
 
 SECTION_KEYWORDS = ["主旨", "說明", "辦法", "正本", "副本"]
@@ -65,7 +67,7 @@ def format_doc(
         return
 
     if in_place:
-        path.write_text(formatted, encoding="utf-8")
+        atomic_text_write(str(path), formatted)
         console.print(f"[green]已格式化：{path}[/green]")
     else:
         console.print(formatted)

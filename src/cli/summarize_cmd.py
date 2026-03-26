@@ -4,6 +4,8 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 
+from src.cli.utils import atomic_text_write
+
 console = Console()
 
 
@@ -60,5 +62,5 @@ def summarize(
         if summary_body:
             out_parts.append(f"說明：{summary_body}")
         out_text = "\n".join(out_parts) if out_parts else content[:max_length]
-        Path(output).write_text(out_text, encoding="utf-8")
+        atomic_text_write(output, out_text)
         console.print(f"[green]已匯出摘要至：{output}[/green]")
