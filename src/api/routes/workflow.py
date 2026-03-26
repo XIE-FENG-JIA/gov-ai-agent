@@ -14,7 +14,7 @@ from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import FileResponse, JSONResponse
 
-from src.core.constants import SESSION_ID_LENGTH
+from src.core.constants import SESSION_ID_LENGTH, OUTPUT_DIR
 from src.core.models import PublicDocRequirement
 from src.agents.editor import EditorInChief
 from src.agents.requirement import RequirementAgent
@@ -142,9 +142,8 @@ def _execute_document_workflow(
     if output_docx:
         exporter = DocxExporter()
         filename = _sanitize_output_filename(output_filename_hint, session_id)
-        output_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "output")
-        os.makedirs(output_dir, exist_ok=True)
-        output_path = os.path.join(output_dir, filename)
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        output_path = os.path.join(OUTPUT_DIR, filename)
         exporter.export(
             final_draft,
             output_path,
@@ -254,12 +253,8 @@ def _execute_via_graph(
     if output_docx:
         exporter = DocxExporter()
         filename = _sanitize_output_filename(output_filename_hint, session_id)
-        output_dir = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
-            "output",
-        )
-        os.makedirs(output_dir, exist_ok=True)
-        output_path = os.path.join(output_dir, filename)
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        output_path = os.path.join(OUTPUT_DIR, filename)
         exporter.export(
             final_draft,
             output_path,
@@ -430,7 +425,7 @@ async def download_file(filename: str):
         return JSONResponse(status_code=400, content={"detail": "無效的檔案名稱"})
 
     # 第二層防護：Path.resolve() 確保解析後的路徑在允許的輸出目錄內
-    output_dir = Path(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "output").resolve()
+    output_dir = OUTPUT_DIR.resolve()
     file_path = (output_dir / filename).resolve()
     if not file_path.is_relative_to(output_dir):
         logger.warning("路徑遍歷攻擊嘗試: filename=%s, resolved=%s", filename, file_path)

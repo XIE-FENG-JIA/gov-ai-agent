@@ -6,6 +6,7 @@ import logging
 import os
 import tempfile
 
+from src.core.constants import OUTPUT_DIR
 from src.graph.state import GovDocState
 
 logger = logging.getLogger(__name__)
@@ -35,12 +36,11 @@ def export_docx(state: GovDocState) -> dict:
         # 輸出路徑：使用者指定或自動產生
         output_path = state.get("output_path", "")
         if not output_path:
-            output_dir = os.path.join(".", "output")
-            os.makedirs(output_dir, exist_ok=True)
+            os.makedirs(OUTPUT_DIR, exist_ok=True)
             fd, output_path = tempfile.mkstemp(
                 suffix=".docx",
                 prefix="gov_doc_",
-                dir=output_dir,
+                dir=str(OUTPUT_DIR),
             )
             os.close(fd)
 

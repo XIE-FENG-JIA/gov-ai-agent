@@ -264,3 +264,17 @@
 - `knowledge/manager.py` 覆蓋率 40% 是最大盲區（chromadb 相關），需 mock chromadb 寫測試
 - CI 加入 `--cov-fail-under=80` 門檻防止覆蓋率退化
 - `web_preview/app.py` 58% 需加 API endpoint 整合測試
+
+### [2026-03-26] Round 18 — 統一 output 目錄解析，消除 CWD 依賴
+**角度**: 🐛 Bug（部署相容性 + DRY）
+**為什麼**: `workflow.py` 用 4 層 `os.path.dirname(__file__)` 解析 output 目錄（3 處），`graph/nodes/exporter.py` 和 `api_server._cleanup_old_outputs` 用 CWD 相對路徑 `"."/"output"`。兩套路徑在 CWD ≠ 專案根目錄時不一致——graph 匯出的 DOCX 寫入錯誤位置，download_file 端點找不到檔案，cleanup 也清錯目錄。
+**做了什麼**:
+- `src/core/constants.py`: 新增 `PROJECT_ROOT` / `OUTPUT_DIR` 常數（基於 `__file__` 解析）
+- `src/api/routes/workflow.py`: 3 處硬編碼 `dirname×4` → `OUTPUT_DIR`
+- `src/graph/nodes/exporter.py`: `os.path.join(".", "output")` → `OUTPUT_DIR`
+- `api_server.py`: `pathlib.Path("output")` → `OUTPUT_DIR`
+**結果**: PASS — 2485 passed, 84 skipped, 0 failed（零回歸）
+**下一步可能**:
+- `parse_draft()` 274 行、`write_draft()` 256 行等超長函式拆分
+- LLM mock / KB mock 統一到 conftest
+- Dockerfile HEALTHCHECK 的 `localhost` 改為 `127.0.0.1`（Python urllib IPv6 解析問題）

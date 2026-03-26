@@ -217,15 +217,14 @@ def _warmup_law_cache() -> None:
 
 def _cleanup_old_outputs() -> None:
     """掃描 output/ 目錄，刪除超過 24 小時的 .docx 檔案。"""
-    import pathlib
     import time as _time
+    from src.core.constants import OUTPUT_DIR
 
-    output_dir = pathlib.Path("output")
-    if not output_dir.exists():
+    if not OUTPUT_DIR.exists():
         return
     cutoff = _time.time() - 86400  # 24 hours
     count = 0
-    for f in output_dir.glob("*.docx"):
+    for f in OUTPUT_DIR.glob("*.docx"):
         if f.stat().st_mtime < cutoff:
             f.unlink()
             count += 1

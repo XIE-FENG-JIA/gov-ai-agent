@@ -242,6 +242,10 @@ MAX_CHINESE_NUMBER = len(CHINESE_NUMBERS)
 SESSION_ID_LENGTH = 8                 # Session ID 截取長度
 API_VERSION = "2.0.0"                 # API 版本號
 
+# 專案根目錄與輸出目錄（基於 __file__ 解析，不依賴 CWD）
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+OUTPUT_DIR = PROJECT_ROOT / "output"
+
 
 def escape_prompt_tag(content: str, tag_name: str) -> str:
     """
