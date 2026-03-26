@@ -730,6 +730,8 @@ class TestKBEdgeCases:
         kb._cache_lock = threading.Lock()
         kb._embed_cache = {}
         kb._embed_cache_lock = threading.Lock()
+        kb._doc_cache = {}
+        kb._doc_cache_lock = threading.Lock()
         kb.client = MagicMock()
         # Mock 集合
         for coll_name in ["examples_collection", "regulations_collection",

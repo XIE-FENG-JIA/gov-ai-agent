@@ -1998,6 +1998,8 @@ class TestSearchResultIdField:
         mgr.llm_provider = mock_llm
         mgr._embed_cache = {}
         mgr._embed_cache_lock = threading.Lock()
+        mgr._doc_cache = {}
+        mgr._doc_cache_lock = threading.Lock()
         mock_coll = MagicMock()
         mock_coll.count.return_value = 1
         mock_coll.query.return_value = {
@@ -2021,6 +2023,8 @@ class TestSearchResultIdField:
         mgr.llm_provider = mock_llm
         mgr._embed_cache = {}
         mgr._embed_cache_lock = threading.Lock()
+        mgr._doc_cache = {}
+        mgr._doc_cache_lock = threading.Lock()
         mock_coll = MagicMock()
         mock_coll.count.return_value = 1
         mock_coll.query.return_value = {

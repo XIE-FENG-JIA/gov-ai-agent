@@ -24,6 +24,10 @@ _CACHE_MAXSIZE = 256   # 最多快取 256 筆查詢
 _EMBED_CACHE_TTL = 600     # 10 分鐘（比搜尋快取長，因為向量不隨知識庫變動）
 _EMBED_CACHE_MAXSIZE = 128  # 最多快取 128 筆 embedding
 
+# 文件集合快取設定（BM25/keyword 搜尋用，避免每次重新從 ChromaDB 拉取全量文件）
+_DOC_CACHE_TTL = 60        # 1 分鐘（文件可能被新增，不宜太長）
+_DOC_CACHE_MAXSIZE = 32    # 按 (集合組合, 篩選條件) 快取
+
 class KnowledgeBaseManager:
     """管理本地 ChromaDB 知識庫。"""
 
@@ -43,6 +47,9 @@ class KnowledgeBaseManager:
         # Embedding 快取：同一 query 在多輪審查中不重複呼叫 LLM embed
         self._embed_cache: TTLCache = TTLCache(maxsize=_EMBED_CACHE_MAXSIZE, ttl=_EMBED_CACHE_TTL)
         self._embed_cache_lock = threading.Lock()
+        # 文件集合快取：BM25/keyword 搜尋避免每次從 ChromaDB 拉取全量文件
+        self._doc_cache: TTLCache = TTLCache(maxsize=_DOC_CACHE_MAXSIZE, ttl=_DOC_CACHE_TTL)
+        self._doc_cache_lock = threading.Lock()
 
         if chromadb is None:
             logger.error(
@@ -227,10 +234,12 @@ class KnowledgeBaseManager:
         return self._available
 
     def invalidate_cache(self) -> None:
-        """清除搜尋快取。在 ingest / reset 後呼叫以確保資料一致性。"""
+        """清除搜尋快取和文件集合快取。在 ingest / reset 後呼叫以確保資料一致性。"""
         with self._cache_lock:
             self._search_cache.clear()
-        logger.debug("搜尋快取已清除")
+        with self._doc_cache_lock:
+            self._doc_cache.clear()
+        logger.debug("搜尋快取和文件集合快取已清除")
 
     def search_policies(self, query: str, n_results: int = 3, source_level: str | None = None) -> list[dict]:
         """在政策集合中搜尋。"""
@@ -458,6 +467,77 @@ class KnowledgeBaseManager:
         return final
 
     # ------------------------------------------------------------------
+    # 集合文件拉取（BM25 / keyword 共用，帶 TTL 快取）
+    # ------------------------------------------------------------------
+
+    def _fetch_filtered_docs(
+        self,
+        collections: list,
+        source_level: str | None = None,
+        doc_type: str | None = None,
+        source_type: str | None = None,
+    ) -> list[dict]:
+        """從多個 ChromaDB 集合拉取文件並篩選 metadata，帶 TTL 快取。
+
+        快取 key 由 (集合名稱組合, 篩選條件) 組成。文件寫入時
+        快取會在 TTL 到期後自動失效（1 分鐘）。
+
+        Returns:
+            list[dict]: 每筆含 id, content, metadata 三個欄位。
+        """
+        coll_names = tuple(sorted(c.name for c in collections))
+        cache_key = (coll_names, source_level, doc_type, source_type)
+
+        with self._doc_cache_lock:
+            cached = self._doc_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        all_docs: list[dict] = []
+        for coll in collections:
+            try:
+                count = coll.count()
+                if count == 0:
+                    continue
+                if count > 500:
+                    logger.debug(
+                        "集合 %s 文件數 %d > 500，僅取前 500 筆",
+                        coll.name, count,
+                    )
+                data = coll.get(include=["documents", "metadatas"], limit=500)
+                if not data or not data.get("ids"):
+                    continue
+                for i, doc_id in enumerate(data["ids"]):
+                    content = (
+                        data["documents"][i]
+                        if data.get("documents") and i < len(data["documents"])
+                        else ""
+                    )
+                    meta = (
+                        data["metadatas"][i]
+                        if data.get("metadatas") and i < len(data["metadatas"])
+                        else {}
+                    )
+                    if source_level and meta.get("source_level") != source_level:
+                        continue
+                    if doc_type and meta.get("doc_type") != doc_type:
+                        continue
+                    if source_type and meta.get("source") != source_type:
+                        continue
+                    all_docs.append({
+                        "id": doc_id,
+                        "content": content,
+                        "metadata": meta,
+                    })
+            except Exception as e:
+                logger.warning("集合文件拉取失敗 (%s): %s", coll.name, e)
+                continue
+
+        with self._doc_cache_lock:
+            self._doc_cache[cache_key] = all_docs
+        return all_docs
+
+    # ------------------------------------------------------------------
     # BM25 關鍵字搜尋（Hybrid Search 用）
     # ------------------------------------------------------------------
 
@@ -489,49 +569,9 @@ class KnowledgeBaseManager:
         if not query_tokens:
             return []
 
-        # 從所有集合取出文件
-        all_docs: list[dict] = []
-        for coll in collections:
-            try:
-                count = coll.count()
-                if count == 0:
-                    continue
-                if count > 500:
-                    logger.debug(
-                        "BM25: 集合 %s 文件數 %d > 500，僅取前 500 筆",
-                        coll.name, count,
-                    )
-                data = coll.get(include=["documents", "metadatas"], limit=500)
-                if not data or not data.get("ids"):
-                    continue
-                for i, doc_id in enumerate(data["ids"]):
-                    content = (
-                        data["documents"][i]
-                        if data.get("documents") and i < len(data["documents"])
-                        else ""
-                    )
-                    meta = (
-                        data["metadatas"][i]
-                        if data.get("metadatas") and i < len(data["metadatas"])
-                        else {}
-                    )
-                    # metadata 篩選
-                    if source_level and meta.get("source_level") != source_level:
-                        continue
-                    if doc_type and meta.get("doc_type") != doc_type:
-                        continue
-                    if source_type and meta.get("source") != source_type:
-                        continue
-
-                    all_docs.append({
-                        "id": doc_id,
-                        "content": content,
-                        "metadata": meta,
-                    })
-            except Exception as e:
-                logger.warning("BM25 集合讀取失敗: %s", e)
-                continue
-
+        all_docs = self._fetch_filtered_docs(
+            collections, source_level, doc_type, source_type,
+        )
         if not all_docs:
             return []
 
@@ -645,45 +685,14 @@ class KnowledgeBaseManager:
         if not query_tokens:
             return []
 
-        # 從所有集合取出全部文件
-        all_docs: list[dict] = []
         collections = [
             self.examples_collection,
             self.regulations_collection,
             self.policies_collection,
         ]
-        for coll in collections:
-            try:
-                count = coll.count()
-                if count == 0:
-                    continue
-                if count > 500:
-                    logger.info("集合 %s 文件數 %d > 500，關鍵字搜尋僅取前 500 筆", coll.name, count)
-                # ChromaDB get() 取出文件（限制最多 500 筆避免記憶體爆量）
-                data = coll.get(include=["documents", "metadatas"], limit=500)
-                if not data or not data.get("ids"):
-                    continue
-                for i, doc_id in enumerate(data["ids"]):
-                    content = data["documents"][i] if data.get("documents") and i < len(data["documents"]) else ""
-                    meta = data["metadatas"][i] if data.get("metadatas") and i < len(data["metadatas"]) else {}
-
-                    # metadata 篩選
-                    if source_level and meta.get("source_level") != source_level:
-                        continue
-                    if doc_type and meta.get("doc_type") != doc_type:
-                        continue
-                    if source_type and meta.get("source") != source_type:
-                        continue
-
-                    all_docs.append({
-                        "id": doc_id,
-                        "content": content,
-                        "metadata": meta,
-                    })
-            except Exception as e:
-                logger.warning("關鍵字搜尋集合讀取失敗: %s", e)
-                continue
-
+        all_docs = self._fetch_filtered_docs(
+            collections, source_level, doc_type, source_type,
+        )
         if not all_docs:
             return []
 

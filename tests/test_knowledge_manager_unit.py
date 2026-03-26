@@ -84,6 +84,8 @@ def manager(mock_llm, mock_collection):
     mgr._cache_lock = threading.Lock()
     mgr._embed_cache = {}
     mgr._embed_cache_lock = threading.Lock()
+    mgr._doc_cache = {}
+    mgr._doc_cache_lock = threading.Lock()
     mgr.client = MagicMock()
     mgr.examples_collection = MagicMock()
     mgr.regulations_collection = MagicMock()
@@ -755,6 +757,80 @@ class TestResetDB:
 # =====================================================================
 # add_example (compatibility wrapper)
 # =====================================================================
+
+class TestFetchFilteredDocs:
+    """_fetch_filtered_docs 共用方法 + TTL 快取測試。"""
+
+    def test_basic_fetch(self, manager):
+        """基本拉取：從多個集合取出文件並組合。"""
+        manager.examples_collection.name = "examples"
+        manager.regulations_collection.name = "regulations"
+        colls = [manager.examples_collection, manager.regulations_collection]
+        docs = manager._fetch_filtered_docs(colls)
+        assert len(docs) > 0
+        assert all("id" in d and "content" in d and "metadata" in d for d in docs)
+
+    def test_cache_hit(self, manager):
+        """第二次相同呼叫應命中快取，不再呼叫 coll.get()。"""
+        manager.examples_collection.name = "examples"
+        colls = [manager.examples_collection]
+
+        manager._fetch_filtered_docs(colls)
+        call_count_1 = manager.examples_collection.get.call_count
+
+        manager._fetch_filtered_docs(colls)
+        call_count_2 = manager.examples_collection.get.call_count
+        assert call_count_2 == call_count_1  # 沒有額外呼叫
+
+    def test_different_filters_separate_cache(self, manager):
+        """不同的篩選條件使用不同的快取 key。"""
+        manager.examples_collection.name = "examples"
+        colls = [manager.examples_collection]
+
+        manager._fetch_filtered_docs(colls, source_level="A")
+        manager._fetch_filtered_docs(colls, source_level="B")
+        # 兩次不同篩選條件，coll.get 應被呼叫 2 次
+        assert manager.examples_collection.get.call_count == 2
+
+    def test_metadata_filter(self, manager):
+        """metadata 篩選應正確過濾結果。"""
+        manager.examples_collection.name = "examples"
+        manager.examples_collection.get.return_value = {
+            "ids": ["d1", "d2", "d3"],
+            "documents": ["文件 A", "文件 B", "文件 C"],
+            "metadatas": [
+                {"source_level": "A", "doc_type": "函"},
+                {"source_level": "B", "doc_type": "函"},
+                {"source_level": "A", "doc_type": "令"},
+            ],
+        }
+        colls = [manager.examples_collection]
+        docs = manager._fetch_filtered_docs(colls, source_level="A")
+        assert len(docs) == 2
+        assert all(d["metadata"]["source_level"] == "A" for d in docs)
+
+    def test_empty_collection(self, manager):
+        """空集合應回傳空列表。"""
+        manager.examples_collection.name = "examples"
+        manager.examples_collection.count.return_value = 0
+        docs = manager._fetch_filtered_docs([manager.examples_collection])
+        assert docs == []
+
+    def test_collection_exception(self, manager):
+        """集合讀取失敗應跳過而非崩潰。"""
+        manager.examples_collection.name = "examples"
+        manager.examples_collection.get.side_effect = Exception("ChromaDB error")
+        docs = manager._fetch_filtered_docs([manager.examples_collection])
+        assert docs == []
+
+    def test_invalidate_clears_doc_cache(self, manager):
+        """invalidate_cache 應同時清除文件集合快取。"""
+        from cachetools import TTLCache
+        manager._doc_cache = TTLCache(maxsize=32, ttl=60)
+        manager._doc_cache[("key",)] = [{"id": "x"}]
+        manager.invalidate_cache()
+        assert len(manager._doc_cache) == 0
+
 
 class TestAddExample:
     def test_add_example_delegates(self, manager):
