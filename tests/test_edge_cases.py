@@ -659,57 +659,57 @@ class TestValidatorEdgeCases:
         errors = self.registry.check_citation_integrity(text)
         assert isinstance(errors, list)
         # 應無孤兒引用
-        orphan_errors = [e for e in errors if "孤兒引用" in e]
+        orphan_errors = [e for e in errors if "孤兒引用" in e["description"]]
         assert len(orphan_errors) == 0
 
     def test_orphan_citation(self):
         """孤兒引用（文中有 [^3] 但無定義）應被偵測。"""
         text = "依據法規辦理[^3]。\n[^1]: 法規A"
         errors = self.registry.check_citation_integrity(text)
-        orphan = [e for e in errors if "[^3]" in e and "孤兒" in e]
+        orphan = [e for e in errors if "[^3]" in e["description"] and "孤兒" in e["description"]]
         assert len(orphan) == 1
 
     def test_unused_definition(self):
         """未使用定義（有定義但無引用）應被偵測。"""
         text = "純文字無引用。\n[^1]: 法規A"
         errors = self.registry.check_citation_integrity(text)
-        unused = [e for e in errors if "[^1]" in e and "未使用" in e]
+        unused = [e for e in errors if "[^1]" in e["description"] and "未使用" in e["description"]]
         assert len(unused) == 1
 
     def test_date_logic_future_date(self):
         """未來超過 1 年的日期應被標記。"""
         errors = self.registry.check_date_logic("發文日期：200年1月1日")
-        flagged = [e for e in errors if "有誤" in e or "過舊" in e]
+        flagged = [e for e in errors if "有誤" in e["description"] or "過舊" in e["description"]]
         # 200 年 = 西元 2111，超過未來 1 年
         assert len(flagged) > 0
 
     def test_date_logic_invalid_month(self):
         """無效月份應被偵測。"""
         errors = self.registry.check_date_logic("114年13月1日")
-        assert any("無效日期" in e for e in errors)
+        assert any("無效日期" in e["description"] for e in errors)
 
     def test_date_logic_invalid_day(self):
         """無效日期（32 日）應被偵測。"""
         errors = self.registry.check_date_logic("114年1月32日")
-        assert any("無效日期" in e for e in errors)
+        assert any("無效日期" in e["description"] for e in errors)
 
     def test_attachment_mention_without_section(self):
         """提及附件但缺少附件段落應被偵測。"""
         text = "說明：請參閱附件資料。"
         errors = self.registry.check_attachment_consistency(text)
-        assert any("缺少" in e for e in errors)
+        assert any("缺少" in e["description"] for e in errors)
 
     def test_attachment_numbering_skip(self):
         """附件編號跳號應被偵測。"""
         text = "附件一：文件\n附件三：另一份\n附件："
         errors = self.registry.check_attachment_consistency(text)
-        assert any("不連續" in e for e in errors)
+        assert any("不連續" in e["description"] for e in errors)
 
     def test_outdated_agency_name(self):
         """過時機關名稱應被偵測。"""
         text = "依據環保署函辦理"
         errors = self.registry.check_terminology(text)
-        assert any("環境部" in e for e in errors)
+        assert any("環境部" in e["description"] for e in errors)
 
 
 # ====================================================================

@@ -319,13 +319,13 @@ class TestCheckCitationLevel:
         """偵測「待補依據」標記"""
         draft = "依據相關法規【待補依據】辦理。"
         errors = registry.check_citation_level(draft)
-        assert any("待補依據" in e for e in errors)
+        assert any("待補依據" in e["description"] for e in errors)
 
     def test_detect_multiple_pending_markers(self, registry):
         """偵測多個「待補依據」"""
         draft = "依據法規【待補依據】辦理。另依據規定【待補依據】處理。"
         errors = registry.check_citation_level(draft)
-        pending_errors = [e for e in errors if "2 處" in e]
+        pending_errors = [e for e in errors if "2 處" in e["description"]]
         assert len(pending_errors) == 1
 
     def test_missing_level_a_in_references(self, registry):
@@ -336,7 +336,7 @@ class TestCheckCitationLevel:
             "[^1]: [Level B] 開放資料集"
         )
         errors = registry.check_citation_level(draft)
-        assert any("Level A" in e for e in errors)
+        assert any("Level A" in e["description"] for e in errors)
 
     def test_yiju_without_citation(self, registry):
         """「依據...辦理」句型缺少引用標記"""
@@ -346,7 +346,7 @@ class TestCheckCitationLevel:
             "[^1]: [Level A] 某法規"
         )
         errors = registry.check_citation_level(draft)
-        assert any("缺少引用標記" in e for e in errors)
+        assert any("缺少引用標記" in e["description"] for e in errors)
 
     def test_yiju_with_citation_ok(self, registry):
         """「依據...辦理」句型有引用標記則正常"""
@@ -357,14 +357,14 @@ class TestCheckCitationLevel:
         )
         errors = registry.check_citation_level(draft)
         # 不應有「缺少引用標記」的錯誤
-        citation_errors = [e for e in errors if "缺少引用標記" in e]
+        citation_errors = [e for e in errors if "缺少引用標記" in e["description"]]
         assert len(citation_errors) == 0
 
     def test_yiju_with_pending_ok(self, registry):
         """「依據...辦理」後接「待補依據」不算缺少引用"""
         draft = "依據相關法規辦理【待補依據】。"
         errors = registry.check_citation_level(draft)
-        citation_errors = [e for e in errors if "缺少引用標記" in e]
+        citation_errors = [e for e in errors if "缺少引用標記" in e["description"]]
         assert len(citation_errors) == 0
 
     def test_no_reference_section_no_crash(self, registry):

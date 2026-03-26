@@ -1453,3 +1453,21 @@
 - 考慮增加 `呈` 和 `咨` 的範本數量（目前各只有 3 筆）
 - 知識庫正式更新：執行 `kb ingest` 重新索引使新範本生效
 
+
+### [2026-03-27] Round 74 — QA 腳本補齊開會紀錄（13 種全覆蓋）+ 修復 Windows emoji 編碼 bug
+**角度**: 🧪 測試（QA 覆蓋率 12→13 種，消除盲區）
+**為什麼**: Round 73 新增「開會紀錄」kb 範本後，`DocTypeLiteral` 宣告 13 種類型，但 `qa_check_all_types.py` 只覆蓋 12 種。使用者請求開會紀錄時若 WriterAgent 輸出格式錯誤，無法被自動偵測——Round 73 的「下一步可能」已明確指出此缺口，本輪直接補齊閉環。
+**搜尋**: 確認 `meeting_minutes.j2` 渲染輸出格式（**時間**：/**地點**：/主席（主持人）：）、`section_key_map` 現有對映、DocTypeLiteral 完整 13 種清單。
+**做了什麼**:
+- `MOCK_DRAFTS["開會紀錄"]`：擬真草稿含開會時間/地點/主席/出席/列席/紀錄/討論/決議/散會等完整欄位
+- `MOCK_REQUIREMENTS["開會紀錄"]`：補 `PublicDocRequirement`
+- `REQUIRED_FIELDS["開會紀錄"]`：5 個核心欄位（開會時間/開會地點/主席/討論事項/決議）
+- `EXPECTED_BODY_LABELS["開會紀錄"]`：3 個 DOCX 標題（時間：/地點：/主席（主持人）：）
+- `section_key_map`：補齊主席→chairperson、討論事項→discussion_items、決議→resolutions
+- `check_one_type`：型別特有檢查 5 error（時間/地點/主席/討論/決議） + 2 warning（紀錄人/散會）
+- 順帶修復預存在 bug：Windows cp950 終端 emoji UnicodeEncodeError（`sys.stdout.reconfigure(utf-8)`）
+**結果**: PASS — qa_check_all_types.py 13/13 ✅ A（可直接送出），零錯誤零警告。core tests 58 passed。
+**下一步可能**:
+- 知識庫正式更新：執行 `kb ingest` 重新索引使 Round 73 新範本生效
+- 考慮增加 `呈` 和 `咨` 的範本數量（目前各只有 3 筆，遠低於其他類型）
+- 下一個方向：功能缺口繼續推進——审查意見的具體修改建議（不只指出問題）

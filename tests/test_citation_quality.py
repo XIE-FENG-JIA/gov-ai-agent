@@ -285,14 +285,14 @@ class TestEvidencePresenceValidator:
         """無參考來源段落時應報錯"""
         registry = ValidatorRegistry()
         errors = registry.check_evidence_presence("### 主旨\n測試內容")
-        assert any("參考來源" in e for e in errors)
+        assert any("參考來源" in e["description"] for e in errors)
 
     def test_detects_missing_citation_marks(self):
         """無引用標記時應報錯"""
         registry = ValidatorRegistry()
         draft = "### 主旨\n測試內容\n\n### 參考來源 (AI 引用追蹤)\n無引用"
         errors = registry.check_evidence_presence(draft)
-        assert any("[^n]" in e for e in errors)
+        assert any("[^n]" in e["description"] for e in errors)
 
     def test_passes_with_valid_citations(self):
         """有引用標記和參考來源段落時應通過"""

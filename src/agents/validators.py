@@ -6,6 +6,16 @@ from datetime import date
 
 logger = logging.getLogger(__name__)
 
+
+def _issue(
+    description: str,
+    location: str = "文件結構",
+    suggestion: str | None = None,
+) -> dict:
+    """建立結構化驗證問題字典，供 auditor 與 ReviewIssue 使用。"""
+    return {"description": description, "location": location, "suggestion": suggestion}
+
+
 class ValidatorRegistry:
     """自訂驗證函式的註冊表。"""
 
@@ -19,53 +29,81 @@ class ValidatorRegistry:
             logger.debug("術語字典不存在（選用功能）: %s", e)
             self.terms = {}
 
-    def check_date_logic(self, draft_text: str, **kwargs) -> list[str]:
+    def check_date_logic(self, draft_text: str, **kwargs) -> list[dict]:
         """檢查文件中的日期是否合理（例如不在遠過去）。"""
-        errors = []
+        errors: list[dict] = []
         today = date.today()
 
         roc_matches = re.findall(r"(?<!\d)(\d{2,3})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日", draft_text)
         for year, month, day in roc_matches:
             roc_year = int(year)
             m, d = int(month), int(day)
+            date_str = f"{year}年{month}月{day}日"
+            loc = f"日期「{date_str}」"
 
             # 民國年份基本範圍檢查（1-200，對應西元 1912-2111）
             if roc_year < 1:
-                errors.append(f"日期可能過舊: {year}年{month}月{day}日（民國年份須 >= 1）")
+                errors.append(_issue(
+                    f"日期可能過舊: {date_str}（民國年份須 >= 1）",
+                    loc, "請確認民國年份是否正確，民國年份應介於 1 至 200 之間",
+                ))
                 continue
             if roc_year > 200:
-                errors.append(f"日期可能有誤: {year}年{month}月{day}日（民國年份超過 200）")
+                errors.append(_issue(
+                    f"日期可能有誤: {date_str}（民國年份超過 200）",
+                    loc, "請確認民國年份是否正確，民國年份應介於 1 至 200 之間",
+                ))
                 continue
 
             # 月份、日期基本合法性
             if m < 1 or m > 12:
-                errors.append(f"發現無效日期格式: {year}年{month}月{day}日")
+                errors.append(_issue(
+                    f"發現無效日期格式: {date_str}",
+                    loc, f"月份「{month}」不合法，請修正為 1 至 12 之間的數值",
+                ))
                 continue
             if d < 1 or d > 31:
-                errors.append(f"發現無效日期格式: {year}年{month}月{day}日")
+                errors.append(_issue(
+                    f"發現無效日期格式: {date_str}",
+                    loc, f"日期「{day}」不合法，請修正為該月份的有效日期",
+                ))
                 continue
 
             try:
                 ad_year = roc_year + 1911
                 doc_date = date(ad_year, m, d)
+                current_roc = today.year - 1911
                 if (today.year - doc_date.year) > 2:
-                    errors.append(f"日期可能過舊: {year}年{month}月{day}日（距今超過 2 年）")
+                    errors.append(_issue(
+                        f"日期可能過舊: {date_str}（距今超過 2 年）",
+                        loc, f"請確認日期是否應為民國 {current_roc} 年前後",
+                    ))
                 elif doc_date.year - today.year > 1:
-                    errors.append(f"日期可能有誤: {year}年{month}月{day}日（超過未來 1 年）")
+                    errors.append(_issue(
+                        f"日期可能有誤: {date_str}（超過未來 1 年）",
+                        loc, f"請確認日期是否應為民國 {current_roc} 年前後",
+                    ))
             except ValueError:
-                errors.append(f"發現無效日期格式: {year}年{month}月{day}日")
+                errors.append(_issue(
+                    f"發現無效日期格式: {date_str}",
+                    loc, f"「{date_str}」不是有效的日曆日期，請修正日期數值",
+                ))
 
         return errors
 
-    def check_attachment_consistency(self, draft_text: str, **kwargs) -> list[str]:
+    def check_attachment_consistency(self, draft_text: str, **kwargs) -> list[dict]:
         """檢查附件提及與附件段落是否一致，含變體偵測與編號連續性。"""
-        errors = []
+        errors: list[dict] = []
         # 擴展正則匹配：加入「檢附如附件」「如附表」「如附件」等變體
         mentions = len(re.findall(r"檢附|附件|附表|如附件|如附表|檢附如附件", draft_text))
         has_attachment_section = "附件：" in draft_text or "附件:" in draft_text
 
         if mentions > 0 and not has_attachment_section:
-            errors.append("說明欄位提及了附件，但文末缺少「附件」段落。")
+            errors.append(_issue(
+                "說明欄位提及了附件，但文末缺少「附件」段落。",
+                "附件段落",
+                "在文末新增「附件：」段落，列出所有附件名稱與份數",
+            ))
 
         # 檢查附件編號連續性（附件一、附件二...不應跳號）
         cn_nums = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
@@ -76,14 +114,19 @@ class ValidatorRegistry:
             for i, num in enumerate(found_nums):
                 expected = i + 1
                 if num != expected:
-                    errors.append(f"附件編號不連續：缺少附件{'一二三四五六七八九十'[expected - 1]}（跳號）。")
+                    missing_cn = "一二三四五六七八九十"[expected - 1]
+                    errors.append(_issue(
+                        f"附件編號不連續：缺少附件{missing_cn}（跳號）。",
+                        "附件編號",
+                        f"補充「附件{missing_cn}」或將後續附件編號依序前移",
+                    ))
                     break
 
         return errors
 
-    def check_citation_format(self, draft_text: str, **kwargs) -> list[str]:
+    def check_citation_format(self, draft_text: str, **kwargs) -> list[dict]:
         """檢查法規引用是否使用正確的書名號格式，並區分法規類型。"""
-        errors = []
+        errors: list[dict] = []
 
         # 法規類型後綴與對應說明
         law_suffixes = ["法", "條例", "細則", "辦法", "準則", "規則", "規程", "綱要"]
@@ -98,9 +141,13 @@ class ValidatorRegistry:
         for m in matches:
             citation = m.group(1).strip()
             if 1 < len(citation) < 30:
-                errors.append(f"法規引用格式建議：請使用書名號，例如《{citation}》。")
+                errors.append(_issue(
+                    f"法規引用格式建議：請使用書名號，例如《{citation}》。",
+                    f"引用「{citation}」",
+                    f"將「{citation}」改為「《{citation}》」",
+                ))
             if len(errors) >= _MAX_CITATION_WARNINGS:
-                errors.append("（其餘引用格式問題已省略）")
+                errors.append(_issue("（其餘引用格式問題已省略）", "引用格式"))
                 break
 
         # 檢查書名號內的法規名稱是否完整（至少包含法規類型後綴且名稱夠長）
@@ -108,39 +155,65 @@ class ValidatorRegistry:
         for citation in book_citations:
             # 書名號內文字過短（少於 3 字）可能不完整
             if len(citation) < 3:
-                errors.append(f"書名號內容「{citation}」可能不完整，請確認是否為正式法規全名。")
+                errors.append(_issue(
+                    f"書名號內容「{citation}」可能不完整，請確認是否為正式法規全名。",
+                    f"引用「《{citation}》」",
+                    f"將「《{citation}》」補充為法規全名（如《{citation}○○法》）",
+                ))
 
         return errors
 
-    def check_doc_integrity(self, draft_text: str, **kwargs) -> list[str]:
+    def check_doc_integrity(self, draft_text: str, **kwargs) -> list[dict]:
         """檢查是否缺少重要的佔位符號欄位。"""
-        errors = []
+        errors: list[dict] = []
         if "______號" in draft_text:
-            errors.append("發文字號尚未填寫 (仍為 placeholder)。")
+            errors.append(_issue(
+                "發文字號尚未填寫 (仍為 placeholder)。",
+                "發文字號",
+                "將「______號」替換為正式發文字號（如「府環衛字第 1140001234 號」）",
+            ))
 
         # Check standard headers existence
         headers = ["機關", "受文者", "速別", "發文日期"]
+        header_examples = {
+            "機關": "**機關**：○○市政府○○局",
+            "受文者": "**受文者**：○○單位",
+            "速別": "**速別**：普通件",
+            "發文日期": "**發文日期**：中華民國○○○年○○月○○日",
+        }
         for h in headers:
             if f"**{h}**" not in draft_text:
-                errors.append(f"缺少標準檔頭欄位：{h}")
+                errors.append(_issue(
+                    f"缺少標準檔頭欄位：{h}",
+                    "檔頭欄位",
+                    f"在檔頭區域新增「{header_examples[h]}」",
+                ))
 
         return errors
 
-    def check_citation_level(self, draft_text: str, **kwargs) -> list[str]:
+    def check_citation_level(self, draft_text: str, **kwargs) -> list[dict]:
         """檢查引用等級合規性：Level A 權威來源、待補依據標記。"""
-        errors = []
+        errors: list[dict] = []
 
         # 1. 檢查「待補依據」標記
         pending_count = draft_text.count("【待補依據】")
         if pending_count > 0:
-            errors.append(f"草稿包含 {pending_count} 處「待補依據」標記，需補充 Level A 權威來源。")
+            errors.append(_issue(
+                f"草稿包含 {pending_count} 處「待補依據」標記，需補充 Level A 權威來源。",
+                "待補依據標記",
+                "使用 gov-ai kb search 查詢相關法規，以 Level A 權威來源（公報/法規）替換「【待補依據】」",
+            ))
 
         # 2. 檢查參考來源段落中是否有 Level A
         ref_section_match = re.search(r"###\s*參考來源.*", draft_text, re.DOTALL)
         if ref_section_match:
             ref_section = ref_section_match.group(0)
             if "[Level A]" not in ref_section:
-                errors.append("參考來源中缺少 Level A 權威來源（公報/法規），建議補充。")
+                errors.append(_issue(
+                    "參考來源中缺少 Level A 權威來源（公報/法規），建議補充。",
+                    "參考來源段落",
+                    "補充至少一筆 Level A 來源（如全國法規資料庫、行政院公報），標記為 [Level A]",
+                ))
 
         # 3. 掃描「依據...」句型，檢查是否附帶引用標記
         yiju_matches = re.finditer(r"依據[^。\n]{2,30}(?:辦理|規定|處理|執行)", draft_text)
@@ -149,27 +222,39 @@ class ValidatorRegistry:
             end_pos = m.end()
             trailing = draft_text[end_pos:end_pos + 15]
             if "[^" not in trailing and "【待補依據】" not in trailing and "[^" not in draft_text[m.start():end_pos]:
-                errors.append(f"法律主張「{m.group(0)}」缺少引用標記 [^n] 或「待補依據」。")
+                errors.append(_issue(
+                    f"法律主張「{m.group(0)}」缺少引用標記 [^n] 或「待補依據」。",
+                    f"「{m.group(0)}」",
+                    f"在「{m.group(0)}」後方加入引用標記（如 [^1]），並在參考來源段落補充對應定義",
+                ))
 
         return errors
 
-    def check_evidence_presence(self, draft_text: str, **kwargs) -> list[str]:
+    def check_evidence_presence(self, draft_text: str, **kwargs) -> list[dict]:
         """檢查草稿是否包含至少一個 evidence-backed 引用。"""
-        errors = []
+        errors: list[dict] = []
         if "### 參考來源" not in draft_text:
-            errors.append("草稿缺少「參考來源」段落，無法驗證引用來源。")
+            errors.append(_issue(
+                "草稿缺少「參考來源」段落，無法驗證引用來源。",
+                "文件結構",
+                "在文末新增「### 參考來源」段落，列出引用的法規與公報來源",
+            ))
         ref_match = re.search(r"\[\^(\d+)\]", draft_text)
         if not ref_match:
-            errors.append("草稿中無任何引用標記 [^n]，建議補充 evidence-backed 引用。")
+            errors.append(_issue(
+                "草稿中無任何引用標記 [^n]，建議補充 evidence-backed 引用。",
+                "引用標記",
+                "在法規依據處加入 [^1] 等標記，並在參考來源段落定義 [^1]: 來源名稱",
+            ))
         return errors
 
-    def check_citation_integrity(self, draft_text: str, **kwargs) -> list[str]:
+    def check_citation_integrity(self, draft_text: str, **kwargs) -> list[dict]:
         """檢查引用完整性：找出孤兒引用與未使用定義。
 
         - 孤兒引用：文中使用了 [^n] 但參考來源段落缺少對應定義
         - 未使用定義：參考來源段落定義了 [^n]: 但文中未引用
         """
-        errors = []
+        errors: list[dict] = []
 
         # 找出文中所有引用標記 [^n]（排除定義行本身）
         # 引用格式: [^1], [^2], ...
@@ -181,12 +266,20 @@ class ValidatorRegistry:
         # 孤兒引用：引用了但無定義
         orphan_refs = inline_refs - definitions
         for ref_id in sorted(orphan_refs, key=int):
-            errors.append(f"孤兒引用：[^{ref_id}] 在文中被引用，但缺少對應的參考來源定義。")
+            errors.append(_issue(
+                f"孤兒引用：[^{ref_id}] 在文中被引用，但缺少對應的參考來源定義。",
+                f"引用 [^{ref_id}]",
+                f"在參考來源段落新增「[^{ref_id}]: 來源名稱與連結」",
+            ))
 
         # 未使用定義：定義了但未引用
         unused_defs = definitions - inline_refs
         for def_id in sorted(unused_defs, key=int):
-            errors.append(f"未使用定義：[^{def_id}] 已定義但未在文中引用，建議移除或補充引用。")
+            errors.append(_issue(
+                f"未使用定義：[^{def_id}] 已定義但未在文中引用，建議移除或補充引用。",
+                f"定義 [^{def_id}]",
+                f"在文中適當位置加入 [^{def_id}] 引用，或從參考來源段落移除該定義",
+            ))
 
         return errors
 
@@ -235,29 +328,37 @@ class ValidatorRegistry:
         ("哦", ""),
     ]
 
-    def check_colloquial_language(self, draft_text: str, **kwargs) -> list[str]:
+    def check_colloquial_language(self, draft_text: str, **kwargs) -> list[dict]:
         """檢查草稿中是否含有口語化用詞，公文應使用正式書面語。"""
-        errors = []
-        for pattern, suggestion in self._COLLOQUIAL_PATTERNS:
+        errors: list[dict] = []
+        for pattern, replacement in self._COLLOQUIAL_PATTERNS:
             if pattern in draft_text:
-                if suggestion:
-                    errors.append(
-                        f"口語化用詞：「{pattern}」建議改為「{suggestion}」。"
-                    )
+                if replacement:
+                    errors.append(_issue(
+                        f"口語化用詞：「{pattern}」建議改為「{replacement}」。",
+                        f"用詞「{pattern}」",
+                        f"將「{pattern}」改為「{replacement}」",
+                    ))
                 else:
-                    errors.append(
-                        f"口語化語氣詞：「{pattern}」不應出現在正式公文中。"
-                    )
+                    errors.append(_issue(
+                        f"口語化語氣詞：「{pattern}」不應出現在正式公文中。",
+                        f"語氣詞「{pattern}」",
+                        f"刪除「{pattern}」",
+                    ))
         return errors
 
-    def check_terminology(self, draft_text: str, **kwargs) -> list[str]:
+    def check_terminology(self, draft_text: str, **kwargs) -> list[dict]:
         """檢查草稿中是否使用了過時的機關名稱，提供更正建議。"""
-        errors = []
-        seen = set()
+        errors: list[dict] = []
+        seen: set[str] = set()
         for old_name, new_name in self._OUTDATED_AGENCY_MAP.items():
             if old_name in draft_text and old_name not in seen:
                 seen.add(old_name)
-                errors.append(f"術語更新建議：「{old_name}」已更名為「{new_name}」，請更新用語。")
+                errors.append(_issue(
+                    f"術語更新建議：「{old_name}」已更名為「{new_name}」，請更新用語。",
+                    f"機關名稱「{old_name}」",
+                    f"將「{old_name}」改為「{new_name}」",
+                ))
         return errors
 
 

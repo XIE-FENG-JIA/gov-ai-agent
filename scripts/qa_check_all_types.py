@@ -1,5 +1,5 @@
 """
-12 種公文類型端對端品質檢查腳本
+13 種公文類型端對端品質檢查腳本
 
 模擬真實草稿 → parse_draft → apply_template → DocxExporter.export
 逐一檢查：欄位完整性、格式正確性、內容是否會被長官退件
@@ -9,6 +9,10 @@ import sys
 import tempfile
 import traceback
 from dataclasses import dataclass, field
+
+# Windows cp950 終端無法輸出 emoji；強制 UTF-8（Python 3.7+）
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 # 加入專案根目錄
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -367,6 +371,36 @@ MOCK_DRAFTS = {
 **正本**：臺北市政府人事處
 **副本**：臺北市政府主計處
 """,
+
+    "開會紀錄": """# 開會紀錄
+
+**開會時間**：中華民國 115 年 3 月 20 日（星期四）上午 10 時
+**開會地點**：臺北市政府市政大樓 9 樓 901 會議室
+**主席**：臺北市市長 陳○○
+**出席人員**：各局處局長、秘書長
+**列席人員**：秘書處主任秘書、各局處相關科長
+**紀錄**：秘書處科員 王小明
+
+---
+
+### 主席致詞
+主席表示，本次會議主要討論市政重大施政事項，請各局處充分表達意見，共同研議最佳方案。
+
+### 討論事項
+一、115 年度市政重點施政計畫優先序排定案。
+二、市府大樓空間整合運用方案研議案。
+三、115 年度預算執行進度檢討案。
+
+### 決議
+一、115 年度市政重點施政計畫，以民生服務提升及數位化轉型為優先，由相關局處於 4 月底前提出細部執行計畫。
+二、市府大樓空間整合案，請秘書處會同工務局於 2 個月內提出整體規劃方案，再提市政會議討論。
+三、各局處應每月 10 日前向主計處回報預算執行進度，落後達 20% 者應提出改善對策。
+
+### 臨時動議
+無。
+
+散會時間：中華民國 115 年 3 月 20 日中午 12 時 10 分
+""",
 }
 
 
@@ -418,6 +452,10 @@ MOCK_REQUIREMENTS = {
     "箋函": PublicDocRequirement(
         doc_type="箋函", sender="臺北市政府秘書處", receiver="臺北市政府人事處",
         subject="投影設備報廢作業", urgency="普通", action_items=[], attachments=[]
+    ),
+    "開會紀錄": PublicDocRequirement(
+        doc_type="開會紀錄", sender="臺北市政府", receiver="（開會紀錄無特定受文者）",
+        subject="115年度第1次市政協調會議", urgency="普通", action_items=[], attachments=[]
     ),
 }
 
@@ -476,6 +514,7 @@ REQUIRED_FIELDS = {
     "公務電話紀錄": {"主旨", "通話時間", "發話人", "受話人", "通話摘要"},
     "手令": {"主旨", "指示事項"},
     "箋函": {"主旨", "說明"},
+    "開會紀錄": {"開會時間", "開會地點", "主席", "討論事項", "決議"},
 }
 
 # 各類型不該出現的欄位（格式錯誤）
@@ -499,6 +538,7 @@ EXPECTED_BODY_LABELS = {
     "公務電話紀錄": ["通話時間：", "發話人：", "受話人：", "主旨：", "通話摘要："],
     "手令": ["主旨：", "指示事項："],
     "箋函": ["主旨：", "說明："],
+    "開會紀錄": ["時間：", "地點：", "主席（主持人）："],
 }
 
 
@@ -533,6 +573,9 @@ def check_one_type(doc_type: str, output_dir: str) -> DocTypeReport:
         "通話時間": "call_time", "發話人": "caller", "受話人": "callee",
         "通話摘要": "call_summary",
         "指示事項": "directive_content",
+        # 開會紀錄
+        "主席": "chairperson", "討論事項": "discussion_items",
+        "決議": "resolutions",
     }
 
     for field_name in required:
@@ -644,6 +687,15 @@ def check_one_type(doc_type: str, output_dir: str) -> DocTypeReport:
             if kw not in full_text:
                 report.add(CheckResult(False, f"✗ 箋函缺少「{kw}」", "warning"))
 
+    elif doc_type == "開會紀錄":
+        for kw in ["時間：", "地點：", "主席（主持人）：", "討論事項", "決議"]:
+            if kw not in full_text:
+                report.add(CheckResult(False, f"✗ 開會紀錄缺少「{kw}」", "error"))
+        if "紀錄" not in full_text:
+            report.add(CheckResult(False, "✗ 開會紀錄缺少紀錄人員欄位", "warning"))
+        if "散會" not in full_text:
+            report.add(CheckResult(False, "✗ 開會紀錄缺少散會時間", "warning"))
+
     elif doc_type == "呈":
         if "敬請鑒核" not in full_text and "鑒核" not in full_text and "鈞" not in full_text:
             report.add(CheckResult(False, "✗ 呈文語氣不夠恭敬（缺少敬詞）", "warning"))
@@ -653,7 +705,7 @@ def check_one_type(doc_type: str, output_dir: str) -> DocTypeReport:
 
 def main():
     print("=" * 70)
-    print("  12 種公文類型 端對端品質檢查")
+    print("  13 種公文類型 端對端品質檢查")
     print("  模擬「長官審件」情境")
     print("=" * 70)
 
