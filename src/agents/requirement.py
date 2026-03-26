@@ -6,7 +6,7 @@ from rich.console import Console
 
 from src.core.llm import LLMProvider
 from src.core.models import PublicDocRequirement
-from src.core.constants import LLM_TEMPERATURE_PRECISE, MAX_USER_INPUT_LENGTH, escape_prompt_tag
+from src.core.constants import LLM_TEMPERATURE_PRECISE, MAX_USER_INPUT_LENGTH, escape_prompt_tag, is_llm_error_response
 from src.agents.review_parser import _extract_json_object, _sanitize_json_string
 
 logger = logging.getLogger(__name__)
@@ -126,9 +126,8 @@ Output JSON (Traditional Chinese):"""
         # 檢查 LLM 是否回傳了錯誤訊息或空值
         if not response_text or not response_text.strip():
             raise ValueError("LLM 回傳空的回應。請檢查 LLM 服務是否正常運作。")
-
-        if response_text.startswith("Error"):
-            raise ValueError(f"LLM 呼叫失敗: {response_text}")
+        if is_llm_error_response(response_text):
+            raise ValueError(f"LLM 呼叫失敗: {response_text[:80]}")
 
         # 清理可能的特殊字元
         response_text = _sanitize_json_string(response_text)

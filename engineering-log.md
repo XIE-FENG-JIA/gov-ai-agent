@@ -4,6 +4,18 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 37 — LLM 錯誤偵測統一化並支援中文
+**角度**: 🐛 Bug（中文 LLM 錯誤/拒絕回應未被偵測，洩漏至使用者）
+**為什麼**: 6 處 agent 各自用 `startswith("Error")` 或 `re.match(r"^[Ee]rror\s*:")` 檢查 LLM 錯誤回應，只能偵測英文 `Error` 前綴。中文 LLM 回傳「錯誤：」「很抱歉，我無法」「無法生成」等拒絕回應全部通過檢查，被當成有效草稿送出。此問題在 Round 33–36 連續標記為「下一步可能」。
+**做了什麼**:
+- `constants.py`: 新增 `is_llm_error_response()` 共用函式，預編譯 regex 涵蓋英文 Error/Sorry/Apologize + 繁簡中文 錯誤/抱歉/無法/對不起 等 12 種模式
+- `writer.py`, `review_parser.py`, `requirement.py`, `auditor.py`, `editor.py`(×2), `refiner.py`: 共 7 處替換為統一的 `is_llm_error_response()`
+- 新增 14 個測試（11 個單元測試 + 3 個 Writer 中文錯誤整合測試）
+**結果**: PASS — 3049 passed, 84 skipped, 0 failed（+14 新測試，零回歸）
+**下一步可能**:
+- `_request_with_retry` 回傳的 response 沒有檢查 content-type（fetcher 層面）
+- `batch_tools.py:189` 的報告匯出可改為原子寫入
+
 ### [2026-03-27] Round 36 — _write_markdown 失敗時幽靈 FetchResult 修復
 **角度**: 🐛 Bug（寫入失敗仍回傳路徑，下游收到不存在的檔案參照）
 **為什麼**: `_write_markdown` 遇到 OSError 時記錄警告但仍回傳 `file_path`，18 個 caller 無條件將此路徑包進 `FetchResult`。下游 embedding 或查詢讀取不存在的檔案會崩潰。此 bug 已在 engineering-log 被標記多輪但未修復。

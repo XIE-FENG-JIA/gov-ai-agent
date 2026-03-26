@@ -3,7 +3,7 @@ import logging
 import re
 from rich.console import Console
 from src.core.llm import LLMProvider
-from src.core.constants import LLM_TEMPERATURE_PRECISE, KB_REGULATION_RESULTS, MAX_DRAFT_LENGTH, escape_prompt_tag
+from src.core.constants import LLM_TEMPERATURE_PRECISE, KB_REGULATION_RESULTS, MAX_DRAFT_LENGTH, escape_prompt_tag, is_llm_error_response
 from src.agents.review_parser import _extract_json_object, _sanitize_json_string
 from src.knowledge.manager import KnowledgeBaseManager
 from src.agents.validators import validator_registry
@@ -197,7 +197,7 @@ IMPORTANT: Each item MUST include a concrete "suggestion" that tells the user ex
                 return {"errors": errors, "warnings": warnings}
 
             # 過濾 LLM 回傳的錯誤訊息，避免錯誤被靜默忽略
-            if response.startswith("Error"):
+            if is_llm_error_response(response):
                 logger.warning("FormatAuditor: LLM 回傳錯誤訊息: %s", response[:80])
                 warnings.append("審查系統 LLM 呼叫失敗，請手動檢查。")
                 return {"errors": errors, "warnings": warnings}

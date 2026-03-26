@@ -22,6 +22,7 @@ from src.core.constants import (
     PARALLEL_REVIEW_TIMEOUT,
     assess_risk_level,
     escape_prompt_tag,
+    is_llm_error_response,
 )
 from src.core.scoring import (
     get_agent_category,
@@ -640,7 +641,7 @@ Return ONLY the corrected draft markdown.
             console.print(f"[yellow]修正失敗：{str(exc)[:50]}，保留原始草稿[/yellow]")
             return draft
 
-        if not result or not result.strip() or result.startswith("Error"):
+        if is_llm_error_response(result):
             logger.warning("分層修正 LLM 回傳無效結果")
             console.print("[yellow]修正回傳無效，保留原始草稿[/yellow]")
             return draft
@@ -917,8 +918,8 @@ Return ONLY the new draft markdown.
             console.print(f"[yellow]Editor LLM 呼叫失敗：{str(exc)[:50]}，保留原始草稿[/yellow]")
             return draft
 
-        # 若 LLM 回傳空值，保留原始草稿
-        if not result or not result.strip() or result.startswith("Error"):
+        # 若 LLM 回傳空值或錯誤，保留原始草稿
+        if is_llm_error_response(result):
             logger.warning("Editor LLM 回傳無效結果，保留原始草稿")
             console.print("[yellow]Editor 修正失敗，保留原始草稿[/yellow]")
             return draft

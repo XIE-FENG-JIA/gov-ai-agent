@@ -4239,3 +4239,106 @@ class TestCoverageImprovement:
                     ])
         assert result.exit_code == 0
         assert "成功匯入 1" in result.output
+
+
+class TestIsLlmErrorResponse:
+    """測試 is_llm_error_response() 共用偵測函式"""
+
+    def test_none_is_error(self):
+        from src.core.constants import is_llm_error_response
+        assert is_llm_error_response(None) is True
+
+    def test_empty_string_is_error(self):
+        from src.core.constants import is_llm_error_response
+        assert is_llm_error_response("") is True
+
+    def test_whitespace_only_is_error(self):
+        from src.core.constants import is_llm_error_response
+        assert is_llm_error_response("   \n\t  ") is True
+
+    def test_english_error_prefix(self):
+        from src.core.constants import is_llm_error_response
+        assert is_llm_error_response("Error: connection refused") is True
+        assert is_llm_error_response("error: timeout") is True
+
+    def test_chinese_traditional_error(self):
+        from src.core.constants import is_llm_error_response
+        assert is_llm_error_response("錯誤：LLM 服務不可用") is True
+
+    def test_chinese_simplified_error(self):
+        from src.core.constants import is_llm_error_response
+        assert is_llm_error_response("错误：连接失败") is True
+
+    def test_chinese_sorry_refusal(self):
+        from src.core.constants import is_llm_error_response
+        assert is_llm_error_response("很抱歉，我無法生成該內容") is True
+        assert is_llm_error_response("抱歉，我無法處理這個請求") is True
+
+    def test_chinese_cannot_complete(self):
+        from src.core.constants import is_llm_error_response
+        assert is_llm_error_response("無法生成符合要求的公文") is True
+        assert is_llm_error_response("無法完成此任務") is True
+
+    def test_english_sorry_refusal(self):
+        from src.core.constants import is_llm_error_response
+        assert is_llm_error_response("I'm sorry, I cannot generate that content") is True
+        assert is_llm_error_response("I apologize, but I'm unable to help") is True
+
+    def test_valid_draft_not_flagged(self):
+        """正常公文草稿不應被誤判為錯誤"""
+        from src.core.constants import is_llm_error_response
+        assert is_llm_error_response("### 主旨\n關於辦理年度考核案") is False
+        assert is_llm_error_response("主旨：檢送本局年度預算書") is False
+        assert is_llm_error_response("說明：依據行政院函示辦理") is False
+
+    def test_draft_containing_error_word_not_flagged(self):
+        """草稿內文包含「錯誤」但非開頭不應被誤判"""
+        from src.core.constants import is_llm_error_response
+        assert is_llm_error_response("### 主旨\n更正前次公文錯誤內容") is False
+        assert is_llm_error_response("說明：因系統錯誤導致資料遺失") is False
+
+
+class TestWriterChineseErrorFallback:
+    """測試 WriterAgent 對中文 LLM 錯誤回應的偵測與 fallback"""
+
+    def test_writer_chinese_error_uses_fallback(self):
+        mock_llm = MagicMock()
+        mock_llm.generate.return_value = "很抱歉，我無法生成該類型的公文內容。"
+        mock_kb = MagicMock()
+        mock_kb.search_hybrid.return_value = []
+
+        writer = WriterAgent(mock_llm, mock_kb)
+        req = PublicDocRequirement(
+            doc_type="函", sender="機關", receiver="單位", subject="年度預算"
+        )
+        draft = writer.write_draft(req)
+        assert "很抱歉" not in draft
+        assert "年度預算" in draft
+
+    def test_writer_chinese_cannot_complete_uses_fallback(self):
+        mock_llm = MagicMock()
+        mock_llm.generate.return_value = "無法生成符合格式的公文草稿"
+        mock_kb = MagicMock()
+        mock_kb.search_hybrid.return_value = []
+
+        writer = WriterAgent(mock_llm, mock_kb)
+        req = PublicDocRequirement(
+            doc_type="函", sender="機關", receiver="單位", subject="人事任命"
+        )
+        draft = writer.write_draft(req)
+        assert "無法生成" not in draft
+        assert "人事任命" in draft
+
+    def test_writer_valid_chinese_draft_not_rejected(self):
+        """確認正常中文草稿不會被誤判為錯誤"""
+        mock_llm = MagicMock()
+        mock_llm.generate.return_value = "### 主旨\n關於辦理年度考核案\n\n### 說明\n依據行政院規定辦理。"
+        mock_kb = MagicMock()
+        mock_kb.search_hybrid.return_value = []
+
+        writer = WriterAgent(mock_llm, mock_kb)
+        req = PublicDocRequirement(
+            doc_type="函", sender="機關", receiver="單位", subject="年度考核"
+        )
+        draft = writer.write_draft(req)
+        assert "關於辦理年度考核案" in draft

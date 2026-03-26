@@ -9,7 +9,7 @@ import logging
 import math
 
 from src.core.review_models import ReviewIssue, ReviewResult
-from src.core.constants import DEFAULT_REVIEW_SCORE
+from src.core.constants import DEFAULT_REVIEW_SCORE, is_llm_error_response
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +129,7 @@ def parse_review_response(
         )
 
     # 過濾 LLM 回傳的錯誤訊息（如連線失敗），避免被當成審查通過
-    if response.startswith("Error"):
+    if is_llm_error_response(response):
         logger.warning("%s: LLM 回傳錯誤訊息: %s", agent_name, response[:80])
         return ReviewResult(
             agent_name=agent_name,

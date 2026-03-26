@@ -267,6 +267,49 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 OUTPUT_DIR = PROJECT_ROOT / "output"
 
 
+# ---------------------------------------------------------------------------
+# LLM 錯誤回應偵測
+# ---------------------------------------------------------------------------
+
+# 編譯一次，多處複用
+_LLM_ERROR_PATTERN = re.compile(
+    r"^("
+    r"[Ee]rror\s*:"                    # English: "Error: ..."
+    r"|錯誤\s*[：:]"                   # 繁中: "錯誤：..."
+    r"|错误\s*[：:]"                   # 簡中: "错误：..."
+    r"|I'?m sorry"                     # English refusal
+    r"|I apologize"                    # English refusal
+    r"|很抱歉"                         # 中文拒絕
+    r"|抱歉[，,]?\s*我"                # "抱歉，我無法..."
+    r"|對不起"                         # 繁中拒絕
+    r"|对不起"                         # 簡中拒絕
+    r"|無法[生完]成"                   # "無法生成" / "無法完成"
+    r"|无法[生完]成"                   # 簡中版
+    r"|我無法"                         # "我無法處理..."
+    r"|我无法"                         # 簡中版
+    r")",
+    re.IGNORECASE,
+)
+
+
+def is_llm_error_response(text: str | None) -> bool:
+    """判斷 LLM 回應是否為錯誤訊息或拒絕回覆，而非有效內容。
+
+    涵蓋英文 ``Error:`` 前綴、中文錯誤/拒絕回覆常見模式。
+    用於替換散落在各 agent 的 ``startswith("Error")`` 檢查，
+    統一偵測邏輯並支援中文 LLM。
+
+    Args:
+        text: LLM 回傳的文字（可為 None 或空字串）
+
+    Returns:
+        True 表示偵測到錯誤/拒絕模式，應使用 fallback。
+    """
+    if not text or not text.strip():
+        return True
+    return bool(_LLM_ERROR_PATTERN.search(text.strip()))
+
+
 def escape_prompt_tag(content: str, tag_name: str) -> str:
     """
     中和內容中的 XML 開頭與結束標籤，防止 prompt injection 突破標籤邊界。

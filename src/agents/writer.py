@@ -10,6 +10,7 @@ from src.core.constants import (
     KB_WRITER_RESULTS,
     MAX_EXAMPLE_LENGTH,
     escape_prompt_tag,
+    is_llm_error_response,
 )
 from src.knowledge.manager import KnowledgeBaseManager
 
@@ -428,8 +429,7 @@ class WriterAgent:
             draft = ""
             llm_failed = True
 
-        draft_stripped = (draft or "").strip()
-        if not draft_stripped or bool(re.match(r"^[Ee]rror\s*:", draft_stripped)):
+        if is_llm_error_response(draft):
             logger.warning("LLM 回傳無效草稿（空值或錯誤），使用基本模板")
             llm_failed = True
             draft = f"### 主旨\n{requirement.subject}\n\n### 說明\n{reason_text}\n"

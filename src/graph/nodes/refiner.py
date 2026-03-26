@@ -6,7 +6,7 @@ import logging
 from typing import Any
 
 from src.graph.state import GovDocState
-from src.core.constants import MAX_DRAFT_LENGTH, MAX_FEEDBACK_LENGTH, escape_prompt_tag
+from src.core.constants import MAX_DRAFT_LENGTH, MAX_FEEDBACK_LENGTH, escape_prompt_tag, is_llm_error_response
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ Return ONLY the new draft markdown.
         llm = get_llm()
         result = llm.generate(prompt)
 
-        if not result or not result.strip() or result.startswith("Error"):
+        if is_llm_error_response(result):
             logger.warning("refine_draft: LLM 回傳無效結果，保留原始草稿")
             return {
                 "refined_draft": current_draft,
