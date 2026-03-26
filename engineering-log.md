@@ -4,6 +4,18 @@
 
 ## 改善紀錄
 
+### [2026-03-26] Round 26 — API 錯誤映射補齊 LLMTimeoutError
+**角度**: 🐛 Bug（錯誤映射遺漏導致使用者收到錯誤的錯誤訊息）
+**為什麼**: `LLMTimeoutError` 在 commit 646072f 新增，但 `src/api/helpers.py` 的 `_sanitize_error()` 和 `_get_error_code()` 兩個映射表未同步更新。由於使用 `type(exc).__name__` 精確匹配，子類 `LLMTimeoutError` 不會 fallback 到父類 `LLMError`，導致 LLM 超時時 API 回傳「伺服器內部錯誤」+「INTERNAL_ERROR」，使用者完全無法判斷是超時問題。
+**做了什麼**:
+- `_sanitize_error()` 新增 `LLMTimeoutError` → 「LLM 生成逾時，請稍後再試或考慮縮短輸入長度。」
+- `_get_error_code()` 新增 `LLMTimeoutError` → `LLM_TIMEOUT`
+- 新增 3 個測試：`test_sanitize_error_llm_timeout`、`test_get_error_code_llm_timeout`、`test_get_error_code_known_types`
+**結果**: PASS — 3004 passed, 84 skipped, 0 failed（+3 新測試，零回歸）
+**下一步可能**:
+- `_sanitize_error` 改用 `isinstance()` 鏈式匹配取代字串比對，自動覆蓋未來新增的子類
+- API 路由層 `except Exception` 可考慮分層捕獲（先捕獲 LLMError 子類）
+
 ### [2026-03-26] Round 25 — RequirementAgent fallback 丟失使用者輸入修復
 **角度**: 🐛 Bug（解析失敗時 reason 欄位遺失）
 **為什麼**: RequirementAgent 有 4 層 JSON 解析策略，最後兩層（regex fallback 和完全失敗 fallback）未保留 `reason` 欄位。當 LLM 回傳格式異常時（弱模型或高延遲情境常見），`reason=None` 導致 WriterAgent 的說明段輸出「（未提供）」，公文品質嚴重下降。

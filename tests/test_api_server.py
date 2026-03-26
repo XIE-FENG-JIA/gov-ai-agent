@@ -808,6 +808,29 @@ class TestHelperFunctions:
         assert "伺服器內部錯誤" in err
         assert "/var/data" not in err
 
+    def test_sanitize_error_llm_timeout(self):
+        """測試 _sanitize_error 處理 LLMTimeoutError"""
+        from api_server import _sanitize_error
+        from src.core.llm import LLMTimeoutError
+        err = _sanitize_error(LLMTimeoutError("LLM 生成超時 (120s)"))
+        assert "逾時" in err
+        assert "120s" not in err
+
+    def test_get_error_code_llm_timeout(self):
+        """測試 _get_error_code 對 LLMTimeoutError 回傳 LLM_TIMEOUT"""
+        from api_server import _get_error_code
+        from src.core.llm import LLMTimeoutError
+        code = _get_error_code(LLMTimeoutError("timeout"))
+        assert code == "LLM_TIMEOUT"
+
+    def test_get_error_code_known_types(self):
+        """測試 _get_error_code 對已知類型回傳正確代碼"""
+        from api_server import _get_error_code
+        assert _get_error_code(ValueError("x")) == "INVALID_INPUT"
+        assert _get_error_code(TimeoutError("x")) == "TIMEOUT"
+        assert _get_error_code(KeyError("x")) == "MISSING_FIELD"
+        assert _get_error_code(RuntimeError("x")) == "INTERNAL_ERROR"
+
     def test_sanitize_output_filename(self):
         """測試檔名清理函式"""
         from api_server import _sanitize_output_filename
