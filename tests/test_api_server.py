@@ -886,6 +886,36 @@ class TestHelperFunctions:
 
 # ==================== Rate Limit via HTTP ====================
 
+class TestRequestBodySizeLimit:
+    """請求體大小限制測試（DoS 防護）"""
+
+    def test_oversized_content_length_returns_413(self, client, mock_api_deps):
+        """Content-Length 超過上限時回傳 413"""
+        resp = client.post(
+            "/api/v1/agent/requirement",
+            content=b'{"user_input": "x"}',
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(10 * 1024 * 1024),  # 10 MB
+            },
+        )
+        assert resp.status_code == 413
+        assert "請求體過大" in resp.json()["detail"]
+
+    def test_normal_size_passes(self, client, mock_api_deps):
+        """正常大小的請求不應被攔截"""
+        resp = client.post(
+            "/api/v1/agent/requirement",
+            json={"user_input": "寫一份環保局的函，測試正常大小"},
+        )
+        assert resp.status_code == 200
+
+    def test_get_request_not_checked(self, client, mock_api_deps):
+        """GET 請求不檢查 body size"""
+        resp = client.get("/api/v1/health")
+        assert resp.status_code == 200
+
+
 class TestRateLimitHTTP:
     """透過 HTTP 中介層的限流測試"""
 

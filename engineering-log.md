@@ -872,4 +872,18 @@
 **下一步可能**:
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
 - `test_api_server.py` 的 `reset_api_globals` fixture 設定值未經 proxy 傳遞（低優先）
+- ~~專案品質穩定，可開始規劃下一個里程碑~~ ✅ Round 53 安全加固
+
+### [2026-03-26] Round 53 — HTTP 請求體大小限制（DoS 防護）
+**角度**: 🔒 安全（記憶體耗盡型 DoS 防護）
+**為什麼**: Pydantic 欄位驗證（max_length=50000 等）在 JSON 解析完成後才生效。攻擊者可發送 100MB+ 的 JSON payload，FastAPI 先全部讀進記憶體再交給 Pydantic 拒絕，造成記憶體耗盡。安全掃描發現中介層缺少全域請求體大小限制。
+**做了什麼**:
+- `constants.py`: 新增 `MAX_REQUEST_BODY_SIZE`（預設 2MB，可透過環境變數覆蓋）
+- `middleware.py`: 在認證後、路由前檢查 Content-Length，POST/PUT/PATCH 超限回傳 413
+- 413 回應帶 `X-Request-ID` 以便追蹤，無效 Content-Length 交由 ASGI 處理
+- 新增 `TestRequestBodySizeLimit` 3 個測試：oversized 413、正常通過、GET 不受影響
+**結果**: PASS — 2818 passed, 84 skipped, 0 failed（+3 新測試，零回歸）
+**下一步可能**:
+- chunked transfer encoding（無 Content-Length）的防護需在 ASGI 層處理
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
 - 專案品質穩定，可開始規劃下一個里程碑

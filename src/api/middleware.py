@@ -17,7 +17,7 @@ import hmac
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
-from src.core.constants import API_VERSION
+from src.core.constants import API_VERSION, MAX_REQUEST_BODY_SIZE
 from src.api.dependencies import get_config
 from src.api.helpers import _get_client_ip
 
@@ -298,6 +298,23 @@ async def security_middleware(request: Request, call_next):
         resp.headers["X-Request-ID"] = request_id
         resp.headers["WWW-Authenticate"] = "Bearer"
         return resp
+
+    # Request body 大小檢查（在 JSON 解析前攔截，防止記憶體耗盡型 DoS）
+    if request.method in ("POST", "PUT", "PATCH"):
+        content_length = request.headers.get("content-length")
+        if content_length is not None:
+            try:
+                if int(content_length) > MAX_REQUEST_BODY_SIZE:
+                    resp = JSONResponse(
+                        status_code=413,
+                        content={
+                            "detail": f"請求體過大，上限為 {MAX_REQUEST_BODY_SIZE // (1024 * 1024)} MB。",
+                        },
+                    )
+                    resp.headers["X-Request-ID"] = request_id
+                    return resp
+            except ValueError:
+                pass  # 無效 Content-Length 交由 ASGI 伺服器處理
 
     # Rate limiting（POST 請求 + metrics 等敏感 GET 端點）
     _RATE_LIMITED_GET_PATHS = frozenset({"/api/v1/metrics"})
