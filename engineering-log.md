@@ -908,7 +908,8 @@
 **做了什麼**:
 - `src/api/routes/workflow.py`: `_execute_document_workflow()` 改為 `with EditorInChief(llm, kb) as editor:`
 - `src/cli/generate.py`: `_run_batch()`、`_run_core_pipeline()`、`_handle_confirm()` 三處同樣改為 context manager
-**結果**: PASS — 2663 passed, 82 skipped, 3 failed（既有 CLI Rich 問題），零回歸
+- `tests/test_cli_commands.py`: 修復 3 個測試的 mock context manager（`MagicMock.__enter__` 預設回傳不同實例，需明確設定 `return_value=mock_editor_instance`）
+**結果**: PASS — 2820 passed, 84 skipped, 0 failed（零回歸）
 **下一步可能**:
-- 測試程式碼中 ~80 處 `EditorInChief()` 也未用 context manager，但測試短命不影響正確性
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+- 專案品質穩定，可開始規劃下一個里程碑
