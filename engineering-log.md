@@ -321,3 +321,19 @@
 - `web_preview/app.py`（58%）和 `exam_yuan_fetcher.py`（56%）是剩餘低覆蓋模組
 - `write_draft()` 256 行超長函式拆分
 - CI 加入 `--cov-fail-under=85` 門檻防止覆蓋率退化
+
+### [2026-03-26] Round 22 — write_draft() 256→47 行重構
+**角度**: 🏗️ 架構（超長函式拆分 + DRY）
+**為什麼**: `write_draft()` 256 行，Round 15 起連續 6 輪列為「下一步可能」未處理。核心問題：(1) 104 行 system prompt 字串字面量塞在函式體內、(2) example 格式化 30 行和後處理 25 行混在主流程中、(3) 無法對子邏輯獨立寫單元測試。
+**做了什麼**:
+- 提取 `_WRITER_SYSTEM_PROMPT`、`_NO_EXAMPLES_TEXT`、`_SKELETON_WARNING`、`_PENDING_CITATION_WARNING` 為模組級常數
+- 提取 `_search_examples()` 封裝兩段式 Agentic RAG 搜尋+去重
+- 提取 `_format_examples()` 封裝 example 格式化與 sources 建構（`@staticmethod`）
+- 提取 `_build_prompt()` 封裝 prompt 組裝（`@staticmethod`）
+- 提取 `_postprocess_draft()` 封裝後處理邏輯（`@staticmethod`）
+- `write_draft()` 本體僅保留流程編排
+**結果**: PASS — 256 行 → 47 行（-82%），2548 passed, 82 skipped, 0 failed（零回歸）
+**下一步可能**:
+- `_format_examples` / `_build_prompt` / `_postprocess_draft` 現為 staticmethod，可獨立寫邊界條件測試
+- LLM mock / KB mock 統一到 conftest
+- `knowledge/manager.py` 覆蓋率 40% 是最大測試盲區（若 Round 21 已處理則跳過）
