@@ -210,3 +210,17 @@
 - 9 處 `except Exception` 靜默吞噬錯誤，影響生產環境可觀測性
 - `workflow.py` 的 `asyncio.gather()` 未用 `return_exceptions=True`
 - `parse_draft()` 274 行、`write_draft()` 256 行等超長函式可考慮拆分
+
+### [2026-03-26] Round 14 — 修復法規驗證報告連結丟失（死程式碼 bug）
+**角度**: 🐛 Bug（功能缺失）
+**為什麼**: `format_verification_results()` 第 369 行 `LAW_DETAIL_URL.format(pcode=chk.pcode)` 計算結果未賦值給任何變數，法規驗證報告缺少全國法規資料庫的法規全文連結。這是用戶可見的功能缺失——驗證結果只顯示「法規存在」但無法點擊查看。
+**做了什麼**:
+- `LAW_DETAIL_URL.format()` 結果存入 `law_url` 變數
+- 驗證報告每條法規下方新增 `🔗 https://law.moj.gov.tw/...` 連結
+- 移除 `PCode` 內部代碼顯示（對用戶無意義），改為可點擊 URL
+- 同時提交 `realtime_lookup.py` 的 SSL 拒絕降級修復（與 Round 13 base.py 一致）
+**結果**: PASS — test_realtime_lookup.py 37/37, 核心測試 2253 passed, 75 skipped, 0 failed
+**下一步可能**:
+- 9 處 `except Exception` 靜默吞噬錯誤，影響生產環境可觀測性
+- `workflow.py` 的 `asyncio.gather()` — 經分析 `_process_item` 內部已 try/except，實際安全
+- LLM mock / KB mock 統一到 conftest（與 auth config 同手法）

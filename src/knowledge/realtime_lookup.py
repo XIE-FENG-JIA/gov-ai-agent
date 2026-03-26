@@ -366,13 +366,15 @@ def format_verification_results(checks: list[CitationCheck]) -> str:
     for chk in checks:
         c = chk.citation
         if chk.law_exists:
-            LAW_DETAIL_URL.format(pcode=chk.pcode) if chk.pcode else ""
-            pcode_note = f"（PCode: {chk.pcode}）" if chk.pcode else ""
+            law_url = LAW_DETAIL_URL.format(pcode=chk.pcode) if chk.pcode else ""
+            url_note = f"\n  🔗 {law_url}" if law_url else ""
 
             if chk.closest_match and chk.closest_match != c.law_name:
-                lines.append(f"⚠️ {c.law_name} → 最相似法規：「{chk.closest_match}」{pcode_note}")
+                lines.append(
+                    f"⚠️ {c.law_name} → 最相似法規：「{chk.closest_match}」{url_note}"
+                )
             else:
-                lines.append(f"✅ {c.law_name}{pcode_note} — 法規存在")
+                lines.append(f"✅ {c.law_name} — 法規存在{url_note}")
 
             if chk.article_exists is True and c.article_no:
                 content_preview = (chk.actual_content or "")[:100]
