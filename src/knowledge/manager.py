@@ -20,6 +20,10 @@ logger = logging.getLogger(__name__)
 _CACHE_TTL = 300       # 5 分鐘
 _CACHE_MAXSIZE = 256   # 最多快取 256 筆查詢
 
+# Embedding 快取設定（避免同一 query 在多輪審查中重複呼叫 LLM embed）
+_EMBED_CACHE_TTL = 600     # 10 分鐘（比搜尋快取長，因為向量不隨知識庫變動）
+_EMBED_CACHE_MAXSIZE = 128  # 最多快取 128 筆 embedding
+
 class KnowledgeBaseManager:
     """管理本地 ChromaDB 知識庫。"""
 
@@ -36,6 +40,9 @@ class KnowledgeBaseManager:
         # 搜尋快取（TTL 5 分鐘，最多 256 筆）
         self._search_cache: TTLCache = TTLCache(maxsize=_CACHE_MAXSIZE, ttl=_CACHE_TTL)
         self._cache_lock = threading.Lock()
+        # Embedding 快取：同一 query 在多輪審查中不重複呼叫 LLM embed
+        self._embed_cache: TTLCache = TTLCache(maxsize=_EMBED_CACHE_MAXSIZE, ttl=_EMBED_CACHE_TTL)
+        self._embed_cache_lock = threading.Lock()
 
         if chromadb is None:
             logger.error(
@@ -76,6 +83,22 @@ class KnowledgeBaseManager:
             self.examples_collection = None
             self.regulations_collection = None
             self.policies_collection = None
+
+    def _cached_embed(self, query: str) -> list[float]:
+        """帶 TTL 快取的 embedding 呼叫。
+
+        同一 query 在快取有效期內（10 分鐘）直接返回向量，
+        避免多輪審查中對同一搜尋詞重複呼叫 LLM embed API。
+        """
+        with self._embed_cache_lock:
+            cached = self._embed_cache.get(query)
+        if cached is not None:
+            return cached
+        embedding = self.llm_provider.embed(query)
+        if embedding:
+            with self._embed_cache_lock:
+                self._embed_cache[query] = embedding
+        return embedding
 
     def add_document(
         self,
@@ -214,7 +237,7 @@ class KnowledgeBaseManager:
         if not self._available:
             logger.warning("知識庫不可用，無法搜尋政策。")
             return []
-        query_embedding = self.llm_provider.embed(query)
+        query_embedding = self._cached_embed(query)
         if not query_embedding:
             logger.warning("政策搜尋查詢的嵌入向量為空，跳過搜尋")
             return []
@@ -245,7 +268,7 @@ class KnowledgeBaseManager:
         if not self._available:
             logger.warning("知識庫不可用，無法搜尋範例。")
             return []
-        query_embedding = self.llm_provider.embed(query)
+        query_embedding = self._cached_embed(query)
 
         if not query_embedding:
             logger.warning("範例搜尋查詢的嵌入向量為空，跳過搜尋")
@@ -285,7 +308,7 @@ class KnowledgeBaseManager:
         if not self._available:
             logger.warning("知識庫不可用，無法搜尋法規。")
             return []
-        query_embedding = self.llm_provider.embed(query)
+        query_embedding = self._cached_embed(query)
         if not query_embedding:
             logger.warning("法規搜尋查詢的嵌入向量為空，跳過搜尋")
             return []
@@ -347,7 +370,7 @@ class KnowledgeBaseManager:
             logger.debug("混合搜尋快取命中: query=%s", query[:30])
             return cached
 
-        query_embedding = self.llm_provider.embed(query)
+        query_embedding = self._cached_embed(query)
         if not query_embedding:
             logger.warning("混合搜尋嵌入向量為空，降級至關鍵字搜尋")
             result = self._keyword_fallback_search(

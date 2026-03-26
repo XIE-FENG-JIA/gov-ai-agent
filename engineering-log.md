@@ -991,3 +991,18 @@
 **下一步可能**:
 - LangGraph 路徑原生支援 convergence（在 state 加入 phase/stale 追蹤，重寫 should_refine）
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+
+### [2026-03-26] Round 62 — Embedding TTL 快取消除搜尋冗餘 API 呼叫
+**角度**: ⚡ 效能（冗餘 API 呼叫）
+**為什麼**: `search_regulations`、`search_examples`、`search_policies`、`search_hybrid` 每次被呼叫都獨立執行 `llm_provider.embed(query)`。一次完整公文生成（3 輪審查）中，FormatAuditor 和 ComplianceChecker 每輪各呼叫搜尋方法，加上 `search_level_a` 對同一 query 連呼兩個搜尋方法 — 共計 6+ 次冗餘 embedding API 呼叫。Ollama 本地推理每次 ~100ms，雲端 API 每次 ~200ms + 計費。
+**做了什麼**:
+- 新增 `_cached_embed()` 方法，帶 TTL 10 分鐘、maxsize 128 的 `TTLCache`，執行緒安全
+- 4 個搜尋方法全部改用 `_cached_embed()`；`add_document` 寫入路徑不受影響
+- 新增 `test_embed_cache.py` 6 個獨立測試（不依賴 chromadb）
+- 同步補齊 `test_knowledge_manager_cache.py` 5 個 embed 快取測試
+- 修復 3 個測試檔案中繞過 `__init__` 的 fixture 缺少新屬性
+**結果**: PASS — 2975 passed, 84 skipped, 0 failed（+17 新測試，零回歸）
+**下一步可能**:
+- BM25 搜尋每次從 ChromaDB 拉取全量文件（`coll.get(limit=500)`），可加語料庫快取
+- LangGraph 路徑原生支援 convergence
+- MISSION.md 功能缺口：公文範本庫擴充、法規自動更新

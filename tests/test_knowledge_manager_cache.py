@@ -109,6 +109,53 @@ class TestSearchCache:
         assert len(kb._search_cache) == 0
 
 
+class TestEmbeddingCache:
+    """Embedding 快取相關測試"""
+
+    def test_embed_cache_avoids_duplicate_calls(self, mock_kb):
+        """同一 query 的 embed 只應呼叫一次（快取命中）"""
+        # search_regulations + search_examples 用同一 query
+        mock_kb.search_regulations("公文格式", n_results=2)
+        mock_kb.search_examples("公文格式", n_results=2)
+        # _cached_embed 應確保只呼叫 embed 一次
+        assert mock_kb.llm_provider.embed.call_count == 1
+
+    def test_embed_cache_different_queries(self, mock_kb):
+        """不同 query 各自 embed"""
+        mock_kb.search_regulations("公文格式", n_results=2)
+        mock_kb.search_regulations("法規依據", n_results=2)
+        assert mock_kb.llm_provider.embed.call_count == 2
+
+    def test_embed_cache_empty_result_not_cached(self, mock_kb):
+        """embed 回傳空列表時不應寫入快取"""
+        mock_kb.llm_provider.embed.return_value = []
+        mock_kb.search_regulations("空查詢")
+        assert len(mock_kb._embed_cache) == 0
+
+    def test_embed_cache_thread_safety(self, mock_kb):
+        """embedding 快取應為執行緒安全"""
+        errors = []
+
+        def search(i):
+            try:
+                mock_kb._cached_embed(f"查詢{i % 5}")
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=search, args=(i,)) for i in range(20)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        assert errors == [], f"執行緒安全錯誤: {errors}"
+
+    def test_search_level_a_single_embed(self, mock_kb):
+        """search_level_a 對同一 query 應只 embed 一次（非兩次）"""
+        mock_kb.search_level_a("法規查詢", n_results=3)
+        # search_regulations + search_examples 共用 embedding 快取
+        assert mock_kb.llm_provider.embed.call_count == 1
+
+
 class TestKeywordFallbackSearch:
     """Embedding 失敗降級搜尋測試"""
 

@@ -6,6 +6,7 @@ import asyncio
 import builtins
 import json
 import os
+import threading
 from pathlib import Path
 import yaml
 import requests
@@ -1995,6 +1996,8 @@ class TestSearchResultIdField:
         mgr = KnowledgeBaseManager.__new__(KnowledgeBaseManager)
         mgr._available = True
         mgr.llm_provider = mock_llm
+        mgr._embed_cache = {}
+        mgr._embed_cache_lock = threading.Lock()
         mock_coll = MagicMock()
         mock_coll.count.return_value = 1
         mock_coll.query.return_value = {
@@ -2016,6 +2019,8 @@ class TestSearchResultIdField:
         mgr = KnowledgeBaseManager.__new__(KnowledgeBaseManager)
         mgr._available = True
         mgr.llm_provider = mock_llm
+        mgr._embed_cache = {}
+        mgr._embed_cache_lock = threading.Lock()
         mock_coll = MagicMock()
         mock_coll.count.return_value = 1
         mock_coll.query.return_value = {

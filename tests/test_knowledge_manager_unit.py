@@ -82,6 +82,8 @@ def manager(mock_llm, mock_collection):
     mgr._available = True
     mgr._search_cache = {}
     mgr._cache_lock = threading.Lock()
+    mgr._embed_cache = {}
+    mgr._embed_cache_lock = threading.Lock()
     mgr.client = MagicMock()
     mgr.examples_collection = MagicMock()
     mgr.regulations_collection = MagicMock()
