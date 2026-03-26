@@ -149,6 +149,84 @@ def _normalize_urgency(urgency: str) -> str:
     return urgency + "件"
 
 
+# ---------------------------------------------------------------------------
+# parse_draft 段落解析：資料定義與輔助函式
+# ---------------------------------------------------------------------------
+
+_SECTION_KEYS = (
+    "subject", "explanation", "basis", "provisions", "attachments", "references",
+    # 開會通知單
+    "meeting_time", "meeting_location", "agenda",
+    # 會勘通知單
+    "inspection_time", "inspection_location", "inspection_items",
+    "required_documents", "attendees",
+    # 公務電話紀錄
+    "call_time", "call_summary", "caller", "callee",
+    "follow_up_items", "recorder", "reviewer",
+    # 手令
+    "directive_content", "deadline", "cc_list",
+    # 通用
+    "copies_to", "cc_copies",
+)
+
+# 關鍵字 → section key（按長度降序排列，避免短前綴先匹配）
+_KEYWORD_TO_SECTION: dict[str, str] = {
+    k: v for k, v in sorted([
+        ("主旨", "subject"), ("說明", "explanation"), ("依據", "basis"),
+        ("辦法", "provisions"), ("公告事項", "provisions"),
+        ("辦法/公告事項", "provisions"), ("擬辦", "provisions"),
+        ("附件", "attachments"), ("參考來源", "references"),
+        ("開會時間", "meeting_time"), ("開會地點", "meeting_location"),
+        ("議程", "agenda"),
+        ("會勘時間", "inspection_time"), ("會勘地點", "inspection_location"),
+        ("會勘事項", "inspection_items"), ("應攜文件", "required_documents"),
+        ("應出席單位", "attendees"),
+        ("通話時間", "call_time"), ("發話人", "caller"), ("受話人", "callee"),
+        ("通話摘要", "call_summary"), ("追蹤事項", "follow_up_items"),
+        ("紀錄人", "recorder"), ("核閱", "reviewer"),
+        ("指示事項", "directive_content"), ("完成期限", "deadline"),
+        ("副知", "cc_list"), ("正本", "copies_to"), ("副本", "cc_copies"),
+    ], key=lambda pair: len(pair[0]), reverse=True)
+}
+
+# 檔頭欄位：僅作為段落邊界，不收集內容
+_HEADER_FIELDS = (
+    "密等及解密條件或保密期限", "密等",
+    "機關", "受文者", "發文日期", "發文字號", "速別",
+    "發令人", "受令人", "發令日期", "發令字號",
+    "發信人", "收信人", "紀錄日期", "紀錄字號",
+    "日期", "字號", "會銜機關",
+)
+
+# 用於行內內容擷取的關鍵字清單（長度降序）
+_HEADER_KEYWORDS = sorted(_KEYWORD_TO_SECTION.keys(), key=len, reverse=True)
+
+
+def _is_section_header(text: str, keyword: str) -> bool:
+    """檢查 text 是否精確以 keyword 作為段落標題。
+
+    標題詞後必須接冒號、空白或直接結尾，
+    避免「說明書」「主旨演講」等非標題文字誤判。
+    """
+    if not text.startswith(keyword):
+        return False
+    if len(text) == len(keyword):
+        return True
+    return text[len(keyword)] in ("：", ":", " ", "\t", "\u3000")
+
+
+def _detect_header(line: str) -> str | None:
+    """偵測公文段落標題，回傳對應的 section key 或 '_skip'。"""
+    clean = line.strip().replace('#', '').strip()
+    for keyword, section in _KEYWORD_TO_SECTION.items():
+        if _is_section_header(clean, keyword):
+            return section
+    for hf in _HEADER_FIELDS:
+        if _is_section_header(clean, hf):
+            return "_skip"
+    return None
+
+
 class TemplateEngine:
     """
     模板引擎：使用 Jinja2 模板結構化並標準化公文內容。
@@ -168,216 +246,28 @@ class TemplateEngine:
         self.env.filters["cn"] = _chinese_index
 
     def parse_draft(self, draft_text: str) -> dict[str, str]:
-        """
-        使用逐行狀態機將原始 Markdown 草稿解析為結構化段落。
-        會自動清理 Markdown 標記並重新編排編號。
-        """
-        # 防護空值輸入
+        """使用逐行狀態機將原始 Markdown 草稿解析為結構化段落。"""
         if not draft_text:
-            return {
-                "subject": "",
-                "explanation": "",
-                "basis": "",
-                "provisions": "",
-                "attachments": "",
-                "references": "",
-            }
+            return {k: "" for k in _SECTION_KEYS}
 
-        # 首先清理 markdown 標記
         draft_text = clean_markdown_artifacts(draft_text)
-
-        sections = {
-            "subject": "",
-            "explanation": "",
-            "basis": "",
-            "provisions": "",
-            "attachments": "",
-            "references": "",
-            # 開會通知單專用
-            "meeting_time": "",
-            "meeting_location": "",
-            "agenda": "",
-            # 會勘通知單專用
-            "inspection_time": "",
-            "inspection_location": "",
-            "inspection_items": "",
-            "required_documents": "",
-            "attendees": "",
-            # 公務電話紀錄專用
-            "call_time": "",
-            "call_summary": "",
-            "caller": "",
-            "callee": "",
-            "follow_up_items": "",
-            "recorder": "",
-            "reviewer": "",
-            # 手令專用
-            "directive_content": "",
-            "deadline": "",
-            "cc_list": "",
-            # 通用
-            "copies_to": "",
-            "cc_copies": "",
-        }
-
-        # Internal state
-        current_section = None
-        buffer = {
-            "subject": [],
-            "explanation": [],
-            "basis": [], # 依據
-            "provisions": [],
-            "attachments": [],
-            "references": [],
-            # 開會通知單專用
-            "meeting_time": [],
-            "meeting_location": [],
-            "agenda": [],
-            # 會勘通知單專用
-            "inspection_time": [],
-            "inspection_location": [],
-            "inspection_items": [],
-            "required_documents": [],
-            "attendees": [],
-            # 公務電話紀錄專用
-            "call_time": [],
-            "caller": [],
-            "callee": [],
-            "call_summary": [],
-            "follow_up_items": [],
-            "recorder": [],
-            "reviewer": [],
-            # 手令專用
-            "directive_content": [],
-            "deadline": [],
-            "cc_list": [],
-            # 通用
-            "copies_to": [],
-            "cc_copies": [],
-        }
-
-        # Normalize
         lines = draft_text.replace('\r\n', '\n').split('\n')
 
-        # 檔頭欄位：不會收集內容，僅作為段落邊界
-        _HEADER_FIELDS = [
-            "密等及解密條件或保密期限", "密等",
-            "機關", "受文者", "發文日期", "發文字號", "速別",
-            "發令人", "受令人", "發令日期", "發令字號",
-            "發信人", "收信人",
-            "紀錄日期", "紀錄字號",
-            "日期", "字號",
-            "會銜機關",
-        ]
-
-        # 辨識段落標題的輔助函式
-        def _is_section_header(text: str, keyword: str) -> bool:
-            """檢查 text 是否精確以 keyword 作為段落標題。
-
-            標題詞後必須接冒號、空白或直接結尾，
-            避免「說明書」「主旨演講」等非標題文字誤判。
-            """
-            if not text.startswith(keyword):
-                return False
-            if len(text) == len(keyword):
-                return True
-            next_char = text[len(keyword)]
-            return next_char in ("：", ":", " ", "\t", "\u3000")
-
-        def detect_header(line: str) -> str | None:
-            """偵測公文段落標題，回傳對應的 section 鍵值。"""
-            clean = line.strip().replace('#', '').strip()
-            if _is_section_header(clean, "主旨"):
-                return "subject"
-            if _is_section_header(clean, "說明"):
-                return "explanation"
-            if _is_section_header(clean, "依據"):
-                return "basis"
-            if (_is_section_header(clean, "辦法")
-                    or _is_section_header(clean, "公告事項")
-                    or _is_section_header(clean, "辦法/公告事項")
-                    or _is_section_header(clean, "擬辦")):
-                return "provisions"
-            if _is_section_header(clean, "附件"):
-                return "attachments"
-            if _is_section_header(clean, "參考來源"):
-                return "references"
-            # 開會通知單
-            if _is_section_header(clean, "開會時間"):
-                return "meeting_time"
-            if _is_section_header(clean, "開會地點"):
-                return "meeting_location"
-            if _is_section_header(clean, "議程"):
-                return "agenda"
-            # 會勘通知單
-            if _is_section_header(clean, "會勘時間"):
-                return "inspection_time"
-            if _is_section_header(clean, "會勘地點"):
-                return "inspection_location"
-            if _is_section_header(clean, "會勘事項"):
-                return "inspection_items"
-            if _is_section_header(clean, "應攜文件"):
-                return "required_documents"
-            if _is_section_header(clean, "應出席單位"):
-                return "attendees"
-            # 公務電話紀錄
-            if _is_section_header(clean, "通話時間"):
-                return "call_time"
-            if _is_section_header(clean, "發話人"):
-                return "caller"
-            if _is_section_header(clean, "受話人"):
-                return "callee"
-            if _is_section_header(clean, "通話摘要"):
-                return "call_summary"
-            if _is_section_header(clean, "追蹤事項"):
-                return "follow_up_items"
-            if _is_section_header(clean, "紀錄人"):
-                return "recorder"
-            if _is_section_header(clean, "核閱"):
-                return "reviewer"
-            # 手令
-            if _is_section_header(clean, "指示事項"):
-                return "directive_content"
-            if _is_section_header(clean, "完成期限"):
-                return "deadline"
-            # 通用
-            if _is_section_header(clean, "副知"):
-                return "cc_list"
-            if _is_section_header(clean, "正本"):
-                return "copies_to"
-            if _is_section_header(clean, "副本"):
-                return "cc_copies"
-            # 檔頭欄位：視為段落邊界但不收集內容（避免誤歸前段）
-            for hf in _HEADER_FIELDS:
-                if _is_section_header(clean, hf):
-                    return "_skip"
-            return None
-
-        # 所有段落標題關鍵字（按長度降序，避免短字串優先匹配）
-        _HEADER_KEYWORDS = [
-            "辦法/公告事項", "應出席單位", "參考來源", "公告事項",
-            "開會時間", "開會地點",
-            "會勘時間", "會勘地點", "會勘事項", "應攜文件",
-            "通話時間", "通話摘要", "追蹤事項", "指示事項", "完成期限",
-            "發話人", "受話人", "紀錄人",
-            "主旨", "說明", "依據", "辦法", "擬辦", "附件", "議程", "核閱",
-            "副知", "正本", "副本",
-        ]
+        buffer: dict[str, list[str]] = {k: [] for k in _SECTION_KEYS}
+        current_section: str | None = None
 
         for line in lines:
-            new_section = detect_header(line)
+            new_section = _detect_header(line)
             if new_section:
                 if new_section == "_skip":
-                    # 檔頭欄位：中斷當前段落收集但不開啟新段落
                     current_section = None
                     continue
                 current_section = new_section
-                # 嘗試提取同行內容：先用冒號分割，再嘗試空格分割
+                # 嘗試提取同行內容：先用冒號分割，再嘗試關鍵字長度截取
                 parts = line.split('：', 1) if '：' in line else line.split(':', 1)
                 if len(parts) > 1 and parts[1].strip():
                     buffer[current_section].append(parts[1].strip())
                 else:
-                    # 冒號分割無效時，根據關鍵字長度截取剩餘內容
                     clean = line.strip().replace('#', '').strip()
                     for kw in _HEADER_KEYWORDS:
                         if clean.startswith(kw) and len(clean) > len(kw):
@@ -387,58 +277,21 @@ class TemplateEngine:
                             break
                 continue
 
-            if current_section:
-                if line.strip():
-                    buffer[current_section].append(line.strip())
+            if current_section and line.strip():
+                buffer[current_section].append(line.strip())
 
-        # Post-process
-        sections["subject"] = "\n".join(buffer["subject"]).strip()
+        # 後處理：統一 join 所有段落
+        sections = {k: "\n".join(v).strip() for k, v in buffer.items()}
 
-        basis_text = "\n".join(buffer["basis"]).strip()
-        explanation_text = "\n".join(buffer["explanation"]).strip()
-
-        # 保留獨立的 basis 欄位（供公告模板使用）
-        sections["basis"] = basis_text
-
-        if basis_text:
-            if explanation_text:
-                sections["explanation"] = f"依據：{basis_text}\n{explanation_text}"
+        # 特殊處理：依據合併至說明
+        if sections["basis"]:
+            if sections["explanation"]:
+                sections["explanation"] = f"依據：{sections['basis']}\n{sections['explanation']}"
             else:
-                sections["explanation"] = f"依據：{basis_text}"
-        else:
-            sections["explanation"] = explanation_text
+                sections["explanation"] = f"依據：{sections['basis']}"
 
-        # 重新編排辦法段落編號
-        raw_provisions = "\n".join(buffer["provisions"]).strip()
-        sections["provisions"] = renumber_provisions(raw_provisions)
-
-        sections["attachments"] = "\n".join(buffer["attachments"]).strip()
-        sections["references"] = "\n".join(buffer["references"]).strip()
-        # 開會通知單
-        sections["meeting_time"] = "\n".join(buffer["meeting_time"]).strip()
-        sections["meeting_location"] = "\n".join(buffer["meeting_location"]).strip()
-        sections["agenda"] = "\n".join(buffer["agenda"]).strip()
-        # 會勘通知單
-        sections["inspection_time"] = "\n".join(buffer["inspection_time"]).strip()
-        sections["inspection_location"] = "\n".join(buffer["inspection_location"]).strip()
-        sections["inspection_items"] = "\n".join(buffer["inspection_items"]).strip()
-        sections["required_documents"] = "\n".join(buffer["required_documents"]).strip()
-        sections["attendees"] = "\n".join(buffer["attendees"]).strip()
-        # 公務電話紀錄
-        sections["call_time"] = "\n".join(buffer["call_time"]).strip()
-        sections["caller"] = "\n".join(buffer["caller"]).strip()
-        sections["callee"] = "\n".join(buffer["callee"]).strip()
-        sections["call_summary"] = "\n".join(buffer["call_summary"]).strip()
-        sections["follow_up_items"] = "\n".join(buffer["follow_up_items"]).strip()
-        sections["recorder"] = "\n".join(buffer["recorder"]).strip()
-        sections["reviewer"] = "\n".join(buffer["reviewer"]).strip()
-        # 手令
-        sections["directive_content"] = "\n".join(buffer["directive_content"]).strip()
-        sections["deadline"] = "\n".join(buffer["deadline"]).strip()
-        sections["cc_list"] = "\n".join(buffer["cc_list"]).strip()
-        # 通用
-        sections["copies_to"] = "\n".join(buffer["copies_to"]).strip()
-        sections["cc_copies"] = "\n".join(buffer["cc_copies"]).strip()
+        # 特殊處理：重新編排辦法段落編號
+        sections["provisions"] = renumber_provisions(sections["provisions"])
 
         return sections
 

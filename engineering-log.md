@@ -285,6 +285,21 @@
 **做了什麼**: Dockerfile 第 39 行 `localhost` → `127.0.0.1`
 **結果**: PASS — 2485 passed, 84 skipped, 0 failed（零回歸）
 **下一步可能**:
-- `parse_draft()` 274 行、`write_draft()` 256 行等超長函式拆分
+- `write_draft()` 256 行超長函式拆分
 - LLM mock / KB mock 統一到 conftest
 - CI 加入 `--cov-fail-under=80` 門檻防止覆蓋率退化
+
+### [2026-03-26] Round 20 — parse_draft() 274→49 行重構
+**角度**: 🏗️ 架構（超長函式拆分 + DRY）
+**為什麼**: `parse_draft()` 274 行，Round 15 起連續 5 輪列為「下一步可能」未處理。核心問題：(1) sections/buffer 兩個 dict 重複定義同一組 24 個 key（68 行浪費）、(2) detect_header 嵌套函式 93 行硬編碼 if-else 鏈、(3) 後處理 48 行重複 `"\n".join().strip()`。
+**做了什麼**:
+- 提取 `_SECTION_KEYS` tuple（24 個 key 單一來源）
+- 提取 `_KEYWORD_TO_SECTION` dict（關鍵字→section 對映，資料驅動取代 if-else 鏈）
+- 提取 `_HEADER_FIELDS`、`_HEADER_KEYWORDS` 為模組常數
+- 提取 `_is_section_header()` 和 `_detect_header()` 為模組級函式
+- `parse_draft()` 本體：dict comprehension 取代重複定義，loop 取代 22 行重複 join
+**結果**: PASS — 274 行 → 49 行（-82%），2485 passed, 84 skipped, 0 failed（零回歸）
+**下一步可能**:
+- `write_draft()` 256 行同樣手法拆分
+- `_is_section_header` / `_detect_header` 現為模組級函式，可獨立寫邊界條件測試
+- LLM mock / KB mock 統一到 conftest
