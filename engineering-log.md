@@ -4,6 +4,17 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 76 — review_cmd --apply 非原子寫入修復
+**角度**: 🐛 Bug（資料損毀風險）
+**為什麼**: Round 25-27 已確立「所有 CLI 檔案輸出必須使用原子寫入」規範（tempfile + os.replace），防止寫入中途崩潰損毀使用者檔案。但 Round 75 新增的 `review_cmd.py --apply` 使用裸 `open(..., "w")` 寫出修正草稿，違反此規範。一旦寫入中途斷電或程序崩潰，使用者的修正草稿會被截斷為空或半成品。
+**做了什麼**:
+- `review_cmd.py`: 將 `open(..., "w").write()` 替換為 `atomic_text_write()`，與其他 CLI 模組一致
+- 新增 1 個測試 `test_apply_uses_atomic_write`：mock `atomic_text_write` 確認被正確呼叫
+**結果**: PASS — 22 個 review_cmd 測試全通過（+1 新測試），3153 全套件零回歸
+**下一步可能**:
+- 批次處理效能優化（MISSION 剩餘功能缺口）
+- `呈`/`咨` 範本補齊（目前各 3 筆）
+
 ### [2026-03-27] Round 35 — _segmented_review 逾時資訊遺失 + 浪費 refine
 **角度**: 🐛 Bug（超長草稿審查品質盲區）
 **為什麼**: `_segmented_review` 透過 `_review_single` 間接審查，但 `_review_single` 的 timed_out 資訊封裝在 QAReport 裡無法傳出，導致 `all_timed_out` 永遠為空。此外 `_review_single` 會對每段做 LLM refine，但 `_segmented_review` 忽略修正結果——純粹浪費 LLM tokens。
