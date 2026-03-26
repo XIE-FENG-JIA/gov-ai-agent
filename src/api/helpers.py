@@ -49,50 +49,39 @@ def _get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def _sanitize_error(exc: Exception) -> str:
-    """
-    清理例外訊息，避免洩漏內部實作細節（檔案路徑、堆疊追蹤等）。
+# 錯誤映射表 — 單一真相來源（Single Source of Truth）
+# 新增異常類型只需在此處加一行，_sanitize_error 和 _get_error_code 自動同步。
+# 格式：異常類型名稱 → (錯誤代碼, 使用者安全訊息)
+_ERROR_REGISTRY: dict[str, tuple[str, str]] = {
+    "ValueError":             ("INVALID_INPUT",        "輸入資料不符合預期格式，請檢查請求參數。"),
+    "ValidationError":        ("VALIDATION_FAILED",    "請求資料驗證失敗，請檢查欄位格式。"),
+    "TypeError":              ("TYPE_ERROR",           "請求參數類型錯誤，請檢查資料格式。"),
+    "KeyError":               ("MISSING_FIELD",        "請求資料缺少必要欄位。"),
+    "TimeoutError":           ("TIMEOUT",              "操作逾時，請稍後再試。"),
+    "LLMTimeoutError":        ("LLM_TIMEOUT",          "LLM 生成逾時，請稍後再試或考慮縮短輸入長度。"),
+    "CancelledError":         ("CANCELLED",            "操作已取消或逾時，請稍後再試。"),
+    "ConnectionError":        ("LLM_CONNECTION_FAILED", "無法連線至 LLM 服務。若使用 Ollama，請確認已執行 ollama serve。"),
+    "ConnectionRefusedError": ("LLM_CONNECTION_FAILED", "無法連線至 LLM 服務。若使用 Ollama，請確認已執行 ollama serve。"),
+    "LLMConnectionError":     ("LLM_CONNECTION_FAILED", "無法連線至 LLM 服務。若使用 Ollama，請確認已執行 ollama serve。"),
+    "LLMAuthError":           ("LLM_AUTH_FAILED",      "API Key 無效或已過期，請檢查設定檔中的 api_key。"),
+    "LLMError":               ("LLM_ERROR",            "LLM 服務發生錯誤，請稍後再試。"),
+    "FileNotFoundError":      ("CONFIG_NOT_FOUND",     "找不到設定檔。請在專案目錄建立 config.yaml。"),
+}
 
-    僅保留安全的錯誤類型描述，不回傳原始例外字串。
-    """
-    exc_type = type(exc).__name__
-    # 允許向用戶顯示的安全錯誤類型
-    _SAFE_ERROR_TYPES = {
-        "ValueError": "輸入資料不符合預期格式，請檢查請求參數。",
-        "ValidationError": "請求資料驗證失敗，請檢查欄位格式。",
-        "TypeError": "請求參數類型錯誤，請檢查資料格式。",
-        "KeyError": "請求資料缺少必要欄位。",
-        "TimeoutError": "操作逾時，請稍後再試。",
-        "LLMTimeoutError": "LLM 生成逾時，請稍後再試或考慮縮短輸入長度。",
-        "CancelledError": "操作已取消或逾時，請稍後再試。",
-        "ConnectionError": "無法連線至 LLM 服務。若使用 Ollama，請確認已執行 ollama serve。",
-        "ConnectionRefusedError": "無法連線至 LLM 服務。若使用 Ollama，請確認已執行 ollama serve。",
-        "LLMConnectionError": "無法連線至 LLM 服務。若使用 Ollama，請確認已執行 ollama serve。",
-        "LLMAuthError": "API Key 無效或已過期，請檢查設定檔中的 api_key。",
-        "LLMError": "LLM 服務發生錯誤，請稍後再試。",
-        "FileNotFoundError": "找不到設定檔。請在專案目錄建立 config.yaml。",
-    }
-    return _SAFE_ERROR_TYPES.get(exc_type, "伺服器內部錯誤，請稍後再試或聯繫管理員。")
+_DEFAULT_ERROR_CODE = "INTERNAL_ERROR"
+_DEFAULT_ERROR_MESSAGE = "伺服器內部錯誤，請稍後再試或聯繫管理員。"
+
+
+def _sanitize_error(exc: Exception) -> str:
+    """清理例外訊息，避免洩漏內部實作細節。僅回傳安全的錯誤描述。"""
+    entry = _ERROR_REGISTRY.get(type(exc).__name__)
+    return entry[1] if entry else _DEFAULT_ERROR_MESSAGE
 
 
 def _get_error_code(exc: Exception) -> str:
     """根據例外類型回傳標準化錯誤代碼。"""
-    _ERROR_CODE_MAP = {
-        "ValueError": "INVALID_INPUT",
-        "ValidationError": "VALIDATION_FAILED",
-        "TypeError": "TYPE_ERROR",
-        "KeyError": "MISSING_FIELD",
-        "TimeoutError": "TIMEOUT",
-        "LLMTimeoutError": "LLM_TIMEOUT",
-        "CancelledError": "CANCELLED",
-        "ConnectionError": "LLM_CONNECTION_FAILED",
-        "ConnectionRefusedError": "LLM_CONNECTION_FAILED",
-        "LLMConnectionError": "LLM_CONNECTION_FAILED",
-        "LLMAuthError": "LLM_AUTH_FAILED",
-        "LLMError": "LLM_ERROR",
-        "FileNotFoundError": "CONFIG_NOT_FOUND",
-    }
-    return _ERROR_CODE_MAP.get(type(exc).__name__, "INTERNAL_ERROR")
+    entry = _ERROR_REGISTRY.get(type(exc).__name__)
+    return entry[0] if entry else _DEFAULT_ERROR_CODE
 
 
 def review_result_to_dict(result: ReviewResult) -> SingleAgentReviewResponse:

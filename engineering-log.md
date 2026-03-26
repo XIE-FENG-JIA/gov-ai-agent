@@ -4,6 +4,17 @@
 
 ## 改善紀錄
 
+### [2026-03-26] Round 28 — 錯誤映射表合併為單一真相來源
+**角度**: 🏗️ 架構（DRY 違反導致的同步遺漏風險）
+**為什麼**: `_sanitize_error()` 和 `_get_error_code()` 各維護一份獨立的映射 dict，共 13 個異常類型 × 2 = 26 個條目需要手動保持同步。Round 26 修的 `LLMTimeoutError` 遺漏正是此架構缺陷的直接後果。未來新增任何異常類型都可能重蹈覆轍。
+**做了什麼**:
+- 新增 `_ERROR_REGISTRY: dict[str, tuple[str, str]]` 作為單一真相來源，每個異常類型一行同時定義 error_code 和 user_message
+- `_sanitize_error()` 和 `_get_error_code()` 簡化為 registry 查詢（各 2 行）
+- 新增異常類型現在只需在 `_ERROR_REGISTRY` 加一行，兩個函式自動同步
+**結果**: PASS — 3006 passed, 84 skipped, 0 failed（零回歸，8 個相關測試全通過）
+**下一步可能**:
+- 進一步改用 isinstance() 匹配，自動覆蓋子類（需 import 異常類別，增加耦合，暫不做）
+
 ### [2026-03-26] Round 27 — LawFetcher JSON 解析容錯補強
 **角度**: 🐛 Bug（ZIP 內單一損壞 JSON 導致全部法規提取失敗）
 **為什麼**: `_extract_laws_from_response()` 中兩處 `json.loads` 缺少 `JSONDecodeError` 防護：(1) ZIP 內迴圈中的 `json.loads(raw)` 失敗會中斷整個迴圈，丟失所有其他正常檔案的資料；(2) fallback 路徑的 `json.loads(data)` 對非 JSON 資料直接崩潰。對比 `realtime_lookup.py:242` 已正確做了 per-file 容錯，law_fetcher 卻遺漏。
