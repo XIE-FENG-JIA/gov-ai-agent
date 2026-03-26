@@ -558,5 +558,27 @@
 - 已無低於 80% 的模組（最低為 config_tools.py 82%）
 **下一步可能**:
 - `cli/config_tools.py`（82%，52 行未覆蓋）
-- `cli/generate.py`（75%，156 行未覆蓋）— 最大絕對缺口
+- ~~`cli/generate.py`（75%，156 行未覆蓋）— 最大絕對缺口~~ ✅ Round 37 已完成
+- MISSION.md 功能缺口：審查意見具體修改建議
+
+### [2026-03-26] Round 37 — generate.py 覆蓋率 75%→87%（+31 個測試案例）
+**角度**: 🧪 測試（CLI 最大絕對缺口消除）
+**為什麼**: `generate.py` 是全 CLI 覆蓋率最低（75%）且未覆蓋行數最多（156 行）的模組。`_retry_with_backoff`（重試邏輯）、`_export_qa_report`（QA 報告匯出）、`_handle_confirm`（互動式確認）、`_load_batch_csv`（CSV 解析）、`_resolve_input`（輸入驗證邊界）等 8 個函式完全無測試保護。
+**做了什麼**: 新增 8 個測試類別共 31 個測試案例：
+- `TestRetryWithBackoff`（4 案例）：首次成功、重試成功、全部失敗、退避上限 10 秒
+- `TestExportQaReport`（3 案例）：JSON 匯出、TXT 匯出、匯出失敗優雅降級
+- `TestResolveInputEdgeCases`（5 案例）：UTF-8 錯誤、OSError、空檔案、--input/--from-file 衝突、互動式空輸入
+- `TestSanitizeErrorGenerate`（3 案例）：Windows/Unix 路徑移除、超長截斷
+- `TestHandleDryRunBranches`（2 案例）：convergence 標籤、skip_review 標籤
+- `TestHandleEstimateBranches`（2 案例）：convergence 9 輪預估、skip_review 無審查
+- `TestHandleConfirm`（4 案例）：y 接受、n 取消、無效→重新提示、r 重新生成
+- `TestInitPipelineEdgeCases`（3 案例）：KB 例外不阻擋、空 KB 警告、openrouter 連線失敗提示
+- `TestBatchProcessing` 擴充（5 案例）：CSV 解析（含 BOM）、CSV 缺欄位、CLI CSV 批次、空 list、缺 input 欄位
+**結果**: PASS
+- generate.py: 75% → **87%**（+12pp，156 → 84 行未覆蓋）
+- 全量：2712 passed, 84 skipped, 0 failed（+31 新測試，零回歸）
+- 全局覆蓋率：91.28% → 91.95%
+**下一步可能**:
+- generate.py 剩餘 84 行：`_read_interactive_input`（TTY 依賴）、`_export_document` 簡體中文偵測、`_run_core_pipeline` save_versions
+- `cli/config_tools.py`（82%，52 行未覆蓋）
 - MISSION.md 功能缺口：審查意見具體修改建議

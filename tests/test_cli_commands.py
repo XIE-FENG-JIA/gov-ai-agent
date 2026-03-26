@@ -10,6 +10,7 @@ from pathlib import Path
 import yaml
 import requests
 from unittest.mock import MagicMock, patch
+from click.exceptions import Exit as click_Exit
 from typer.testing import CliRunner
 
 
@@ -2657,6 +2658,468 @@ class TestBatchProcessing:
         assert len(failed_data) == 1
         assert failed_data[0]["error_type"] == "LLM_CONNECTION"
         assert "suggestion" in failed_data[0]
+
+    def test_batch_csv_valid(self, tmp_path):
+        """測試 _load_batch_csv 正確解析 CSV（含 BOM）"""
+        from src.cli.generate import _load_batch_csv
+
+        csv_file = tmp_path / "batch.csv"
+        csv_file.write_bytes(b"\xef\xbb\xbfinput,output\r\n"
+                             b"\xe6\xb8\xac\xe8\xa9\xa6\xe5\x85\xac\xe6\x96\x87,out.docx\r\n"
+                             b",skip_empty\r\n"
+                             b"\xe7\xac\xac\xe4\xba\x8c\xe7\xad\x86,\r\n")
+        items = _load_batch_csv(str(csv_file))
+        assert len(items) == 2
+        assert items[0]["input"] == "測試公文"
+        assert items[0]["output"] == "out.docx"
+        assert items[1]["input"] == "第二筆"
+        assert items[1]["output"] is None  # 空 output → None
+
+    def test_batch_csv_missing_input_column(self, tmp_path):
+        """CSV 缺少 input 欄位時報錯"""
+        from src.cli.generate import _load_batch_csv
+
+        csv_file = tmp_path / "bad.csv"
+        csv_file.write_text("name,output\nfoo,bar\n", encoding="utf-8")
+        try:
+            _load_batch_csv(str(csv_file))
+            assert False, "should have raised"
+        except (SystemExit, click_Exit):
+            pass  # typer.Exit(1)
+
+    def test_batch_csv_via_cli(self, tmp_path):
+        """CLI --batch 能正確處理 CSV 檔案"""
+        from src.cli.main import app
+
+        csv_file = tmp_path / "batch.csv"
+        csv_file.write_text("input,output\n測試環保局公文需求描述,out.docx\n", encoding="utf-8")
+
+        with patch("src.cli.generate.ConfigManager") as mock_cm, \
+             patch("src.cli.generate.get_llm_factory"), \
+             patch("src.cli.generate.KnowledgeBaseManager"), \
+             patch("src.cli.generate.RequirementAgent") as mock_req, \
+             patch("src.cli.generate.WriterAgent") as mock_writer, \
+             patch("src.cli.generate.TemplateEngine") as mock_template, \
+             patch("src.cli.generate.DocxExporter") as mock_exporter:
+            mock_cm.return_value.config = {
+                "llm": {"provider": "mock"},
+                "knowledge_base": {"path": "./test_kb"}
+            }
+            mock_req.return_value.analyze.return_value = MagicMock(
+                doc_type="函", subject="測試"
+            )
+            mock_writer.return_value.write_draft.return_value = "### 主旨\n測試"
+            mock_template.return_value.parse_draft.return_value = {"subject": "測試"}
+            mock_template.return_value.apply_template.return_value = "格式化後的草稿"
+            mock_exporter.return_value.export.return_value = "output.docx"
+
+            result = runner.invoke(app, [
+                "generate", "--batch", str(csv_file), "--skip-review"
+            ])
+            assert result.exit_code == 0
+            assert "成功：1 筆" in result.stdout
+
+    def test_batch_empty_list_exits(self, tmp_path):
+        """空 JSON list 或空 CSV 應報錯"""
+        from src.cli.main import app
+
+        batch_file = tmp_path / "empty.json"
+        batch_file.write_text("[]", encoding="utf-8")
+        result = runner.invoke(app, ["generate", "--batch", str(batch_file)])
+        assert result.exit_code == 1
+        assert "至少一筆" in result.stdout
+
+    def test_batch_missing_input_field(self, tmp_path):
+        """JSON 項目缺少 input 欄位應報錯"""
+        from src.cli.main import app
+
+        batch_file = tmp_path / "bad_field.json"
+        batch_file.write_text('[{"output": "foo.docx"}]', encoding="utf-8")
+        result = runner.invoke(app, ["generate", "--batch", str(batch_file)])
+        assert result.exit_code == 1
+        assert "input" in result.stdout
+
+
+class TestRetryWithBackoff:
+    """_retry_with_backoff 重試邏輯測試"""
+
+    def test_success_first_try(self):
+        """首次即成功不應重試"""
+        from src.cli.generate import _retry_with_backoff
+
+        fn = MagicMock(return_value="ok")
+        result = _retry_with_backoff(fn, retries=3, step_name="測試步驟")
+        assert result == "ok"
+        assert fn.call_count == 1
+
+    @patch("src.cli.generate.time.sleep")
+    def test_retry_then_success(self, mock_sleep):
+        """失敗後重試成功"""
+        from src.cli.generate import _retry_with_backoff
+
+        fn = MagicMock(side_effect=[ValueError("fail1"), ValueError("fail2"), "ok"])
+        result = _retry_with_backoff(fn, retries=3, step_name="測試步驟")
+        assert result == "ok"
+        assert fn.call_count == 3
+        assert mock_sleep.call_count == 2
+        # 指數退避：2^1=2, 2^2=4
+        mock_sleep.assert_any_call(2)
+        mock_sleep.assert_any_call(4)
+
+    @patch("src.cli.generate.time.sleep")
+    def test_all_retries_exhausted(self, mock_sleep):
+        """全部重試失敗後 raise Exit"""
+        from src.cli.generate import _retry_with_backoff
+
+        fn = MagicMock(side_effect=ConnectionError("refused"))
+        try:
+            _retry_with_backoff(fn, retries=2, step_name="需求分析")
+            assert False, "should have raised"
+        except (SystemExit, click_Exit):
+            pass
+        assert fn.call_count == 2
+        assert mock_sleep.call_count == 1
+
+    @patch("src.cli.generate.time.sleep")
+    def test_backoff_capped_at_10(self, mock_sleep):
+        """指數退避上限為 10 秒"""
+        from src.cli.generate import _retry_with_backoff
+
+        fn = MagicMock(side_effect=[ValueError("e")] * 4 + ["ok"])
+        _retry_with_backoff(fn, retries=5, step_name="步驟")
+        # 2^4=16 → capped to 10
+        mock_sleep.assert_any_call(10)
+
+
+class TestExportQaReport:
+    """_export_qa_report QA 報告匯出測試"""
+
+    def test_export_json(self, tmp_path):
+        """匯出 JSON 格式 QA 報告"""
+        from src.cli.generate import _export_qa_report
+
+        issue = MagicMock(severity="high", message="用語問題")
+        agent_result = MagicMock(
+            agent_name="格式審查",
+            score=0.8,
+            confidence=0.9,
+            issues=[issue],
+        )
+        qa_report = MagicMock(
+            overall_score=0.85,
+            risk_summary="Safe",
+            rounds_used=2,
+            iteration_history=[],
+            agent_results=[agent_result],
+            audit_log="審查完成",
+        )
+
+        report_path = str(tmp_path / "report.json")
+        _export_qa_report(qa_report, report_path)
+
+        data = json.loads(Path(report_path).read_text(encoding="utf-8"))
+        assert data["overall_score"] == 0.85
+        assert data["risk_summary"] == "Safe"
+        assert len(data["agent_results"]) == 1
+        assert data["agent_results"][0]["agent"] == "格式審查"
+        assert data["agent_results"][0]["issues"][0]["severity"] == "high"
+
+    def test_export_txt(self, tmp_path):
+        """匯出 TXT 格式 QA 報告"""
+        from src.cli.generate import _export_qa_report
+
+        qa_report = MagicMock(audit_log="審查日誌內容\n第二行")
+        report_path = str(tmp_path / "report.txt")
+        _export_qa_report(qa_report, report_path)
+
+        content = Path(report_path).read_text(encoding="utf-8")
+        assert "審查日誌內容" in content
+        assert "第二行" in content
+
+    def test_export_failure_graceful(self, tmp_path):
+        """匯出失敗時不 crash，只顯示警告"""
+        from src.cli.generate import _export_qa_report
+
+        qa_report = MagicMock(audit_log="log")
+        # 指向不存在的目錄
+        report_path = str(tmp_path / "nonexistent_dir" / "report.txt")
+        # 不應 raise
+        _export_qa_report(qa_report, report_path)
+
+
+class TestResolveInputEdgeCases:
+    """_resolve_input 邊界測試"""
+
+    def test_from_file_unicode_error(self, tmp_path):
+        """非 UTF-8 檔案應報編碼錯誤"""
+        from src.cli.generate import _resolve_input
+
+        bad_file = tmp_path / "bad_encoding.txt"
+        bad_file.write_bytes(b"\x80\x81\x82\x83" * 100)
+        try:
+            _resolve_input(None, str(bad_file))
+            assert False, "should have raised"
+        except (SystemExit, click_Exit):
+            pass
+
+    def test_from_file_os_error(self, tmp_path):
+        """檔案讀取 OSError 應報錯"""
+        from src.cli.generate import _resolve_input
+
+        with patch("builtins.open", side_effect=OSError("Permission denied")):
+            try:
+                _resolve_input(None, str(tmp_path / "exists.txt"))
+                assert False, "should have raised"
+            except (SystemExit, click_Exit):
+                pass
+
+    def test_from_file_empty_content(self, tmp_path):
+        """空檔案應報錯"""
+        from src.cli.generate import _resolve_input
+
+        empty_file = tmp_path / "empty.txt"
+        empty_file.write_text("", encoding="utf-8")
+        try:
+            _resolve_input(None, str(empty_file))
+            assert False, "should have raised"
+        except (SystemExit, click_Exit):
+            pass
+
+    def test_input_and_from_file_conflict(self, tmp_path):
+        """同時使用 --input 和 --from-file 應報錯"""
+        from src.cli.generate import _resolve_input
+
+        f = tmp_path / "test.txt"
+        f.write_text("內容", encoding="utf-8")
+        try:
+            _resolve_input("some input", str(f))
+            assert False, "should have raised"
+        except (SystemExit, click_Exit):
+            pass
+
+    @patch("src.cli.generate._read_interactive_input", return_value="")
+    def test_interactive_empty_returns_exit(self, mock_input):
+        """互動式輸入為空時退出"""
+        from src.cli.generate import _resolve_input
+
+        try:
+            _resolve_input(None, "")
+            assert False, "should have raised"
+        except (SystemExit, click_Exit):
+            pass
+
+
+class TestSanitizeErrorGenerate:
+    """generate.py 版 _sanitize_error 測試"""
+
+    def test_path_removal_windows(self):
+        """Windows 路徑應被移除"""
+        from src.cli.generate import _sanitize_error
+
+        err = ValueError("Cannot open C:\\Users\\admin\\secret.txt")
+        msg = _sanitize_error(err)
+        assert "C:\\Users" not in msg
+        assert "<path>" in msg
+
+    def test_path_removal_unix(self):
+        """Unix 路徑應被移除"""
+        from src.cli.generate import _sanitize_error
+
+        err = ValueError("Error at /home/user/data/file.txt")
+        msg = _sanitize_error(err)
+        assert "/home/user" not in msg
+        assert "<path>" in msg
+
+    def test_truncation(self):
+        """超長訊息應被截斷"""
+        from src.cli.generate import _sanitize_error
+
+        err = ValueError("x" * 200)
+        msg = _sanitize_error(err, max_len=50)
+        assert len(msg) <= 54  # 50 + "..."
+        assert msg.endswith("...")
+
+
+class TestHandleDryRunBranches:
+    """_handle_dry_run 分支覆蓋"""
+
+    def test_convergence_label(self):
+        """convergence=True 時顯示分層收斂模式"""
+        from src.cli.generate import _handle_dry_run
+
+        with patch("src.cli.generate.console") as mock_console:
+            _handle_dry_run(
+                {"provider": "ollama", "model": "m"}, "./kb", "t" * 10, "out.docx",
+                skip_review=False, convergence=True, max_rounds=3,
+            )
+            output = " ".join(str(c) for c in mock_console.print.call_args_list)
+            assert "分層收斂模式" in output
+
+    def test_skip_review_label(self):
+        """skip_review=True 時顯示跳過"""
+        from src.cli.generate import _handle_dry_run
+
+        with patch("src.cli.generate.console") as mock_console:
+            _handle_dry_run(
+                {"provider": "ollama", "model": "m"}, "./kb", "t" * 10, "out.docx",
+                skip_review=True, convergence=False, max_rounds=3,
+            )
+            output = " ".join(str(c) for c in mock_console.print.call_args_list)
+            assert "跳過" in output
+
+
+class TestHandleEstimateBranches:
+    """_handle_estimate 分支覆蓋"""
+
+    def test_convergence_estimation(self):
+        """convergence 模式預估 9 輪"""
+        from src.cli.generate import _handle_estimate
+
+        with patch("src.cli.generate.console") as mock_console:
+            _handle_estimate("t" * 100, skip_review=False, convergence=True, max_rounds=3)
+            output = " ".join(str(c) for c in mock_console.print.call_args_list)
+            assert "分層收斂模式" in output
+
+    def test_skip_review_no_review_tokens(self):
+        """skip_review 時不計算審查 tokens"""
+        from src.cli.generate import _handle_estimate
+
+        with patch("src.cli.generate.console") as mock_console:
+            _handle_estimate("t" * 50, skip_review=True, convergence=False, max_rounds=3)
+            output = " ".join(str(c) for c in mock_console.print.call_args_list)
+            assert "審查預估" not in output
+
+
+class TestHandleConfirm:
+    """_handle_confirm 互動式確認測試"""
+
+    @patch("builtins.input", return_value="y")
+    def test_accept(self, mock_input):
+        """輸入 y 接受草稿"""
+        from src.cli.generate import _handle_confirm
+
+        result = _handle_confirm(
+            "草稿內容", do_write_fn=None, retries=2,
+            template_engine=None, requirement=None,
+            skip_review=True, llm=None, kb=None,
+            max_rounds=3, convergence=False, skip_info=False, show_rounds=False,
+        )
+        assert result[0] == "草稿內容"
+
+    @patch("builtins.input", return_value="n")
+    def test_cancel(self, mock_input):
+        """輸入 n 取消"""
+        from src.cli.generate import _handle_confirm
+
+        try:
+            _handle_confirm(
+                "草稿內容", do_write_fn=None, retries=2,
+                template_engine=None, requirement=None,
+                skip_review=True, llm=None, kb=None,
+                max_rounds=3, convergence=False, skip_info=False, show_rounds=False,
+            )
+            assert False, "should have raised"
+        except (SystemExit, click_Exit):
+            pass
+
+    @patch("builtins.input", side_effect=["invalid", "y"])
+    def test_invalid_then_accept(self, mock_input):
+        """無效輸入後重新提示，再輸入 y 接受"""
+        from src.cli.generate import _handle_confirm
+
+        result = _handle_confirm(
+            "草稿內容", do_write_fn=None, retries=2,
+            template_engine=None, requirement=None,
+            skip_review=True, llm=None, kb=None,
+            max_rounds=3, convergence=False, skip_info=False, show_rounds=False,
+        )
+        assert result[0] == "草稿內容"
+        assert mock_input.call_count == 2
+
+    @patch("src.cli.generate.time.sleep")
+    @patch("builtins.input", side_effect=["r", "y"])
+    def test_retry_regenerates(self, mock_input, mock_sleep):
+        """輸入 r 重新生成草稿"""
+        from src.cli.generate import _handle_confirm
+
+        mock_write_fn = MagicMock(return_value="新的草稿原文")
+        mock_te = MagicMock()
+        mock_te.parse_draft.return_value = {"subject": "新"}
+        mock_te.apply_template.return_value = "新的格式化草稿"
+        mock_req = MagicMock(doc_type="函")
+
+        result = _handle_confirm(
+            "舊草稿", do_write_fn=mock_write_fn, retries=2,
+            template_engine=mock_te, requirement=mock_req,
+            skip_review=True, llm=None, kb=None,
+            max_rounds=3, convergence=False, skip_info=False, show_rounds=False,
+        )
+        assert result[0] == "新的格式化草稿"
+        mock_write_fn.assert_called_once()
+
+
+class TestInitPipelineEdgeCases:
+    """_init_pipeline 邊界分支測試"""
+
+    @patch("src.cli.generate.KnowledgeBaseManager")
+    @patch("src.cli.generate.get_llm_factory")
+    @patch("src.cli.generate.ConfigManager")
+    def test_kb_stats_exception(self, mock_cm, mock_factory, mock_kb):
+        """KB get_stats 例外時不阻擋執行"""
+        from src.cli.generate import _init_pipeline
+
+        mock_cm.return_value.config = {
+            "llm": {"provider": "mock"},
+            "knowledge_base": {"path": "./test_kb"}
+        }
+        mock_kb_instance = mock_kb.return_value
+        mock_kb_instance.get_stats.side_effect = RuntimeError("chromadb error")
+        mock_factory.return_value = MagicMock()  # 非 LiteLLMProvider
+
+        config, llm, kb, text = _init_pipeline("測試輸入", auto_sender=False)
+        assert config is not None
+
+    @patch("src.cli.generate.KnowledgeBaseManager")
+    @patch("src.cli.generate.get_llm_factory")
+    @patch("src.cli.generate.ConfigManager")
+    def test_kb_empty_examples_warning(self, mock_cm, mock_factory, mock_kb):
+        """KB 空知識庫時顯示提示但不阻擋"""
+        from src.cli.generate import _init_pipeline
+
+        mock_cm.return_value.config = {
+            "llm": {"provider": "mock"},
+            "knowledge_base": {"path": "./test_kb"}
+        }
+        mock_kb.return_value.get_stats.return_value = {"examples_count": 0}
+        mock_factory.return_value = MagicMock()
+
+        with patch("src.cli.generate.console") as mock_console:
+            _init_pipeline("測試輸入", auto_sender=False)
+            output = " ".join(str(c) for c in mock_console.print.call_args_list)
+            assert "尚未初始化" in output
+
+    @patch("src.cli.generate.KnowledgeBaseManager")
+    @patch("src.cli.generate.get_llm_factory")
+    @patch("src.cli.generate.ConfigManager")
+    def test_llm_connectivity_openrouter_hint(self, mock_cm, mock_factory, mock_kb):
+        """openrouter 連線失敗時顯示 API Key 提示"""
+        from src.cli.generate import _init_pipeline
+        from src.core.llm import LiteLLMProvider
+
+        mock_cm.return_value.config = {
+            "llm": {"provider": "openrouter", "model": "gpt-4"},
+            "knowledge_base": {"path": "./test_kb"}
+        }
+        mock_kb.return_value.get_stats.return_value = {"examples_count": 5}
+        mock_llm = MagicMock(spec=LiteLLMProvider)
+        mock_llm.check_connectivity.return_value = (False, "API key invalid")
+        mock_factory.return_value = mock_llm
+
+        try:
+            _init_pipeline("測試輸入", auto_sender=False)
+            assert False, "should have raised"
+        except (SystemExit, click_Exit):
+            pass
 
 
 # ==================== Web UI ====================
