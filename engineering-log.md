@@ -4,6 +4,18 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 39 — LawVerifier 下載失敗空快取 fallback
+**角度**: ⚡ 效能（法規 API 不可用時每次請求阻塞 2+ 分鐘）
+**為什麼**: `LawVerifier._ensure_cache()` 沒有 try-except，法規 API 不可用時每次 `verify_citations()` 都重新嘗試下載（含 3 次重試 + 指數退避），每次阻塞 2+ 分鐘。對比 `RecentPolicyFetcher` 已正確實作空快取 fallback。FactChecker 的外層 try-except 雖能防止崩潰，但無法避免阻塞延遲。
+**做了什麼**:
+- `_ensure_cache()` 加入 try-except，下載失敗時設定空快取
+- 新增 `_FAILED_CACHE_TTL = 300`（5 分鐘冷卻期後才重試下載）
+- 更新既有測試對齊新行為 + 新增 3 個測試
+**結果**: PASS — test_realtime_lookup 48 passed（+3 新測試，零回歸）
+**下一步可能**:
+- `batch_tools.py:189` 的報告匯出可改為原子寫入
+- `web_preview/app.py:113` 的 doc_type 使用者輸入可加 escape_prompt_tag
+
 ### [2026-03-27] Round 38 — glossary_cmd JSON 解析容錯與原子寫入
 **角度**: 🐛 Bug（語彙檔案損壞導致 CLI crash + 非原子寫入損毀風險）
 **為什麼**: `glossary add/remove` 的 `json.loads()` 無 try-except，語彙檔案損壞時 CLI 顯示 traceback 而非友善訊息。`write_text()` 非原子操作，中途崩潰（OOM/斷電/Ctrl+C）會永久損毀語彙檔案。`entry["term"]` 不用 `.get()` 在格式異常時 KeyError。

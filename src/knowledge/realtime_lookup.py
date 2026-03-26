@@ -116,6 +116,7 @@ class LawVerifier:
     """即時法規引用驗證器 — 下載全國法規資料庫並快取。"""
 
     _CACHE_TTL = 86400  # 24 小時
+    _FAILED_CACHE_TTL = 300  # 下載失敗後 5 分鐘內不重試
     _cache: _LawCacheEntry | None = None  # 類別級快取，跨實例共享
     _cache_lock = threading.Lock()  # 防止多執行緒同時下載
 
@@ -194,30 +195,37 @@ class LawVerifier:
                 return
 
             logger.info("正在下載全國法規資料庫（首次載入約需 3 秒）...")
-            resp = _request_with_retry(LAW_API_URL, timeout=120)
+            try:
+                resp = _request_with_retry(LAW_API_URL, timeout=120)
 
-            laws = self._parse_laws(resp.content)
-            cache_data: dict[str, dict] = {}
+                laws = self._parse_laws(resp.content)
+                cache_data: dict[str, dict] = {}
 
-            for law in laws:
-                law_name = law.get("LawName", "")
-                pcode = law.get("PCode", "")
-                if not law_name or not pcode:
-                    continue
+                for law in laws:
+                    law_name = law.get("LawName", "")
+                    pcode = law.get("PCode", "")
+                    if not law_name or not pcode:
+                        continue
 
-                articles: dict[str, str] = {}
-                for art in law.get("LawArticles", []):
-                    art_no = art.get("ArticleNo", art.get("Number", ""))
-                    content = art.get("ArticleContent", art.get("Content", ""))
-                    if art_no and content:
-                        # 正規化條文號：「第 32 條」→ "32"
-                        normalized = re.sub(r'[第條\s]', '', art_no)
-                        articles[normalized] = content
+                    articles: dict[str, str] = {}
+                    for art in law.get("LawArticles", []):
+                        art_no = art.get("ArticleNo", art.get("Number", ""))
+                        content = art.get("ArticleContent", art.get("Content", ""))
+                        if art_no and content:
+                            # 正規化條文號：「第 32 條」→ "32"
+                            normalized = re.sub(r'[第條\s]', '', art_no)
+                            articles[normalized] = content
 
-                cache_data[law_name] = {"pcode": pcode, "articles": articles}
+                    cache_data[law_name] = {"pcode": pcode, "articles": articles}
 
-            LawVerifier._cache = _LawCacheEntry(data=cache_data)
-            logger.info("法規快取載入完成：%d 部法規", len(cache_data))
+                LawVerifier._cache = _LawCacheEntry(data=cache_data)
+                logger.info("法規快取載入完成：%d 部法規", len(cache_data))
+            except Exception as exc:
+                logger.warning("法規資料下載失敗，設定空快取避免重複重試：%s", exc)
+                # 設定空快取並使用較短 TTL，避免每次請求都阻塞在重試上
+                empty_cache = _LawCacheEntry(data={})
+                empty_cache.timestamp = time.time() - self._CACHE_TTL + self._FAILED_CACHE_TTL
+                LawVerifier._cache = empty_cache
 
     @staticmethod
     def _parse_laws(data: bytes) -> list[dict]:

@@ -236,13 +236,15 @@ class TestLawVerifier:
 
     @patch("src.knowledge.realtime_lookup._request_with_retry")
     def test_network_failure_graceful(self, mock_req):
-        """網路失敗時拋出例外（由呼叫端捕獲）。"""
+        """網路失敗時設定空快取並回傳查無結果（不拋出例外）。"""
         import requests
         mock_req.side_effect = requests.ConnectionError("No network")
 
         v = LawVerifier()
-        with pytest.raises(requests.ConnectionError):
-            v.verify_citations("依據行政程序法辦理。")
+        results = v.verify_citations("依據行政程序法辦理。")
+        # 應正常回傳（不崩潰），所有引用標為查無
+        assert len(results) >= 1
+        assert results[0].law_exists is False
 
     @patch("src.knowledge.realtime_lookup._request_with_retry")
     def test_verify_law_without_article(self, mock_req):
@@ -700,3 +702,46 @@ class TestFuzzyMatchShortString:
         best, ratio = LawVerifier._fuzzy_match("民法", candidates)
         assert best == "民法"
         assert ratio >= 0.8  # 完全匹配，len(2) >= 2，包含關係正常
+
+
+class TestLawVerifierDownloadFailure:
+    """LawVerifier 法規 API 下載失敗時的容錯測試。"""
+
+    def setup_method(self):
+        """每個測試前清除快取。"""
+        LawVerifier._cache = None
+
+    def teardown_method(self):
+        LawVerifier._cache = None
+
+    @patch("src.knowledge.realtime_lookup._request_with_retry")
+    def test_download_failure_sets_empty_cache(self, mock_req):
+        """下載失敗應設定空快取，不應拋出例外"""
+        mock_req.side_effect = ConnectionError("Network unreachable")
+        verifier = LawVerifier()
+        # _ensure_cache 不應拋出例外
+        verifier._ensure_cache()
+        # 快取應已設定（空的）
+        assert LawVerifier._cache is not None
+        assert len(LawVerifier._cache.data) == 0
+
+    @patch("src.knowledge.realtime_lookup._request_with_retry")
+    def test_download_failure_no_repeated_retries(self, mock_req):
+        """下載失敗後短期內不應重複嘗試"""
+        mock_req.side_effect = ConnectionError("timeout")
+        verifier = LawVerifier()
+        verifier._ensure_cache()
+        assert mock_req.call_count == 1
+        # 第二次呼叫應使用空快取，不重試
+        verifier._ensure_cache()
+        assert mock_req.call_count == 1  # 沒有第二次下載
+
+    @patch("src.knowledge.realtime_lookup._request_with_retry")
+    def test_verify_citations_with_failed_cache_returns_not_found(self, mock_req):
+        """下載失敗後 verify_citations 應正常回傳（所有引用標為查無）"""
+        mock_req.side_effect = ConnectionError("API down")
+        verifier = LawVerifier()
+        results = verifier.verify_citations("依據民法第 1 條規定辦理。")
+        assert len(results) >= 1
+        assert results[0].law_exists is False
+        assert results[0].confidence == 0.0
