@@ -553,7 +553,7 @@ class TestMemoryAndResource:
             nonlocal write_count
             try:
                 agency = f"機關_{idx % 5}"
-                memory.update_preference(agency, f"key_{idx}", f"value_{idx}")
+                memory.update_preference(agency, "formal_level", f"level_{idx}")
                 with lock:
                     write_count += 1
             except Exception as e:

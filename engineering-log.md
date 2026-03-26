@@ -4,6 +4,20 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 34 — OrganizationalMemory stored prompt injection 防護強化
+**角度**: 🔒 安全（stored prompt injection — 使用者偏好注入 LLM prompt）
+**為什麼**: `get_writing_hints()` 產生的文字直接拼入 LLM prompt，但 `preferred_terms` 只移除 `'` 和 `\n`（漏了控制字元、反斜線、花括號等），`signature_format` 完全沒消毒。`update_preference()` 也沒有 key 白名單，可寫入任意欄位。
+**做了什麼**:
+- 新增 `_sanitize_user_text()` 統一消毒函式（regex 移除 `\x00-\x1f`、`\x7f`、`\` `'` `"` `{}` `[]`，截斷長度）
+- `preferred_terms` 和 `signature_format` 全部走消毒
+- `update_preference()` 加入 `_ALLOWED_PREFERENCE_KEYS` 白名單
+- 消毒後為空的詞彙自動跳過
+- 新增 `TestOrgMemorySecurityHardening`（4 個測試）
+**結果**: PASS — 3030 passed, 84 skipped, 0 failed（+4 新測試，零回歸）
+**下一步可能**:
+- writer.py:432 的 LLM 錯誤偵測 regex 可能誤判合法草稿
+- requirement.py 的 JSON 解析 fallback 鏈可加強
+
 ### [2026-03-27] Round 33 — API key 前綴不再洩漏至 log 檔案
 **角度**: 🔒 安全（資訊洩漏 — API key 部分內容持久化於 log）
 **為什麼**: `ensure_api_key()` 的 `logger.warning()` 包含 `generated_key[:8]`，這些 log 可能被 ELK/Loki/CloudWatch 等日誌系統長期保存。攻擊者取得 log 存取權後，已知前 8 字元可大幅縮小暴力破解範圍（從 43 字元 base64url 減少到 35 字元）。

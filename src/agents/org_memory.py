@@ -16,6 +16,22 @@ from rich.console import Console
 logger = logging.getLogger(__name__)
 console = Console()
 
+_ALLOWED_PREFERENCE_KEYS = frozenset({
+    "formal_level", "preferred_terms", "signature_format",
+    "usage_count", "last_updated", "last_edit",
+})
+
+# 移除控制字元、引號、反斜線，截斷長度，防止 stored prompt injection
+_UNSAFE_CHARS_RE = re.compile(r"[\x00-\x1f\x7f\\'\"{}\[\]]")
+
+
+def _sanitize_user_text(text: str, max_len: int = 30) -> str:
+    """消毒使用者提供的文字，移除可用於 prompt injection 的字元與片段。"""
+    text = str(text)[:max_len]
+    text = _UNSAFE_CHARS_RE.sub("", text)
+    return text.strip()
+
+
 class OrganizationalMemory:
     """
     儲存與讀取機關的使用偏好，包括：
@@ -85,7 +101,13 @@ class OrganizationalMemory:
         })
 
     def update_preference(self, agency_name: str, key: str, value: Any) -> None:
-        """更新特定偏好項目（執行緒安全）。"""
+        """更新特定偏好項目（執行緒安全）。
+
+        key 必須在 _ALLOWED_PREFERENCE_KEYS 白名單內，防止寫入任意欄位。
+        """
+        if key not in _ALLOWED_PREFERENCE_KEYS:
+            logger.warning("拒絕更新不允許的偏好 key: %s", key)
+            return
         with self._lock:
             if agency_name not in self.preferences:
                 self.preferences[agency_name] = self.get_agency_profile(agency_name)
@@ -150,17 +172,21 @@ class OrganizationalMemory:
             hints.append("使用簡潔明確的用語，避免冗詞贅字")
 
         if profile.get("preferred_terms"):
-            # 限制數量並截斷長度，防止 stored prompt injection
+            # 限制數量並消毒，防止 stored prompt injection
             safe_terms = []
             for k, v in list(profile["preferred_terms"].items())[:20]:
-                sk = str(k)[:30].replace("'", "").replace("\n", "")
-                sv = str(v)[:30].replace("'", "").replace("\n", "")
-                safe_terms.append(f"'{sk}' → '{sv}'")
-            terms_str = ", ".join(safe_terms)
-            hints.append(f"偏好詞彙：{terms_str}")
+                sk = _sanitize_user_text(k)
+                sv = _sanitize_user_text(v)
+                if sk and sv:
+                    safe_terms.append(f"{sk} → {sv}")
+            if safe_terms:
+                terms_str = ", ".join(safe_terms)
+                hints.append(f"偏好詞彙：{terms_str}")
 
         if profile.get("signature_format") and profile["signature_format"] != "default":
-            hints.append(f"署名格式：{profile['signature_format']}")
+            safe_sig = _sanitize_user_text(profile["signature_format"], max_len=50)
+            if safe_sig:
+                hints.append(f"署名格式：{safe_sig}")
 
         if hints:
             return "\n".join([f"  - {h}" for h in hints])
