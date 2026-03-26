@@ -884,6 +884,31 @@
 - 新增 `TestRequestBodySizeLimit` 3 個測試：oversized 413、正常通過、GET 不受影響
 **結果**: PASS — 2818 passed, 84 skipped, 0 failed（+3 新測試，零回歸）
 **下一步可能**:
-- chunked transfer encoding（無 Content-Length）的防護需在 ASGI 層處理
+- ~~chunked transfer encoding（無 Content-Length）的防護需在 ASGI 層處理~~ ✅ Round 54 已修復
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
 - 專案品質穩定，可開始規劃下一個里程碑
+
+### [2026-03-26] Round 54 — ASGI 層串流請求體大小限制（chunked 繞過防護）
+**角度**: 🔒 安全（DoS 防護閉環）
+**為什麼**: Round 53 的 Content-Length 檢查僅在標頭存在時生效。攻擊者可發送 chunked transfer encoding（無 Content-Length 標頭）繞過檢查，推送無限大 payload 造成記憶體耗盡型 DoS。這是 Round 53 遺留的安全缺口。
+**做了什麼**:
+- `src/api/middleware.py`: 新增 `RequestBodyLimitMiddleware` ASGI 中介層，在 ASGI 層包裝 `receive` 函式串流計數實際接收位元組，超限時截斷 body 並回傳 413
+- 設計為與 Content-Length 預檢互補：有 Content-Length 且未超限時跳過串流檢查（零額外開銷）；無 Content-Length 時啟動串流計數
+- `api_server.py`: 註冊為 ASGI middleware（洋蔥模型最外層，先於 HTTP middleware 執行）
+- 新增 2 個測試：chunked 超大 body 被攔截回傳 413、正常 body 不受影響
+**結果**: PASS — 235/235 API 測試通過（含 5 個 body size 相關測試），零回歸
+**下一步可能**:
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+- ~~pre-existing 的 `workflow.py`/`generate.py` EditorInChief context manager 改動尚未提交~~ ✅ Round 55 已修復
+- 專案品質穩定，可開始規劃下一個里程碑
+
+### [2026-03-26] Round 55 — EditorInChief ThreadPoolExecutor 資源洩漏修復
+**角度**: 🐛 Bug（資源洩漏）
+**為什麼**: Round 51 為 `EditorInChief` 加入共用 `ThreadPoolExecutor` 實例屬性（含 `close()` / `__enter__` / `__exit__`），但 4 處生產程式碼（`workflow.py` 1 處 + `generate.py` 3 處）建立 editor 後未呼叫 `close()`，僅依賴不可靠的 `__del__` GC 回收。高併發批次場景下（例如 10 筆 × 3 並行），可同時存在數十個未關閉的 `ThreadPoolExecutor`，造成 OS 執行緒洩漏。
+**做了什麼**:
+- `src/api/routes/workflow.py`: `_execute_document_workflow()` 改為 `with EditorInChief(llm, kb) as editor:`
+- `src/cli/generate.py`: `_run_batch()`、`_run_core_pipeline()`、`_handle_confirm()` 三處同樣改為 context manager
+**結果**: PASS — 2663 passed, 82 skipped, 3 failed（既有 CLI Rich 問題），零回歸
+**下一步可能**:
+- 測試程式碼中 ~80 處 `EditorInChief()` 也未用 context manager，但測試短命不影響正確性
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
