@@ -846,3 +846,17 @@
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
 - `test_api_server.py` 的 `reset_api_globals` fixture 設定 `api_server._org_memory = None` 但 `api_server` 未 re-export 此變數，fixture 實際無效（低優先，不影響正確性）
 - 專案品質穩定，可開始規劃下一個里程碑
+
+### [2026-03-26] Round 51 — EditorInChief 共用 ThreadPoolExecutor
+**角度**: ⚡ 效能（執行緒池重複建/銷毀）
+**為什麼**: `EditorInChief._execute_review()` 和 `_execute_targeted_review()` 每次呼叫都用 `with ThreadPoolExecutor() as executor:` 建立新池並在離開時 shutdown。convergence 模式最多 15 輪（每輪 2 次 = 30 次），每次建池含 OS thread 創建與銷毀開銷，在高併發下不必要地浪費資源。
+**做了什麼**:
+- `__init__` 新增 `self._executor = ThreadPoolExecutor(max_workers=EDITOR_MAX_WORKERS)` 實例屬性
+- `_execute_review()` 和 `_execute_targeted_review()` 改用 `self._executor.submit()` 取代局部池
+- 新增 `close()` / `__enter__` / `__exit__` / `__del__` 生命週期管理
+- 移除兩處 `with ThreadPoolExecutor(...)` 區塊，縮減 ~20 行冗餘縮排
+**結果**: PASS — 2702 passed, 75 skipped, 0 failed（零回歸）
+**下一步可能**:
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+- `test_api_server.py` 的 `reset_api_globals` fixture 設定值未經 proxy 傳遞（低優先）
+- 專案品質穩定，可開始規劃下一個里程碑
