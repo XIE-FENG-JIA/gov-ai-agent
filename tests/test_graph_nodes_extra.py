@@ -68,6 +68,50 @@ class TestFetchOrgMemory:
         assert result["org_hints"] == ""
 
 
+class TestGetOrgMemorySentinel:
+    """get_org_memory() sentinel 行為：停用時只取鎖一次。"""
+
+    def test_disabled_returns_none_without_repeated_locking(self):
+        """org_memory 停用時，第二次呼叫不應再取鎖讀 config。"""
+        import src.api.dependencies as deps
+        original = deps._org_memory
+        try:
+            deps._org_memory = deps._UNINITIALIZED
+            config = {"organizational_memory": {"enabled": False}}
+            with patch.object(deps, "get_config", return_value=config) as mock_gc:
+                # 第一次呼叫：應取鎖讀 config，回傳 None
+                result1 = deps.get_org_memory()
+                assert result1 is None
+                assert mock_gc.call_count == 1
+                # 第二次呼叫：sentinel 已被替換為 None，不應再取鎖
+                result2 = deps.get_org_memory()
+                assert result2 is None
+                assert mock_gc.call_count == 1  # 不應增加
+        finally:
+            deps._org_memory = original
+
+    def test_enabled_returns_instance(self):
+        """org_memory 啟用時，應回傳 OrganizationalMemory 實例。"""
+        import src.api.dependencies as deps
+        original = deps._org_memory
+        try:
+            deps._org_memory = deps._UNINITIALIZED
+            config = {
+                "organizational_memory": {
+                    "enabled": True,
+                    "storage_path": "./kb_data/test_prefs.json",
+                }
+            }
+            with patch.object(deps, "get_config", return_value=config), \
+                 patch("src.api.dependencies.OrganizationalMemory") as MockOM:
+                MockOM.return_value = MagicMock()
+                result = deps.get_org_memory()
+                assert result is not None
+                MockOM.assert_called_once_with(storage_path="./kb_data/test_prefs.json")
+        finally:
+            deps._org_memory = original
+
+
 class TestAggregateReviews:
     """aggregate_reviews node 測試——驗證委派 scoring.py 共用函式。"""
 

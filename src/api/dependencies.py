@@ -23,7 +23,8 @@ logger = logging.getLogger(__name__)
 _config: dict[str, Any] | None = None
 _llm: Any | None = None
 _kb: KnowledgeBaseManager | None = None
-_org_memory: OrganizationalMemory | None = None
+_UNINITIALIZED = object()  # sentinel：區分「尚未初始化」和「初始化為 None（停用）」
+_org_memory: OrganizationalMemory | None | object = _UNINITIALIZED
 _init_lock = threading.RLock()  # 可重入鎖：get_llm → get_config 巢狀取鎖
 executor = ThreadPoolExecutor(max_workers=API_MAX_WORKERS)
 
@@ -72,12 +73,16 @@ def get_kb() -> KnowledgeBaseManager:
 
 
 def get_org_memory() -> OrganizationalMemory | None:
-    """取得機構記憶實例，延遲初始化（執行緒安全）。若停用則回傳 None。"""
+    """取得機構記憶實例，延遲初始化（執行緒安全）。若停用則回傳 None。
+
+    使用 _UNINITIALIZED sentinel 區分「尚未初始化」和「初始化後確認停用（None）」，
+    避免停用時每次呼叫都重新取鎖讀 config（鎖競爭 O(n) 降為 O(1)）。
+    """
     global _org_memory
-    if _org_memory is not None:
-        return _org_memory
+    if _org_memory is not _UNINITIALIZED:
+        return _org_memory  # type: ignore[return-value]
     with _init_lock:
-        if _org_memory is None:
+        if _org_memory is _UNINITIALIZED:
             config = get_config()
             om_config = config.get("organizational_memory", {})
             if om_config.get("enabled", False):
@@ -85,7 +90,9 @@ def get_org_memory() -> OrganizationalMemory | None:
                     "storage_path", "./kb_data/agency_preferences.json"
                 )
                 _org_memory = OrganizationalMemory(storage_path=storage_path)
-    return _org_memory
+            else:
+                _org_memory = None
+    return _org_memory  # type: ignore[return-value]
 
 
 def get_raw_kb() -> KnowledgeBaseManager | None:

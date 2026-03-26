@@ -832,3 +832,17 @@
 **下一步可能**:
 - MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
 - 專案經過 49 輪打磨，品質穩定，可開始規劃下一個里程碑
+
+### [2026-03-26] Round 50 — get_org_memory() sentinel 消除鎖競爭
+**角度**: ⚡ 效能（不必要的鎖競爭）
+**為什麼**: `get_org_memory()` 的雙重檢查鎖模式用 `None` 同時表示「尚未初始化」和「初始化後確認停用」。org memory 預設停用，導致每次 API 請求（meeting/batch）都重新取 `_init_lock` RLock → 讀 config → 發現停用 → 放鎖。此鎖與 `get_config()`/`get_llm()`/`get_kb()` 共用，在啟動階段和高併發時會造成序列化瓶頸。
+**做了什麼**:
+- 引入 `_UNINITIALIZED = object()` sentinel，區分「未初始化」和「停用（None）」
+- 停用時明確 `_org_memory = None`，後續呼叫 `is not _UNINITIALIZED` 直接短路回傳
+- 鎖取得次數從 O(n requests) 降至 O(1)
+- 新增 `TestGetOrgMemorySentinel` 2 個測試：停用不重複取鎖、啟用正常回傳
+**結果**: PASS — 2700 passed, 75 skipped, 0 failed（+2 新測試，零回歸）
+**下一步可能**:
+- MISSION.md 功能缺口：公文範本庫擴充、批次處理效能優化、法規自動更新
+- `test_api_server.py` 的 `reset_api_globals` fixture 設定 `api_server._org_memory = None` 但 `api_server` 未 re-export 此變數，fixture 實際無效（低優先，不影響正確性）
+- 專案品質穩定，可開始規劃下一個里程碑
