@@ -1707,15 +1707,17 @@ class TestKBMetadataConversion:
                 "knowledge_base": {"path": str(tmp_path / "kb")}
             }
             mock_kb_instance = mock_kb_class.return_value
-            mock_kb_instance.add_document.return_value = "doc_id"
+            mock_kb_instance.upsert_document.return_value = "doc_id"
+            mock_kb_instance.make_deterministic_id.return_value = "test-det-id"
+            mock_kb_instance.contextual_retrieval = False
 
             result = runner.invoke(kb_app, [
                 "ingest", "--source-dir", str(tmp_path), "--collection", "examples"
             ])
             assert result.exit_code == 0
-            # 確認 add_document 被呼叫，且 nested dict 被轉為 str
-            call_args = mock_kb_instance.add_document.call_args
-            metadata = call_args[0][1]  # 第二個位置引數
+            # 確認 upsert_document 被呼叫（Round 78 改為冪等 upsert），且 nested dict 被轉為 str
+            call_args = mock_kb_instance.upsert_document.call_args
+            metadata = call_args[0][2]  # 第三個位置引數：upsert_document(det_id, content, metadata, ...)
             assert isinstance(metadata["nested"], str)
             assert "key" in metadata["nested"]
 
