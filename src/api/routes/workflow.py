@@ -431,6 +431,11 @@ async def download_file(filename: str):
         logger.warning("路徑遍歷攻擊嘗試: filename=%s, resolved=%s", filename, file_path)
         return JSONResponse(status_code=400, content={"detail": "無效的檔案名稱"})
 
+    # 第三層防護：拒絕 symlink（防止繞過路徑驗證讀取任意檔案）
+    if (output_dir / filename).is_symlink():
+        logger.warning("Symlink 攻擊嘗試: filename=%s", filename)
+        return JSONResponse(status_code=400, content={"detail": "無效的檔案名稱"})
+
     if not file_path.is_file():
         return JSONResponse(status_code=404, content={"detail": "檔案不存在"})
 
