@@ -36,7 +36,7 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.core.config import ConfigManager, LLMProvider
-from conftest import make_api_config
+from conftest import make_api_config, make_mock_llm, make_mock_kb
 from src.core.models import PublicDocRequirement
 from src.core.review_models import ReviewIssue, ReviewResult, QAReport
 from src.core.llm import MockLLMProvider, LiteLLMProvider, get_llm_factory
@@ -62,30 +62,17 @@ from src.knowledge.manager import KnowledgeBaseManager
 @pytest.fixture
 def mock_llm():
     """建立模擬 LLM 提供者"""
-    llm = MagicMock(spec=LLMProvider)
-    llm.generate.return_value = "Mock Response"
-    llm.embed.return_value = [0.1] * 384
-    return llm
+    return make_mock_llm()
 
 
 @pytest.fixture
 def mock_kb(mock_llm):
-    """建立模擬知識庫管理器"""
-    kb = MagicMock(spec=KnowledgeBaseManager)
-    kb.search_examples.return_value = []
-    kb.search_regulations.return_value = []
-    kb.search_policies.return_value = []
-    # 預設返回帶 distance 的結果（避免觸發 Agentic RAG 精煉迴圈）
-    # 需要測試空 KB 行為的測試應自行覆蓋為 []
-    kb.search_hybrid.return_value = [
-        {"content": "範例公文內容", "metadata": {"title": "範例"}, "distance": 0.3}
-    ]
-    kb.get_stats.return_value = {
-        "examples_count": 0,
-        "regulations_count": 0,
-        "policies_count": 0,
-    }
-    return kb
+    """建立模擬知識庫管理器（帶 distance 避免觸發 Agentic RAG 精煉迴圈）"""
+    return make_mock_kb(
+        search_hybrid_return=[
+            {"content": "範例公文內容", "metadata": {"title": "範例"}, "distance": 0.3}
+        ],
+    )
 
 
 @pytest.fixture

@@ -44,13 +44,52 @@ def make_api_config(**overrides) -> dict:
     return config
 
 
+def make_mock_llm(**overrides) -> MagicMock:
+    """建立 mock LLM 提供者（標準配置，可覆蓋）。
+
+    與 make_api_config() 同手法——單一來源，避免各檔重複定義導致不同步。
+    Round 4/9/10 三次 auth 401 假失敗的教訓同樣適用於 LLM/KB mock。
+
+    範例::
+
+        llm = make_mock_llm()  # 標準配置
+        llm = make_mock_llm(generate_return="自訂回應")
+    """
+    llm = MagicMock(spec=LLMProvider)
+    llm.generate.return_value = overrides.get("generate_return", "Mock Response")
+    llm.embed.return_value = overrides.get("embed_return", [0.1] * 384)
+    return llm
+
+
+def make_mock_kb(**overrides) -> MagicMock:
+    """建立 mock 知識庫管理器（標準配置，可覆蓋）。
+
+    預設所有搜尋方法回傳空 list，search_hybrid 帶 distance
+    避免觸發 Agentic RAG 精煉迴圈。
+
+    範例::
+
+        kb = make_mock_kb()  # 標準配置
+        kb = make_mock_kb(search_hybrid_return=[...])  # 自訂 hybrid 結果
+    """
+    kb = MagicMock()
+    kb.search_examples.return_value = overrides.get("search_examples_return", [])
+    kb.search_regulations.return_value = overrides.get("search_regulations_return", [])
+    kb.search_policies.return_value = overrides.get("search_policies_return", [])
+    kb.search_hybrid.return_value = overrides.get("search_hybrid_return", [])
+    kb.is_available = overrides.get("is_available", True)
+    kb.get_stats.return_value = overrides.get("get_stats_return", {
+        "examples_count": 0,
+        "regulations_count": 0,
+        "policies_count": 0,
+    })
+    return kb
+
+
 @pytest.fixture
 def mock_llm():
     """回傳一個 mock LLM 提供者。"""
-    llm = MagicMock(spec=LLMProvider)
-    llm.generate.return_value = "Mock Response"
-    llm.embed.return_value = [0.1] * 384  # 假的 embedding 向量
-    return llm
+    return make_mock_llm()
 
 
 @pytest.fixture

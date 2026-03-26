@@ -438,5 +438,20 @@
 **結果**: PASS — 2600 passed, 84 skipped, 0 failed。refiner.py 63% → **100%**（+37pp）
 **下一步可能**:
 - `web_preview/app.py`（58%）是剩餘唯一低於 70% 的核心模組
-- LLM mock / KB mock 統一到 conftest
+- ~~LLM mock / KB mock 統一到 conftest~~ ✅ Round 31 已完成
 - `cli/doctor.py`（67%）、`cli/quickstart.py`（67%）可補測試
+
+### [2026-03-26] Round 31 — LLM/KB mock conftest 統一（12 輪技術債清償）
+**角度**: 🏗️ 架構（DRY + 防回歸）
+**為什麼**: LLM/KB mock 散佈在 4 個測試檔各自硬編碼（test_api_server ×3、test_e2e ×2、test_stress ×4、test_citation_quality ×2），連續 12 輪（Round 20-30）列為「下一步可能」未處理。Round 12 的 auth config 統一已證明此手法能防止配置不同步導致假失敗——Round 4/9/10 三次 auth 401 就是前車之鑑。
+**做了什麼**:
+- `tests/conftest.py`: 新增 `make_mock_llm(**overrides)` 和 `make_mock_kb(**overrides)` 工廠函式
+- `tests/test_api_server.py`: 3 處 inline LLM/KB mock → 工廠呼叫（-26 行），移除未使用 `LLMProvider` import
+- `tests/test_e2e.py`: `mock_llm`/`mock_kb` fixture 委派工廠（-14 行）
+- `tests/test_stress.py`: fixture + 3 處 inline → 工廠呼叫（-12 行），移除未使用 `LLMProvider` import
+- `test_citation_quality.py` 保留不動（語義不同，需要特化 mock）
+**結果**: PASS — 2600 passed, 84 skipped, 0 failed（零回歸），淨減 5 行（+47 conftest, -52 四檔）
+**下一步可能**:
+- `web_preview/app.py`（58%）是剩餘唯一低於 70% 的核心模組
+- `cli/doctor.py`（67%）、`cli/quickstart.py`（67%）可補測試
+- 考慮 conftest 加 `mock_kb` 為 session-scope fixture，減少重複建立開銷

@@ -10,9 +10,8 @@ import json
 from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
-from src.core.llm import LLMProvider
 from src.core.review_models import ReviewResult, ReviewIssue
-from conftest import make_api_config
+from conftest import make_api_config, make_mock_llm, make_mock_kb
 
 
 # ==================== Fixtures ====================
@@ -44,17 +43,10 @@ def mock_api_deps():
     mock_config = make_api_config()
     api_server._config = mock_config
 
-    # Mock LLM
-    mock_llm = MagicMock(spec=LLMProvider)
-    mock_llm.generate.return_value = "Mock Response"
-    mock_llm.embed.return_value = [0.1] * 384
+    mock_llm = make_mock_llm()
     api_server._llm = mock_llm
 
-    # Mock KB
-    mock_kb = MagicMock()
-    mock_kb.search_examples.return_value = []
-    mock_kb.search_regulations.return_value = []
-    mock_kb.search_policies.return_value = []
+    mock_kb = make_mock_kb()
     api_server._kb = mock_kb
 
     return {"config": mock_config, "llm": mock_llm, "kb": mock_kb}
@@ -2750,14 +2742,8 @@ class TestAPIKeyAuth:
 
         api_server._config = auth_config
 
-        mock_llm = MagicMock(spec=LLMProvider)
-        mock_llm.generate.return_value = "Mock Response"
-        mock_llm.embed.return_value = [0.1] * 384
-        api_server._llm = mock_llm
-
-        mock_kb = MagicMock()
-        mock_kb.search_examples.return_value = []
-        api_server._kb = mock_kb
+        api_server._llm = make_mock_llm()
+        api_server._kb = make_mock_kb()
 
         from api_server import app
         return TestClient(app, raise_server_exceptions=False)
@@ -3432,14 +3418,8 @@ class TestMetricsAuth:
 
         api_server._config = auth_config
 
-        mock_llm = MagicMock(spec=LLMProvider)
-        mock_llm.generate.return_value = "Mock Response"
-        mock_llm.embed.return_value = [0.1] * 384
-        api_server._llm = mock_llm
-
-        mock_kb = MagicMock()
-        mock_kb.search_examples.return_value = []
-        api_server._kb = mock_kb
+        api_server._llm = make_mock_llm()
+        api_server._kb = make_mock_kb()
 
         from api_server import app
         return TestClient(app, raise_server_exceptions=False)
