@@ -240,6 +240,11 @@ async def lifespan(app: FastAPI):
     logger.info("正在初始化 API 資源...")
     _cleanup_old_outputs()
     _preflight_check()
+    # 重建 executor（若先前 lifespan 關閉時已 shutdown，例如測試環境重入）
+    import src.api.dependencies as _deps
+    if _deps.executor._shutdown:
+        from src.core.constants import API_MAX_WORKERS as _amw
+        _deps.executor = ThreadPoolExecutor(max_workers=_amw)
     get_config()
     _ensure_api_key()
     get_llm()
@@ -249,7 +254,7 @@ async def lifespan(app: FastAPI):
     logger.info("API 資源就緒。")
     yield
     logger.info("正在關閉 API，等待進行中的任務完成...")
-    executor.shutdown(wait=True, cancel_futures=True)
+    _deps.executor.shutdown(wait=True, cancel_futures=True)
     logger.info("API 已關閉。")
 
 

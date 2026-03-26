@@ -1844,15 +1844,16 @@ class TestProcurementFetcher:
         results = fetcher.fetch()
         assert len(results) == 0
 
+    @patch("src.knowledge.fetchers.base.time.sleep")
     @patch("src.knowledge.fetchers.procurement_fetcher.requests.get")
-    def test_fetch_network_error(self, mock_get, tmp_path):
-        """測試網路錯誤"""
+    def test_fetch_network_error(self, mock_get, mock_sleep, tmp_path):
+        """測試網路錯誤（需 mock time.sleep 避免重試退避導致 timeout）"""
         from src.knowledge.fetchers.procurement_fetcher import ProcurementFetcher
         import requests as req
 
         mock_get.side_effect = req.ConnectionError("Connection refused")
 
-        fetcher = ProcurementFetcher(output_dir=tmp_path, limit=5)
+        fetcher = ProcurementFetcher(output_dir=tmp_path, limit=5, rate_limit=0)
         results = fetcher.fetch()
         assert len(results) == 0
 

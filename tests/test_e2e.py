@@ -628,15 +628,20 @@ class TestScenario5_APIEndpoints:
         from fastapi.testclient import TestClient
 
         # Mock 全域資源
+        # 注意：middleware.py 用 from...import 建立本地引用，
+        # 必須同時 patch middleware 的 get_config 才能繞過 auth
         with patch("src.api.dependencies.get_config") as mock_config, \
+             patch("src.api.middleware.get_config") as mock_mw_config, \
              patch("src.api.dependencies.get_llm") as mock_llm_fn, \
              patch("src.api.dependencies.get_kb") as mock_kb_fn:
 
-            mock_config.return_value = {
+            _mock_cfg = {
                 "llm": {"provider": "mock", "model": "test"},
                 "knowledge_base": {"path": "./test_kb"},
                 "api": {"auth_enabled": False},
             }
+            mock_config.return_value = _mock_cfg
+            mock_mw_config.return_value = _mock_cfg
 
             self.mock_llm = MagicMock(spec=LLMProvider)
             self.mock_llm.generate.return_value = json.dumps({
@@ -1969,14 +1974,17 @@ class TestFullIntegrationFlow:
         from fastapi.testclient import TestClient
 
         with patch("src.api.dependencies.get_config") as mock_config, \
+             patch("src.api.middleware.get_config") as mock_mw_config, \
              patch("src.api.dependencies.get_llm") as mock_llm_fn, \
              patch("src.api.dependencies.get_kb") as mock_kb_fn:
 
-            mock_config.return_value = {
+            _mock_cfg = {
                 "llm": {"provider": "mock", "model": "test"},
                 "knowledge_base": {"path": "./test_kb"},
                 "api": {"auth_enabled": False},
             }
+            mock_config.return_value = _mock_cfg
+            mock_mw_config.return_value = _mock_cfg
             mock_llm_fn.return_value = mock_llm
             mock_kb_fn.return_value = MagicMock(
                 spec=KnowledgeBaseManager,

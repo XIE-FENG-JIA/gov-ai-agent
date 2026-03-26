@@ -33,7 +33,8 @@ from src.agents.auditor import FormatAuditor
 from src.agents.review_parser import format_audit_to_review_result
 from src.knowledge.manager import KnowledgeBaseManager
 
-from src.api.dependencies import get_llm, get_kb, executor
+from src.api.dependencies import get_llm, get_kb
+import src.api.dependencies as _deps
 from src.api.helpers import (
     _sanitize_error,
     _get_error_code,
@@ -321,7 +322,7 @@ async def parallel_review(
             if agent_name in agent_map:
                 agent_names.append(agent_name)
                 tasks.append(
-                    loop.run_in_executor(executor, agent_map[agent_name])
+                    loop.run_in_executor(_deps.executor, agent_map[agent_name])
                 )
 
         review_results = await asyncio.wait_for(

@@ -133,3 +133,22 @@
 - test_e2e.py 單獨執行：0 failed（95 passed, 7 skipped）
 - 跨檔案因 api_server 全域狀態汙染仍有 12 個失敗（已有問題）
 
+### [2026-03-26] Round 9 — 修復最後 13 個測試失敗（auth mock + executor + fetcher timeout）
+**角度**: 🐛 Bug（mock 目標錯誤 + 全域狀態汙染 + 測試 timeout）
+**為什麼**: 三類根因導致 13 個失敗：
+1. `middleware.py` 用 `from...import get_config` 建立本地引用，mock `dependencies.get_config` 無法攔截 auth 檢查，12 個 POST 端點回 401
+2. `lifespan` 關閉 `executor` 後測試環境重入時 executor 永久失效，`parallel_review` 和 `full_api_flow` 報 RuntimeError
+3. `ProcurementFetcher` 網路錯誤測試觸發 base 的重試退避（7天×4次重試×指數 sleep=77 秒），超過 pytest timeout
+**做了什麼**:
+- `tests/test_e2e.py`: 兩處 fixture 加 `patch("src.api.middleware.get_config")` 繞過 auth
+- `api_server.py`: lifespan 啟動時檢測 `executor._shutdown` 並重建
+- `src/api/routes/agents.py`: `executor` 引用改為 `_deps.executor`（動態解引用）
+- `tests/test_fetchers.py`: mock `base.time.sleep` + 設 `rate_limit=0` 消除退避延遲
+**結果**: PASS
+- 修復前：12 failed（auth） + 1 timeout（fetcher） = 13 個問題
+- 修復後：2221 passed, 82 skipped, 0 failed, 4 warnings
+- **累計：367 問題 → 0 failed + 0 errors + 82 skipped（改善率 100%）**
+**下一步可能**:
+- stress 測試（已 ignore）仍需 chromadb skip 標記
+- 考慮將 executor 管理抽為 `reset_executor()` 工具函式
+- 可能需要為 `from...import` mock 問題建立 fixture 最佳實踐文件
