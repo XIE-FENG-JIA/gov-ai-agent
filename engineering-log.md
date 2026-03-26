@@ -518,3 +518,34 @@
 - `cli/org_memory_cmd.py`（70%，45 行未覆蓋）是剩餘最低覆蓋 CLI 模組
 - MISSION.md 功能缺口：審查意見具體修改建議
 - CI 覆蓋率門檻考慮從 85% 提升至 88%
+
+### [2026-03-26] Round 35 — org_memory_cmd.py 覆蓋率 70%→97%
+**角度**: 🧪 測試（CLI 模組覆蓋率盲區消除）
+**為什麼**: `org_memory_cmd.py` 是 70% 最低覆蓋的 CLI 模組，13 個異常處理分支（load error / show 詳情 / formal_level 驗證 / add-term / export IO error / report error / search 不可讀檔案）完全無測試保護。
+**做了什麼**: 新增 15 個測試案例：
+- list/show/export/report 的 `_get_org_memory()` 載入失敗分支
+- show 找不到但列出可用機構、show 含 last_updated + preferred_terms
+- set 的 formal_level 無效值驗證、update_preference 異常
+- add-term 成功路徑 + 異常路徑
+- export 寫入 OSError
+- search 不可讀 UTF-8 檔案跳過、非文字檔案忽略
+**結果**: PASS — org_memory_cmd.py 70% → **97%**（+27pp，剩 5 行 `_get_org_memory()` 函式體）
+- 全量：2681 passed, 84 skipped, 0 failed（+24 新測試，零回歸）
+**下一步可能**:
+- CI 覆蓋率門檻 85% → 88%（當前全局已穩定 90%+）
+- `cli/generate.py`（75%，156 行未覆蓋）— 最大絕對缺口
+- MISSION.md 功能缺口：審查意見具體修改建議
+
+### [2026-03-26] Round 36 — batch_tools.py 77%→98% + CI 門檻 85%→88%
+**角度**: 🧪 測試（全專案最低覆蓋模組消除）+ 🏗️ 架構（品質門檻自動化）
+**為什麼**: `batch_tools.py` 是全專案覆蓋率最低模組（77%，48 行未覆蓋），CSV 載入路徑、JSON 格式驗證、互動式建立、UnicodeDecodeError 降級等核心分支完全無測試保護。同時整體覆蓋率已穩定在 90%，CI 門檻 85% 過於寬鬆。
+**做了什麼**:
+- 新增 14 個測試案例：CSV 載入/欄位缺失/空行跳過、JSON 非陣列、檔案不存在、空資料、欄位缺失、互動式建立（成功+取消）、validate-docs/lint UnicodeDecodeError
+- CI 覆蓋率門檻 85% → 88%（整體 90%，留 2% 緩衝）
+**結果**: PASS — batch_tools.py 77% → **98%**（+21pp，剩 4 行 Typer 強制參數分支不可觸發）
+- 全量：2681 passed, 84 skipped, 0 failed（+14 新測試，零回歸）
+- 已無低於 80% 的模組（最低為 config_tools.py 82%）
+**下一步可能**:
+- `cli/config_tools.py`（82%，52 行未覆蓋）
+- `cli/generate.py`（75%，156 行未覆蓋）— 最大絕對缺口
+- MISSION.md 功能缺口：審查意見具體修改建議
