@@ -277,4 +277,14 @@
 **下一步可能**:
 - `parse_draft()` 274 行、`write_draft()` 256 行等超長函式拆分
 - LLM mock / KB mock 統一到 conftest
-- Dockerfile HEALTHCHECK 的 `localhost` 改為 `127.0.0.1`（Python urllib IPv6 解析問題）
+- ~~Dockerfile HEALTHCHECK 的 `localhost` 改為 `127.0.0.1`~~ ✅ Round 19 已修復
+
+### [2026-03-26] Round 19 — Dockerfile HEALTHCHECK IPv6 解析 bug 修復
+**角度**: 🐛 Bug（生產環境 — 容器健康檢查永久失敗）
+**為什麼**: Python `urllib.request.urlopen('http://localhost:...')` 會將 `localhost` 解析為 IPv6 `::1`，但 uvicorn 綁定 `0.0.0.0`（IPv4 only）。HEALTHCHECK 永遠連不上，Docker 持續標記容器為 unhealthy，可能觸發 orchestrator 重啟迴圈。
+**做了什麼**: Dockerfile 第 39 行 `localhost` → `127.0.0.1`
+**結果**: PASS — 2485 passed, 84 skipped, 0 failed（零回歸）
+**下一步可能**:
+- `parse_draft()` 274 行、`write_draft()` 256 行等超長函式拆分
+- LLM mock / KB mock 統一到 conftest
+- CI 加入 `--cov-fail-under=80` 門檻防止覆蓋率退化
