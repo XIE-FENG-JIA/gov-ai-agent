@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import json
+from io import StringIO
 from unittest.mock import MagicMock, patch
 
 import pytest
 import typer
+from rich.console import Console
 
-from src.cli.review_cmd import _detect_doc_type, review
+from src.cli.review_cmd import _detect_doc_type, _render_apply_diff, review
 
 
 # ─────────────────────────────────────────
@@ -329,3 +331,98 @@ class TestRunReviewOnly:
             mock_conv.assert_not_called()
 
             editor._executor.shutdown(wait=False)
+
+
+# ─────────────────────────────────────────
+# _render_apply_diff — diff 顯示邏輯
+# ─────────────────────────────────────────
+
+class TestRenderApplyDiff:
+    """驗證 --apply 後的 diff 顯示邏輯。"""
+
+    def _capture(self, original: str, revised: str) -> str:
+        """呼叫 _render_apply_diff 並捕捉輸出文字。"""
+        buf = StringIO()
+        test_console = Console(file=buf, force_terminal=False, highlight=False)
+        with patch("src.cli.review_cmd.console", test_console):
+            _render_apply_diff(original, revised)
+        return buf.getvalue()
+
+    def test_no_change_shows_notice(self):
+        """原始與修正後相同時，應顯示「未產生任何變更」提示。"""
+        text = "主旨：測試\n說明：內容。\n"
+        output = self._capture(text, text)
+        assert "未產生任何變更" in output
+
+    def test_diff_shows_added_line(self):
+        """修正後多一行時，diff 應包含 + 開頭的新增行。"""
+        original = "主旨：測試\n"
+        revised = "主旨：測試\n說明：新增段落。\n"
+        output = self._capture(original, revised)
+        assert "說明：新增段落" in output
+
+    def test_diff_shows_removed_line(self):
+        """修正後移除一行時，diff 應包含移除行的內容。"""
+        original = "主旨：測試\n口語化用語：幫我\n"
+        revised = "主旨：測試\n"
+        output = self._capture(original, revised)
+        assert "口語化用語" in output
+
+    def test_apply_no_diff_flag_suppresses_output(self, tmp_path):
+        """--no-diff 時，apply 後不應呼叫 _render_apply_diff。"""
+        draft = tmp_path / "draft.md"
+        draft.write_text("主旨：測試\n說明：需要修正。\n", encoding="utf-8")
+        report = _make_qa_report()
+        revised = "主旨：測試\n說明：修正後。\n"
+
+        mock_editor = MagicMock()
+        mock_editor.__enter__ = MagicMock(return_value=mock_editor)
+        mock_editor.__exit__ = MagicMock(return_value=False)
+        mock_editor.review_and_refine.return_value = (revised, report)
+
+        with patch("src.cli.review_cmd.get_llm", return_value=MagicMock()), \
+             patch("src.cli.review_cmd.get_kb", return_value=MagicMock()), \
+             patch("src.cli.review_cmd.EditorInChief", return_value=mock_editor), \
+             patch("src.cli.review_cmd._render_apply_diff") as mock_diff, \
+             patch("src.cli.review_cmd.console"):
+            review(
+                draft_file=str(draft),
+                doc_type="函",
+                apply=True,
+                output=str(tmp_path / "revised.md"),
+                max_rounds=1,
+                show_diff=False,
+                json_output=False,
+            )
+
+        mock_diff.assert_not_called()
+
+    def test_apply_with_diff_flag_calls_diff(self, tmp_path):
+        """--diff（預設）時，apply 後應呼叫 _render_apply_diff。"""
+        draft = tmp_path / "draft.md"
+        original_text = "主旨：測試\n說明：需要修正。\n"
+        draft.write_text(original_text, encoding="utf-8")
+        report = _make_qa_report()
+        revised = "主旨：測試\n說明：修正後。\n"
+
+        mock_editor = MagicMock()
+        mock_editor.__enter__ = MagicMock(return_value=mock_editor)
+        mock_editor.__exit__ = MagicMock(return_value=False)
+        mock_editor.review_and_refine.return_value = (revised, report)
+
+        with patch("src.cli.review_cmd.get_llm", return_value=MagicMock()), \
+             patch("src.cli.review_cmd.get_kb", return_value=MagicMock()), \
+             patch("src.cli.review_cmd.EditorInChief", return_value=mock_editor), \
+             patch("src.cli.review_cmd._render_apply_diff") as mock_diff, \
+             patch("src.cli.review_cmd.console"):
+            review(
+                draft_file=str(draft),
+                doc_type="函",
+                apply=True,
+                output=str(tmp_path / "revised.md"),
+                max_rounds=1,
+                show_diff=True,
+                json_output=False,
+            )
+
+        mock_diff.assert_called_once_with(original_text, revised)

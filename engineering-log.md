@@ -1552,3 +1552,18 @@
 - 知識庫正式更新：執行 `kb ingest` 重新索引使 Round 73 新範本生效
 - 考慮增加 `呈` 和 `咨` 的範本數量（目前各只有 3 筆，遠低於其他類型）
 - 下一個方向：功能缺口繼續推進——审查意見的具體修改建議（不只指出問題）
+
+### [2026-03-27] Round 75 — --apply 後顯示修改 Diff（具體修改建議閉環）
+**角度**: ✨ 功能缺口（使用者體驗 — 看見「改了什麼」）
+**為什麼**: `gov-ai review draft.md --apply` 已能自動套用修改建議，但只輸出「✓ 修正後草稿已寫入」，使用者完全看不到哪裡被改動了。必須自行 diff 兩個檔案。「審查意見的具體修改建議」缺口的最後一塊：不只告訴你問題、不只自動修正，還要讓你**親眼看到改了什麼**。`editor.py` 內建 `difflib` + `_print_round_draft` 但 `review_cmd` 從未呼叫它，這是明確的介面缺口。
+**搜尋**: 確認 `difflib.unified_diff` 是標準做法（stdlib，無額外依賴）；Rich Panel + Text 彩色輸出可無縫整合現有 console 風格。
+**做了什麼**:
+- `review_cmd.py` 新增 `_render_apply_diff(original, revised)`：用 `difflib.unified_diff` 計算 diff，以 Rich Panel 彩色顯示（綠=新增、紅=刪除、藍=位置標記）；無差異時顯示「未產生任何變更」
+- `review()` 加入 `--diff/--no-diff` 旗標（預設 `--diff`，加 `--no-diff` 可關閉）
+- `--apply` 結束後自動呼叫 `_render_apply_diff(draft_content, refined_draft)`（`--json` 模式不顯示）
+- 新增 6 個測試：無差異提示、新增行、移除行、`--no-diff` 抑制、`--diff` 呼叫驗證
+- 更新 MISSION.md：標記「審查意見的具體修改建議」✅ 完成
+**結果**: PASS — 21 個 review_cmd 測試全通過（+6 新測試，零回歸）；172 個核心測試全通過
+**下一步可能**:
+- 批次處理效能優化（MISSION 剩餘功能缺口之一）
+- `呈`/`咨` 範本補齊（目前各 3 筆，遠低於其他類型）

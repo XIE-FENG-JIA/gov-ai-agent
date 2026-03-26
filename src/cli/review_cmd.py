@@ -4,10 +4,12 @@
     gov-ai review draft.md
     gov-ai review draft.md --doc-type 函
     gov-ai review draft.md --apply --output revised.md
+    gov-ai review draft.md --apply --no-diff
     gov-ai review draft.md --json
 """
 from __future__ import annotations
 
+import difflib
 import json
 import logging
 import os
@@ -65,6 +67,45 @@ def _severity_icon(severity: str) -> Text:
         "info": Text("[資訊]", style="bold blue"),
     }
     return icons.get(severity, Text(f"[{severity}]"))
+
+
+def _render_apply_diff(original: str, revised: str) -> None:
+    """以 Rich 彩色格式顯示 apply 前後的 unified diff。
+
+    綠色行（+）代表新增／修正內容，紅色行（-）代表被移除的原始文字。
+    無差異時顯示「草稿未產生變更」提示。
+    """
+    diff_lines = list(
+        difflib.unified_diff(
+            original.splitlines(keepends=True),
+            revised.splitlines(keepends=True),
+            fromfile="原始草稿",
+            tofile="修正後草稿",
+            lineterm="",
+        )
+    )
+
+    if not diff_lines:
+        console.print("[dim]（審查後草稿未產生任何變更）[/dim]")
+        return
+
+    diff_text = Text()
+    for line in diff_lines:
+        stripped = line.rstrip("\n")
+        if stripped.startswith("+++") or stripped.startswith("---"):
+            diff_text.append(stripped + "\n", style="bold")
+        elif stripped.startswith("@@"):
+            diff_text.append(stripped + "\n", style="cyan")
+        elif stripped.startswith("+"):
+            diff_text.append(stripped + "\n", style="bold green")
+        elif stripped.startswith("-"):
+            diff_text.append(stripped + "\n", style="bold red")
+        else:
+            diff_text.append(stripped + "\n")
+
+    console.print(
+        Panel(diff_text, title="[bold cyan]修改內容 Diff[/bold cyan]", expand=True)
+    )
 
 
 def _render_issues_table(agent_results: list[dict]) -> None:
@@ -129,6 +170,10 @@ def review(
         1, "--max-rounds",
         help="--apply 時的最大修正輪數（預設 1）。",
     ),
+    show_diff: bool = typer.Option(
+        True, "--diff/--no-diff",
+        help="--apply 後顯示修改內容 diff（預設開啟）。",
+    ),
     json_output: bool = typer.Option(
         False, "--json",
         help="以 JSON 格式輸出審查結果（適合程式化處理）。",
@@ -137,6 +182,7 @@ def review(
     """對現有草稿執行多 Agent 審查，輸出具體修改建議。
 
     不會修改原始檔案，除非加上 --apply 旗標。
+    加上 --apply 後，預設會顯示修改 diff，可用 --no-diff 關閉。
 
     範例：
 
@@ -145,6 +191,8 @@ def review(
         gov-ai review draft.md --doc-type 函
 
         gov-ai review draft.md --apply --output revised.md
+
+        gov-ai review draft.md --apply --no-diff
 
         gov-ai review draft.md --json > report.json
     """
@@ -248,7 +296,7 @@ def review(
             [r.model_dump() for r in qa_report.agent_results]
         )
 
-    # 6. 若 --apply，寫出修正草稿
+    # 6. 若 --apply，寫出修正草稿並顯示 diff
     if apply and refined_draft is not None:
         if not output:
             base = os.path.splitext(draft_file)[0]
@@ -259,3 +307,8 @@ def review(
             console.print(f"\n[bold green]✓ 修正後草稿已寫入：{output}[/bold green]")
         except OSError as exc:
             console.print(f"[red]警告：無法寫入輸出檔案 {output}：{exc}[/red]")
+
+        # 顯示 diff（--no-diff 可關閉）
+        if show_diff and not json_output:
+            console.print()
+            _render_apply_diff(draft_content, refined_draft)
