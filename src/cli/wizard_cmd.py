@@ -5,6 +5,9 @@
 """
 from __future__ import annotations
 
+import json
+import os
+
 import typer
 from rich.console import Console
 from rich.panel import Panel
@@ -30,6 +33,18 @@ DOC_TYPES: list[tuple[str, str, str]] = [
 ]
 
 URGENCY_OPTIONS = ["普通", "速件", "最速件"]
+_PROFILE_FILE = ".gov-ai-profile.json"
+
+
+def _load_profile() -> dict:
+    """載入個人設定檔（.gov-ai-profile.json），失敗時回傳空字典。"""
+    try:
+        if os.path.isfile(_PROFILE_FILE):
+            with open(_PROFILE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        pass
+    return {}
 
 
 def _show_type_menu() -> None:
@@ -152,6 +167,7 @@ def wizard(
     cite: bool = typer.Option(True, "--cite/--no-cite", help="生成後顯示法規引用建議（預設開啟）"),
     skip_review: bool = typer.Option(False, "--skip-review", help="跳過多 Agent 審查（加快速度）"),
     preview: bool = typer.Option(False, "--preview", "-p", help="在終端預覽生成內容"),
+    from_profile: bool = typer.Option(True, "--from-profile/--no-from-profile", help="自動從個人設定檔預填發文機關（預設開啟）"),
 ) -> None:
     """互動式公文精靈 — 逐步引導，無需記憶 CLI 參數。
 
@@ -159,11 +175,15 @@ def wizard(
     公文類型、發文機關、收文機關、主旨，以及選用的速別與日期，
     最後自動組合並呼叫 generate 命令產生合規公文草稿。
 
+    如已使用 gov-ai profile set agency <機關名稱> 設定個人資料，
+    精靈將自動預填發文機關，減少重複輸入。
+
     範例：
         gov-ai wizard
         gov-ai wizard --quick
         gov-ai wizard --dry-run
         gov-ai wizard -o 環保局函文.docx
+        gov-ai wizard --no-from-profile
     """
     console.print(Panel(
         "[bold cyan]公文精靈[/bold cyan] — 逐步引導，快速生成合規公文草稿\n\n"
@@ -180,10 +200,24 @@ def wizard(
 
         # === 步驟 2：發文與收文機關 ===
         console.print("\n[bold]步驟 2／4 — 機關資訊[/bold]")
-        sender = Prompt.ask("[bold cyan]發文機關[/bold cyan]（如：臺北市政府環境保護局）")
+
+        # 從個人設定檔預填發文機關
+        sender_default = ""
+        if from_profile:
+            profile = _load_profile()
+            agency = profile.get("agency", "").strip()
+            if agency:
+                sender_default = agency
+                console.print(f"  [dim]從個人設定檔預填：發文機關 = {agency}[/dim]")
+                console.print("  [dim]（直接 Enter 採用，或輸入其他機關名稱覆寫）[/dim]")
+
+        if sender_default:
+            sender = Prompt.ask("[bold cyan]發文機關[/bold cyan]", default=sender_default)
+        else:
+            sender = Prompt.ask("[bold cyan]發文機關[/bold cyan]（如：臺北市政府環境保護局）")
         while not sender.strip():
             console.print("  [red]發文機關不可空白[/red]")
-            sender = Prompt.ask("[bold cyan]發文機關[/bold cyan]")
+            sender = Prompt.ask("[bold cyan]發文機關[/bold cyan]（如：臺北市政府環境保護局）")
 
         if doc_type in ("簽",):
             receiver = Prompt.ask("[bold cyan]受文者（簽請對象）[/bold cyan]（如：局長）", default="局長")

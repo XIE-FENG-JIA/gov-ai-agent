@@ -1746,4 +1746,18 @@
 **下一步可能**:
 - 執行 `gov-ai kb sync` 讓 Round 73/77 新增的 12 筆範本正式生效
 - `公` 類文件範本補充（公示/公開資訊/環境影響等類型）
-- wizard 加入 `--from-profile` 旗標：自動從 profile_cmd 讀取常用機關名稱預填
+- wizard 加入 `--from-profile` 旗標：自動從 profile_cmd 讀取常用機關名稱預填 ✅ Round 13 完成
+
+### [2026-03-27] Round 13 — 新功能：wizard --from-profile 個人設定檔預填
+**角度**: ✨ 體驗（UX 閉環：wizard + profile 橋接）
+**為什麼**: Round 12 新增 wizard，但發文機關每次都需手動輸入——而 `profile_cmd` 的 `agency` 欄位正好存著這個資訊，兩者卻沒有橋接。第一性原理：工具設計的最高原則是「已知的資訊不讓用戶輸入第二次」。另外發現前序 loop 留下的 config.yaml 被清空問題（staging area 殘留，非 working tree），`git checkout HEAD -- config.yaml` 強制從 HEAD 還原修復。
+**搜尋**: WebSearch 「CLI wizard pre-fill from user profile config Python Typer 2025」——確認最佳實踐是將 profile 值作為 `Prompt.ask(default=...)` 傳入，用戶仍可即時覆寫，無需額外 library（typer-config 過重）。
+**做了什麼**:
+- `src/cli/wizard_cmd.py`：新增 `import json, os`；新增 `_PROFILE_FILE` 常數；新增 `_load_profile()` helper（讀取 `.gov-ai-profile.json`，OSError/JSONDecodeError 靜默回傳空字典）；`wizard()` 新增 `--from-profile/--no-from-profile` 旗標（預設開啟）；有 `agency` 時以 dim 文字提示並設為 Prompt default，用戶仍可覆寫
+- `tests/test_wizard_cmd.py`：新增 `TestFromProfile` 5 個測試（profile 存在時正確回傳、無檔案回空字典、JSON 損壞靜默、dry-run 預填驗證、--no-from-profile 停用驗證）
+- 修復 config.yaml 被 staging area 殘留清空問題（`git checkout HEAD -- config.yaml`）
+**結果**: PASS — 26 wizard 測試全通過（原 21 + 新 5）；760 核心測試零回歸
+**下一步可能**:
+- `公` 類文件範本補充（公示/公開資訊/環境影響等類型）
+- 執行 `gov-ai kb sync` 讓 Round 73/77 新增的 12 筆範本正式生效
+- wizard 支援 `--receiver-from-profile` 從 profile 預填常用收文機關清單

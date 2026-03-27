@@ -165,3 +165,56 @@ class TestWizardCLI:
             result = runner.invoke(app, ["wizard"])
         # 應以非零或零退出，但不拋出未捕獲的例外
         assert "wizard" not in str(result.exception or "") or result.exit_code in (0, 1)
+
+
+# ── _load_profile 與 --from-profile 測試 ────────────────────────────────────
+
+class TestFromProfile:
+    """wizard --from-profile 個人設定檔預填測試。"""
+
+    def test_load_profile_returns_dict_when_file_exists(self, tmp_path, monkeypatch):
+        """存在設定檔時應正確回傳字典。"""
+        profile_file = tmp_path / ".gov-ai-profile.json"
+        profile_file.write_text('{"agency": "臺北市政府", "name": "王小明"}', encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        from src.cli.wizard_cmd import _load_profile
+        result = _load_profile()
+        assert result["agency"] == "臺北市政府"
+        assert result["name"] == "王小明"
+
+    def test_load_profile_returns_empty_when_no_file(self, tmp_path, monkeypatch):
+        """無設定檔時應回傳空字典，不拋出例外。"""
+        monkeypatch.chdir(tmp_path)
+        from src.cli.wizard_cmd import _load_profile
+        result = _load_profile()
+        assert result == {}
+
+    def test_load_profile_returns_empty_on_invalid_json(self, tmp_path, monkeypatch):
+        """設定檔 JSON 損壞時應靜默回傳空字典。"""
+        profile_file = tmp_path / ".gov-ai-profile.json"
+        profile_file.write_text("invalid json {{{", encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        from src.cli.wizard_cmd import _load_profile
+        result = _load_profile()
+        assert result == {}
+
+    def test_from_profile_pre_fills_sender_in_dry_run(self, tmp_path, monkeypatch):
+        """profile 有 agency 時，dry-run 輸出中應出現該機關名稱（預填為預設值）。"""
+        profile_file = tmp_path / ".gov-ai-profile.json"
+        profile_file.write_text('{"agency": "新北市政府環保局"}', encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        # 使用者按 Enter 接受預填值，再輸入收文和主旨
+        inputs = "1\n\n各區公所\n辦理環保業務宣導\n普通\n\n\n"
+        result = runner.invoke(app, ["wizard", "--dry-run", "--from-profile"], input=inputs)
+        assert result.exit_code == 0
+        assert "新北市政府環保局" in result.output
+
+    def test_no_from_profile_disables_prefill(self, tmp_path, monkeypatch):
+        """--no-from-profile 時即使 profile 有 agency 也不顯示預填提示。"""
+        profile_file = tmp_path / ".gov-ai-profile.json"
+        profile_file.write_text('{"agency": "應被忽略的機關"}', encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        inputs = "1\n台北市政府\n各區公所\n辦理業務測試工作\n普通\n\n\n"
+        result = runner.invoke(app, ["wizard", "--dry-run", "--no-from-profile"], input=inputs)
+        assert result.exit_code == 0
+        assert "從個人設定檔預填" not in result.output
