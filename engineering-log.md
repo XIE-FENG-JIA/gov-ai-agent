@@ -4,6 +4,19 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 37 — 公文類型偵測邏輯統一（消除重複實作）
+**角度**: 🏗️ 架構（重複邏輯 + 行為不一致）
+**為什麼**: `cite_cmd.py` 和 `review_cmd.py` 各自維護一套 `_detect_doc_type`。cite_cmd 用 keyword-in 匹配回傳 `str | None`，review_cmd 用 regex 匹配回傳 `str`。規則集不同——cite_cmd 涵蓋 11 種類型（含 4 種非標準類型如「採購公告」），review_cmd 涵蓋全部 13 種 VALID_DOC_TYPES。同一份文件用兩個指令可能得到不同類型判斷。
+**做了什麼**:
+- `src/core/models.py`: 新增 `detect_doc_type()` 共用函式（regex 版，涵蓋 13 種標準類型，與 VALID_DOC_TYPES 共存維護）
+- `review_cmd.py`: 刪除本地 `_DOC_TYPE_PATTERNS` 和 `_detect_doc_type`，改用 `from src.core.models import detect_doc_type`
+- `cite_cmd.py`: 刪除本地 `_DETECT_RULES`，改為先偵測法規映射專用擴充類型（會議紀錄/訴願決定書/採購公告/環保公告/人事令）再 fallback 到共用函式
+- 更新 `_TYPE_LABELS` 涵蓋全部 13 種類型
+- 更新 `test_cite_cmd.py`：2 個測試適配 fallback 行為變更 + 1 個新增空內容測試
+**結果**: PASS — 45 個 cite/review 測試全通過，3214 全套件零回歸
+**觀察**: 現在所有 CLI 命令的公文類型偵測行為一致。法規映射 YAML 中「會議紀錄」和 VALID_DOC_TYPES 的「開會紀錄」名稱不一致，已透過 cite_cmd 擴充規則處理。
+**下一步可能**: 統一 YAML 映射表的類型名稱與 VALID_DOC_TYPES 對齊；`extract_cmd._parse_fields` 多行欄位解析修復
+
 ### [2026-03-27] Round 36 — generate.py 原子寫入補齊（核心入口遺漏）
 **角度**: 🐛 Bug（資料損毀風險——原子寫入專項遺漏最關鍵的檔案）
 **為什麼**: 工程日誌 Round 79 宣稱「CLI 原子寫入 100% 閉環」，但 `generate.py`——整個專案最核心的 CLI 入口——被完全跳過。5 處裸 `open()` 寫入：Markdown 匯出、版本儲存（`_save_version`）、批次失敗重試 JSON、QA 報告 JSON/TXT。用戶在生成公文時斷電，這些檔案全部可能損毀。

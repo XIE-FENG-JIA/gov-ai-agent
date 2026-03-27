@@ -86,10 +86,16 @@ class TestDetectDocType:
         text = "茲任命王小明為本部司長，生效日期如下。\n任命令"
         assert _detect_doc_type(text) == "人事令"
 
-    def test_returns_none_for_unrecognized(self):
+    def test_fallback_to_han_for_unrecognized(self):
+        """無法辨識的內容 fallback 到「函」（最常見公文類型）。"""
         text = "這是完全無法識別的文字內容，沒有任何公文關鍵字。"
         result = _detect_doc_type(text)
-        assert result is None
+        assert result == "函"
+
+    def test_returns_none_for_empty(self):
+        """空內容回傳 None。"""
+        assert _detect_doc_type("") is None
+        assert _detect_doc_type("   ") is None
 
     def test_priority_meeting_notice_over_han(self):
         # 同時含「開會通知」與「主旨」，應優先偵測為開會通知單
@@ -221,13 +227,13 @@ class TestCiteCLI:
         )
         assert result.exit_code != 0
 
-    def test_cli_unknown_type_shows_warning(self, tmp_path, mapping_yaml_file):
+    def test_cli_unrecognized_falls_back_to_han(self, tmp_path, mapping_yaml_file):
+        """無法辨識的內容 fallback 到「函」，正常執行不會 exit 非 0。"""
         draft = "這是完全無法識別的文字內容。"
         result = self._run_cite(
             ["--mapping", str(mapping_yaml_file)],
             draft_content=draft,
             tmp_path=tmp_path,
         )
-        # 偵測失敗，exit code 非 0 且顯示提示
-        assert result.exit_code != 0
-        assert "無法自動偵測" in result.output or "type" in result.output.lower()
+        # fallback 到「函」，正常執行
+        assert result.exit_code == 0

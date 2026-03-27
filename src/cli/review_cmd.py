@@ -13,7 +13,6 @@ import difflib
 import json
 import logging
 import os
-import re
 
 import typer
 from rich.console import Console
@@ -22,6 +21,7 @@ from rich.table import Table
 from rich.text import Text
 
 from src.cli.utils import atomic_text_write
+from src.core.models import detect_doc_type as _detect_doc_type
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -34,32 +34,6 @@ except ImportError:  # pragma: no cover
     get_llm = None  # type: ignore[assignment]
     get_kb = None   # type: ignore[assignment]
     EditorInChief = None  # type: ignore[assignment]
-
-# 公文類型關鍵字自動偵測表（優先匹配順序）
-_DOC_TYPE_PATTERNS: list[tuple[str, str]] = [
-    (r"開會紀錄|會議紀錄|出席人員|主席", "開會紀錄"),
-    (r"會勘通知", "會勘通知單"),
-    (r"公務電話紀錄|發話人|受話人", "公務電話紀錄"),
-    (r"手令", "手令"),
-    (r"箋函", "箋函"),
-    (r"公告", "公告"),
-    (r"開會通知", "開會通知單"),
-    (r"書函", "書函"),
-    (r"^#+\s*呈\b|^呈\b", "呈"),
-    (r"^#+\s*咨\b|^咨\b", "咨"),
-    (r"簽\s*（|簽$|^#+\s*簽", "簽"),
-    (r"令\s|發布.*令|廢止.*令", "令"),
-    (r"函$|^#+\s*函\b|主旨|說明|辦法", "函"),
-]
-
-
-def _detect_doc_type(content: str) -> str:
-    """從草稿內容自動偵測公文類型，偵測失敗時回傳「函」作為通用預設。"""
-    first_500 = content[:500]
-    for pattern, doc_type in _DOC_TYPE_PATTERNS:
-        if re.search(pattern, first_500, re.MULTILINE):
-            return doc_type
-    return "函"
 
 
 def _severity_icon(severity: str) -> Text:
