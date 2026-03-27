@@ -22,25 +22,14 @@ _INFORMAL_TERMS = {
 _REQUIRED_SECTIONS = ["主旨", "說明"]
 
 
-def lint(
-    file: str = typer.Option(..., "-f", "--file", help="要檢查的公文檔案路徑"),
-    fix: bool = typer.Option(False, "--fix", help="自動修正口語化用詞"),
-):
-    """輕量公文用語與格式檢查。"""
-    import os
-    if not os.path.isfile(file):
-        console.print(f"[red]錯誤：找不到檔案：{file}[/red]")
-        raise typer.Exit(1)
+def _run_lint(text: str) -> list[dict]:
+    """對公文純文字內容執行 lint 檢查，回傳 issue 清單。
 
-    try:
-        with open(file, "r", encoding="utf-8-sig") as f:
-            text = f.read()
-    except UnicodeDecodeError:
-        console.print("[red]錯誤：檔案編碼不支援，請使用 UTF-8。[/red]")
-        raise typer.Exit(1)
-
+    每個 issue 為 dict，含 ``line``（行號，0 = 全文）、``category``、``detail``。
+    此函式不依賴檔案 I/O，可直接被其他模組（如 generate）呼叫。
+    """
     lines = text.split("\n")
-    issues = []
+    issues: list[dict] = []
 
     # 1. 口語化用詞
     for i, line in enumerate(lines, 1):
@@ -64,15 +53,37 @@ def lint(
     # 3. 句末標點不一致
     punctuations_used = set()
     for line in lines:
-        line = line.strip()
-        if line and line[-1] in ("。", "；", ".", "："):
-            punctuations_used.add(line[-1])
+        stripped = line.strip()
+        if stripped and stripped[-1] in ("。", "；", ".", "："):
+            punctuations_used.add(stripped[-1])
     if len(punctuations_used) > 1:
         issues.append({
             "line": 0,
             "category": "標點不一致",
-            "detail": f"句末混用多種標點：{'、'.join(punctuations_used)}",
+            "detail": f"句末混用多種標點：{'、'.join(sorted(punctuations_used))}",
         })
+
+    return issues
+
+
+def lint(
+    file: str = typer.Option(..., "-f", "--file", help="要檢查的公文檔案路徑"),
+    fix: bool = typer.Option(False, "--fix", help="自動修正口語化用詞"),
+):
+    """輕量公文用語與格式檢查。"""
+    import os
+    if not os.path.isfile(file):
+        console.print(f"[red]錯誤：找不到檔案：{file}[/red]")
+        raise typer.Exit(1)
+
+    try:
+        with open(file, "r", encoding="utf-8-sig") as f:
+            text = f.read()
+    except UnicodeDecodeError:
+        console.print("[red]錯誤：檔案編碼不支援，請使用 UTF-8。[/red]")
+        raise typer.Exit(1)
+
+    issues = _run_lint(text)
 
     # 自動修正
     if fix:

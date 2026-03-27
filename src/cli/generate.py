@@ -977,6 +977,43 @@ def _handle_confirm(
     return final_draft, qa_report, qa_report_str
 
 
+def _show_lint_results(content: str) -> None:
+    """生成完成後對草稿執行輕量 lint 檢查，以 Panel 顯示問題摘要（靜默降級）。
+
+    最多顯示前 5 個 issue；無問題時顯示綠色通過提示。
+    批次模式（batch）或安靜模式（quiet）時不應呼叫此函式。
+    """
+    try:
+        from src.cli.lint_cmd import _run_lint
+        issues = _run_lint(content)
+        console.print()
+        if not issues:
+            console.print(Panel(
+                "[bold green]✓ 格式與用語檢查通過[/bold green]",
+                title="[bold]📝 Lint 檢查[/bold]",
+                border_style="dim green",
+                padding=(0, 2),
+            ))
+            return
+        shown = issues[:5]
+        lines = [
+            f"  [yellow]{iss['category']}[/yellow]  "
+            f"{'第 ' + str(iss['line']) + ' 行' if iss['line'] > 0 else '（全文）'} — {iss['detail']}"
+            for iss in shown
+        ]
+        if len(issues) > 5:
+            lines.append(f"  [dim]… 還有 {len(issues) - 5} 個問題，執行 gov-ai lint -f <草稿> 查看全部[/dim]")
+        console.print(Panel(
+            "\n".join(lines),
+            title=f"[bold]📝 Lint 檢查（共 {len(issues)} 個問題）[/bold]",
+            subtitle="[dim]完整審查：gov-ai lint -f <草稿檔案>[/dim]",
+            border_style="dim yellow",
+            padding=(0, 2),
+        ))
+    except Exception:  # noqa: BLE001
+        pass  # 靜默降級，不影響主流程
+
+
 def _show_cite_suggestions(doc_type: str) -> None:
     """生成完成後自動顯示適用法規引用建議（靜默降級：找不到映射表或類型不在清單則略過）。"""
     try:
@@ -1101,6 +1138,7 @@ def generate(
     header_logo: str = typer.Option("", "--header-logo", help="頁首 logo 圖片路徑"),
     disclaimer: str = typer.Option("", "--disclaimer", help="免責聲明文字"),
     cite: bool = typer.Option(True, "--cite/--no-cite", help="生成後自動顯示適用法規引用建議（預設開啟）"),
+    lint: bool = typer.Option(True, "--lint/--no-lint", help="生成後自動執行輕量格式與用語 lint 檢查（預設開啟）"),
 ):
     """
     根據自然語言輸入產生完整的政府公文。
@@ -1203,6 +1241,10 @@ def generate(
     # 法規引用建議（--no-cite 可關閉；不可用時靜默略過）
     if cite and not batch and not quiet:
         _show_cite_suggestions(requirement.doc_type)
+
+    # 輕量 lint 檢查（--no-lint 可關閉；不可用時靜默略過）
+    if lint and not batch and not quiet:
+        _show_lint_results(final_draft)
 
     try:
         append_record(

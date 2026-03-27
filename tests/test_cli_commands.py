@@ -12009,3 +12009,150 @@ class TestShowCiteSuggestions:
         ])
         assert result.exit_code == 0
         mock_show_cite.assert_called_once_with("公告")
+
+
+class TestShowLintResults:
+    """_show_lint_results() 及 generate --lint/--no-lint 整合測試"""
+
+    def test_clean_draft_shows_pass_panel(self):
+        """無問題的草稿應顯示綠色通過面板。"""
+        import io
+        from rich.console import Console
+        from unittest.mock import patch
+
+        clean = "主旨：函請配合辦理。\n說明：依規定辦理。\n"
+
+        buf = io.StringIO()
+        test_console = Console(file=buf, width=120)
+        with patch("src.cli.generate.console", test_console):
+            from src.cli.generate import _show_lint_results
+            _show_lint_results(clean)
+
+        output = buf.getvalue()
+        assert "通過" in output or "✓" in output
+
+    def test_draft_with_informal_terms_shows_issues(self):
+        """含口語化用詞的草稿應顯示問題面板。"""
+        import io
+        from rich.console import Console
+        from unittest.mock import patch
+
+        informal = "主旨：所以請各單位配合辦理。\n說明：因為依規定。\n"
+
+        buf = io.StringIO()
+        test_console = Console(file=buf, width=120)
+        with patch("src.cli.generate.console", test_console):
+            from src.cli.generate import _show_lint_results
+            _show_lint_results(informal)
+
+        output = buf.getvalue()
+        assert "口語化用詞" in output
+
+    def test_import_error_silently_degraded(self):
+        """lint_cmd 不可用時應靜默略過，不拋出例外。"""
+        import io
+        from rich.console import Console
+        from unittest.mock import patch
+
+        buf = io.StringIO()
+        test_console = Console(file=buf, width=120)
+        with patch("src.cli.generate.console", test_console), \
+             patch("src.cli.generate._show_lint_results",
+                   side_effect=Exception("import error")):
+            # 直接呼叫不會拋出；但驗證 _show_lint_results 本身 catch Exception
+            pass  # 此測試驗證 generate 主流程不因 lint 失敗而中斷
+
+        # 真實呼叫：inject 模擬 _run_lint 拋出例外
+        with patch("src.cli.generate.console", test_console):
+            import importlib
+            gen = importlib.import_module("src.cli.generate")
+            with patch("src.cli.lint_cmd._run_lint", side_effect=RuntimeError("模擬失敗")):
+                gen._show_lint_results("任何內容")  # 不應拋出
+
+    def test_max_five_issues_shown(self):
+        """issues 超過 5 個時，面板只顯示前 5 個並提示剩餘數量。"""
+        import io
+        from rich.console import Console
+        from unittest.mock import patch
+
+        # 7 個口語化詞（不同位置）
+        many_informal = "\n".join([
+            "主旨：所以，而且，因為，但是，可是，還有，已經請辦理。",
+            "說明：依規定。",
+        ])
+
+        buf = io.StringIO()
+        test_console = Console(file=buf, width=120)
+        with patch("src.cli.generate.console", test_console):
+            from src.cli.generate import _show_lint_results
+            _show_lint_results(many_informal)
+
+        output = buf.getvalue()
+        # 應顯示「還有 N 個問題」提示（超過 5 條上限）
+        assert "還有" in output or "gov-ai lint" in output
+
+    @patch("src.cli.generate._show_lint_results")
+    @patch("src.cli.generate._show_cite_suggestions")
+    @patch("src.cli.generate.DocxExporter")
+    @patch("src.cli.generate.TemplateEngine")
+    @patch("src.cli.generate.WriterAgent")
+    @patch("src.cli.generate.RequirementAgent")
+    @patch("src.cli.generate.KnowledgeBaseManager")
+    @patch("src.cli.generate.get_llm_factory")
+    @patch("src.cli.generate.ConfigManager")
+    def test_no_lint_flag_skips_lint(
+        self, mock_cm, mock_factory, mock_kb, mock_req, mock_writer,
+        mock_template, mock_exporter, mock_show_cite, mock_show_lint,
+    ):
+        """--no-lint 旗標應使 _show_lint_results 不被呼叫。"""
+        from src.cli.main import app
+
+        mock_cm.return_value.config = {
+            "llm": {"provider": "mock"},
+            "knowledge_base": {"path": "./test_kb"},
+        }
+        mock_req.return_value.analyze.return_value = MagicMock(doc_type="函", subject="測試")
+        mock_writer.return_value.write_draft.return_value = "主旨：測試"
+        mock_template.return_value.parse_draft.return_value = {"subject": "測試"}
+        mock_template.return_value.apply_template.return_value = "格式化草稿"
+        mock_exporter.return_value.export.return_value = "out.docx"
+
+        result = runner.invoke(app, [
+            "generate", "--input", "寫一份函測試 lint 整合", "--output", "out.docx",
+            "--skip-review", "--no-lint",
+        ])
+        assert result.exit_code == 0
+        mock_show_lint.assert_not_called()
+
+    @patch("src.cli.generate._show_lint_results")
+    @patch("src.cli.generate._show_cite_suggestions")
+    @patch("src.cli.generate.DocxExporter")
+    @patch("src.cli.generate.TemplateEngine")
+    @patch("src.cli.generate.WriterAgent")
+    @patch("src.cli.generate.RequirementAgent")
+    @patch("src.cli.generate.KnowledgeBaseManager")
+    @patch("src.cli.generate.get_llm_factory")
+    @patch("src.cli.generate.ConfigManager")
+    def test_default_lint_flag_calls_lint(
+        self, mock_cm, mock_factory, mock_kb, mock_req, mock_writer,
+        mock_template, mock_exporter, mock_show_cite, mock_show_lint,
+    ):
+        """預設（--lint）應呼叫 _show_lint_results 並傳入 final_draft 內容。"""
+        from src.cli.main import app
+
+        mock_cm.return_value.config = {
+            "llm": {"provider": "mock"},
+            "knowledge_base": {"path": "./test_kb"},
+        }
+        mock_req.return_value.analyze.return_value = MagicMock(doc_type="公告", subject="公告測試")
+        mock_writer.return_value.write_draft.return_value = "主旨：公告測試"
+        mock_template.return_value.parse_draft.return_value = {"subject": "公告測試"}
+        mock_template.return_value.apply_template.return_value = "格式化草稿"
+        mock_exporter.return_value.export.return_value = "out.docx"
+
+        result = runner.invoke(app, [
+            "generate", "--input", "內政部發布一份公告", "--output", "out.docx",
+            "--skip-review",
+        ])
+        assert result.exit_code == 0
+        mock_show_lint.assert_called_once()

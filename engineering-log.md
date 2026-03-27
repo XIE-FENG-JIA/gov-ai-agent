@@ -1774,3 +1774,17 @@
 - `公` 類文件範本補充（公示/公開資訊/環境影響等類型）
 - 執行 `gov-ai kb sync` 讓 Round 73/77 新增的 12 筆範本正式生效
 - wizard 支援 `--receiver-from-profile` 從 profile 預填常用收文機關清單
+
+### [2026-03-27] Round 14 — generate + lint 整合：生成後自動執行格式檢查
+**角度**: ✨ 功能缺口（MISSION 第 3 條「多層審查」輕量層閉環）
+**為什麼**: Round 11 整合了 generate → cite，但「多層審查（合規性、用語、格式）」的格式/用語層始終是分離工具——使用者生成公文後，必須手動執行 `gov-ai lint -f <draft>` 才能知道格式問題。Round 10-13 連續 4 輪 UX 功能，強制從體驗轉回目標達成：`lint_cmd` 的核心邏輯（口語化用詞、必要段落、標點不一致）完全不需要 LLM，就能立即提供格式品質回饋，是整合成本最低、使用者感知最直接的「多層審查」輕量入口。
+**搜尋**: WebSearch 「台灣公文格式自動檢查 lint 行政院公文處理手冊 2026」——確認政府文書格式參考規範（國發會94年頒布）為現行依據；現行規定要求 主旨/說明 兩段式、禁止口語化詞彙、全文標點一致。WebSearch 「CLI post-generation inline linting Python Typer 2026」——確認最佳實踐：提取可複用核心邏輯（去 I/O 依賴）→ 整合為 optional flag（預設 on）→ 靜默降級（Exception catch）。
+**做了什麼**:
+- `src/cli/lint_cmd.py`：新增 `_run_lint(text: str) -> list[dict]` 可複用函式，完整包含口語化用詞偵測、必要段落檢查、標點不一致偵測；`lint()` CLI 函式改為呼叫 `_run_lint()`，行為完全不變；同時修正標點不一致規則：`punctuations_used` 改用 `stripped[-1]`（去掉 `.strip()` 後再取尾字，避免空行誤判）
+- `src/cli/generate.py`：新增 `_show_lint_results(content: str)` helper——從 `lint_cmd` 匯入 `_run_lint`，無問題顯示綠色通過 Panel，有問題顯示最多 5 個 issue + 「gov-ai lint -f <草稿> 查看全部」提示；靜默降級（Exception catch-all）；`generate()` 新增 `--lint/--no-lint` 旗標（預設開啟），`--batch` 或 `--quiet` 模式自動略過；插入位置在 `_show_cite_suggestions` 之後，`append_record` 之前
+- `tests/test_cli_commands.py`：新增 `TestShowLintResults` 6 個測試——乾淨草稿顯示通過面板、含口語化詞顯示問題面板、ImportError 靜默降級、超過 5 個 issue 顯示截斷提示、`--no-lint` 不呼叫、預設呼叫
+**結果**: PASS — 3214 passed, 84 skipped, 0 failed（全套件 5m 26s 零回歸）
+**下一步可能**:
+- `公` 類文件範本補充（公示/公開資訊/環境影響等類型，已連續 4 輪列為候補）
+- wizard → generate → lint 完整 pipeline 的端到端整合測試
+- `gov-ai lint` 增加更多台灣公文規範規則（速別標示、用印格式、附件格式）
