@@ -1788,3 +1788,16 @@
 - `公` 類文件範本補充（公示/公開資訊/環境影響等類型，已連續 4 輪列為候補）
 - wizard → generate → lint 完整 pipeline 的端到端整合測試
 - `gov-ai lint` 增加更多台灣公文規範規則（速別標示、用印格式、附件格式）
+
+### [2026-03-27] Round 15 — lint 規則擴充：速別/主旨結尾/字號 + 口語化用詞 10→18
+**角度**: ✨ 功能缺口（MISSION 第 3 條「多層審查（格式層）」實質閉環）
+**為什麼**: Round 14 建立了 lint 框架（_run_lint 函式 + generate 整合），但只有 3 類規則（口語化/必要段落/標點），「多層審查」的格式稽核能力還很薄弱。Round 14 的「下一步」已明確列出速別/用印/字號，連續 4 輪未完成的「公文範本補充」則需要 KB sync 配合，lint 規則純程式邏輯成本最低、ROI 最高。第一性原理：MISSION 第 3 條是「多層審查」，速別/字號/主旨結尾語是《文書處理手冊》明定的格式要求，不偵測等於有洞沒補。
+**搜尋**: WebSearch「台灣行政院公文處理手冊 速別 字號 主旨結尾用語 格式規範」——確認國發會《政府文書格式參考規範》（105年4月）為現行依據；速別為函/書函/開會通知單必填欄位；發文字號為正式公文必填；函的主旨應以「請　查照」「請　照辦」等結尾語收尾。採用「含受文者則為外發函文」作為偵測啟動條件（避免簽呈/令/公告被誤判）。
+**做了什麼**:
+- `src/cli/lint_cmd.py`：`_INFORMAL_TERMS` 擴充 8 個（以後/不過/同時/為了/沒有/快點/先前/有些），共 18 個；新增 `_SUBJECT_CLOSINGS` 常數（9 個標準結尾語，移除「配合辦理」避免偽陰性）；新增 `_check_speed_level(text)` / `_check_subject_closing(text)` / `_check_doc_number(text)` 三個 helper；`_run_lint()` 整合規則 4-6（速別/主旨結尾/字號）
+- `tests/test_lint_cmd.py`（新增）：39 個測試，分 5 個類別——`TestExpandedInformalTerms`（18）、`TestCheckSpeedLevel`（4）、`TestCheckSubjectClosing`（8）、`TestCheckDocNumber`（4）、`TestRunLintIntegration`（5）；含偽陰性防護（完整函文不觸發規則）與邊界測試（無受文者/無主旨段不 crash）
+**結果**: PASS — 39 passed (test_lint_cmd) + 6 passed (TestShowLintResults) 零回歸；修正一次偽陰性：_SUBJECT_CLOSINGS 移除「配合辦理」
+**下一步可能**:
+- `公` 類文件範本補充（已連續 5 輪列為候補，需搭配 kb sync）
+- wizard → generate → lint 完整 pipeline 端到端整合測試
+- lint 新增用印格式規則（正式公文應有職銜/機關長官署名欄位）

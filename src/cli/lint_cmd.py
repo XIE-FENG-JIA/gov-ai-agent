@@ -4,7 +4,7 @@ from rich.table import Table
 
 console = Console()
 
-# 口語化用詞對照
+# 口語化用詞對照（依《文書處理手冊》口語化 → 正式用語建議）
 _INFORMAL_TERMS = {
     "所以": "爰此",
     "但是": "惟",
@@ -16,10 +16,101 @@ _INFORMAL_TERMS = {
     "馬上": "即刻",
     "大概": "約",
     "一定要": "應",
+    # 擴充：10 → 18 個常見白話詞
+    "以後": "嗣後",
+    "不過": "惟",
+    "同時": "並",
+    "為了": "為",
+    "沒有": "無",
+    "快點": "儘速",
+    "先前": "前",
+    "有些": "部分",
 }
 
 # 必要段落
 _REQUIRED_SECTIONS = ["主旨", "說明"]
+
+# 函文主旨應以下列結尾語之一收尾（依《文書處理手冊》規定）
+# 僅列明確作為結尾語的詞彙，避免「配合辦理」等常見片語造成偽陰性
+_SUBJECT_CLOSINGS = [
+    "查照", "照辦", "鑒核", "核示", "遵照辦理",
+    "辦理見復", "備查", "鑒察", "核備",
+]
+
+# 具有「受文者」的外發文件類型，視為需要速別/字號的正式函文
+_FORMAL_DOC_INDICATOR = "受文者"
+
+
+def _check_speed_level(text: str) -> list[dict]:
+    """含「受文者」的外發函文若缺少「速別」標示則回報 issue。
+
+    依《政府文書格式參考規範》，函、書函、開會通知單等外發公文
+    均應填列速別（最速件／速件／普通件）。
+    """
+    if _FORMAL_DOC_INDICATOR in text and "速別" not in text:
+        return [{
+            "line": 0,
+            "category": "缺少速別",
+            "detail": "函文含「受文者」但缺少「速別」標示（普通件／速件／最速件）",
+        }]
+    return []
+
+
+def _check_subject_closing(text: str) -> list[dict]:
+    """外發函文的「主旨」段落宜以正式結尾語收尾。
+
+    依《文書處理手冊》，函的主旨以「請　查照」「請　照辦」等結尾；
+    呈以「請　鑒核」結尾；若完全無結尾語則提示。
+    僅對含「受文者」的外發文件執行此規則。
+    """
+    if _FORMAL_DOC_INDICATOR not in text:
+        return []
+
+    lines = text.split("\n")
+    subject_lines: list[str] = []
+    in_subject = False
+    _NEXT_SECTION_KEYWORDS = ("說明", "公告事項", "依據", "正本", "副本", "擬辦", "附件")
+
+    for line in lines:
+        stripped = line.strip()
+        if "主旨" in stripped and ("：" in stripped or ":" in stripped):
+            in_subject = True
+            subject_lines.append(stripped)
+            continue
+        if in_subject:
+            if stripped and any(
+                kw in stripped and ("：" in stripped or ":" in stripped)
+                for kw in _NEXT_SECTION_KEYWORDS
+            ):
+                break
+            if stripped:
+                subject_lines.append(stripped)
+
+    if not subject_lines:
+        return []
+
+    subject_text = " ".join(subject_lines)
+    if not any(closing in subject_text for closing in _SUBJECT_CLOSINGS):
+        return [{
+            "line": 0,
+            "category": "主旨結尾",
+            "detail": "函文主旨宜以「請　查照」「請　照辦」「請　鑒核」等結尾語收尾",
+        }]
+    return []
+
+
+def _check_doc_number(text: str) -> list[dict]:
+    """正式外發公文含「受文者」但缺少發文字號時回報 issue。
+
+    依《政府文書格式參考規範》，函應填列發文字號（格式：XX字第XXXXXXXXXX號）。
+    """
+    if _FORMAL_DOC_INDICATOR in text and "字號" not in text and "字第" not in text:
+        return [{
+            "line": 0,
+            "category": "缺少字號",
+            "detail": "正式公文應標示發文字號（格式：XX字第XXXXXXXXXX號）",
+        }]
+    return []
 
 
 def _run_lint(text: str) -> list[dict]:
@@ -62,6 +153,15 @@ def _run_lint(text: str) -> list[dict]:
             "category": "標點不一致",
             "detail": f"句末混用多種標點：{'、'.join(sorted(punctuations_used))}",
         })
+
+    # 4. 速別缺失
+    issues.extend(_check_speed_level(text))
+
+    # 5. 主旨結尾用語
+    issues.extend(_check_subject_closing(text))
+
+    # 6. 缺少發文字號
+    issues.extend(_check_doc_number(text))
 
     return issues
 
