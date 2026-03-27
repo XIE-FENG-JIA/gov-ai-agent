@@ -28,6 +28,7 @@ from src.utils.lang_check import check_language
 from src.cli.history import append_record
 from src.core.error_analyzer import ErrorAnalyzer
 from src.core.constants import MAX_USER_INPUT_LENGTH
+from src.cli.utils import atomic_text_write, atomic_json_write
 
 console = Console()
 app = typer.Typer()
@@ -310,8 +311,7 @@ def _export_document(
             md_enc = "utf-8"
         md_path = os.path.splitext(full_output_path)[0] + ".md"
         try:
-            with open(md_path, "w", encoding=md_enc) as f:
-                f.write(final_draft)
+            atomic_text_write(md_path, final_draft, encoding=md_enc)
             enc_note = f"（{md_enc}）" if md_enc != "utf-8" else ""
             console.print(f"  [green]Markdown 版本：{md_path}{enc_note}[/green]")
         except OSError as e:
@@ -361,8 +361,7 @@ def _save_version(content: str, output_path: str, version: int, label: str):
     base = os.path.splitext(output_path)[0]
     ver_path = f"{base}_v{version}.md"
     try:
-        with open(ver_path, "w", encoding="utf-8") as f:
-            f.write(content)
+        atomic_text_write(ver_path, content)
         console.print(f"  [dim]版本 {version}（{label}）已儲存：{ver_path}[/dim]")
     except OSError as e:
         console.print(f"  [yellow]版本儲存失敗：{e}[/yellow]")
@@ -640,8 +639,7 @@ def _run_batch(
     if failed_items:
         retry_file = os.path.splitext(batch_file)[0] + "_failed.json"
         try:
-            with open(retry_file, "w", encoding="utf-8") as f:
-                json.dump(failed_items, f, ensure_ascii=False, indent=2)
+            atomic_json_write(retry_file, failed_items)
             console.print(f"  [yellow]失敗項目已儲存至：{retry_file}[/yellow]")
             console.print(f"  [dim]重試指令：gov-ai generate --batch {retry_file}[/dim]")
         except OSError:
@@ -694,11 +692,9 @@ def _export_qa_report(qa_report, report_path: str):
                 ],
                 "audit_log": qa_report.audit_log,
             }
-            with open(report_path, "w", encoding="utf-8") as f:
-                json.dump(report_data, f, ensure_ascii=False, indent=2)
+            atomic_json_write(report_path, report_data)
         else:
-            with open(report_path, "w", encoding="utf-8") as f:
-                f.write(qa_report.audit_log)
+            atomic_text_write(report_path, qa_report.audit_log)
         console.print(f"  [green]QA 報告已匯出至：{report_path}[/green]")
     except Exception as e:
         console.print(f"  [yellow]QA 報告匯出失敗：{_sanitize_error(e)}[/yellow]")

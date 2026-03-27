@@ -4,6 +4,19 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 36 — generate.py 原子寫入補齊（核心入口遺漏）
+**角度**: 🐛 Bug（資料損毀風險——原子寫入專項遺漏最關鍵的檔案）
+**為什麼**: 工程日誌 Round 79 宣稱「CLI 原子寫入 100% 閉環」，但 `generate.py`——整個專案最核心的 CLI 入口——被完全跳過。5 處裸 `open()` 寫入：Markdown 匯出、版本儲存（`_save_version`）、批次失敗重試 JSON、QA 報告 JSON/TXT。用戶在生成公文時斷電，這些檔案全部可能損毀。
+**做了什麼**:
+- `generate.py` 新增 `from src.cli.utils import atomic_text_write, atomic_json_write`
+- Line 313: Markdown 匯出 `open()` → `atomic_text_write()`（支援 big5/utf-8-sig 編碼）
+- Line 364: 版本儲存 `open()` → `atomic_text_write()`
+- Line 643: 批次失敗 JSON `open()+json.dump` → `atomic_json_write()`
+- Line 697/700: QA 報告 `open()` → `atomic_json_write()` / `atomic_text_write()`
+**結果**: PASS — 73 個 generate 相關測試全通過，3202 全套件零回歸
+**觀察**: 現在 CLI 原子寫入專項才是真正 100% 閉環。generate.py 是最後一個遺漏。
+**下一步可能**: `extract_cmd.py:56`、`kb.py:1171`、`history.py:128/158` 仍有裸寫入，但這些是非覆寫場景，風險較低
+
 ### [2026-03-27] Round 35 — merge_cmd/split_cmd 原子寫入 + OSError 閉環
 **角度**: 🐛 Bug（資料損毀風險 + 異常處理缺口）
 **為什麼**: Round 79 日誌明確標記「merge_cmd/split_cmd 也需要相同的防護」但一直未閉環。兩者用裸 `open()` 寫檔（斷電即損毀），且只捕獲 `UnicodeDecodeError`，權限拒絕/磁碟滿等 `OSError` 會直接 traceback 給使用者。這是 CLI 原子寫入專項的最後兩個漏網之魚。
