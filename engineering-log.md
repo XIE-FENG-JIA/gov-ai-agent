@@ -4,6 +4,19 @@
 
 ## 改善紀錄
 
+### [2026-03-27] Round 19 — lint 用印格式規則（_check_seal_format）
+**角度**: ✨ 功能缺口（MISSION 第 3 條「多層審查（格式層）」最後一塊補丁）
+**為什麼**: 8 條規則覆蓋了速別/字號/正本欄/附件件數/主旨結尾，但《文書處理手冊》明定「正式公文需蓋用機關印信並署機關首長職銜、姓名」，格式稽核仍有最後一個盲點。用印格式是公文法律效力的基礎要件——沒有職銜署名的函文在法律上不完整，連續 2 輪（R17/R18）做 template 功能後，必須回補格式稽核。
+**搜尋**: WebSearch「台灣政府公文 用印 署名 職銜 格式規範 文書處理手冊 2026」——確認《文書處理手冊》（行政院，104年7月）及《政府文書格式參考規範》（國發會，105年4月）為現行依據；正式公文（函/公告/證書）須署機關首長職銜+姓名；函文首長署名欄通常置於文末，格式「職銜　姓名」（如「局長　王小明」）。採用 regex 偵測「職銜+空白+2-4中文字」組合，涵蓋正副職 22 種官銜，僅對含「受文者」的外發函文執行，避免誤判簽呈/令/公告。
+**做了什麼**:
+- `src/cli/lint_cmd.py`：新增 `_OFFICIAL_TITLE_RE`（正則含院長/部長/局長/處長/廳長/署長/主任委員/科長等正副職 22 種職銜）；新增 `_check_seal_format(text)` helper（規則 9）；`_run_lint()` 整合規則 9
+- `tests/test_lint_cmd.py`：import 新增 `_check_seal_format`；更新 docstring；新增 `TestCheckSealFormat`（12 個測試）——正向（ju/bu/zhu/yuan/chu/ke/fu-ju 七種職銜）、負向（缺職銜觸發 issue）、邊界（無受文者不觸發）、整合（_run_lint 包含規則、完整函文通過）
+**結果**: PASS — 65 passed (test_lint_cmd) + 147 passed (lint+config+template 群組), 0 failed；零回歸
+**下一步可能**:
+- wizard → generate → lint 完整 pipeline 端到端整合測試（優先度升高，格式稽核已 9 條閉環）
+- template --generate --edit：先開啟 $EDITOR 讓使用者填寫佔位符再生成
+- lint 報告格式改善：依嚴重等級（ERROR/WARNING）分類顯示
+
 ### [2026-03-27] Round 37 — 公文類型偵測邏輯統一（消除重複實作）
 **角度**: 🏗️ 架構（重複邏輯 + 行為不一致）
 **為什麼**: `cite_cmd.py` 和 `review_cmd.py` 各自維護一套 `_detect_doc_type`。cite_cmd 用 keyword-in 匹配回傳 `str | None`，review_cmd 用 regex 匹配回傳 `str`。規則集不同——cite_cmd 涵蓋 11 種類型（含 4 種非標準類型如「採購公告」），review_cmd 涵蓋全部 13 種 VALID_DOC_TYPES。同一份文件用兩個指令可能得到不同類型判斷。

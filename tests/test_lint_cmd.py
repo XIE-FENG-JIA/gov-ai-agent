@@ -7,6 +7,7 @@
 - 缺少發文字號規則（_check_doc_number）
 - 缺少正本欄規則（_check_main_copy）—— Round 16
 - 附件件數未標明規則（_check_attachment_numbering）—— Round 16
+- 用印格式缺失規則（_check_seal_format）—— Round 19
 - _run_lint 整合行為
 """
 import pytest
@@ -17,6 +18,7 @@ from src.cli.lint_cmd import (
     _check_doc_number,
     _check_main_copy,
     _check_attachment_numbering,
+    _check_seal_format,
     _INFORMAL_TERMS,
     _SUBJECT_CLOSINGS,
 )
@@ -302,3 +304,94 @@ class TestCheckAttachmentNumbering:
         issues = _check_attachment_numbering(text)
         assert len(issues) == 1
         assert issues[0]["category"] == "附件件數"
+
+
+# ─────────────────────────────────────────────
+# 8. _check_seal_format — 用印格式規則
+# ─────────────────────────────────────────────
+
+class TestCheckSealFormat:
+    """Round 19：外發函文應有機關首長職銜署名欄位（用印格式）。"""
+
+    def test_missing_title_with_receiver(self):
+        """含受文者但無職銜署名 → 回報 issue。"""
+        text = "受文者：A機關\n主旨：請查照。\n說明：依規定。\n正本：A機關\n"
+        issues = _check_seal_format(text)
+        assert len(issues) == 1
+        assert issues[0]["category"] == "用印格式"
+        assert "職銜" in issues[0]["detail"]
+
+    def test_title_ju_zhang_passes(self):
+        """「局長　王小明」→ 無 issue。"""
+        text = "受文者：A機關\n主旨：請查照。\n說明：依規定。\n局長　王小明\n"
+        assert _check_seal_format(text) == []
+
+    def test_title_bu_zhang_passes(self):
+        """「部長 陳大文」→ 無 issue。"""
+        text = "受文者：A機關\n主旨：請查照。\n說明：依規定。\n部長 陳大文\n"
+        assert _check_seal_format(text) == []
+
+    def test_title_zhu_ren_wei_yuan_passes(self):
+        """「主任委員 李四」→ 無 issue。"""
+        text = "受文者：各機關\n主旨：請查照。\n說明：依規定。\n主任委員 李四\n"
+        assert _check_seal_format(text) == []
+
+    def test_title_yuan_zhang_passes(self):
+        """「院長　張三豐」→ 無 issue。"""
+        text = "受文者：各局處\n主旨：請查照。\n說明：依規定。\n院長　張三豐\n"
+        assert _check_seal_format(text) == []
+
+    def test_title_chu_zhang_passes(self):
+        """「處長　陳明義」→ 無 issue。"""
+        text = "受文者：B機關\n主旨：請查照。\n說明：依規定。\n處長　陳明義\n"
+        assert _check_seal_format(text) == []
+
+    def test_no_receiver_no_check(self):
+        """無受文者（簽呈/令）→ 不要求用印欄位。"""
+        text = "主旨：簽請核示。\n說明：依規定。\n"
+        assert _check_seal_format(text) == []
+
+    def test_internal_doc_no_check(self):
+        """內部簽核文件（無受文者）→ 不觸發規則。"""
+        text = "主旨：擬請核准。\n說明：依本局規定辦理。\n擬辦：如主旨。\n"
+        assert _check_seal_format(text) == []
+
+    def test_run_lint_includes_seal_format(self):
+        """_run_lint 應整合呼叫用印格式規則。"""
+        text = (
+            "受文者：A機關\n"
+            "速別：普通件\n"
+            "發文字號：北環資字第1140000001號\n"
+            "正本：A機關\n"
+            "主旨：請查照。\n"
+            "說明：依規定。\n"
+        )
+        issues = _run_lint(text)
+        categories = {i["category"] for i in issues}
+        assert "用印格式" in categories
+
+    def test_complete_doc_with_seal_passes(self):
+        """完整函文含職銜署名 → 用印格式無 issue。"""
+        text = (
+            "受文者：各局處\n"
+            "速別：普通件\n"
+            "發文字號：北環資字第1140000001號\n"
+            "正本：A機關\n"
+            "主旨：為加強校園資源回收工作，請各校配合辦理，請　查照。\n"
+            "說明：依本局114年度計畫辦理。\n"
+            "附件1份：計畫書。\n"
+            "局長　王小明\n"
+        )
+        issues = _run_lint(text)
+        seal_issues = [i for i in issues if i["category"] == "用印格式"]
+        assert seal_issues == [], f"完整含職銜函文不應觸發用印格式規則"
+
+    def test_ke_zhang_passes(self):
+        """「科長 吳建國」→ 無 issue（科長亦為有效職銜）。"""
+        text = "受文者：A機關\n主旨：請查照。\n說明：依規定。\n科長 吳建國\n"
+        assert _check_seal_format(text) == []
+
+    def test_vice_title_fu_ju_zhang_passes(self):
+        """「副局長　林美玲」→ 無 issue（副職亦合法）。"""
+        text = "受文者：A機關\n主旨：請查照。\n說明：依規定。\n副局長　林美玲\n"
+        assert _check_seal_format(text) == []

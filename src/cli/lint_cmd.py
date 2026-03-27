@@ -44,6 +44,15 @@ _FORMAL_DOC_INDICATOR = "受文者"
 # 附件相關關鍵字
 _ATTACHMENT_KEYWORDS = ("附件", "附表", "附圖")
 
+# 官員職銜 pattern（用於偵測正式函文是否存在用印/署名欄位）
+# 格式：「局長　王小明」「主任委員 陳大文」等，姓名為 2-4 個中文字
+_OFFICIAL_TITLE_RE = re.compile(
+    r"(院長|副院長|部長|副部長|局長|副局長|處長|副處長|廳長|副廳長|"
+    r"署長|副署長|主任委員|副主任委員|委員長|副委員長|秘書長|副秘書長|"
+    r"科長|副科長|課長|主席|市長|縣長|鄉長|鎮長|所長|副所長|校長|副校長|"
+    r"首長)[　 ]*[\u4e00-\u9fff]{2,4}"
+)
+
 # 附件件數合法標示 pattern（依《文書處理手冊》，附件應標明件數）
 _ATTACHMENT_VALID_PATTERNS = [
     re.compile(r"附件[\d一二三四五六七八九十百]+"),   # 附件1、附件一
@@ -165,6 +174,24 @@ def _check_doc_number(text: str) -> list[dict]:
     return []
 
 
+def _check_seal_format(text: str) -> list[dict]:
+    """正式外發函文應有機關首長職銜署名欄位。
+
+    依《文書處理手冊》，正式公文需蓋用機關印信並署機關首長職銜、姓名；
+    若缺少職銜署名欄位（如「局長　王小明」），視為用印格式不完整。
+    僅對含「受文者」的外發函文執行此規則。
+    """
+    if _FORMAL_DOC_INDICATOR not in text:
+        return []
+    if _OFFICIAL_TITLE_RE.search(text):
+        return []
+    return [{
+        "line": 0,
+        "category": "用印格式",
+        "detail": "正式外發函文應有機關首長職銜署名（如「局長　王小明」），請確認用印欄位是否完整",
+    }]
+
+
 def _run_lint(text: str) -> list[dict]:
     """對公文純文字內容執行 lint 檢查，回傳 issue 清單。
 
@@ -220,6 +247,9 @@ def _run_lint(text: str) -> list[dict]:
 
     # 8. 附件件數未標明
     issues.extend(_check_attachment_numbering(text))
+
+    # 9. 用印格式缺失
+    issues.extend(_check_seal_format(text))
 
     return issues
 
