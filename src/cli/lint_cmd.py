@@ -1,3 +1,4 @@
+import re
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -39,6 +40,21 @@ _SUBJECT_CLOSINGS = [
 
 # 具有「受文者」的外發文件類型，視為需要速別/字號的正式函文
 _FORMAL_DOC_INDICATOR = "受文者"
+
+# 附件相關關鍵字
+_ATTACHMENT_KEYWORDS = ("附件", "附表", "附圖")
+
+# 附件件數合法標示 pattern（依《文書處理手冊》，附件應標明件數）
+_ATTACHMENT_VALID_PATTERNS = [
+    re.compile(r"附件[\d一二三四五六七八九十百]+"),   # 附件1、附件一
+    re.compile(r"附件\s*共\s*\d+\s*件"),             # 附件共2件
+    re.compile(r"共\s*\d+\s*件"),                    # 共2件
+    re.compile(r"附件清單"),                          # 附件清單
+    re.compile(r"如附"),                              # 如附、如附件
+    re.compile(r"附[表圖][\d一二三四五六七八九十]+"), # 附表1、附圖一
+    re.compile(r"附件\d+份"),                         # 附件1份
+    re.compile(r"附[件表圖]\s*\d+份"),                # 附件2份、附表1份（需有「附X」前綴）
+]
 
 
 def _check_speed_level(text: str) -> list[dict]:
@@ -97,6 +113,42 @@ def _check_subject_closing(text: str) -> list[dict]:
             "detail": "函文主旨宜以「請　查照」「請　照辦」「請　鑒核」等結尾語收尾",
         }]
     return []
+
+
+def _check_main_copy(text: str) -> list[dict]:
+    """含「受文者」的外發函文應有「正本：」欄位。
+
+    依《文書處理手冊》，承辦人辦稿時應填列「正本」欄，
+    逐一書明實際收受公文之機關全銜或人員姓名。
+    """
+    if _FORMAL_DOC_INDICATOR not in text:
+        return []
+    if "正本" not in text:
+        return [{
+            "line": 0,
+            "category": "缺少正本欄",
+            "detail": "正式外發函文應填列「正本：」欄位，逐一書明收受機關全銜",
+        }]
+    return []
+
+
+def _check_attachment_numbering(text: str) -> list[dict]:
+    """文中提及附件但未標明件數時回報 issue。
+
+    依《政府文書格式參考規範》，公文若有附件應標示件數
+    （如「附件1份」「共2件」「如附件清單」）。
+    """
+    has_attachment = any(kw in text for kw in _ATTACHMENT_KEYWORDS)
+    if not has_attachment:
+        return []
+    for pattern in _ATTACHMENT_VALID_PATTERNS:
+        if pattern.search(text):
+            return []
+    return [{
+        "line": 0,
+        "category": "附件件數",
+        "detail": "文中提及附件，請標明件數（如「附件1份」「共2件」「如附件清單」）",
+    }]
 
 
 def _check_doc_number(text: str) -> list[dict]:
@@ -162,6 +214,12 @@ def _run_lint(text: str) -> list[dict]:
 
     # 6. 缺少發文字號
     issues.extend(_check_doc_number(text))
+
+    # 7. 缺少正本欄
+    issues.extend(_check_main_copy(text))
+
+    # 8. 附件件數未標明
+    issues.extend(_check_attachment_numbering(text))
 
     return issues
 

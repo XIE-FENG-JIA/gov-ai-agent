@@ -10,7 +10,7 @@ from rich.table import Table
 from rich.prompt import Confirm, Prompt
 from src.core.config import ConfigManager
 from src.core.llm import LiteLLMProvider
-from src.cli.utils import atomic_yaml_write
+from src.cli.utils import atomic_yaml_write, safe_config_write
 
 logger = logging.getLogger(__name__)
 
@@ -290,7 +290,7 @@ def fetch_models(
 
             raw_config["providers"]["openrouter"]["model"] = best_working_model
 
-            atomic_yaml_write(str(cm.config_path), raw_config)
+            safe_config_write(str(cm.config_path), raw_config)
 
             console.print("[green]設定檔更新成功！[/green]")
 
@@ -461,7 +461,7 @@ def set_value(
         node = node[k]
     node[keys[-1]] = parsed_value
 
-    atomic_yaml_write(str(cm.config_path), raw_config)
+    safe_config_write(str(cm.config_path), raw_config)
 
     console.print(f"[cyan]{key}[/cyan]: [red]{old_value}[/red] → [green]{parsed_value}[/green]")
 
@@ -527,3 +527,49 @@ def config_backup(
 
     shutil.copy2(src_path, dst_path)
     console.print(f"[green]已備份設定檔至：{dst_path}[/green]")
+
+
+@app.command(name="restore")
+def config_restore(
+    source: str = typer.Option("", "-s", "--source", help="備份檔案路徑（預設 config.yaml.bak）"),
+) -> None:
+    """從備份還原設定檔。
+
+    shrink guard 自動產生的 .bak 備份，或手動 backup 產生的 .backup 備份，
+    都可以用此命令還原。
+
+    範例：
+
+        gov-ai config restore                      從 config.yaml.bak 還原
+
+        gov-ai config restore -s config.yaml.backup  從指定備份還原
+    """
+    import shutil
+    cm = ConfigManager()
+    dst_path = str(cm.config_path)
+
+    if source:
+        bak_path = source
+    else:
+        bak_path = dst_path + ".bak"
+
+    if not os.path.isfile(bak_path):
+        console.print(f"[red]找不到備份檔案：{bak_path}[/red]")
+        console.print("[dim]提示：shrink guard 備份為 .bak，手動備份為 .backup[/dim]")
+        raise typer.Exit(1)
+
+    # 顯示備份內容摘要
+    try:
+        with open(bak_path, "r", encoding="utf-8") as f:
+            bak_data = yaml.safe_load(f) or {}
+        keys = list(bak_data.keys()) if isinstance(bak_data, dict) else []
+        console.print(f"[cyan]備份檔案包含 {len(keys)} 個 top-level key：{', '.join(keys)}[/cyan]")
+    except Exception:
+        pass
+
+    if not Confirm.ask(f"確定要用 [bold]{bak_path}[/bold] 覆蓋目前的設定檔？"):
+        console.print("[dim]已取消。[/dim]")
+        raise typer.Exit(0)
+
+    shutil.copy2(bak_path, dst_path)
+    console.print(f"[green]已從 {bak_path} 還原設定檔。[/green]")

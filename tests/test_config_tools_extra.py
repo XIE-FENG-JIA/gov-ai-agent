@@ -1,6 +1,8 @@
 """config_tools.py 未覆蓋分支補測（82% → 95%+）
 
 覆蓋 Missing lines: 62-63, 73, 212-213, 333-399, 405, 407, 440-442, 479, 500
++ safe_config_write shrink guard 測試
++ config restore 命令測試
 """
 import json
 import os
@@ -228,3 +230,161 @@ class TestExportYaml:
         assert result.exit_code == 0
         content = yaml.safe_load(Path(out).read_text(encoding="utf-8"))
         assert content["llm"]["api_key"] == "***"
+
+
+# ---------------------------------------------------------------------------
+# safe_config_write：shrink guard 行為測試
+# ---------------------------------------------------------------------------
+class TestSafeConfigWrite:
+    """驗證 safe_config_write 的 shrink guard 和自動備份機制。"""
+
+    def test_normal_write_creates_backup(self, tmp_path):
+        """正常寫入（key 數量不變）→ 建立 .bak 備份"""
+        from src.cli.utils import safe_config_write
+        cfg = tmp_path / "config.yaml"
+        original = {"api": {}, "llm": {}, "providers": {}, "kb": {}}
+        cfg.write_text(yaml.dump(original), encoding="utf-8")
+
+        new_data = {"api": {"auth": True}, "llm": {}, "providers": {}, "kb": {}}
+        safe_config_write(str(cfg), new_data)
+
+        # 寫入成功
+        written = yaml.safe_load(cfg.read_text(encoding="utf-8"))
+        assert written["api"]["auth"] is True
+        # .bak 備份存在
+        bak = tmp_path / "config.yaml.bak"
+        assert bak.exists()
+        bak_data = yaml.safe_load(bak.read_text(encoding="utf-8"))
+        assert set(bak_data.keys()) == set(original.keys())
+
+    def test_shrink_guard_warns_and_backs_up(self, tmp_path, caplog):
+        """新 config key 數量少於 50% → 警告 + 備份 + 仍然寫入"""
+        import logging
+        from src.cli.utils import safe_config_write
+        cfg = tmp_path / "config.yaml"
+        original = {"api": {}, "llm": {}, "providers": {}, "kb": {}, "org": {}}
+        cfg.write_text(yaml.dump(original), encoding="utf-8")
+
+        # 只寫入 1 個 key（5 → 1 = 80% 縮減）
+        shrunken = {"providers": {"openrouter": {"model": "test"}}}
+        with caplog.at_level(logging.WARNING, logger="src.cli.utils"):
+            safe_config_write(str(cfg), shrunken)
+
+        assert "shrink guard" in caplog.text
+        # 備份保存了原始完整 config
+        bak = tmp_path / "config.yaml.bak"
+        bak_data = yaml.safe_load(bak.read_text(encoding="utf-8"))
+        assert len(bak_data) == 5
+        # 新 config 仍然被寫入（不阻斷操作）
+        written = yaml.safe_load(cfg.read_text(encoding="utf-8"))
+        assert list(written.keys()) == ["providers"]
+
+    def test_empty_existing_config_no_crash(self, tmp_path):
+        """既有 config 為空 → 不 crash，正常寫入"""
+        from src.cli.utils import safe_config_write
+        cfg = tmp_path / "config.yaml"
+        cfg.write_text("", encoding="utf-8")
+
+        new_data = {"llm": {"provider": "ollama"}}
+        safe_config_write(str(cfg), new_data)
+
+        written = yaml.safe_load(cfg.read_text(encoding="utf-8"))
+        assert written["llm"]["provider"] == "ollama"
+
+    def test_nonexistent_config_no_crash(self, tmp_path):
+        """config 不存在 → 不 crash，正常建立"""
+        from src.cli.utils import safe_config_write
+        cfg = tmp_path / "config.yaml"
+
+        new_data = {"llm": {"provider": "gemini"}}
+        safe_config_write(str(cfg), new_data)
+
+        assert cfg.exists()
+        written = yaml.safe_load(cfg.read_text(encoding="utf-8"))
+        assert written["llm"]["provider"] == "gemini"
+        # 不存在則無 .bak
+        assert not (tmp_path / "config.yaml.bak").exists()
+
+    def test_no_shrink_guard_when_adding_keys(self, tmp_path, caplog):
+        """新 config key 數量增加 → 無 shrink guard 警告"""
+        import logging
+        from src.cli.utils import safe_config_write
+        cfg = tmp_path / "config.yaml"
+        original = {"llm": {}}
+        cfg.write_text(yaml.dump(original), encoding="utf-8")
+
+        bigger = {"llm": {}, "api": {}, "providers": {}}
+        with caplog.at_level(logging.WARNING, logger="src.cli.utils"):
+            safe_config_write(str(cfg), bigger)
+
+        assert "shrink guard" not in caplog.text
+        written = yaml.safe_load(cfg.read_text(encoding="utf-8"))
+        assert len(written) == 3
+
+    def test_backup_failure_logs_warning(self, tmp_path, caplog, monkeypatch):
+        """備份建立失敗 → 記錄警告但仍完成寫入（不 crash）"""
+        import logging
+        from unittest.mock import patch
+        from src.cli.utils import safe_config_write
+        cfg = tmp_path / "config.yaml"
+        original = {"api": {}, "llm": {}, "providers": {}}
+        cfg.write_text(yaml.dump(original), encoding="utf-8")
+
+        new_data = {"api": {"v2": True}, "llm": {}, "providers": {}}
+        with patch("src.cli.utils.shutil.copy2", side_effect=OSError("disk full")):
+            with caplog.at_level(logging.WARNING, logger="src.cli.utils"):
+                safe_config_write(str(cfg), new_data)
+
+        assert "無法建立設定檔備份" in caplog.text
+        # 寫入仍應成功
+        written = yaml.safe_load(cfg.read_text(encoding="utf-8"))
+        assert written["api"] == {"v2": True}
+        # .bak 不應存在（因為 copy2 失敗）
+        assert not (tmp_path / "config.yaml.bak").exists()
+
+
+# ---------------------------------------------------------------------------
+# config restore：從備份還原
+# ---------------------------------------------------------------------------
+class TestConfigRestore:
+    """驗證 config restore 命令。"""
+
+    def test_restore_from_bak(self, tmp_path, monkeypatch):
+        """有 .bak 檔案時成功還原"""
+        monkeypatch.chdir(tmp_path)
+        cfg = tmp_path / "config.yaml"
+        bak = tmp_path / "config.yaml.bak"
+        cfg.write_text(yaml.dump({"providers": {}}), encoding="utf-8")
+        original = {"api": {}, "llm": {}, "providers": {}, "kb": {}, "org": {}}
+        bak.write_text(yaml.dump(original), encoding="utf-8")
+
+        from src.cli.config_tools import app as config_app
+        result = runner.invoke(config_app, ["restore"], input="y\n")
+        assert result.exit_code == 0
+        assert "還原" in result.output
+        restored = yaml.safe_load(cfg.read_text(encoding="utf-8"))
+        assert len(restored) == 5
+
+    def test_restore_no_backup(self, tmp_path, monkeypatch):
+        """無備份檔案 → 錯誤訊息"""
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "config.yaml").write_text("llm: {}", encoding="utf-8")
+        from src.cli.config_tools import app as config_app
+        result = runner.invoke(config_app, ["restore"])
+        assert result.exit_code != 0
+        assert "找不到備份" in result.output
+
+    def test_restore_cancel(self, tmp_path, monkeypatch):
+        """使用者取消還原"""
+        monkeypatch.chdir(tmp_path)
+        cfg = tmp_path / "config.yaml"
+        bak = tmp_path / "config.yaml.bak"
+        cfg.write_text(yaml.dump({"small": True}), encoding="utf-8")
+        bak.write_text(yaml.dump({"big": True, "data": True}), encoding="utf-8")
+
+        from src.cli.config_tools import app as config_app
+        result = runner.invoke(config_app, ["restore"], input="n\n")
+        assert "已取消" in result.output
+        # config.yaml 未被修改
+        current = yaml.safe_load(cfg.read_text(encoding="utf-8"))
+        assert current == {"small": True}

@@ -5,6 +5,8 @@
 - 速別缺失規則（_check_speed_level）
 - 主旨結尾用語規則（_check_subject_closing）
 - 缺少發文字號規則（_check_doc_number）
+- 缺少正本欄規則（_check_main_copy）—— Round 16
+- 附件件數未標明規則（_check_attachment_numbering）—— Round 16
 - _run_lint 整合行為
 """
 import pytest
@@ -13,6 +15,8 @@ from src.cli.lint_cmd import (
     _check_speed_level,
     _check_subject_closing,
     _check_doc_number,
+    _check_main_copy,
+    _check_attachment_numbering,
     _INFORMAL_TERMS,
     _SUBJECT_CLOSINGS,
 )
@@ -190,3 +194,111 @@ class TestRunLintIntegration:
         details = " ".join(i["detail"] for i in issues if i["category"] == "口語化用詞")
         assert "以後" in details
         assert "沒有" in details
+
+
+# ─────────────────────────────────────────────
+# 6. _check_main_copy — 缺少正本欄規則
+# ─────────────────────────────────────────────
+
+class TestCheckMainCopy:
+    """Round 16：外發函文應有「正本：」欄位。"""
+
+    def test_missing_main_copy_with_receiver(self):
+        """含受文者但無正本欄 → 回報 issue。"""
+        text = "受文者：A機關\n主旨：請查照。\n說明：依規定。\n"
+        issues = _check_main_copy(text)
+        assert len(issues) == 1
+        assert issues[0]["category"] == "缺少正本欄"
+        assert "正本" in issues[0]["detail"]
+
+    def test_main_copy_present_no_issue(self):
+        """含受文者且有正本欄 → 無 issue。"""
+        text = "受文者：A機關\n正本：A機關\n主旨：請查照。\n說明：依規定。\n"
+        assert _check_main_copy(text) == []
+
+    def test_no_receiver_no_check(self):
+        """無受文者（如簽呈）→ 不要求正本欄。"""
+        text = "主旨：簽請核示。\n說明：依規定。\n"
+        assert _check_main_copy(text) == []
+
+    def test_main_copy_with_multiple_recipients(self):
+        """正本欄含多機關時仍應通過。"""
+        text = "受文者：各局處\n正本：A機關、B機關\n主旨：請查照。\n說明：依規定。\n"
+        assert _check_main_copy(text) == []
+
+
+# ─────────────────────────────────────────────
+# 7. _check_attachment_numbering — 附件件數規則
+# ─────────────────────────────────────────────
+
+class TestCheckAttachmentNumbering:
+    """Round 16：提及附件但未標明件數 → 提示。"""
+
+    def test_attachment_mentioned_without_count(self):
+        """提及附件但無件數標示 → 回報 issue。"""
+        text = "主旨：請查照。\n說明：依規定。\n附件：計畫書。\n"
+        issues = _check_attachment_numbering(text)
+        assert len(issues) == 1
+        assert issues[0]["category"] == "附件件數"
+
+    def test_attachment_with_numeric_count(self):
+        """「附件1份」→ 無 issue。"""
+        text = "主旨：請查照。\n說明：依規定。\n附件1份：計畫書。\n"
+        assert _check_attachment_numbering(text) == []
+
+    def test_attachment_with_total_count(self):
+        """「共2件」→ 無 issue。"""
+        text = "主旨：請查照。\n說明：依規定。\n附件：共2件。\n"
+        assert _check_attachment_numbering(text) == []
+
+    def test_attachment_with_list_reference(self):
+        """「如附件清單」→ 無 issue。"""
+        text = "主旨：請查照。\n說明：依規定。\n如附件清單所示。\n"
+        assert _check_attachment_numbering(text) == []
+
+    def test_attachment_with_ruju_format(self):
+        """「如附」→ 無 issue。"""
+        text = "主旨：請查照。\n說明：如附。\n"
+        assert _check_attachment_numbering(text) == []
+
+    def test_no_attachment_no_issue(self):
+        """無附件相關詞 → 無 issue。"""
+        text = "主旨：請查照。\n說明：依規定辦理。\n"
+        assert _check_attachment_numbering(text) == []
+
+    def test_attachment_table_with_number(self):
+        """「附表1」→ 無 issue。"""
+        text = "主旨：請查照。\n說明：見附表1。\n"
+        assert _check_attachment_numbering(text) == []
+
+    def test_run_lint_includes_main_copy_and_attachment(self):
+        """_run_lint 應整合呼叫新兩條規則。"""
+        # 缺正本欄 + 附件無件數
+        text = "受文者：A機關\n主旨：請查照。\n說明：依規定。\n附件：計畫書。\n"
+        issues = _run_lint(text)
+        categories = {i["category"] for i in issues}
+        assert "缺少正本欄" in categories
+        assert "附件件數" in categories
+
+    def test_complete_doc_passes_new_rules(self):
+        """含正本欄且附件有件數標示 → 新規則無 issue。"""
+        text = (
+            "受文者：各局處\n"
+            "速別：普通件\n"
+            "發文字號：北環資字第1140000001號\n"
+            "正本：A機關\n"
+            "主旨：為加強校園資源回收工作，請各校配合辦理，請　查照。\n"
+            "說明：依本局114年度計畫辦理。\n"
+            "附件1份：計畫書。\n"
+        )
+        issues = _run_lint(text)
+        new_categories = {"缺少正本欄", "附件件數"}
+        found = {i["category"] for i in issues} & new_categories
+        assert found == set(), f"完整函文不應觸發新規則，但發現：{found}"
+
+    def test_unrelated_份_does_not_suppress_issue(self):
+        """「3份報告」等無關文字不應讓附件件數檢查誤判通過。"""
+        text = "主旨：請查照。\n說明：依3份報告辦理。\n附件：計畫書。\n"
+        issues = _check_attachment_numbering(text)
+        assert len(issues) == 1
+        assert issues[0]["category"] == "附件件數"

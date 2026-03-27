@@ -5,12 +5,16 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
+import shutil
 import tempfile
 from typing import Any
 
 import yaml
 from rich.console import Console
+
+logger = logging.getLogger(__name__)
 
 console = Console()
 
@@ -73,6 +77,57 @@ def atomic_yaml_write(path: str, data: Any) -> None:
         except OSError:
             pass
         raise
+
+
+_CONFIG_SHRINK_THRESHOLD = 0.5  # 新 config top-level key 數量低於舊的 50% 時觸發保護
+
+
+def safe_config_write(path: str, data: dict[str, Any]) -> None:
+    """帶 shrink guard 的 config 寫入——防止意外清空設定檔。
+
+    寫入前檢查：如果新 config 的 top-level key 數量比現有檔案少超過
+    50%，先建立 ``.bak`` 備份並記錄警告，再執行寫入。這能防止
+    ``config set`` 或 ``fetch-models -u`` 在 config 已損毀時進一步
+    丟失資料（備份可用 ``config restore`` 還原）。
+
+    即使新 config 通過檢查，只要舊檔案存在就會建立 ``.bak``。
+    """
+    bak_path = path + ".bak"
+
+    # 讀取現有 config 做比較
+    existing_keys: set[str] = set()
+    if os.path.isfile(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                existing = yaml.safe_load(f)
+            if isinstance(existing, dict):
+                existing_keys = set(existing.keys())
+        except (yaml.YAMLError, UnicodeDecodeError, OSError):
+            pass  # 讀取失敗就跳過比較，正常寫入
+
+        # 備份：獨立 try-except，讀取失敗不影響備份嘗試
+        if existing_keys:
+            try:
+                shutil.copy2(path, bak_path)
+            except OSError as e:
+                logger.warning("無法建立設定檔備份 %s：%s", bak_path, e)
+
+    new_keys = set(data.keys()) if isinstance(data, dict) else set()
+
+    if existing_keys and new_keys:
+        ratio = len(new_keys) / len(existing_keys)
+        if ratio < _CONFIG_SHRINK_THRESHOLD:
+            logger.warning(
+                "config shrink guard: 新 config 只有 %d 個 top-level key "
+                "（舊有 %d 個，縮減 %.0f%%）。已備份至 %s。"
+                "若非預期，請執行 gov-ai config restore 還原。",
+                len(new_keys),
+                len(existing_keys),
+                (1 - ratio) * 100,
+                bak_path,
+            )
+
+    atomic_yaml_write(path, data)
 
 
 class JSONStore:

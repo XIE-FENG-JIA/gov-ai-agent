@@ -1801,3 +1801,19 @@
 - `公` 類文件範本補充（已連續 5 輪列為候補，需搭配 kb sync）
 - wizard → generate → lint 完整 pipeline 端到端整合測試
 - lint 新增用印格式規則（正式公文應有職銜/機關長官署名欄位）
+
+### [2026-03-27] Round 16 — lint 正本欄/附件件數規則 + config shrink guard
+**角度**: ✨ 功能缺口（格式稽核補洞 + 設定安全防護）
+**為什麼**: Round 15 建立了 6 條 lint 規則，但《文書處理手冊》另有「正本欄必填」與「附件應標明件數」兩項明定要求尚未覆蓋，是格式稽核的盲點。同時發現 `config set` / `fetch-models -u` 在設定檔損毀時可能靜默清空 config，缺乏備份與還原機制——兩個問題成本低、ROI 高，合併一輪處理。
+**搜尋**: WebSearch「台灣公文處理手冊 正本副本欄位 附件件數 格式規範」——確認《政府文書格式參考規範》要求外發函文正本欄逐一書明收受機關全銜；附件應標明件數（1份/共N件/如附件清單）。WebSearch「Python safe config write shrink guard backup pattern 2026」——確認最佳實踐：寫入前比對 top-level key 數量，若縮減超過閾值先備份再警告，不阻斷操作（fail-safe 而非 fail-closed）。
+**做了什麼**:
+- `src/cli/lint_cmd.py`：新增 `_check_main_copy(text)` 規則 7——含受文者但無「正本：」欄位時回報 issue；新增 `_check_attachment_numbering(text)` 規則 8——文中含附件/附表/附圖關鍵字但無件數標示（附件N份/共N件/如附件清單/如附/附表N等 8 種合法 pattern）時回報 issue；`_run_lint()` 整合兩條新規則
+- `src/cli/utils.py`：新增 `safe_config_write(path, data)`——每次寫入前備份 `.bak`；新 config top-level key 數量 < 舊的 50% 時發出 `logger.warning`（shrink guard），底層仍呼叫 `atomic_yaml_write` 保持原子性
+- `src/cli/config_tools.py`：`fetch_models -u` 與 `config set` 改用 `safe_config_write`；新增 `config restore` 命令（從 `.bak` 或 `--source` 指定備份還原，Confirm 確認後才覆蓋）
+- `tests/test_lint_cmd.py`：新增 `TestCheckMainCopy`（4 個）+ `TestCheckAttachmentNumbering`（10 個，含完整函文偽陰性測試）
+- `tests/test_config_tools_extra.py`：新增 `TestSafeConfigWrite`（6 個）+ `TestConfigRestore`（3 個）
+**結果**: PASS — 81 passed (test_lint_cmd + test_config_tools_extra), 0 failed；還原了 config.yaml 意外的 staging 殘留
+**下一步可能**:
+- `公` 類文件範本補充（已連續 6 輪列為候補，需搭配 kb sync）
+- wizard → generate → lint 完整 pipeline 端到端整合測試
+- lint 新增用印格式規則（正式公文應有機關長官職銜/署名欄位）
