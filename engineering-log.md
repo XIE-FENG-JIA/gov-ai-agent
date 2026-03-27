@@ -1837,3 +1837,16 @@
 - wizard → generate → lint 完整 pipeline 端到端整合測試
 - lint 新增用印格式規則（正式公文應有機關長官職銜/署名欄位）
 - `template --generate` 旗標：直接從範本進入 generate 流程（template → generate → lint 一鍵閉環）
+
+### [2026-03-27] Round 18 — template --generate 一鍵閉環（template → generate → lint pipeline）
+**角度**: 🎯 目標達成（MISSION 第 1 條「快速產生符合格式的公文草稿」端到端閉環）
+**為什麼**: template → generate → lint 完整 pipeline 欠缺最後一塊拼圖——使用者必須手動複製範本再執行 generate，流程斷裂。`--generate` 旗標讓任何範本類型一鍵進入 generate 子流程，lint 自動執行（generate 預設開啟），直接交付 MISSION 第 1 條端到端閉環。三個工具（template/generate/lint）從「分離三件事」變成「一個指令」，是第一性原理層面的 UX 躍升。
+**搜尋**: WebSearch「CLI command chaining pipeline typer python subprocess programmatic invoke subcommand 2025」——確認最佳實踐：CLI-to-CLI 呼叫優先選 subprocess（保留互動終端輸出、避免循環匯入、測試可 mock）；使用 `sys.executable -c "from src.cli.main import app; app()"` 確保同 Python 環境；tempfile + NamedTemporaryFile(delete=False) + 手動 finally 清除在 Windows 跨進程讀取最可靠。
+**做了什麼**:
+- `src/cli/template_cmd.py`：新增 `_launch_generate()` helper（tempfile + subprocess，finally 清除暫存檔）；`template()` 加入 `--generate/-g`、`--gen-output`、`--gen-preview`、`--gen-skip-review`、`--gen-no-lint` 五個旗標；不帶 `--generate` 時補充快速入口提示；帶 `--generate` 時顯示 pipeline banner 並在 rc != 0 時退出
+- `tests/test_template_cmd.py`：新增 `TestTemplateGenerateFlag`（13 個測試）——subprocess 觸發、--from-file 傳遞、選項轉發、暫存檔清理、rc != 0 退出、template_content 寫入驗證；`TestTemplateCLI` 補充 `test_template_hints_generate_flag`（1 個）
+**結果**: PASS — 54 passed (test_template_cmd) + 135 passed (template+lint+config 群組), 0 failed；全 16 種範本零回歸
+**下一步可能**:
+- wizard → generate → lint 完整 pipeline 端到端整合測試（template --generate 已可銜接，wizard 側尚缺）
+- lint 新增用印格式規則（正式公文應有機關長官職銜/署名欄位）
+- `template --generate --edit`：先開啟 $EDITOR 讓使用者填寫佔位符再生成（填好再跑，品質更高）

@@ -1,7 +1,12 @@
 """公文骨架範本指令。
 
 顯示各類公文的骨架範本（含佔位符），供使用者快速填寫。
+支援 --generate 旗標，直接進入 generate → lint 完整 pipeline。
 """
+import os
+import subprocess
+import sys
+import tempfile
 import typer
 from rich.console import Console
 from rich.markdown import Markdown
@@ -360,13 +365,87 @@ _TEMPLATES: dict[str, str] = {
 }
 
 
+def _launch_generate(
+    template_content: str,
+    gen_output: str,
+    *,
+    preview: bool = False,
+    skip_review: bool = False,
+    quiet: bool = False,
+    no_lint: bool = False,
+) -> int:
+    """將範本寫入暫存檔並以 subprocess 啟動 generate 子流程。
+
+    回傳 generate 子流程的 returncode。
+    """
+    tmp_path: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            suffix=".md",
+            encoding="utf-8",
+            delete=False,
+            prefix="govai_tpl_",
+        ) as f:
+            f.write(template_content)
+            tmp_path = f.name
+
+        cmd = [
+            sys.executable,
+            "-c",
+            "from src.cli.main import app; app(prog_name='gov-ai')",
+            "generate",
+            "--from-file", tmp_path,
+            "--output", gen_output,
+        ]
+        if preview:
+            cmd.append("--preview")
+        if skip_review:
+            cmd.append("--skip-review")
+        if quiet:
+            cmd.append("--quiet")
+        if no_lint:
+            cmd.append("--no-lint")
+
+        result = subprocess.run(cmd)
+        return result.returncode
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+
 def template(
     doc_type: str = typer.Argument("函", help="公文類型（函、公告、簽、書函、令等）"),
     output: str = typer.Option("", "--output", "-o", help="匯出範本至檔案"),
     list_all: bool = typer.Option(False, "--list", "-l", help="列出所有可用範本類型（依分類）"),
+    generate_doc: bool = typer.Option(
+        False, "--generate", "-g",
+        help="顯示範本後直接啟動 generate 生成流程（template → generate → lint 一鍵閉環）",
+    ),
+    gen_output: str = typer.Option(
+        "output.docx", "--gen-output",
+        help="generate 的輸出 .docx 路徑（搭配 --generate 使用）",
+    ),
+    gen_preview: bool = typer.Option(
+        False, "--gen-preview",
+        help="generate 完成後在終端預覽（搭配 --generate 使用）",
+    ),
+    gen_skip_review: bool = typer.Option(
+        False, "--gen-skip-review",
+        help="generate 時跳過多 Agent 審查步驟（搭配 --generate 使用）",
+    ),
+    gen_no_lint: bool = typer.Option(
+        False, "--gen-no-lint",
+        help="generate 時關閉自動 lint 檢查（搭配 --generate 使用）",
+    ),
 ):
     """
     顯示公文骨架範本，包含佔位符供快速填寫。
+
+    加上 --generate 可直接進入 generate → lint 完整 pipeline（一鍵閉環）。
 
     範例：
 
@@ -377,6 +456,10 @@ def template(
         gov-ai template 簽 -o template.md
 
         gov-ai template --list
+
+        gov-ai template 函 --generate
+
+        gov-ai template 函 --generate --gen-output 函文.docx --gen-preview
     """
     if list_all:
         _show_template_list()
@@ -397,13 +480,35 @@ def template(
         border_style="cyan",
         padding=(1, 2),
     ))
-    console.print("[dim]修改佔位符後可直接用作需求描述。[/dim]")
-    console.print('[dim]填寫完成後可使用：gov-ai generate -i "填寫後的內容"[/dim]')
+
+    if not generate_doc:
+        console.print("[dim]修改佔位符後可直接用作需求描述。[/dim]")
+        console.print('[dim]填寫完成後可使用：gov-ai generate -i "填寫後的內容"[/dim]')
+        console.print(f'[dim]或直接一鍵生成：gov-ai template {doc_type} --generate[/dim]')
 
     if output:
         with open(output, "w", encoding="utf-8") as f:
             f.write(content)
         console.print(f"[green]範本已匯出至：{output}[/green]")
+
+    if generate_doc:
+        console.print()
+        console.print(Panel(
+            f"[bold green]正在啟動 generate 流程...[/bold green]\n"
+            f"[dim]範本類型：{doc_type}　輸出：{gen_output}[/dim]",
+            title="[bold green]template → generate → lint[/bold green]",
+            border_style="green",
+        ))
+        rc = _launch_generate(
+            content,
+            gen_output,
+            preview=gen_preview,
+            skip_review=gen_skip_review,
+            no_lint=gen_no_lint,
+        )
+        if rc != 0:
+            console.print(f"[yellow]generate 子流程以代碼 {rc} 結束。[/yellow]")
+            raise typer.Exit(rc)
 
 
 def _show_template_list() -> None:

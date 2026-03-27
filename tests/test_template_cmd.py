@@ -1,9 +1,9 @@
-"""template_cmd 測試 — 範本清單、公類範本、--list 功能。"""
+"""template_cmd 測試 — 範本清單、公類範本、--list 功能、--generate pipeline。"""
 import pytest
 from typer.testing import CliRunner
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
-from src.cli.template_cmd import template, _TEMPLATES, _TEMPLATE_CATEGORIES, _show_template_list
+from src.cli.template_cmd import template, _TEMPLATES, _TEMPLATE_CATEGORIES, _show_template_list, _launch_generate
 from src.cli.main import app
 
 runner = CliRunner()
@@ -165,3 +165,136 @@ class TestTemplateCLI:
         assert outfile.exists()
         content = outfile.read_text(encoding="utf-8")
         assert "公示" in content
+
+    def test_template_hints_generate_flag(self):
+        """正常顯示範本時應提示 --generate 快速入口。"""
+        result = runner.invoke(app, ["template", "函"])
+        assert result.exit_code == 0
+        assert "--generate" in result.output
+
+
+# ============================================================
+# --generate pipeline 旗標
+# ============================================================
+
+class TestTemplateGenerateFlag:
+    """驗證 --generate 旗標觸發 template → generate → lint pipeline。"""
+
+    def _mock_run_ok(self):
+        m = MagicMock()
+        m.returncode = 0
+        return m
+
+    def test_generate_flag_invokes_subprocess(self):
+        """--generate 應呼叫 subprocess.run。"""
+        with patch("src.cli.template_cmd.subprocess.run", return_value=self._mock_run_ok()) as mock_run:
+            result = runner.invoke(app, ["template", "函", "--generate"])
+        assert result.exit_code == 0
+        mock_run.assert_called_once()
+
+    def test_generate_flag_passes_from_file(self):
+        """subprocess 命令中應包含 --from-file。"""
+        with patch("src.cli.template_cmd.subprocess.run", return_value=self._mock_run_ok()) as mock_run:
+            runner.invoke(app, ["template", "函", "--generate"])
+        cmd = mock_run.call_args[0][0]
+        assert "--from-file" in cmd
+
+    def test_generate_flag_passes_default_output(self):
+        """未指定 --gen-output 時應傳 output.docx。"""
+        with patch("src.cli.template_cmd.subprocess.run", return_value=self._mock_run_ok()) as mock_run:
+            runner.invoke(app, ["template", "函", "--generate"])
+        cmd = mock_run.call_args[0][0]
+        assert "--output" in cmd
+        output_idx = cmd.index("--output")
+        assert cmd[output_idx + 1] == "output.docx"
+
+    def test_generate_flag_respects_gen_output(self):
+        """--gen-output 應轉發至 subprocess --output。"""
+        with patch("src.cli.template_cmd.subprocess.run", return_value=self._mock_run_ok()) as mock_run:
+            runner.invoke(app, ["template", "函", "--generate", "--gen-output", "函文.docx"])
+        cmd = mock_run.call_args[0][0]
+        output_idx = cmd.index("--output")
+        assert cmd[output_idx + 1] == "函文.docx"
+
+    def test_generate_flag_respects_gen_preview(self):
+        """--gen-preview 應在 subprocess cmd 中帶 --preview。"""
+        with patch("src.cli.template_cmd.subprocess.run", return_value=self._mock_run_ok()) as mock_run:
+            runner.invoke(app, ["template", "函", "--generate", "--gen-preview"])
+        cmd = mock_run.call_args[0][0]
+        assert "--preview" in cmd
+
+    def test_generate_flag_respects_gen_skip_review(self):
+        """--gen-skip-review 應在 subprocess cmd 中帶 --skip-review。"""
+        with patch("src.cli.template_cmd.subprocess.run", return_value=self._mock_run_ok()) as mock_run:
+            runner.invoke(app, ["template", "函", "--generate", "--gen-skip-review"])
+        cmd = mock_run.call_args[0][0]
+        assert "--skip-review" in cmd
+
+    def test_generate_flag_respects_gen_no_lint(self):
+        """--gen-no-lint 應在 subprocess cmd 中帶 --no-lint。"""
+        with patch("src.cli.template_cmd.subprocess.run", return_value=self._mock_run_ok()) as mock_run:
+            runner.invoke(app, ["template", "函", "--generate", "--gen-no-lint"])
+        cmd = mock_run.call_args[0][0]
+        assert "--no-lint" in cmd
+
+    def test_generate_flag_without_flags_no_optional_args(self):
+        """未指定 preview/skip-review/no-lint 時 subprocess cmd 不含這些旗標。"""
+        with patch("src.cli.template_cmd.subprocess.run", return_value=self._mock_run_ok()) as mock_run:
+            runner.invoke(app, ["template", "函", "--generate"])
+        cmd = mock_run.call_args[0][0]
+        assert "--preview" not in cmd
+        assert "--skip-review" not in cmd
+        assert "--no-lint" not in cmd
+
+    def test_generate_flag_cleans_up_temp_file(self):
+        """subprocess 執行後暫存檔應被刪除。"""
+        captured_paths = []
+
+        def fake_run(cmd, **kwargs):
+            # 擷取 --from-file 後的路徑
+            idx = cmd.index("--from-file")
+            captured_paths.append(cmd[idx + 1])
+            m = MagicMock()
+            m.returncode = 0
+            return m
+
+        with patch("src.cli.template_cmd.subprocess.run", side_effect=fake_run):
+            runner.invoke(app, ["template", "函", "--generate"])
+
+        assert len(captured_paths) == 1
+        import os
+        assert not os.path.exists(captured_paths[0]), "暫存檔未被清除"
+
+    def test_generate_flag_not_set_no_subprocess(self):
+        """不帶 --generate 時不應呼叫 subprocess.run。"""
+        with patch("src.cli.template_cmd.subprocess.run") as mock_run:
+            result = runner.invoke(app, ["template", "函"])
+        assert result.exit_code == 0
+        mock_run.assert_not_called()
+
+    def test_generate_flag_nonzero_returncode_exits(self):
+        """subprocess returncode != 0 時 CLI 應以相同 code 退出。"""
+        m = MagicMock()
+        m.returncode = 2
+        with patch("src.cli.template_cmd.subprocess.run", return_value=m):
+            result = runner.invoke(app, ["template", "函", "--generate"])
+        assert result.exit_code == 2
+
+    def test_launch_generate_writes_template_content(self):
+        """_launch_generate 應將 template_content 寫入暫存檔供 generate 讀取。"""
+        written_contents = []
+
+        def fake_run(cmd, **kwargs):
+            idx = cmd.index("--from-file")
+            path = cmd[idx + 1]
+            with open(path, encoding="utf-8") as f:
+                written_contents.append(f.read())
+            m = MagicMock()
+            m.returncode = 0
+            return m
+
+        with patch("src.cli.template_cmd.subprocess.run", side_effect=fake_run):
+            _launch_generate("測試範本內容", "out.docx")
+
+        assert len(written_contents) == 1
+        assert "測試範本內容" in written_contents[0]
