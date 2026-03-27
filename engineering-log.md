@@ -1817,3 +1817,23 @@
 - `公` 類文件範本補充（已連續 6 輪列為候補，需搭配 kb sync）
 - wizard → generate → lint 完整 pipeline 端到端整合測試
 - lint 新增用印格式規則（正式公文應有機關長官職銜/署名欄位）
+
+### [2026-03-27] Round 17 — template 公類範本補充：公示/公示送達/政府資訊公開/簡便行文表 + --list 功能
+**角度**: ✨ 功能缺口（MISSION 第 1 條「快速產生符合格式的公文草稿」範本庫擴充）
+**為什麼**: `公` 類文件範本（公示/公示送達/政府資訊公開/簡便行文表）已連續 6 輪被列為「下一步可能」卻始終未交付，是欠債最久的功能缺口。同時，`template --list` 命令缺失意味著使用者不知道有哪些範本可用——工具可發現性（discoverability）是 UX 的基礎要求。連續 3 輪（R14-R16）做 lint 規則，本輪強制切換至功能開發。
+**搜尋**: WebSearch「台灣政府公文 公示 公開資訊 環境影響評估 格式規範 文書處理手冊 2026」——確認《政府文書格式參考規範》105年4月版為現行依據；公示送達依據《行政程序法》第78條，20日發生送達效力；政府資訊公開依《政府資訊公開法》，回覆須告知訴願救濟途徑（第18條不予提供事由）。WebSearch「台灣公文 公示送達 簡便行文表 授權書 政府資訊公開 格式範例」——確認簡便行文表為《文書處理手冊》核定的日常例行聯繫用途，不得用於正式公文行為。
+**做了什麼**:
+- `src/cli/template_cmd.py`：
+  - 新增 `_TEMPLATE_CATEGORIES` 常數，將 16 種範本分為 5 類（正式公文/內部簽核/對外行文/通知與紀錄/公示與資訊公開）
+  - 新增 `公示` 範本：含公示範圍、公示期間、意見提送方式、聯絡窗口欄位，依 都市計畫法/環境影響評估法格式
+  - 新增 `公示送達` 範本：引用行政程序法第78條、說明20日送達效力、含救濟告知
+  - 新增 `政府資訊公開` 範本：函格式，含准予/部分/不予提供三種情境佔位符、訴願救濟路徑說明
+  - 新增 `簡便行文表` 範本：含使用限制免責聲明（不得用於正式公文行為）
+  - `template()` 新增 `--list / -l` 旗標；錯誤訊息補充「使用 gov-ai template --list 查看分類清單」提示
+  - 新增 `_show_template_list()` helper：以 Rich Table 分類顯示全部 16 種範本及對應指令
+- `tests/test_template_cmd.py`（新增）：41 個測試，分 4 類——`TestExistingTemplates`（4）、`TestGongTypeTemplates`（12）、`TestTemplateCategories`（4）、`TestTemplateCLI`（11）；含逆向測試（不存在類型 exit 1 + 提示 --list）、輸出至檔案驗證
+**結果**: PASS — 41 passed (test_template_cmd) + 148 passed (範本+lint+config+wizard 群組), 0 failed；12 種原有範本零回歸
+**下一步可能**:
+- wizard → generate → lint 完整 pipeline 端到端整合測試
+- lint 新增用印格式規則（正式公文應有機關長官職銜/署名欄位）
+- `template --generate` 旗標：直接從範本進入 generate 流程（template → generate → lint 一鍵閉環）
