@@ -1,7 +1,8 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **版本**：v2.3（2026-04-20 03:45 — 技術主管第三輪回顧重排；P0.5.b × 6 + P1.1 全退役、P1 新增 T6.0 + T8.3 前置、Epic 1/2 顆粒度降粗、新增 Epic 9 Repo 衛生）
-> **v2.2**（2026-04-20 02:30 — 第二輪）：P0.5.pre 退役、P0.5.b 拆 6 子 commit、T1.5-FAST / T7.2 升 P1 最前、Epic 8 覆蓋率先行
+> **版本**：v2.4（2026-04-20 05:00 — 架構師第四輪回顧；P1.2/P1.3/P0.7.a-isolation 全退役、P1.4 T6.0 升首位、T7.1 proposals 底座就位、Epic 1/2 降顆粒度入 P1）
+> **v2.3**（2026-04-20 03:45）：P0.5.b × 6 + P1.1 全退役、P1 新增 T6.0 + T8.3 前置、Epic 1/2 顆粒度降粗、新增 Epic 9 Repo 衛生
+> **v2.2**（2026-04-20 02:30）：P0.5.pre 退役、P0.5.b 拆 6 子 commit、T1.5-FAST / T7.2 升 P1 最前、Epic 8 覆蓋率先行
 > Auto-engineer 每輪讀此檔，從「待辦」挑第一個未完成任務執行。完成後 `[x]` 勾選、log 追加到 `results.log`。
 
 ---
@@ -78,20 +79,24 @@
 
 ## P0 — 阻斷性回歸（最優先，按順序執行）
 
-> v2.3 狀態：**工作樹乾淨（git status=0）、測試 3543 綠、P0.5.b × 6 + P1.1 全 commit 落盤**。P0 全退役，進入 P1 高槓桿執行階段。
-> v2.2 狀態（歷史）：git 寫入權限已恢復（02:15 `f208ca6` commit 成功）；當時工作樹仍 24 M + 多項 untracked → v2.3 已全部閉環。
+> v2.4 狀態：**工作樹乾淨（stat cache refresh 後 `git status` 空）、核心回歸 747 passed / 3544 collected、P0.7.a test-isolation 子段 + P1.2/P1.3 全落盤**。P0 無阻斷，進入 P1 高槓桿執行階段。
+> v2.3 狀態（歷史）：工作樹乾淨、測試 3543 綠、P0.5.b × 6 + P1.1 全 commit 落盤。
 
-### P0.7 — Repo 根災後清理（v2.2 新增；v2.3 拆兩子）
+### P0.7 — Repo 根災後清理（v2.2 新增；v2.4 再拆三子）
 
-- [ ] **P0.7.a** `.json_*.tmp` × 80+ / `.txt_*.tmp` × 20+ 根目錄 orphan 重跑 cleanup + `.git_acl_backup.txt` 外移（v2.3 本輪可落地）
-  - 症狀：pytest 期間仍持續產生新 tmp（需排查 `src/cli/utils.py` 是否未走 atomic writer → finally cleanup 分支）
+- [x] **P0.7.a.1** CLI cwd per-test 隔離：`tests/test_cli_commands.py` 744 passed 後根 tmp `before=156 after=156 new=0`（v2.4 閉環；results.log 04:53）
+- [ ] **P0.7.a.2** root 既有 `.json_*.tmp` × 124 / `.txt_*.tmp` × 32 ACL deny 殘留外部處理
+  - 症狀：Windows Administrator ACL `Access is denied` → `cleanup_orphan_tmps()` 無法 unlink
   - 步驟：
-    1. `python -c "from src.cli.utils import cleanup_orphan_tmps; cleanup_orphan_tmps()"`（或等效命令）一次清根目錄
-    2. grep 定位 pytest 中仍產 tmp 的 test，檢查 atomic writer 的 finally 分支
-    3. `.git_acl_backup.txt` → 移至 `D:/Users/Administrator/Desktop/公文ai agent/../_archive/git-acl/` 或加入 `.gitignore`（**不能留根**，低風險 Windows ACL 洩密）
-  - commit: `chore: cleanup repo root tmp orphans + move acl backup offsite`
+    1. 外部 powershell `takeown /f <file> /a` + `icacls <file> /grant Administrators:F` 逐批授權
+    2. 再跑 `python -c "from src.cli.utils import cleanup_orphan_tmps; cleanup_orphan_tmps()"`
+    3. 驗證 `ls .json_*.tmp` → 0 / `ls .txt_*.tmp` → 0
+  - commit: `chore: purge root tmp orphan after ACL recovery`
 
-- [ ] **P0.7.b** 災難復原備援目錄去留決策（需先 diff 再定）
+- [ ] **P0.7.a.3** `.git_acl_backup.txt` 外移 `.._archive/git-acl/` + 加 `.gitignore`（低風險 Windows ACL 洩密）
+  - commit: `chore: move .git_acl_backup.txt offsite`
+
+- [ ] **P0.7.b** 災難復原備援目錄去留決策（v2.4 仍未啟動）
   - 範圍：`meta_git/` / `meta_git_live/` / `meta_test/` / `repo_meta/` / `recovered_repo/` / `git_safe/` 共 6 個
   - 步驟：
     1. 對 `.git/` 與每個 meta 目錄做 `git diff` 或 `dircmp`，確認無獨特內容
@@ -116,47 +121,51 @@
 
 ---
 
-## P1 — 紅線守衛 + Spectra 底座 + 覆蓋率 + Benchmark（v2.3 擴增至 4 項）
+## P1 — 規格底座就位後的戰略槓桿（v2.4 重排：T6.0 首位 + T7.1 proposals + Epic 1/2 降顆粒度）
 
-> **底層邏輯**：P0 全清完，下一件事必須守紅線（已落）+ 建規格底座 + 拉覆蓋率安全網 + 歸位 benchmark 半成品。四項皆 10-30 分鐘可閉環的「高槓桿」任務，全部解鎖後才有資格大舉推進 Epic 1-4。
-> **連續兩輪卡點提醒**：P1.2（T7.2）engineer-log 連續兩輪標「10 分鐘可落地」，連續兩輪落空 → **本輪必須首先收**，不做不准動任何 Epic 新任務。
+> **底層邏輯**：v2.4 紅線守衛（P1.1）+ openspec 底座（P1.2）+ 覆蓋率 baseline（P1.3）三項 P0-adjacent 全落。**下一輪槓桿**：收 T6.0 半成品（連三輪延宕）+ 立刻用 P1.2 解鎖的規格底座開 T7.1 proposals + 把 Epic 1/2 啟動門檻拆到 15 分鐘可閉環。
+> **連三輪延宕警告**：T6.0 benchmark docs engineer-log 從 v2.2→v2.3→v2.4 連三輪標「10 分鐘可落地」，本輪不落 = 誠信問題，閉環不認。
 
 ### 新排序（依槓桿 × 延宕輪次）
 
-- [x] **P1.1（原 T1.5-FAST）** 紅線 1 守衛 — `kb_data/examples/*.md` 155/155 已含 `synthetic: true`（v2.3 閉環；commits `5c2dd0e feat(kb): mark_synthetic.py` + `f527279 chore(kb): 155 份 frontmatter`）
+- [x] **P1.1（原 T1.5-FAST）** 紅線 1 守衛 — `kb_data/examples/*.md` 155/155 已含 `synthetic: true`（v2.3 閉環；`5c2dd0e` + `f527279`）
 
-- [x] **P1.2（原 T7.2）** `openspec/config.yaml` 填 project context（**v2.3：連續兩輪延宕，本輪首位**）
-  - 現狀：21 行整份 commented out（包含 schema 一行 + 20 行範例），`context:` / `rules:` 皆未填
-  - 填入：
-    - `context:`（多行字串）
-      - 專案定位：真實公開政府公文改寫系統（Gov AI Agent）
-      - Tech stack：Python 3.11+ / Ollama (Llama 3.1 8b) / ChromaDB / click CLI / python-docx / Pydantic v2 / litellm
-      - Conventions：conventional commits（feat/fix/chore/docs/refactor/test）/ pytest required for new code / 顆粒度：1 小時內可閉環
-      - PII 規則：抓回真實公文 commit 前必遮罩（身分證、電話、姓名）
-      - 三紅線：真實性（合成 example 必標 `synthetic: true`）/ 改寫而非生成（writer 以「找最相似真實公文 → 最小改動」為主策略）/ 可溯源（每份生成附引用來源段）
-    - `rules:`（per-artifact）
-      - `proposal`：含 problem / solution / non-goals / acceptance criteria；每份 ≤ 500 字
-      - `tasks`：顆粒度 ≤ 2 小時；每任務綁定 commit
-  - 驗證：`cat openspec/config.yaml | grep -v "^#" | grep -v "^$" | wc -l ≥ 15`（非註解非空白行 ≥ 15）
-  - commit: `docs(spec): fill openspec project context + per-artifact rules`
-  - **為何最前**：沒規格底座，Epic 7 T7.1 的 4 個 change proposal 無根基；auto-engineer prompt 也無法注入紅線；連兩輪延宕 = 從技術債升級為誠信問題
+- [x] **P1.2（原 T7.2）** `openspec/config.yaml` project context + per-artifact rules 全填（v2.4 閉環；results.log 04:12）
 
-- [x] **P1.3（原 T8.3）** 測試覆蓋率 baseline（**v2.3 從 Epic 8 升 P1**，T8.1 大檔拆分前安全網）
-  - `pip install pytest-cov`（若未裝）
-  - 跑 `pytest --cov=src --cov-report=json:coverage.json --cov-report=term --cov-report=html:htmlcov`
+- [x] **P1.3（原 T8.3）** `docs/coverage.md` baseline + `coverage.json` / `htmlcov/` 產出 + `.gitignore` ignore（v2.4 閉環；results.log 04:35）
+
+- [ ] **P1.4（原 T6.0）🔥 連三輪延宕** Benchmark workstream 歸位
+  - 現況：`scripts/build_benchmark_corpus.py` + `run_blind_eval.py` + `tests/test_benchmark_scripts.py` 齊；`benchmark/mvp30_corpus.json` + 20 份 `blind_eval_results.*.json` 落盤但未文件化
   - 產出：
-    - `docs/coverage.md`：總覆蓋率 / 每個模組覆蓋率 / < 60% 的模組列表 / 建議補測優先級
-    - `coverage.json` 入 `.gitignore`；`htmlcov/` 入 `.gitignore`
-  - commit: `docs(coverage): quantify baseline coverage + gap analysis`
-  - **為何提前**：大檔（`src/cli/kb.py` 1614 / `src/cli/generate.py` 1263 / `src/agents/editor.py` 1065）拆分前必須有 baseline，否則拆完驗不了退化
-
-- [ ] **P1.4（原 T6.0）** Benchmark workstream 歸位（**v2.3 從 Epic 6 升 P1**，半成品收尾）
-  - 現況：`scripts/build_benchmark_corpus.py` + `run_blind_eval.py` + `tests/test_benchmark_scripts.py` 齊；`benchmark/mvp30_corpus.json` + 18 份盲測結果落盤但未文件化
-  - 產出：
-    - `docs/benchmark.md` 說明：工作流 / 輸入 schema / 輸出 schema / 執行命令（`python scripts/run_blind_eval.py --limit 30`）/ 結果解讀
-    - `.gitignore` 新增：`benchmark/blind_eval_results.*.json`（產物）；保留 `benchmark/mvp30_corpus.json`（輸入語料需版控）
+    - `docs/benchmark.md` 說明：工作流 / 輸入 schema / 輸出 schema / 執行命令（`python scripts/run_blind_eval.py --limit 30`）/ 結果解讀 / trend 延伸
+    - `.gitignore` 新增：`benchmark/blind_eval_results.*.json`（產物）；保留 `benchmark/mvp30_corpus.json`
+  - 驗：`ls docs/benchmark.md && git check-ignore benchmark/blind_eval_results.partial.json`
   - commit: `docs(benchmark): document benchmark workflow + ignore result artifacts`
-  - **為何提前**：半成品躺 3 週沒閉環，違反「完成一件事再做下件」原則
+  - **為何首位**：三輪延宕 = 違反「完成一件事再做下件」原則；10 分鐘工作不做 = owner 意識假的
+
+- [ ] **P1.5（新 / T7.1 子段 a）** 開首份 openspec change proposal `01-real-sources`
+  - P1.2 底座就位，規格驅動開發可啟動
+  - `spectra new change 01-real-sources`（或手動建 `openspec/changes/01-real-sources/proposal.md`）
+  - 含：problem（現行 kb_data 95%+ 為合成）/ solution（Epic 1 的 10 候選來源 adapter 架構）/ non-goals（不改 ChromaDB / 不碰 writer）/ acceptance criteria（≥3 adapter 測試綠 + ingest CLI 通 + 150 份真實公文落 kb_data/corpus/）
+  - ≤ 500 字符合 P1.2 rules.proposal 限制
+  - commit: `docs(spec): init 01-real-sources change proposal`
+
+- [ ] **P1.6（新 / Epic 1 啟動門檻降低）** T1.1.a 調研 top-3 來源
+  - `data.gov.tw` / `law.moj.gov.tw` / Executive Yuan RSS 各一小段
+  - 每段含：API endpoint / 資料格式 / 授權條款 / 取得範例（curl 一行）/ 資料量估計 / 優先級
+  - 產出：`docs/sources-research.md` 首版
+  - commit: `docs(sources): research top-3 public gov doc sources`
+
+- [ ] **P1.7（新 / Epic 2 啟動門檻降低）** T2.0.a `.env` + litellm smoke
+  - `.env` 設 `OPENROUTER_API_KEY=<key>`（人工填）+ `LLM_MODEL=openrouter/elephant-alpha`
+  - 驗：`python -c "from litellm import completion; r = completion(model='openrouter/elephant-alpha', messages=[{'role':'user','content':'hi'}]); print(r.choices[0].message.content[:80])"` 回非空
+  - 產出：`docs/openrouter-smoke.md` 貼命令 + 輸出（key redacted）
+  - commit: `docs(llm): openrouter elephant-alpha smoke verified`
+
+- [ ] **P1.8（新 / Epic 2 啟動門檻降低）** T2.0.b clone `vendor/open-notebook`
+  - `git clone https://github.com/lfnovo/open-notebook vendor/open-notebook`
+  - `.gitignore` 加 `vendor/`
+  - commit: `chore(vendor): add open-notebook as vendored fork target`
 
 ---
 
@@ -219,15 +228,9 @@
 
 ### 待辦任務
 
-- [ ] **T2.0.a**（v2.3 拆兩子）`.env` + litellm smoke
-  - `.env` 設 `OPENROUTER_API_KEY=<key>`（人工填）+ `LLM_MODEL=openrouter/elephant-alpha`
-  - 驗：`python -c "from litellm import completion; r = completion(model='openrouter/elephant-alpha', messages=[{'role':'user','content':'hi'}]); print(r.choices[0].message.content[:80])"` 回非空
-  - 產出：`docs/openrouter-smoke.md` 貼命令 + 輸出；commit: `docs(llm): openrouter elephant-alpha smoke verified`
+- [ ] **T2.0.a** → **已升級為 P1.7**（v2.4）；Epic 2 內保留結構一致
 
-- [ ] **T2.0.b**（v2.3 拆兩子）clone vendor/
-  - `git clone https://github.com/lfnovo/open-notebook vendor/open-notebook`
-  - `.gitignore` 加 `vendor/`
-  - commit: `chore(vendor): add open-notebook as vendored fork target`
+- [ ] **T2.0.b** → **已升級為 P1.8**（v2.4）；Epic 2 內保留結構一致
 
 - [ ] **T2.1** 研讀 open-notebook 產出 `docs/open-notebook-study.md`：FastAPI routers 地圖 / SurrealDB schema / ask_service 路徑 / 融合切點
 
@@ -325,7 +328,7 @@
 
 > 現況：`scripts/build_benchmark_corpus.py` + `scripts/run_blind_eval.py` 已落地；`benchmark/` 內有 `mvp30_corpus.json` + 18 份盲測結果但未進 program.md 的閉環；`tests/test_benchmark_scripts.py` 已存在。
 
-- [x] **T6.0** → **已升級為 P1.4**（v2.3 升 P1 最前段）；Epic 6 內保留勾選記錄
+- [ ] **T6.0** → **已升級為 P1.4**（v2.3/v2.4 P1 首位，連三輪延宕）；Epic 6 內保留結構一致
 
 - [ ] **T6.1** 量化當前基線
   - 用 `run_blind_eval.py --limit 30` 跑 full corpus，產出 `benchmark/baseline_v2.1.json`
@@ -342,10 +345,13 @@
 
 > 現況：`openspec/` 只有 config.yaml（全 comment out），`openspec/changes/archive/` 空，`spectra status` 回「No active changes」。規格沒建，對齊無從談起。
 
-- [ ] **T7.1** 把現有 Epic 1~4 的核心任務寫成 spectra change proposal
-  - `spectra new change 01-real-sources` / `02-open-notebook-fork` / `03-citation-tw-format` / `04-audit-citation`
-  - 每個 proposal 含 problem / solution / non-goals / acceptance criteria
-  - commit: `docs(spec): init core epic proposals`
+- [ ] **T7.1** 把現有 Epic 1~4 的核心任務寫成 spectra change proposal（**v2.4 子段 a 已升 P1.5**）
+  - T7.1.a → **已升級為 P1.5**（`01-real-sources` 首份）
+  - T7.1.b `02-open-notebook-fork`（Epic 2 整份改寫引擎計畫）
+  - T7.1.c `03-citation-tw-format`（Epic 3 溯源格式）
+  - T7.1.d `04-audit-citation`（Epic 4 審查層）
+  - 每個 proposal 含 problem / solution / non-goals / acceptance criteria；≤ 500 字
+  - commit: `docs(spec): init {02|03|04} change proposal`
 
 - [x] **T7.2** → **已升級為 P1.2**（見上方 P1 段）；Epic 7 內保留勾選記錄
 
@@ -395,11 +401,11 @@
   - 選項：移至 `docs/archive/commit-plans/2026-04-20-v2.2-split.md` 保留歷史
   - commit: `docs(archive): commit-plan.md fulfilled history`
 
-- [ ] **T9.4** repo root 狀態檔鎖定治理（v2.3 新發現）
-  - 現象：背景 `auto-engineer.sh` 與 CLI 測試共享 repo root 狀態檔，導致 `.gov-ai-history.json` 與其 `.json_*.tmp` / `.txt_*.tmp` 在 Windows 出現 `WinError 5 / Access is denied`
-  - 已落地緩解：`tests/test_cli_commands.py` 已改為每測試自動 `chdir(tmp_path)`，驗證後不再新增 root tmp
-  - 待做：將 auto-engineer / CLI 狀態檔搬到專用 state dir 或提供可配置 state root，避免 repo root file lock 長期再發
-  - commit: `fix(testing): isolate CLI cwd + document repo-root state lock follow-up`
+- [x] **T9.4.a** `tests/test_cli_commands.py` per-test `chdir(tmp_path)` 隔離 — 744 passed + root tmp new=0（v2.4 閉環；results.log 04:53）
+- [ ] **T9.4.b** 將 auto-engineer / CLI 狀態檔搬到專用 state dir 或提供可配置 state root，避免 repo root file lock 長期再發
+  - 候選：`~/.gov-ai/state/` 或 `${GOV_AI_STATE_DIR:-.}/` 環境變數
+  - 動到的檔：`.gov-ai-history.json` / `auto-engineer` 背景狀態檔
+  - commit: `feat(cli): configurable state dir to avoid repo-root file locks`
 
 ---
 
@@ -421,8 +427,9 @@
 - [x] **P0.5.b.7** `.git` ACL foreign deny 已解（v2.3 退役；commits 全落盤即完成條件）
 - [x] **P0.5.c** 工作樹空 + 3543 tests passed（v2.3 本輪驗證通過）
 - [x] **P1.1 (T1.5-FAST)** 紅線 1 守衛 155/155 synthetic frontmatter（`5c2dd0e` + `f527279`，v2.3 閉環）
-- [x] **P1.2 (T7.2)** openspec project context + per-artifact rules 已填入 `openspec/config.yaml`（v2.3 閉環）
-- [x] **P1.3 (T8.3)** 產出 `coverage.json` / `htmlcov/` baseline 與 `docs/coverage.md` 缺口分析（v2.3 閉環）
+- [x] **P1.2 (T7.2)** openspec project context + per-artifact rules 已填入 `openspec/config.yaml`（v2.4 閉環；results.log 04:12）
+- [x] **P1.3 (T8.3)** 產出 `coverage.json` / `htmlcov/` baseline 與 `docs/coverage.md` 缺口分析（v2.4 閉環；results.log 04:35）
+- [x] **P0.7.a.1 / T9.4.a** `tests/test_cli_commands.py` per-test chdir 隔離；744 passed 後根 tmp new=0（v2.4 閉環；results.log 04:53）
 
 （auto-engineer 會把勾選的任務搬到這裡）
 
@@ -444,4 +451,4 @@ Epic 7 負責建置。建置完成前，program.md 是單一事實來源。
 
 ---
 
-**版本**：v2.3（2026-04-20 03:45 技術主管第三輪回顧重排）| **下一次重排觸發**：P1.2 (T7.2) + P1.3 (T8.3) + P1.4 (T6.0) 三件 10-30 分鐘任務全落，且 Epic 1 `T1.1.a` + Epic 2 `T2.0.a` 任一啟動
+**版本**：v2.4（2026-04-20 05:00 架構師第四輪回顧重排）| **下一次重排觸發**：P1.4 (T6.0 benchmark) + P1.5 (T7.1.a 首份 proposal) 兩件落盤，且 P1.6 (T1.1.a 三來源調研) + P1.7 (T2.0.a litellm smoke) + P1.8 (T2.0.b vendor clone) 任兩項完成
