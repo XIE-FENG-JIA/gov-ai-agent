@@ -1,20 +1,19 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Project: Gov AI Agent, a real-public-government-document rewriting system for Taiwan public-sector paperwork.
+  Tech stack: Python 3.11+, Ollama (Llama 3.1 8b), ChromaDB, Click CLI, python-docx, Pydantic v2, LiteLLM.
+  Commit convention: conventional commits only (feat/fix/chore/docs/refactor/test).
+  Delivery rule: every new code path ships with pytest coverage; each task should close within roughly 1 hour.
+  Privacy rule: mask PII before committing any real public document content, including names, phone numbers, and national ID data.
+  Red line 1: authenticity first; synthetic examples must stay marked with synthetic: true and must not become primary retrieval evidence.
+  Red line 2: rewrite, do not free-generate; writer should start from the closest real public document and make minimal edits.
+  Red line 3: every generated document must remain traceable with a citation section listing agency, document number, issue date, source URL, and similarity score.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+rules:
+  proposal:
+    - Include problem, solution, non-goals, and acceptance criteria.
+    - Keep each proposal at 500 words or fewer.
+  tasks:
+    - Break work into chunks that fit within 2 hours.
+    - Tie each task to a concrete validating command and a commit.

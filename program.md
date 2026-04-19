@@ -125,7 +125,7 @@
 
 - [x] **P1.1（原 T1.5-FAST）** 紅線 1 守衛 — `kb_data/examples/*.md` 155/155 已含 `synthetic: true`（v2.3 閉環；commits `5c2dd0e feat(kb): mark_synthetic.py` + `f527279 chore(kb): 155 份 frontmatter`）
 
-- [ ] **P1.2（原 T7.2）** `openspec/config.yaml` 填 project context（**v2.3：連續兩輪延宕，本輪首位**）
+- [x] **P1.2（原 T7.2）** `openspec/config.yaml` 填 project context（**v2.3：連續兩輪延宕，本輪首位**）
   - 現狀：21 行整份 commented out（包含 schema 一行 + 20 行範例），`context:` / `rules:` 皆未填
   - 填入：
     - `context:`（多行字串）
@@ -415,6 +415,7 @@
 - [x] **P0.5.b.7** `.git` ACL foreign deny 已解（v2.3 退役；commits 全落盤即完成條件）
 - [x] **P0.5.c** 工作樹空 + 3543 tests passed（v2.3 本輪驗證通過）
 - [x] **P1.1 (T1.5-FAST)** 紅線 1 守衛 155/155 synthetic frontmatter（`5c2dd0e` + `f527279`，v2.3 閉環）
+- [x] **P1.2 (T7.2)** openspec project context + per-artifact rules 已填入 `openspec/config.yaml`（v2.3 閉環）
 
 （auto-engineer 會把勾選的任務搬到這裡）
 
