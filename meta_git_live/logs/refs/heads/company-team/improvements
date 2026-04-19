@@ -1,5 +1,0 @@
-0000000000000000000000000000000000000000 f52e654d7530eef59b8b9393ffeb398d52317b9b 謝頡譯 <xsx042388@gmail.com> 1773901435 +0800	branch: Created from HEAD
-f52e654d7530eef59b8b9393ffeb398d52317b9b 3af7d75e1bade638282472de41155100e3148db8 謝頡譯 <xsx042388@gmail.com> 1773902431 +0800	commit: fix: 安全修復 + 效能改善 + 程式碼品質提升（AI 開發團隊）
-3af7d75e1bade638282472de41155100e3148db8 5549d1d292b60c6da3e97c9249a62789eb825cad 謝頡譯 <xsx042388@gmail.com> 1773903519 +0800	commit: fix: Round 2 — 批次並行化 + 預熱 + 安全加固（AI 開發團隊）
-5549d1d292b60c6da3e97c9249a62789eb825cad 39ba95c202acf1b2a026a3ae23e3a44eb1e5c045 謝頡譯 <xsx042388@gmail.com> 1773904327 +0800	commit: fix: Round 3 — 掃尾全部剩餘問題（AI 開發團隊）
-39ba95c202acf1b2a026a3ae23e3a44eb1e5c045 b056e3bb0bb2846cb8c5294b970ab074024e32b5 謝頡譯 <xsx042388@gmail.com> 1773908940 +0800	commit: test: 修復 JSONStore 重構後 10 個斷裂的 history/stats 測試

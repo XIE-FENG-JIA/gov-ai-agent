@@ -84,7 +84,7 @@
 
 > 前置：`docs/commit-plan.md` 已寫入分組；git 寫入權已恢復。每組 commit 前跑對應 pytest。
 
-- [x] **P0.5.b.1** `fix(tests)`：benchmark scripts + cli utils tmp cleanup + knowledge manager/quickstart/web_preview/robustness/api_server/cli_commands/config_tools_extra 回歸測試更新
+- [ ] **P0.5.b.1** `fix(tests)`：benchmark scripts + cli utils tmp cleanup + knowledge manager/quickstart/web_preview/robustness/api_server/cli_commands/config_tools_extra 回歸測試更新
   - `git add tests/test_benchmark_scripts.py tests/test_cli_utils_tmp_cleanup.py tests/test_knowledge_manager_cache.py tests/test_knowledge_manager_unit.py tests/test_quickstart.py tests/test_web_preview.py tests/test_robustness.py tests/test_api_server.py tests/test_cli_commands.py tests/test_config_tools_extra.py tests/test_agents.py`
   - 前置：`pytest tests/test_benchmark_scripts.py tests/test_cli_utils_tmp_cleanup.py` 綠
   - commit: `fix(tests): regression coverage for benchmark scripts, tmp cleanup, km lazy import`
