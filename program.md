@@ -114,6 +114,12 @@
   - commit: `chore: sync config/env examples, ignore tmp artifacts, add benchmark scripts & engineer-log`
   - 注意：`.serena/` / `benchmark/` 產物 / `.spectra.yaml` / `.json_*.tmp` / `meta_git/` / `meta_test/` / `repo_meta/` / `recovered_repo/` / `.git_acl_backup.txt` 皆走 `.gitignore`，不入 commit
 
+- [ ] **P0.5.b.7** 修復 `.git` ACL foreign deny 汙染（v2.2 新發現 blocker）
+  - 症狀：`git add -n ...` 與 `New-Item .git\codex_probe.lock -Force` 皆 `Permission denied`
+  - 根因假設：`.git` / `.git\index` 含兩組 unresolved SID 的 explicit deny ACE，直接阻斷 index lock 建立
+  - 已試失敗：`icacls /remove:d`、`Set-Acl`、`icacls /reset`
+  - 完成條件：`New-Item .git\codex_probe.lock -Force` 可成功建立再刪除，且 `git add -n docs/commit-plan.md` 不再報 `index.lock` denied
+
 - [ ] **P0.5.c** 最終確認 `git status --short` 為空，跑全量 `pytest tests/`，產出 `results.log: P0.5 closed` 完成記錄
 
 ### P0.7 — Repo 根災後清理（v2.2 新增）
