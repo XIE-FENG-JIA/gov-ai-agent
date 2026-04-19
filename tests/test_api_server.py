@@ -21,6 +21,7 @@ from conftest import make_api_config, make_mock_llm, make_mock_kb
 def reset_api_globals():
     """在每個測試前重設 API 伺服器的全域變數、限流器和效能計數器"""
     import api_server
+    import src.api.routes.workflow as workflow
     api_server._config = None
     api_server._llm = None
     api_server._kb = None
@@ -29,11 +30,14 @@ def reset_api_globals():
     api_server._rate_limiter._requests.clear()
     # 重置效能計數器
     api_server._metrics = api_server._MetricsCollector()
+    # 重置詳細審查快取，避免 session 間交叉污染
+    workflow._DETAILED_REVIEW_STORE.clear()
     yield
     api_server._config = None
     api_server._llm = None
     api_server._kb = None
     api_server._org_memory = None
+    workflow._DETAILED_REVIEW_STORE.clear()
 
 
 @pytest.fixture
@@ -689,6 +693,96 @@ class TestMeetingEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
+
+    def test_meeting_ralph_loop_forces_traditional_path(self, client, mock_api_deps):
+        """ralph_loop=True + use_graph=True 應強制走傳統路徑並執行 RALPH loop。"""
+        call_count = [0]
+
+        def side_effect(prompt, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return json.dumps({
+                    "doc_type": "函",
+                    "sender": "測試機關",
+                    "receiver": "測試單位",
+                    "subject": "測試主旨",
+                })
+            return "### 主旨\n初始草稿\n### 說明\n測試說明"
+
+        mock_api_deps["llm"].generate.side_effect = side_effect
+
+        fake_qa = MagicMock()
+        fake_qa.rounds_used = 6
+        fake_qa.model_dump.return_value = {
+            "overall_score": 1.0,
+            "risk_summary": "Safe",
+            "agent_results": [],
+            "rounds_used": 6,
+            "audit_log": "ok",
+            "iteration_history": [],
+        }
+
+        with patch("src.api.routes.workflow._run_ralph_loop", return_value=("### 主旨\n最終草稿", fake_qa, 6)) as mock_ralph:
+            response = client.post("/api/v1/meeting", json={
+                "user_input": "寫一份函，測試 RALPH loop",
+                "skip_review": True,
+                "output_docx": False,
+                "use_graph": True,
+                "ralph_loop": True,
+                "ralph_max_cycles": 4,
+                "ralph_target_score": 1.0,
+            })
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["rounds_used"] == 6
+        assert "最終草稿" in data["final_draft"]
+        mock_ralph.assert_called_once()
+        assert mock_ralph.call_args.kwargs["max_cycles"] == 4
+        assert mock_ralph.call_args.kwargs["target_score"] == 1.0
+
+    def test_ralph_loop_keeps_best_cycle_result(self):
+        """RALPH loop 後續循環退化時，應保留最佳 cycle 的草稿與報告。"""
+        from src.api.routes import workflow as workflow_routes
+
+        def _make_report(score: float, issue_count: int, rounds_used: int, tag: str):
+            report = MagicMock()
+            report.overall_score = score
+            report.risk_summary = "Critical"
+            report.rounds_used = rounds_used
+            report.iteration_history = [{"round": 1, "score": score, "risk": "Critical"}]
+            report.audit_log = f"audit-{tag}"
+            agent_result = MagicMock()
+            agent_result.issues = [object() for _ in range(issue_count)]
+            report.agent_results = [agent_result]
+            return report
+
+        report1 = _make_report(0.9, 2, 2, "best")
+        report2 = _make_report(0.7, 5, 2, "worse")
+
+        class _FakeEditor:
+            def __init__(self):
+                self._calls = 0
+
+            def review_and_refine(self, *args, **kwargs):
+                self._calls += 1
+                if self._calls == 1:
+                    return "draft-best", report1
+                return "draft-worse", report2
+
+        final_draft, final_report, total_rounds = workflow_routes._run_ralph_loop(
+            _FakeEditor(),
+            draft="draft-init",
+            doc_type="函",
+            max_rounds=2,
+            max_cycles=2,
+            target_score=1.0,
+        )
+
+        assert final_draft == "draft-best"
+        assert final_report.overall_score == 0.9
+        assert total_rounds == 4
 
 
 # ==================== Input Validation ====================
@@ -2492,6 +2586,26 @@ class TestAPIInputBoundaries:
         })
         assert response.status_code == 422
 
+    def test_meeting_ralph_max_cycles_boundary(self, client, mock_api_deps):
+        """測試 Ralph Loop 循環上限邊界（ge=1, le=20）。"""
+        response = client.post("/api/v1/meeting", json={
+            "user_input": "寫一份函，測試 RALPH 邊界",
+            "ralph_loop": True,
+            "ralph_max_cycles": 0,
+            "skip_review": False,
+            "output_docx": False,
+        })
+        assert response.status_code == 422
+
+        response = client.post("/api/v1/meeting", json={
+            "user_input": "寫一份函，測試 RALPH 邊界",
+            "ralph_loop": True,
+            "ralph_max_cycles": 21,
+            "skip_review": False,
+            "output_docx": False,
+        })
+        assert response.status_code == 422
+
     def test_writer_requirement_whitespace_subject_rejected(self, client, mock_api_deps):
         """測試 WriterRequest 中 subject 為純空白被拒絕"""
         response = client.post("/api/v1/agent/writer", json={
@@ -3610,6 +3724,120 @@ class TestWebUIGenerate:
             "skip_review": "false",
         })
         assert response.status_code == 200
+
+
+# ==================== Detailed Review Endpoint ====================
+
+class TestDetailedReviewEndpoint:
+    """/api/v1/detailed-review 端點測試"""
+
+    def test_missing_session_id_returns_400(self, client):
+        response = client.get("/api/v1/detailed-review")
+        assert response.status_code == 400
+        data = response.json()
+        assert data["success"] is False
+        assert data["error"] == "缺少 session_id 參數"
+
+    def test_invalid_session_id_returns_400(self, client):
+        response = client.get(
+            "/api/v1/detailed-review",
+            params={"session_id": "../../etc/passwd"},
+        )
+        assert response.status_code == 400
+        data = response.json()
+        assert data["success"] is False
+        assert "格式無效" in data["error"]
+
+    def test_unknown_session_returns_404(self, client):
+        response = client.get(
+            "/api/v1/detailed-review",
+            params={"session_id": "unknown-session-123"},
+        )
+        assert response.status_code == 404
+        data = response.json()
+        assert data["success"] is False
+        assert "找不到對應的審查報告" in data["error"]
+
+    def test_meeting_report_can_be_queried_by_session(self, client, mock_api_deps):
+        mock_requirement = MagicMock()
+        mock_requirement.model_dump.return_value = {
+            "doc_type": "函",
+            "sender": "測試機關",
+            "receiver": "測試單位",
+            "subject": "測試主旨",
+        }
+        mock_qa = MagicMock()
+        mock_qa.model_dump.return_value = {
+            "overall_score": 0.92,
+            "risk_summary": "Safe",
+            "agent_results": [],
+            "rounds_used": 2,
+        }
+        mock_qa.audit_log = "mock-audit-log"
+        mock_qa.rounds_used = 2
+
+        with patch(
+            "src.api.routes.workflow._execute_document_workflow",
+            return_value=(mock_requirement, "這是最終草稿", mock_qa, None, 2),
+        ):
+            meeting_resp = client.post(
+                "/api/v1/meeting",
+                json={
+                    "user_input": "請寫一份測試公文",
+                    "skip_review": False,
+                    "output_docx": False,
+                    "use_graph": False,
+                },
+            )
+
+        assert meeting_resp.status_code == 200
+        meeting_data = meeting_resp.json()
+        assert meeting_data["success"] is True
+        session_id = meeting_data["session_id"]
+
+        review_resp = client.get(
+            "/api/v1/detailed-review",
+            params={"session_id": session_id},
+        )
+        assert review_resp.status_code == 200
+        review_data = review_resp.json()
+        assert review_data["success"] is True
+        assert review_data["session_id"] == session_id
+        assert review_data["qa_report"]["risk_summary"] == "Safe"
+        assert review_data["final_draft"] == "這是最終草稿"
+
+    def test_skip_review_session_has_no_detailed_report(self, client, mock_api_deps):
+        mock_requirement = MagicMock()
+        mock_requirement.model_dump.return_value = {
+            "doc_type": "函",
+            "sender": "測試機關",
+            "receiver": "測試單位",
+            "subject": "測試主旨",
+        }
+
+        with patch(
+            "src.api.routes.workflow._execute_document_workflow",
+            return_value=(mock_requirement, "僅草稿", None, None, 0),
+        ):
+            meeting_resp = client.post(
+                "/api/v1/meeting",
+                json={
+                    "user_input": "請寫一份不審查測試公文",
+                    "skip_review": True,
+                    "output_docx": False,
+                    "use_graph": False,
+                },
+            )
+
+        assert meeting_resp.status_code == 200
+        session_id = meeting_resp.json()["session_id"]
+        review_resp = client.get(
+            "/api/v1/detailed-review",
+            params={"session_id": session_id},
+        )
+        assert review_resp.status_code == 404
+        review_data = review_resp.json()
+        assert review_data["success"] is False
 
 
 # ==================== KBSearchRequest Validation ====================

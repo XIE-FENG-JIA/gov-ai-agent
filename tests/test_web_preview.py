@@ -227,6 +227,31 @@ class TestGenerate:
         body = call_args.kwargs.get("json") or call_args[1].get("json")
         assert body["user_input"] == "[公文類型：簽] 請產生一份公文"
 
+    @pytest.mark.asyncio
+    async def test_generate_with_ralph_loop_payload(self, async_client):
+        """啟用 ralph_loop 時應帶入最嚴格會議參數。"""
+        mock_resp = _mock_response(200, {"success": True, "draft": "ok"})
+        mock_client_instance = AsyncMock()
+        mock_client_instance.post.return_value = mock_resp
+        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
+        mock_client_instance.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("src.web_preview.app.httpx.AsyncClient", return_value=mock_client_instance), \
+             patch("src.web_preview.app.get_config", return_value={}):
+            async with async_client as c:
+                resp = await c.post("/generate", data={
+                    "user_input": "請產生一份嚴格版公文",
+                    "ralph_loop": "true",
+                })
+
+        assert resp.status_code == 200
+        call_args = mock_client_instance.post.call_args
+        body = call_args.kwargs.get("json") or call_args[1].get("json")
+        assert body["ralph_loop"] is True
+        assert body["use_graph"] is False
+        assert body["max_rounds"] == 2
+        assert body["ralph_target_score"] == 1.0
+
 
 # ── GET /kb ───────────────────────────────────────────
 

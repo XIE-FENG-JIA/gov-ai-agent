@@ -38,6 +38,28 @@ templates.env.autoescape = True
 _API_BASE = os.environ.get("WEB_UI_API_BASE", "http://127.0.0.1:8000")
 
 
+def _parse_env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name, str(default))
+    try:
+        return int(raw)
+    except ValueError:
+        logger.warning("環境變數 %s=%r 不是整數，改用預設值 %d", name, raw, default)
+        return default
+
+
+def _parse_env_float(name: str, default: float) -> float:
+    raw = os.environ.get(name, str(default))
+    try:
+        return float(raw)
+    except ValueError:
+        logger.warning("環境變數 %s=%r 不是數值，改用預設值 %.2f", name, raw, default)
+        return default
+
+
+_WEB_UI_RALPH_MAX_CYCLES = max(1, _parse_env_int("WEB_UI_RALPH_MAX_CYCLES", 2))
+_WEB_UI_RALPH_TARGET_SCORE = max(0.0, min(1.0, _parse_env_float("WEB_UI_RALPH_TARGET_SCORE", 1.0)))
+
+
 def _api_headers() -> dict[str, str]:
     """取得呼叫內部 API 所需的認證標頭。"""
     config = get_config()
@@ -89,6 +111,7 @@ async def generate(
     user_input: str = Form(...),
     doc_type: str = Form(""),
     skip_review: bool = Form(False),
+    ralph_loop: bool = Form(False),
 ):
     """呼叫 /api/v1/meeting 端點生成公文，回傳結果頁"""
     error = None
@@ -114,15 +137,27 @@ async def generate(
         effective_input = f"[公文類型：{doc_type}] {stripped}"
 
     try:
-        async with httpx.AsyncClient(timeout=180.0) as client:
+        meeting_timeout = 600.0 if (not skip_review and ralph_loop) else 180.0
+        async with httpx.AsyncClient(timeout=meeting_timeout) as client:
+            meeting_payload = {
+                "user_input": effective_input,
+                "skip_review": skip_review,
+                "output_docx": True,
+            }
+            if not skip_review:
+                meeting_payload["ralph_loop"] = ralph_loop
+                if ralph_loop:
+                    meeting_payload.update({
+                        "use_graph": False,
+                        "max_rounds": 2,
+                        "ralph_max_cycles": _WEB_UI_RALPH_MAX_CYCLES,
+                        "ralph_target_score": _WEB_UI_RALPH_TARGET_SCORE,
+                    })
+
             resp = await client.post(
                 f"{_API_BASE}/api/v1/meeting",
                 headers=_api_headers(),
-                json={
-                    "user_input": effective_input,
-                    "skip_review": skip_review,
-                    "output_docx": True,
-                },
+                json=meeting_payload,
             )
             data = resp.json()
             if resp.status_code == 200 and data.get("success"):

@@ -29,6 +29,7 @@ import types
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -93,7 +94,7 @@ from src.api.routes.agents import (  # noqa: F401
     review_consistency, review_compliance,
 )
 from src.api.routes.workflow import (  # noqa: F401
-    run_meeting, download_file, run_batch,
+    run_meeting, download_file, run_batch, get_detailed_review,
     _execute_document_workflow,
 )
 from src.api.routes.knowledge import kb_search  # noqa: F401
@@ -105,7 +106,36 @@ logger = logging.getLogger(__name__)
 # ============================================================
 # CORS 允許來源設定（安全性：避免使用萬用字元 "*"）
 # ============================================================
-_ALLOWED_ORIGINS: list[str] = [
+def _expand_loopback_origins(origins: list[str]) -> list[str]:
+    """將 localhost 白名單展開為實際 loopback 變體，避免 127.0.0.1 被漏掉。"""
+    expanded: list[str] = []
+    seen: set[str] = set()
+
+    for origin in origins:
+        value = origin.strip()
+        if not value or value in seen:
+            continue
+
+        seen.add(value)
+        expanded.append(value)
+
+        parsed = urlsplit(value)
+        if parsed.hostname != "localhost":
+            continue
+
+        for loopback_host in ("127.0.0.1", "[::1]"):
+            netloc = loopback_host
+            if parsed.port is not None:
+                netloc = f"{loopback_host}:{parsed.port}"
+            variant = urlunsplit((parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment))
+            if variant not in seen:
+                seen.add(variant)
+                expanded.append(variant)
+
+    return expanded
+
+
+_ALLOWED_ORIGINS = _expand_loopback_origins([
     origin.strip()
     for origin in os.environ.get(
         "CORS_ALLOWED_ORIGINS",
@@ -117,7 +147,7 @@ _ALLOWED_ORIGINS: list[str] = [
         "http://localhost:8080,http://127.0.0.1:8080",
     ).split(",")
     if origin.strip()
-]
+])
 
 # 僅允許 API 實際需要的 HTTP 標頭（避免使用萬用字元 "*"）
 _ALLOWED_HEADERS: list[str] = [

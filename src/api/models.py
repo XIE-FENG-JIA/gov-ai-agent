@@ -175,6 +175,22 @@ class MeetingRequest(BaseModel):
     skip_review: bool = Field(False, description="是否跳過審查")
     convergence: bool = Field(False, description="啟用分層收斂迭代（零錯誤制）")
     skip_info: bool = Field(False, description="分層收斂模式下跳過 info 層級")
+    ralph_loop: bool = Field(
+        False,
+        description="啟用 Ralph Loop 極限品質模式（強制 convergence，持續迭代追求滿分）",
+    )
+    ralph_max_cycles: int = Field(
+        2,
+        description="Ralph Loop 最大循環次數",
+        ge=1,
+        le=20,
+    )
+    ralph_target_score: float = Field(
+        1.0,
+        description="Ralph Loop 目標分數（建議 1.0）",
+        ge=0.0,
+        le=1.0,
+    )
     output_docx: bool = Field(True, description="是否輸出 docx 檔案")
     output_filename: str | None = Field(
         None,

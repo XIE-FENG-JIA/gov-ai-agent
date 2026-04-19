@@ -29,6 +29,10 @@
               <input type="checkbox" name="skip_review" value="true">
               跳過多 Agent 審查（加速生成）
             </label>
+            <label>
+              <input type="checkbox" name="ralph_loop" value="true" checked>
+              啟用 RALPH 極限品質迴圈（目標滿分）
+            </label>
           </div>
         </div>
       </div>
@@ -63,6 +67,7 @@
     <li>在需求描述中盡量包含：<strong>發文機關</strong>、<strong>受文者</strong>、<strong>主旨</strong>。</li>
     <li>可手動選擇公文類型，或讓系統自動偵測。</li>
     <li>勾選「跳過審查」可加速生成，但不會進行品質檢查。</li>
+    <li>勾選「RALPH 極限品質迴圈」會強制走最嚴格審查與反覆修正，耗時較長但品質更高。</li>
     <li>生成過程可能需要 30 秒至 2 分鐘，視 LLM 回應速度而定。</li>
   </ul>
 </section>
