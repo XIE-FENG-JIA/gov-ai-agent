@@ -73,3 +73,12 @@ scripts/autoresearch_eval.py
 
 # Spectra app data
 .spectra/
+
+# Local-only: auto-engineer diagnostic / tool cache / bench artifacts
+.git_acl_backup.txt
+.serena/
+.spectra.yaml
+benchmark/
+meta_git/
+meta_test/
+repo_meta/
