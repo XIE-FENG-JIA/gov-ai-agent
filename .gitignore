@@ -63,3 +63,13 @@ scripts/eval_template.py
 scripts/autoresearch_eval.py
 .autoresearch_memory.json
 .autoresearch_checkpoint.json
+.json_*.tmp
+.txt_*.tmp
+.yaml_*.tmp
+.auto-engineer.pid
+.auto-engineer.state.json
+.project.lock
+.engineer-loop.state.json.bak-*
+
+# Spectra app data
+.spectra/

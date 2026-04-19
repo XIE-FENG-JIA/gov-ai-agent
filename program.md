@@ -1,6 +1,6 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **版本**：v2.1（2026-04-20 — 架構師階段性重排；合併重複、新增 benchmark / spectra / 代碼健康 Epic）
+> **版本**：v2.2（2026-04-20 02:30 — 技術主管第二輪回顧重排；P0.5.pre 退役、P0.5.b 拆 6 子 commit、T1.5-FAST / T7.2 升 P1 最前、Epic 8 覆蓋率先行）
 > Auto-engineer 每輪讀此檔，從「待辦」挑第一個未完成任務執行。完成後 `[x]` 勾選、log 追加到 `results.log`。
 
 ---
@@ -77,34 +77,79 @@
 
 ## P0 — 阻斷性回歸（最優先，按順序執行）
 
-### 🚨 P0.5.pre — git 寫入權限阻斷（v2.1 新增，當下唯一阻斷）
+> v2.2 狀態：git 寫入權限已恢復（02:15 `f208ca6` commit 成功；`.git/index.lock` 無殘檔）。
+> 當下阻斷：**工作樹仍 24 M + 多項 untracked 未 commit，連續 5 天 0 feat commit**。必須先清工作樹，才能動 Epic。
 
-- [ ] **P0.5.pre** 解除 `.git/index.lock: Permission denied`
-  - 症狀：2026-04-20 01:38 / 01:53 連續兩次 `git add` 皆回 Permission denied；當下 `.git/index.lock` 不存在，但 `.git/` ACL 含 explicit Deny Write/Delete
-  - 候選動作（從低風險往高風險試）：
-    1. `taskkill /IM git.exe /F` + 關閉 VSCode / file watcher / Claude Code 背景程序，再重試
-    2. `attrib -r .git\*.lock` / 移除 `.git/index.lock`（若存在）
-    3. PowerShell 以系統管理員：`icacls .git /remove:d "$env:USERNAME"` + `icacls .git /grant "$env:USERNAME:(OI)(CI)F"`
-    4. 若皆失敗 → 重新 clone 到乾淨資料夾，從 stash 搬回改動
-  - **完成條件**：`git add program.md && git commit -m "chore: probe"` 無 Permission denied（commit 後可 `git reset HEAD~1` 還原）
+### P0.5.b — 依 commit-plan 分 6 組 commit（當下唯一 P0 阻斷）
 
-### P0.5.a — Commit 分組（已完成）
+> 前置：`docs/commit-plan.md` 已寫入分組；git 寫入權已恢復。每組 commit 前跑對應 pytest。
 
-- [x] **P0.5.a** 工作樹分組寫入 `docs/commit-plan.md`，列各檔屬 fix(api) / fix(cli) / fix(agents) / fix(kb) / fix(tests) / chore
+- [ ] **P0.5.b.1** `fix(tests)`：benchmark scripts + cli utils tmp cleanup + knowledge manager/quickstart/web_preview/robustness/api_server/cli_commands/config_tools_extra 回歸測試更新
+  - `git add tests/test_benchmark_scripts.py tests/test_cli_utils_tmp_cleanup.py tests/test_knowledge_manager_cache.py tests/test_knowledge_manager_unit.py tests/test_quickstart.py tests/test_web_preview.py tests/test_robustness.py tests/test_api_server.py tests/test_cli_commands.py tests/test_config_tools_extra.py tests/test_agents.py`
+  - 前置：`pytest tests/test_benchmark_scripts.py tests/test_cli_utils_tmp_cleanup.py` 綠
+  - commit: `fix(tests): regression coverage for benchmark scripts, tmp cleanup, km lazy import`
 
-### P0.5.b / c — 依 commit-plan 落地 commit
+- [ ] **P0.5.b.2** `fix(kb)`：KnowledgeBaseManager chromadb=None + lazy import 修復
+  - `git add src/knowledge/manager.py`
+  - 前置：`pytest tests/test_knowledge_manager_unit.py tests/test_knowledge_manager_cache.py` 綠
+  - commit: `fix(kb): chromadb=None detection + reload-aware lazy import`
 
-- [ ] **P0.5.b** 依 `docs/commit-plan.md` 的六組分別 commit（前置：P0.5.pre 完成）
-  - 每組 commit 前跑對應 pytest 驗證通過
-  - 順序建議：fix(tests) → fix(kb) → fix(api) → fix(agents) → fix(cli) → chore
-  - `.serena/` / `benchmark/` 產物 / `.spectra.yaml` 暫不入 commit（寫入 `.gitignore`）
+- [ ] **P0.5.b.3** `fix(api)`：CORS localhost 白名單 + models + workflow route
+  - `git add api_server.py src/api/models.py src/api/routes/workflow.py`
+  - 前置：`pytest tests/test_api_server.py` 綠
+  - commit: `fix(api): cors localhost auto-expand 127.0.0.1/::1 + workflow route fixes`
 
-- [ ] **P0.5.c** 最終確認 `git status --short` 為空，跑全量 `pytest tests/`，產出 `results.log` 記錄 P0.5 完成
+- [ ] **P0.5.b.4** `fix(agents)`：writer citation + editor/template/style/compliance regressions
+  - `git add src/agents/writer.py src/agents/editor.py src/agents/template.py src/agents/style_checker.py src/agents/compliance_checker.py src/assets/templates/han.j2`
+  - 前置：`pytest tests/test_agents.py` 綠
+  - commit: `fix(agents): writer citation prune + editor/template/style/compliance regressions`
+
+- [ ] **P0.5.b.5** `fix(cli)`：generate encoding + config_tools/quickstart/switcher/utils
+  - `git add src/cli/generate.py src/cli/config_tools.py src/cli/quickstart.py src/cli/switcher.py src/cli/utils.py src/web_preview/app.py src/web_preview/templates/config.html src/web_preview/templates/index.html src/utils/tw_check.py`
+  - 前置：`pytest tests/test_cli_commands.py tests/test_config_tools_extra.py tests/test_quickstart.py tests/test_web_preview.py` 綠
+  - commit: `fix(cli): markdown encoding report + tmp cleanup + wizard/switcher polish`
+
+- [ ] **P0.5.b.6** `chore`：config.yaml / .env.example / .gitignore / README / config.yaml.example 調整 + 新增 scripts + engineer-log.md + docs/commit-plan.md 入版控
+  - `git add config.yaml config.yaml.example .env.example .gitignore README.md scripts/build_benchmark_corpus.py scripts/run_blind_eval.py docs/commit-plan.md engineer-log.md`
+  - commit: `chore: sync config/env examples, ignore tmp artifacts, add benchmark scripts & engineer-log`
+  - 注意：`.serena/` / `benchmark/` 產物 / `.spectra.yaml` / `.json_*.tmp` / `meta_git/` / `meta_test/` / `repo_meta/` / `recovered_repo/` / `.git_acl_backup.txt` 皆走 `.gitignore`，不入 commit
+
+- [ ] **P0.5.c** 最終確認 `git status --short` 為空，跑全量 `pytest tests/`，產出 `results.log: P0.5 closed` 完成記錄
+
+### P0.7 — Repo 根災後清理（v2.2 新增）
+
+- [ ] **P0.7** 清理權限事故備援殘檔 + `.json_*.tmp` 40+ 份 orphan
+  - 先 diff `meta_git/` / `meta_test/` / `repo_meta/` / `recovered_repo/` 與 `.git/` / `tests/` 差異，確認無獨特內容後刪除；若有獨特內容，寫 `docs/disaster-recovery.md` 記錄
+  - 重跑 `src/cli/utils.py` 的 tmp orphan cleanup（現在 git 寫入權恢復，應能清乾淨）
+  - `.git_acl_backup.txt` 移至 repo 外或 `.gitignore`，避免權限備份外洩
+  - commit: `chore: cleanup recovery artifacts & tmp orphans`
 
 ### 歷史 P0 追蹤（保留紀錄不動）
 
-- [x] **P0.4** 修復 `test_writer_postprocess_adds_inline_citation_and_prunes_unused_refs` 回歸
+- [x] **P0.4** 修復 `test_writer_postprocess_adds_inline_citation_and_prunes_unused_refs` 回歸（results.log 01:12:02 二次修復）
+- [x] **P0.5.a** 工作樹分組寫入 `docs/commit-plan.md`，列各檔屬 fix(api) / fix(cli) / fix(agents) / fix(kb) / fix(tests) / chore
+- [x] **P0.5.pre** 解除 `.git/index.lock: Permission denied`（v2.2 退役；02:15 `f208ca6` commit 自然驗證完成條件）
 - [x] **P0.6** 清 repo tmp orphan + 擴充 `.gitignore`
+
+---
+
+## P1 — 紅線守衛 + Spectra 底座（v2.2 提前至 P0 之後）
+
+> **底層邏輯**：P0 清完後，下一件事必須守紅線 + 建規格底座，才有資格動 Epic 1-4。
+> 兩項都是 1 小時內可閉環的「高槓桿」任務 — 一個 script、一份 config，解鎖後續所有戰略推進。
+
+- [ ] **P1.1（原 T1.5-FAST）** 紅線 1 守衛 — 156 份合成公文加 `synthetic: true` frontmatter
+  - 寫 `scripts/mark_synthetic.py`：遍歷 `kb_data/examples/*.md`，若無 frontmatter 則補；若已 frontmatter 則補上 `synthetic: true`
+  - 驗證：`grep -L "synthetic: true" kb_data/examples/*.md` 回空（當前 0/156）
+  - 寫 `tests/test_mark_synthetic.py`（至少 3 case：無 frontmatter / 有但缺 synthetic / 已正確）
+  - commit: `chore(kb): mark 156 synthetic examples with frontmatter flag`
+  - **為何提前**：沒這個守衛，Epic 2 retriever 會把合成公文當真實參考，紅線 1 違反 × 156
+
+- [ ] **P1.2（原 T7.2）** `openspec/config.yaml` 填 project context
+  - 現狀：整份 commented out，零規格底座
+  - 填入：tech stack（Python 3.11+ / Ollama / ChromaDB / click / python-docx）/ conventions（conventional commit / pytest required）/ PII 遮罩規則 / 紅線三條 / 顆粒度原則（1 小時內可完成）
+  - commit: `docs(spec): fill openspec project context`
+  - **為何提前**：沒規格底座，Epic 7 T7.1 的 4 個 change proposal 無根基；auto-engineer prompt 也無法注入紅線
 
 ---
 
@@ -130,11 +175,7 @@
 
 ### 待辦任務
 
-- [ ] **T1.5-FAST** 紅線 1 守衛 — 156 份合成公文加 `synthetic: true` frontmatter（**提前到 Epic 1 最上**）
-  - 寫 `scripts/mark_synthetic.py`：遍歷 `kb_data/examples/*.md`，若無 frontmatter 則補；若已 frontmatter 則補上 `synthetic: true`
-  - 驗證：`grep -L "synthetic: true" kb_data/examples/*.md` 回空
-  - 寫 `tests/test_mark_synthetic.py`（至少 3 個 case：無 frontmatter / 有但缺 synthetic / 已正確）
-  - commit: `chore(kb): mark 156 synthetic examples with frontmatter flag`
+- [x] **T1.5-FAST** → **已升級為 P1.1**（見上方 P1 段）；Epic 1 內保留勾選記錄以維結構一致
 
 - [ ] **T1.1** 調研 10 個候選來源，產出 `docs/sources-research.md`，每個來源含：API endpoint / 資料格式 / 授權條款 / 取得範例 / 資料量估計 / 優先級（1-5）
 
@@ -297,9 +338,7 @@
   - 每個 proposal 含 problem / solution / non-goals / acceptance criteria
   - commit: `docs(spec): init core epic proposals`
 
-- [ ] **T7.2** `openspec/config.yaml` 填 project context
-  - tech stack / conventions / PII 遮罩規則 / 紅線三條
-  - 讓 auto-engineer 的 prompt 自動注入
+- [x] **T7.2** → **已升級為 P1.2**（見上方 P1 段）；Epic 7 內保留勾選記錄
 
 - [ ] **T7.3** `engineer-log.md` 進版控 + 每輪反思 append 規範
   - 從 `.gitignore` 白名單中明確保留
@@ -310,8 +349,15 @@
 ## Epic 8 — 代碼健康（v2.1 新增）
 
 > 現況：engineer-log 標出的 P2 債務，獨立 Epic 管理，避免混進 feature 任務而被跳過。
+> v2.2 變更：T8.3（覆蓋率）提前至 Epic 8 首位 — 沒 baseline 拆大檔會拆出測試漏洞。
 
-- [ ] **T8.1** 大檔拆分（任一檔超過 800 行即拆）
+- [ ] **T8.3** 測試覆蓋率量化（v2.2 提前至首位）
+  - 跑 `pytest --cov=src --cov-report=json --cov-report=term`
+  - 寫 `docs/coverage.md`，列 < 60% 覆蓋的模組，優先補測試
+  - commit: `docs(coverage): quantify baseline coverage + gap analysis`
+  - **必須先做**：T8.1 拆大檔前的安全網
+
+- [ ] **T8.1** 大檔拆分（任一檔超過 800 行即拆，T8.3 完成後才動）
   - `src/cli/kb.py` 1614 行 → 拆成 kb/{ingest,sync,stats,rebuild}.py
   - `src/cli/generate.py` 1263 行 → 拆成 generate/{pipeline,export,cli}.py
   - `src/agents/editor.py` 1065 行 → 拆成 editor/{segment,refine,merge}.py
@@ -320,10 +366,6 @@
 - [ ] **T8.2** Pydantic v2 相容修 1363 條 deprecation warning
   - 鎖定 chromadb 1.x 兼容層 / `src/api/models.py` / `src/core/models.py`
   - 目標：`pytest -W error::DeprecationWarning` 通過
-
-- [ ] **T8.3** 測試覆蓋率量化
-  - 跑 `pytest --cov=src --cov-report=json`
-  - 寫 `docs/coverage.md`，列 < 60% 覆蓋的模組，優先補測試
 
 ---
 
@@ -335,6 +377,7 @@
 - [x] **P0.4** writer citation prune / 多來源追蹤語意拆分（`src/agents/writer.py`）
 - [x] **P0.6** tmp orphan cleanup + .gitignore 擴充（`src/cli/utils.py` / `tests/test_cli_utils_tmp_cleanup.py`）
 - [x] **P0.5.a** 工作樹 commit 分組（`docs/commit-plan.md`）
+- [x] **P0.5.pre** git 寫入權限阻斷解除（v2.2 退役；02:15 `f208ca6` commit 成功自然驗證完成條件）
 
 （auto-engineer 會把勾選的任務搬到這裡）
 
@@ -356,4 +399,4 @@ Epic 7 負責建置。建置完成前，program.md 是單一事實來源。
 
 ---
 
-**版本**：v2.1（2026-04-20 階段性重排）| **下一次重排觸發**：P0.5 全清 + Epic 6 T6.1 baseline 跑完
+**版本**：v2.2（2026-04-20 02:30 技術主管第二輪回顧重排）| **下一次重排觸發**：P0.5.b × 6 + P1.1 + P1.2 全綠 + Epic 6 T6.1 baseline 跑完
