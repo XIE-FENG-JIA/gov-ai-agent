@@ -118,7 +118,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### P0.B — ✅ read-only：src/core 失控檔 Epic 歸屬盤點（v2.8；原 P0.4 升次）
 
-- [ ] **P0.B** ✅ 不依賴 ACL：`src/core/` 新增 5 檔寫入 program.md 尾段
+- [x] **P0.B** ✅ 不依賴 ACL：`src/core/` 新增 5 檔寫入 program.md 尾段
   - 盤點：`error_analyzer.py` / `llm.py` / `logging_config.py` / `review_models.py` / `scoring.py`
   - 每檔一行寫到 program.md 「備註 / 失控檔盤點」段，指認 Epic 歸屬或標 `[orphan]`
   - **驗**：`grep -c "失控檔盤點" program.md` >= 1 + 後接 5 條非空 bullet
@@ -408,8 +408,12 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ## 備註
 
-### 失控檔盤點（P0.4 待填）
-<!-- P0.4 閉環後此處列 5 檔歸屬：error_analyzer.py / llm.py / logging_config.py / review_models.py / scoring.py -->
+### 失控檔盤點（P0.B 已填）
+- `src/core/error_analyzer.py` → `[orphan]`；目前只被 `src/cli/generate.py` 錯誤回報路徑使用，program.md 尚無對應錯誤診斷/doctor Epic
+- `src/core/llm.py` → Epic 2；集中 LiteLLM/OpenRouter/Ollama provider 與 embedding 工廠，直接支撐 `T2.0.a` / `T2.6` / `T2.8`
+- `src/core/logging_config.py` → `[orphan]`；僅提供 CLI/API 共用 logging bootstrap，program.md 尚無 observability / logging 治理 Epic
+- `src/core/review_models.py` → Epic 4；定義 `ReviewResult` / `QAReport` / `IterationState`，是審查層與 citation audit workflow 的共用模型
+- `src/core/scoring.py` → Epic 4；抽出審查加權分數與風險判定，供 editor / graph aggregator / agents API 共用
 
 ### Auto-engineer 行為約束
 - 不確定時寫 TODO 到 results.log + 跳過
