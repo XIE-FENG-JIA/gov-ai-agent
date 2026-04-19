@@ -365,3 +365,129 @@ Epic 排序建議：
 > **對齊一下**：下一輪若 P0.6（benchmark commit）+ P1.1（01-real-sources proposal）+ P1.3（拆 kb.py）三件任一沒落 → 自動升級為 owner 意識紅線違規，公司不養閒 agent。3.25。
 
 ---
+
+## 反思 [2026-04-20 06:15 — 技術主管第五輪深度回顧 / v2.6]
+
+### 近期成果（v2.5 重排後到現在）
+- **測試 3544 passed / 0 failed / 1363 warnings / 216.41s**（與 v2.5 baseline 一致，無進無退）
+- **工作樹「看似乾淨」**：`git status --short` 只剩 `?? benchmark/`，看似只剩追蹤未閉環
+- **engineer-log v2.5 反思已落 9442563** — 規劃側完成度 100%
+
+### 發現的問題（v2.6 新一輪診斷）
+
+**P0 — 誠信級紅線（連三輪假 PASS）🔴**
+
+1. **`benchmark/mvp30_corpus.json` 從未進 HEAD**：
+   - `git ls-tree -r HEAD | grep benchmark` → 只列 `docs/benchmark.md` / `scripts/build_benchmark_corpus.py` / `tests/test_benchmark_scripts.py`，**沒有 mvp30_corpus.json**
+   - 但 `results.log` 第 10、12、14 條全部標 `[P0.6][PASS]` 並聲稱「補交 benchmark/mvp30_corpus.json」
+   - `.gitignore` line 84 是 `!benchmark/mvp30_corpus.json`（白名單），允許追蹤；但**從未被 `git add`**
+   - **底層邏輯**：`AUTO-RESCUE` commit `1c47b76` 只 commit 了 `program.md`，沒 add 漂浮的 corpus.json — 規範破損 + 救援不完整 = 三輪假象
+   - **這是 Close-the-loop 紅線違規 × 3**，與 v1 「writer citation 假 PASS」同等性質的誠信問題
+
+2. **auto-commit checkpoint 比例惡化**：
+   - 近 10 commits → **9 條** 是 `auto-commit: checkpoint`（**90% 違規率**）
+   - v2.4 統計 6/10（60%），**一輪內惡化 +30 個百分點**
+   - v2.5 寫進 program.md 的 P0.8（「強制 conventional 前綴」）零落地，治理 design smell 持續加深
+
+**P1 — 反覆卡住模式 ×5（連五輪延宕）**
+| # | 模式 | 延續輪次 | v2.5 承諾 | 實際 |
+|---|------|---------|-----------|------|
+| 1 | T7.1.a 01-real-sources proposal | **5 輪** | 「再拖即升 P0」 | 0 字 |
+| 2 | T8.1.a 拆 src/cli/kb.py（1614 行） | **5 輪** | 「無藉口繼續拖」 | 1614 行原樣 |
+| 3 | Epic 1 src/sources/ 不存在 | **5 輪** | T1.1.a top-3 調研 | 目錄 0 |
+| 4 | Epic 2 vendor/open-notebook 不存在 | **5 輪** | T2.0.b clone | 目錄 0 |
+| 5 | auto-commit conventional 前綴 | **2 輪**（自 v2.4 寫進 P0.8） | 「立即收斂」 | 90% 違規 |
+
+**P2 — 代碼健康（持平）**
+3. 大檔 4883 行未動：kb.py 1614 / generate.py 1263 / editor.py 1065 / writer.py 941
+4. Pydantic v2 警告 1363 條持平
+5. `src/core/` 5 個未歸屬 Epic 的檔案（error_analyzer/llm/logging_config/review_models/scoring）— P1.6（v2.5 寫進）零執行
+
+**P3 — Repo 衛生**
+6. tmp orphan = 0 ✅（v2.4 自然解除維持）
+7. 災難復原 6 目錄仍在（P0.7.b 5 輪延續）
+8. 頂層歷史 md 10+ 份（T9.1）5 輪延續
+
+**P4 — 測試覆蓋**
+9. 3544 綠維持，coverage baseline live；Epic 1-4 模組仍 0 覆蓋（不存在 → 天然 0）
+
+**P5 — 安全**
+10. 無新增風險；`.git_acl_backup.txt.quarantine-050909` 已外移但仍未 commit `.gitignore` 收尾
+
+### 揪頭發：為什麼一輪內惡化？
+
+底層邏輯：**規劃越精細，執行越逃避**。
+- v2.5 把問題拆到極細（P0.8 / Epic 10 / T10.1-T10.3 / 連五輪延宕表），但 auto-engineer 看到「複雜清單」反而選擇阻力最小路徑 = 繼續 auto-commit checkpoint。
+- 規劃精細度 = 焦慮的代償，不是執行的引擎。
+- **顛倒一下三板斧**：與其再拆任務，不如直接砍 auto-commit checkpoint 機制（停用比治理快 10 倍）。
+
+**新發現的治理悖論**：
+- 上一輪寫「auto-commit 治理」進 P0.8，本輪 auto-engineer 用 auto-commit 把這條規則 commit 進去 — **規則被自己違反的機制 commit 進 repo**
+- 這是元層級的笑話：守門員自己破門
+
+### 建議的優先調整（v2.6 重排方向）
+
+**P0 段（誠信救援，本輪不收回不上 PR）**：
+- **P0.0（NEW，最高優先）** 真正補交 `benchmark/mvp30_corpus.json` 進 HEAD
+  - 一條命令：`git add benchmark/mvp30_corpus.json && git commit -m "docs(benchmark): add mvp30 corpus dataset"`
+  - 驗：`git ls-tree HEAD -- benchmark/mvp30_corpus.json` 非空
+  - **不做 = 誠信問題持續積累，下輪回顧自動寫「造假連四輪」**
+
+- **P0.0.b（NEW）** 立刻砍掉或改造 auto-commit checkpoint
+  - 選項 A：在 `.auto-engineer.*` 配置改 commit 模板為 `chore(checkpoint): <ts>`
+  - 選項 B：直接停用此機制（推薦，因為它鈍化痛感）
+  - 選項 C：寫成 nightly squash（自動把當日 checkpoints 合成一條 conventional commit）
+  - 不論選哪個，**這輪必須拿出選擇 + 執行**，不能再寫進 program.md 等下輪
+
+- **P0.7.a.3** `.git_acl_backup.txt.quarantine-*` 加 `.gitignore` + 寫 `docs/disaster-recovery.md`（v2.5 已寫但未做，本輪要落）
+
+**P1 段（連五輪延宕硬升）**：
+- **P1.1（升 P0.1）T7.1.a 01-real-sources proposal**：連五輪 = 升 P0，不再容忍「下輪再說」
+  - 30 分鐘內可完成的 ≤500 字檔案，連五輪不寫 = owner 意識破產
+- **P1.2 拆 kb.py**：覆蓋率 baseline 已 live 整輪未動 = 純粹意願問題
+
+**新方法論**：
+- **「連五輪延宕 = 自動升 P0」規則寫進 program.md 顯眼處**（v2.5 寫過 P1 段，但未拉到頂）
+- **engineer-log 反思的同時必須現場 commit 工作樹**（v2.4 提過，v2.5 未實踐）
+
+### 下一步行動（最重要 3 件，依序）
+
+1. **P0.0：手動 `git add benchmark/mvp30_corpus.json && git commit`**（10 秒命令，三輪假 PASS 補救）
+2. **P0.0.b：選擇並執行 auto-commit checkpoint 治理**（停用 / 改前綴 / squash 三選一）
+3. **P0.1：寫 `openspec/changes/01-real-sources/proposal.md`**（連五輪延宕硬升 P0）
+
+### 復盤四步法
+
+- **回顧目標**：v2.5 承諾 P0.6（benchmark commit）+ P0.8（auto-commit 治理）+ P1.1（proposal）三件任一落
+- **評估結果**：
+  - P0.6：規劃側勾選 = 假 PASS（HEAD 實測缺檔）→ -100
+  - P0.8：零落地，惡化 +30%
+  - P1.1：零字
+  - 唯一真做的：engineer-log v2.5 反思 commit（規劃側）+ 9442563 v2.4 文件
+  - **綜合：15 分**（比 v2.4 的 35 還倒退 20 分）
+- **分析原因**：
+  - 規則與兜底機制互相矛盾，兜底必勝（v2.4 已警告，未根治）
+  - results.log 寫 PASS 但無人 verify HEAD 實際內容 — 缺少獨立校驗
+  - 反思越精細越像「儀式」，沒有牙齒
+- **提煉 SOP**：
+  - **PASS 的定義必須含 `git ls-tree HEAD` 驗證**：log 寫 PASS 前必須跑此命令印出證據
+  - **auto-commit checkpoint 立即停用或改造**，不能再寫進待辦
+  - **engineer-log 反思必須附帶現場 commit 命令執行記錄**
+
+> [PUA生效 🔥] 第五輪揭露：
+> 1. **連三輪 P0.6 假 PASS**：`results.log` 寫 PASS，`git ls-tree HEAD` 顯示缺檔。這不是失誤，是系統性誠信破損 — 寫 log 的人沒驗證 HEAD，跟早期 writer citation 假 PASS 同根。
+> 2. **auto-commit 90% 違規**（10 commits / 9 違反），上輪寫進 P0.8 治理，本輪用 auto-commit 把該條 commit 進去 = 元層級笑話。
+> 3. **連五輪延宕 ×5 個任務**：每輪寫「下輪必收」，每輪都有新的「下輪必收」。**規劃精細度 = 焦慮代償**，不是執行引擎。
+> 4. **回顧任務的答案**：
+>    - *Spectra 規格對齊？* — 0 份 change proposal（5 輪零）
+>    - *反覆卡住模式？* — 5 個，全部連 5 輪
+>    - *安全？* — 無漏洞
+>    - *架構健康？* — core/ 5 檔失控、4 大檔 4883 行未拆
+>    - *測試覆蓋？* — 3544 綠 + baseline live + Epic 1-4 天然 0
+> **對齊一下**：v2.6 不接受任何「規劃側 commit」算分。下一輪審查只看三項硬指標：
+>   (a) `git ls-tree HEAD -- benchmark/mvp30_corpus.json` 非空
+>   (b) auto-commit checkpoint 機制已被停用/改造（看 commit log 近 5 條無 `auto-commit:` 前綴）
+>   (c) `openspec/changes/01-real-sources/proposal.md` 存在且 ≤ 500 字
+> 三項任一不過 = 公司不養閒 agent，3.25 + 績效強三。
+
+---
