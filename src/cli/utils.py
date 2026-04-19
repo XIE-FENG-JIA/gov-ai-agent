@@ -22,14 +22,24 @@ _ATOMIC_TMP_PREFIXES = (".json_", ".txt_", ".yaml_")
 _ATOMIC_TMP_MAX_AGE_SECONDS = 3600
 
 
-def _cleanup_stale_atomic_tmps(parent: str, *, now: float | None = None) -> None:
-    """清掉原子寫入遺留超過一小時的暫存檔。"""
+def cleanup_orphan_tmps(
+    parent: str = ".",
+    *,
+    max_age_seconds: float | None = _ATOMIC_TMP_MAX_AGE_SECONDS,
+    now: float | None = None,
+) -> int:
+    """清掉原子寫入遺留暫存檔並回傳刪除數量。
+
+    ``max_age_seconds=None`` 時會刪除目錄下所有符合前綴的 orphan tmp。
+    預設僅清掉超過一小時的暫存檔，避免誤刪正在寫入中的檔案。
+    """
     try:
         entries = list(os.scandir(parent))
     except OSError:
-        return
+        return 0
 
     now_ts = time.time() if now is None else now
+    removed = 0
     for entry in entries:
         if not entry.is_file():
             continue
@@ -37,11 +47,18 @@ def _cleanup_stale_atomic_tmps(parent: str, *, now: float | None = None) -> None
         if not name.endswith(".tmp") or not name.startswith(_ATOMIC_TMP_PREFIXES):
             continue
         try:
-            if now_ts - entry.stat().st_mtime <= _ATOMIC_TMP_MAX_AGE_SECONDS:
+            if max_age_seconds is not None and now_ts - entry.stat().st_mtime <= max_age_seconds:
                 continue
             os.unlink(entry.path)
+            removed += 1
         except OSError:
             continue
+    return removed
+
+
+def _cleanup_stale_atomic_tmps(parent: str, *, now: float | None = None) -> None:
+    """清掉原子寫入遺留超過一小時的暫存檔。"""
+    cleanup_orphan_tmps(parent, now=now)
 
 
 def atomic_json_write(path: str, data: Any) -> None:

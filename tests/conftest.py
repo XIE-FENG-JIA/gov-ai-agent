@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 # 確保 src 在 Python 路徑中
 sys.path.append(str(Path(__file__).parent.parent))
 
+from src.cli.utils import cleanup_orphan_tmps
 from src.core.llm import LLMProvider
 from src.core.models import PublicDocRequirement
 from src.core.review_models import ReviewResult, ReviewIssue
@@ -22,6 +23,15 @@ _BASE_API_CONFIG: dict = {
     "knowledge_base": {"path": "./test_kb"},
     "api": {"auth_enabled": False},
 }
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_repo_root_atomic_tmps():
+    """每次測試 session 前後都清理 repo root 遺留的 atomic tmp。"""
+    repo_root = Path(__file__).resolve().parent.parent
+    cleanup_orphan_tmps(str(repo_root), max_age_seconds=None)
+    yield
+    cleanup_orphan_tmps(str(repo_root), max_age_seconds=None)
 
 
 def make_api_config(**overrides) -> dict:

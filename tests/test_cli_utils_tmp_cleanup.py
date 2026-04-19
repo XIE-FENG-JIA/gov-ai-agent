@@ -1,7 +1,7 @@
 import os
 import time
 
-from src.cli.utils import atomic_text_write
+from src.cli.utils import atomic_text_write, cleanup_orphan_tmps
 
 
 def test_atomic_write_cleans_only_stale_atomic_tmp_files(tmp_path):
@@ -42,3 +42,20 @@ def test_atomic_write_still_creates_target_after_cleanup(tmp_path):
 
     assert target.read_text(encoding="utf-8") == "clean content"
     assert not stale_tmp.exists()
+
+
+def test_cleanup_orphan_tmps_can_remove_fresh_repo_root_orphans(tmp_path):
+    fresh_json = tmp_path / ".json_fresh.tmp"
+    fresh_txt = tmp_path / ".txt_fresh.tmp"
+    keeper = tmp_path / "report.txt"
+
+    fresh_json.write_text("{}", encoding="utf-8")
+    fresh_txt.write_text("draft", encoding="utf-8")
+    keeper.write_text("keep", encoding="utf-8")
+
+    removed = cleanup_orphan_tmps(str(tmp_path), max_age_seconds=None)
+
+    assert removed == 2
+    assert not fresh_json.exists()
+    assert not fresh_txt.exists()
+    assert keeper.exists()
