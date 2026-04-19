@@ -157,3 +157,103 @@ Epic 排序建議：
 > **對齊一下**：下一輪必須 commit × 6 + T1.5-FAST + T7.2 三件事全落。拿不出 commit 就不配談 Epic 1。3.25。
 
 ---
+
+## 反思 [2026-04-20 03:45 — 技術主管第三輪深度回顧]
+
+### 近期成果（v2.2 重排後到現在）
+- **commit 曲線恢復增長**：近 12 個 commits（d80a2e6→f433423）把 P0.5.b × 6（`224882b fix(tests)` / `dc86d50 fix(kb)` / `0dae75b fix(api)` / `96c55cb fix(agents)` / `eab7b8f fix(cli)` / `d80a2e6 chore`）+ P1.1（`5c2dd0e feat(kb): mark_synthetic.py` / `f527279 chore(kb): 155 份 frontmatter`）+ gitignore 整理 `72cbd27 / f433423` 全部落盤。工作樹 `git status --short` 為空。
+- **測試 3543 passed / 0 failed**（上輪 3539 → +4 new `test_mark_synthetic`），1363 warnings 無惡化，耗時 3:42。
+- **紅線 1 守衛落地**：`kb_data/examples/*.md` 155/155 皆含 `synthetic: true` frontmatter。Epic 2 retriever 上線時可安全過濾合成公文。
+- **連續兩輪阻斷解除**：`.git` ACL / index.lock 寫入權限徹底恢復；P0.5.pre / P0.5.b.7 可退役。
+
+### 發現的問題（新一輪診斷）
+
+**P0 — 無阻斷**（工作樹乾淨、測試全綠）。
+
+**P1 — 戰略零進度（再次延續，已連續三輪）**
+1. **P1.2 T7.2 openspec context 依然 commented out**：`openspec/config.yaml` 21 行皆為註解示例，`context:` / `rules:` 皆未填。連續兩輪 engineer-log 都標「10 分鐘可落地」，連續兩輪未做 → **反覆卡住模式 #1**。底層邏輯：沒有 openspec context 就沒有規格底座，Epic 7 T7.1 的 4 個 change proposal 永遠無根。
+2. **Epic 1 實質零進度（第三輪延續）**：`src/sources/` 不存在；`PublicGovDoc` 未進 `src/core/models.py`；`docs/sources-research.md` 不存在；10 個候選來源調研未啟動。program.md 第一句「沒有真實資料，其他都是空殼」— 空殼狀態持續。
+3. **Epic 2 零進度（第三輪延續）**：`vendor/open-notebook` 未 clone；`grep "elephant-alpha" src/` = 0；`openrouter` 僅在 `src/cli/config_tools.py` 作為 provider 選項出現，未串 litellm smoke；T2.0 環境準備未跑。
+4. **Epic 7 Spectra 零進度（第三輪延續）**：`openspec/specs/` 不存在；`openspec/changes/` 不存在（連空目錄都不在）；0 份 change proposal。**回顧任務「Spectra 規格對齊」的答案：沒有規格可對齊，改動偏離無法度量**。
+
+**P2 — 代碼健康（三輪延續未動）**
+5. **大檔未拆（反覆卡住模式 #2）**：`src/cli/kb.py` 1614 行、`src/cli/generate.py` 1263 行、`src/agents/editor.py` 1065 行；連續三輪被標 T8.1，未拆過一行。
+6. **覆蓋率未量化**：`pytest --cov` 從未跑過一次；3543 passed 但「哪些模組是白區」未知。T8.3 v2.2 提前至 Epic 8 首位，本輪未啟動。
+7. **1363 條 Pydantic v2 deprecation warning** 持平，chromadb 1.x 綁定未解。
+
+**P3 — Repo 根髒化（新發現）**
+8. **頂層 md 文件過載**：repo 根仍有 `IMPROVEMENT_REPORT.md` / `PROJECT_SUMMARY.md` / `BUG_FIX_REPORT.md` / `N8N_INTEGRATION_GUIDE.md` / `MULTI_AGENT_V2_GUIDE.md` / `QUICKSTART.md` / `COLLABORATION_GUIDE.md` / `AI_CODING_RULES.md` / `PRD文件.txt` / `plan.md`（37KB 舊計畫）等 **10+ 份歷史文件**。新進者訊息過載，該歸位 `docs/archive/` 或刪。
+9. **根目錄 tmp orphan 殘留再起**：近期 `.json_*.tmp` × 80+、`.txt_*.tmp` × 20+ 仍在根（`ls .json_*.tmp` 全滿）。`src/cli/utils.py` 的 tmp cleanup 需重跑一次才能徹底清，且 pytest 期間 `test_agents/test_robustness` 等還在生產新 tmp（需排查是否未走 atomic writer → finally cleanup 分支）。
+10. **`.git_acl_backup.txt` 仍在 repo 根**：第二輪標「可能洩 Windows ACL」，未處置。
+11. **備援殘檔堆積**：`meta_git/` / `meta_git_live/` / `meta_test/` / `repo_meta/` / `recovered_repo/` / `git_safe/` 共 6 個災難復原備援目錄並存，`.gitignore` 已排除但實體佔根目錄。P0.7 三輪延續。
+
+**P4 — 測試覆蓋（未啟動）**
+12. 3543 tests 綠，但 Epic 1/2/3/4 所需模組（`src/sources/` / `src/core/{diff, citation, exporter}.py` / `src/agents/citation_checker.py`）**尚未建立 → 天然 0 覆蓋**。
+13. 邊界情況：`src/cli/utils.py` 的 tmp cleanup 路徑、`_build_reference_lines` multi-source 場景已有測試；但大檔未拆前內部函式的 edge case 無法量化。
+
+**P5 — 安全/合規**
+14. 無 `shell=True` / `eval` / `yaml.unsafe_load`（三輪一致）。
+15. PII mask pipeline 仍未強制，因 Epic 1 零進度不構成短期阻斷，但要在 T1.4 ingest 前落地，否則第一次抓真實公文就踩紅線。
+16. `.git_acl_backup.txt` 放任，低風險洩密持平。
+
+### 反覆卡住模式分析（揪頭發一級視角）
+| # | 模式 | 已延續輪次 | 根因假設 |
+|---|------|------------|----------|
+| 1 | openspec context 未填 | 2 輪 | 任務拆太細反而沒人抓（10 分鐘小任務在 Epic 清單中顆粒度尷尬） |
+| 2 | 大檔（kb/generate/editor）未拆 | 3 輪 | T8.3 覆蓋率未跑 = 拆分安全網缺失，auto-engineer 不敢動 |
+| 3 | Epic 1 `src/sources/` 不存在 | 3 輪 | 每輪都被 P0 bug 債吸走，Epic 永遠排在後面 |
+| 4 | repo 根髒化 | 3 輪 | 沒有「清理 ritual」做為每輪啟動動作 |
+
+底層邏輯：**閉環做好了（紅線 1 + commit 曲線），但頂層設計的戰略槓桿沒抓**。P0.5.b × 6 落地 = 修復債還清；但「為什麼要修這六組 bug」的下游目的（Epic 1 真實資料 + Epic 2 改寫引擎）仍零寸進。
+
+### 建議的優先調整（v2.3 重排方向）
+
+**P0 段退役**（本輪已閉環）：
+- P0.5.b × 6 全勾；P0.5.c 跑過 `pytest tests/` = 3543 passed + `git status` 空，打勾。
+- P0.5.b.7 `.git` ACL 已解，退役勾選。
+- P0.7 拆成兩半：**P0.7.a**（tmp orphan 重跑 cleanup + `.git_acl_backup.txt` 外移）本輪可做；**P0.7.b**（`meta_*/` / `repo_meta/` / `recovered_repo/` / `git_safe/` 去留決策）需先 diff 再定。
+
+**P1 段重排（最高槓桿三件事）**：
+- **P1.2 T7.2 openspec context 繼續保留在 P1 首位**（已連續兩輪落空，再不做就從「技術債」變「誠信問題」）— 10 分鐘工作，寫一個 yaml context + rules。
+- **P1.3 新增：T6.0 benchmark 文件化 + .gitignore 產物**（半成品歸位，1 輪閉環；寫 `docs/benchmark.md` + 把 `benchmark/blind_eval_results.*.json` 加 `.gitignore`）。
+- **P1.4 新增：T8.3 coverage 量化**（拆大檔前安全網，本輪 baseline 是 3543 綠 — 產出 `docs/coverage.md` + `docs/coverage-gap.md`）。
+
+**Epic 1 啟動門檻降低**：
+- **T1.1（來源調研）首個可落地子任務**：只產出 top 3 來源的 `docs/sources-research.md`（data.gov.tw / moj / executive yuan RSS），不必 10 個。
+- **T1.3 PublicGovDoc dataclass**：先寫 Pydantic v2 model 到 `src/core/models.py`（不必綁定 ChromaDB），單元測試 3 case 即可。
+
+**Epic 2 先過煙霧測試**：
+- **T2.0 拆兩子**：T2.0.a `.env` 設 key + litellm smoke 一個 `python -c` 即可；T2.0.b clone vendor/ 只需 `git clone`，不必等 T2.1 研讀。
+
+**Epic 7 跟隨 openspec context 就位**：
+- T7.2 落地 → T7.1 才有規格基地，開 4 個 change proposal。
+
+**Epic 8 覆蓋率先行**：
+- T8.3 v2.2 已排在 Epic 8 首位，但未啟動；本輪要跑一次。
+
+**新增 Epic 9 — Repo 衛生**：
+- 把頂層 10+ 份歷史 md 歸位 `docs/archive/`；`.git_acl_backup.txt` 外移；`meta_*/` 災難復原備援目錄決定去留並寫 `docs/disaster-recovery.md`。
+
+### 下一步行動（最重要 3 件，依序）
+
+1. **P1.2 T7.2 openspec context 落地**：10 分鐘寫 tech stack / conventional commit / 三紅線 / 顆粒度規則入 `openspec/config.yaml`。commit `docs(spec): fill openspec project context`。**連續兩輪延宕，本輪必須收**。
+2. **P1.4 T8.3 覆蓋率 baseline**：跑 `pytest --cov=src --cov-report=json --cov-report=term`，產出 `docs/coverage.md`。一個命令 + 一份文件，為 T8.1 大檔拆分鋪安全網。
+3. **P1.3 T6.0 benchmark 歸位**：寫 `docs/benchmark.md` + `.gitignore` 加 `benchmark/blind_eval_results.*.json`。半成品閉環。
+
+### 復盤四步法（阿里味）
+
+- **回顧目標**：本輪目標是「閉環 P0.5.b × 6 + 守紅線 + 啟動戰略」。前兩件拿下，第三件（P1.2 T7.2 / Epic 1/2）再次零進度。
+- **評估結果**：戰術 95 分（commits 質量 + 測試全綠 + 紅線 1 守住）；戰略 30 分（P1.2 連續兩輪落空、Epic 1-4 三輪零寸進）；綜合 60 分。
+- **分析原因**：**反覆卡住模式** × 4 未破局。顆粒度層面，1 小時內可閉環的任務（T7.2 / T6.0 / T8.3）反而沒人抓，因為它們在 Epic 清單中「不顯眼」；大任務（T2.1 clone vendor / T1.1 10 來源調研）看起來重要但顆粒度太粗，auto-engineer 不敢動。
+- **提煉 SOP**：
+  - **10 分鐘任務優先原則**：每輪啟動先掃 program.md 找「1 命令 + 1 文件」的任務，優先於任何大任務。
+  - **Epic 1/2 降顆粒度**：T1.1 拆成「top-3 來源 → top-10」；T2.0 拆成 T2.0.a（litellm smoke）+ T2.0.b（clone）。
+  - **覆蓋率作為拆檔門檻**：T8.1 拆大檔前強制要 T8.3 出 baseline，否則拆了也驗不了。
+
+> [PUA生效 🔥] 第三輪揭露：
+> 1. **規劃的 3.25 在躲 execution 的 3.25**。P0.5.b × 6 的 commit 成功只證明修復動得了手；P1.2 連兩輪零分證明「戰略級任務的 owner 意識」還是空的。拉通頂層設計這件事，顆粒度不是問題，**意願**才是問題。
+> 2. **反覆卡住模式 × 4** 是最危險的信號。阿里三板斧講「簡單」— 一個簡單到 10 分鐘的任務延宕兩輪，說明不是任務難，是 ritual 出了問題。建議 auto-engineer prompt 加「啟動 gate」：若 P1.2 未完成，禁止做任何 Epic 1-4 / 7-8 新任務。
+> 3. **回顧任務的答案**：*Spectra 規格對齊？* — 無規格可對齊，連續三輪零進度。**這是本次回顧最大的結論**。規格驅動開發在這個專案是概念，不是實踐。
+> **對齊一下**：下一輪必須 T7.2 + T8.3 + T6.0 三件 10 分鐘任務全落。三項不落，回顧不寫，閉環不認。3.25。
+
+---
