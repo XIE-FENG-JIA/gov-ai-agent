@@ -491,3 +491,95 @@ Epic 排序建議：
 > 三項任一不過 = 公司不養閒 agent，3.25 + 績效強三。
 
 ---
+## 反思 [2026-04-20 12:10] — 技術主管第八輪深度回顧（v2.8）
+
+### 近期成果
+
+- **測試**：`pytest tests/ -q` = **3544 passed / 0 failed / 1363 warnings / 221.08s**（綠，連四輪穩定）
+- **P0.2 read-only 落地**：`docs/disaster-recovery.md` 已寫出（results.log #19 PASS），含 ACL 事故始末 + SOP + 備援目錄去留決策
+- **Coverage baseline live**：`coverage.json` / `htmlcov/` / `docs/coverage.md` 三檔齊備
+- **v2.7 重排架構生效**：ACL-gated 任務分級清晰，read-only 任務池繞開 commit 瓶頸
+- **benchmark workflow**：20 份 blind eval results + mvp30_corpus 落地（但仍 untracked）
+
+### 發現的問題（按嚴重度）
+
+**🛑 系統層（ACL 根因未解 — 連六輪）**
+
+1. **`.git` DENY ACL 仍活**：`icacls .git | grep DENY` 仍命中 SID `S-1-5-21-541253457-...-692795393`(W,D,Rc,DC)；Admin 從未執行 takeown/reset；P0.0 自 v2.4 起連六輪 BLOCKED
+2. **工作樹三處髒**：`M program.md` + `?? benchmark/` (20 檔) + `?? docs/disaster-recovery.md`；全卡 ACL
+3. **auto-commit 治理零落地**：近 10 條 commit 有 7 條 `auto-commit: checkpoint` 前綴（`85d20ac` 是唯一 conventional），P0.1 三選一未決
+
+**🔴 架構健康**
+
+4. **src/sources/ 架構是空口支票**：Epic 1 T1.2 承諾 `BaseSourceAdapter` + 5 adapter，實測 `ls src/sources/` = 目錄不存在。Epic 1 實質進度 = 0
+5. **God modules 4 檔未拆**（`src/cli/kb.py` 1614 / `src/cli/generate.py` 1263 / `src/agents/editor.py` 1065 / `src/agents/writer.py` 941 = 4883 行）；P1.1（T8.1.a 拆 kb.py）ACL-gated 延宕中
+6. **src/core/ 5 檔 orphan**：`error_analyzer.py` / `llm.py` / `logging_config.py` / `review_models.py` / `scoring.py` — P0.4 read-only 盤點從 v2.7 提出至今未執行
+
+**🟡 Spectra / 文件**
+
+7. **openspec/changes/ 0 份 active proposal**：連七輪（v2.2→v2.8）零產出；P0.5（01-real-sources）是 30 分鐘任務，ACL-gated 但「寫檔」本身不需 commit
+8. **P0.3 top-3 sources 調研未動**：read-only 不依賴 ACL，v2.7 立 flag 但本輪 auto-engineer 只做了 P0.2 一項
+9. **頂層歷史 md 10 份未歸位**（T9.1）：`IMPROVEMENT_REPORT.md` / `PROJECT_SUMMARY.md` 等仍滯頂層
+
+**🟢 次要**
+
+10. **1363 deprecation warnings**（Pydantic v2.11 → v3 不相容路徑）；T8.2 未動
+11. **`.env`** 存在但 OpenRouter smoke（P1.3）未驗
+12. **benchmark/** untracked 20 檔：`blind_eval_results.*.json` 雖有 ignore 擋住，但工作樹視覺噪音持續
+13. **無明顯安全漏洞**：grep 硬編碼 secret/token = 0；subprocess 僅 3 處皆在 CLI 工具層；無 bare `except:`
+
+### 反覆卡住的模式（連 6+ 輪）
+
+| 任務 | 延宕輪次 | 根因 | 建議處置 |
+|---|---|---|---|
+| P0.0 ACL 解除 | 6 (v2.3→v2.8) | 需人工 Admin | **維持 P0，不動；等人工** |
+| P0.5 01-real-sources proposal | 7 (v2.2→v2.8) | 寫檔本身 ACL-free，純意願 | **v2.8 降級為「寫檔不需 commit，先落地」** |
+| P0.4 src/core 盤點 | 2 (v2.7→v2.8) | read-only，純 program.md 編輯 | **本輪可立即落** |
+| P0.3 sources 調研 | 2 (v2.7→v2.8) | read-only | **本輪可立即落** |
+| T8.1 kb.py 拆分 | 5 | ACL-gated，但「先拆後 commit」可做 | **ACL 解後優先** |
+
+### 建議的優先調整（v2.8 重排）
+
+**核心洞察**：ACL 未解的事實，不等於「不能寫檔」。P0.3 / P0.4 / P0.5 的**文件產出**本身不需要 git 寫入 —— 只要 append 到 working tree，下輪 ACL 解後一次 commit。v2.7 用「ACL-gated」標籤把 P0.5 flag 為依賴 P0.0，其實是誤判 —— 寫 `openspec/changes/*.md` 檔案本身跟 ACL 無關。
+
+新 P0 順序（v2.8）：
+1. **P0.A（原 P0.3）**：寫 `docs/sources-research.md`（top-3 來源） — 30 min，零依賴
+2. **P0.B（原 P0.4）**：src/core/ 5 檔盤點寫入 program.md — 15 min，零依賴
+3. **P0.C（原 P0.5）** **去 ACL-gated 標籤**：寫 `openspec/changes/01-real-sources/proposal.md` — 30 min，零依賴（commit 才依賴 ACL）
+4. **P0.D（原 P0.0）**：🛑 人工 Admin 解 ACL — 仍維持 BLOCKER，不動
+5. **P0.E（原 P0.1）**：auto-commit 治理（配置改寫） — **配置檔編輯本身可做**，等 ACL 解後 commit
+
+**升級規則**：任何 `read-only 文件產出` 任務若連 2 輪不落 = auto-engineer 行為約束失效 = 直接 3.25（不再接受「專心寫別的」）。
+
+### 下一步行動（最重要 3 件）
+
+1. **auto-engineer 本輪必落 P0.A + P0.B + P0.C 三份文件**（共 ~75 分鐘工時 = 一輪容量）；全屬 working-tree write，不碰 git
+2. **Admin 請執行 ACL 解鎖三步驟**（disaster-recovery.md 已列 SOP）：`takeown /f .git /r /d y` → `icacls .git /reset /T /C` → `icacls .git /remove:d "*S-1-5-21-..."`
+3. **ACL 解鎖後，一次 commit 所有 read-only 產出 + benchmark/ + disaster-recovery.md**（分 3 條 conventional commit：docs(sources) / docs(program) / docs(spec)）
+
+### 架構側關鍵決策（v2.8 需對齊）
+
+> [PUA生效 🔥] Epic 1 承諾 `BaseSourceAdapter` + 5 adapter，但 `src/sources/` 目錄根本沒建。**空口支票**。兩條路：
+> 1. **收縮承諾**：T1.2 從「架構 + 5 adapter」降為「T1.2.a 只建 1 個（MojLawAdapter）驗流程」—— 三板斧原則
+> 2. **維持承諾但人工資源綁定**：P0.A 調研完成後立即驗證 API 可抓性，否則 Epic 1 整體延宕
+
+**底層邏輯**：Epic 2 open-notebook fork 也只在紙上，T2.1 研讀文件未寫；Epic 3/4 溯源 + 審查層全 0 進度。**Epic 1-4 實質全空，但 program.md 長度膨脹至 424 行**。顆粒度與產出倒掛。
+
+### 復盤四步法
+
+- **回顧目標**：v2.7 承諾 P0.2-P0.4 三項 read-only 任一落 + ACL 解後 P0.0/P0.1/P0.5 連動
+- **評估結果**：P0.2 ✅（1/3 落）；P0.3 ❌；P0.4 ❌；ACL 未解 → P0.0/P0.1/P0.5 自然 BLOCKED；**本輪實際產出：1 份文件 + 1 次 meta 重排**
+- **分析原因**：auto-engineer 完成 P0.2 後，把 P0.3/P0.4 的「read-only」當成「不緊急」，實際上 v2.7 明文寫「三項任一不過 = 3.25」；執行引擎讀規則但不執行裁決
+- **提煉 SOP**：**`read-only 任務連 2 輪延宕 = 立即 3.25`** 寫入 program.md 顯眼處；取消「今輪做了一項就算交差」的兜底
+
+### 硬指標（v2.8 下輪審查）
+
+1. `ls docs/sources-research.md && grep -c "^## " docs/sources-research.md` ≥ 3（P0.A）
+2. `grep -c "失控檔盤點" program.md` ≥ 1 且後接 5 條非空 bullet（P0.B）
+3. `ls openspec/changes/01-real-sources/proposal.md && wc -w <檔>` ≤ 500（P0.C）
+4. `icacls .git 2>&1 | grep -c DENY` == 0（P0.D；Admin 側）
+5. `git log --oneline -5 | grep -c "auto-commit:"` == 0（P0.E；ACL 解後驗）
+
+三項 read-only（1/2/3）任一不過 → 3.25，無藉口。
+
+---
