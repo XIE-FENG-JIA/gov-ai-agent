@@ -5,6 +5,7 @@ category: "人事"
 source: "交通部公路局"
 tags: ["申誡", "懲處", "人事"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：交通部公路局

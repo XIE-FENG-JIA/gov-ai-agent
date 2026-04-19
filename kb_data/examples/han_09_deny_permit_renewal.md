@@ -5,6 +5,7 @@ category: "否定性公文"
 source: "經濟部商業發展署"
 tags: ["不予換發", "營業許可", "否定性"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：經濟部商業發展署

@@ -4,6 +4,7 @@ doc_type: "咨"
 agency: "總統府"
 date: 2026-01-25
 tags: ["國際條約", "立法院", "咨"]
+synthetic: true
 ---
 
 **機關**：總統府

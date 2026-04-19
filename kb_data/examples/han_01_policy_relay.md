@@ -4,6 +4,7 @@ doc_type: "函"
 agency: "經濟部"
 date: 2025-01-15
 tags: ["政策轉知", "淨零排放", "環境永續"]
+synthetic: true
 ---
 
 **機關**：經濟部

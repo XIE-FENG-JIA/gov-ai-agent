@@ -5,6 +5,7 @@ category: "日常行政"
 source: "衛生福利部"
 tags: ["國有財產", "撥用", "不動產"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：衛生福利部

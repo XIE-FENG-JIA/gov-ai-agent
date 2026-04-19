@@ -5,6 +5,7 @@ category: "日常行政"
 source: "行政院人事行政總處"
 tags: ["書函", "場地借用", "協調"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：行政院人事行政總處

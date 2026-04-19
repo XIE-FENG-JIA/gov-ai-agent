@@ -5,6 +5,7 @@ category: "特殊情況"
 source: "銓敘部"
 tags: ["臨時", "變更", "作業方式"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：銓敘部

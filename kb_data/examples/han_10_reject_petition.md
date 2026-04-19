@@ -5,6 +5,7 @@ category: "否定性公文"
 source: "臺北市政府"
 tags: ["不予受理", "陳情", "否定性"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：臺北市政府

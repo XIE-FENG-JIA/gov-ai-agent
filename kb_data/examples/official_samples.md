@@ -5,6 +5,7 @@ agency: 臺北市政府文化局
 date: 2024-04-10
 tags: [補助, 書函, 已棄用]
 deprecated: true
+synthetic: true
 ---
 本檔案已拆分為以下兩個獨立範例檔案：
 - official_letter.md（書函範例-經費補助）

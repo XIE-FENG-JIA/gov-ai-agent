@@ -4,6 +4,7 @@ doc_type: "呈"
 agency: "行政院"
 date: 2026-05-10
 tags: ["審計", "決算", "財政", "呈"]
+synthetic: true
 ---
 
 **機關**：行政院

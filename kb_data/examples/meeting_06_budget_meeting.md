@@ -4,6 +4,7 @@ doc_type: "開會通知單"
 agency: "教育部"
 date: 2025-05-20
 tags: ["預算審查", "概算編列", "教育經費"]
+synthetic: true
 ---
 
 **開會通知單**

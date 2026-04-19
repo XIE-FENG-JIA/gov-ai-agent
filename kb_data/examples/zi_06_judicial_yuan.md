@@ -4,6 +4,7 @@ doc_type: "咨"
 agency: "總統府"
 date: 2026-08-20
 tags: ["司法院", "司法改革", "國是會議", "咨"]
+synthetic: true
 ---
 
 **機關**：總統府

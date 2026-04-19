@@ -5,6 +5,7 @@ category: "採購"
 source: "農業部"
 tags: ["評選", "採購", "開會通知"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：農業部

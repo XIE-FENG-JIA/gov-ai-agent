@@ -5,6 +5,7 @@ category: "特殊情況"
 source: "財政部北區國稅局"
 tags: ["公示送達", "欠稅", "特殊"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：財政部北區國稅局

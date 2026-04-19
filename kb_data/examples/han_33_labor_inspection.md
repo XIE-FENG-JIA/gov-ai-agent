@@ -5,6 +5,7 @@ category: "日常行政"
 source: "臺北市政府勞動局"
 tags: ["勞動檢查", "勞基法", "裁罰"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：臺北市政府勞動局

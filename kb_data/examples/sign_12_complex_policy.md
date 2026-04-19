@@ -5,6 +5,7 @@ category: "不同複雜度"
 source: "經濟部"
 tags: ["政策", "複雜", "產業"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：經濟部

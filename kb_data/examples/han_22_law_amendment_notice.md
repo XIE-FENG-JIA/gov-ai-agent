@@ -5,6 +5,7 @@ category: "法規"
 source: "行政院"
 tags: ["法律修正", "公布", "法規"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：行政院

@@ -4,6 +4,7 @@ doc_type: "函"
 agency: "數位發展部"
 date: 2025-02-10
 tags: ["會議通知", "數位政府", "委員會"]
+synthetic: true
 ---
 
 **機關**：數位發展部

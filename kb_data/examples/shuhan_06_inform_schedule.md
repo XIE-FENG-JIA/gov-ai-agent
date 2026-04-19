@@ -4,6 +4,7 @@ doc_type: "書函"
 agency: "經濟部水利署"
 date: 2025-04-08
 tags: ["通知行程", "水資源", "會議安排"]
+synthetic: true
 ---
 
 **機關**：經濟部水利署

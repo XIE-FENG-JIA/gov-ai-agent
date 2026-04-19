@@ -5,6 +5,7 @@ category: "會銜跨部會"
 source: "行政院消費者保護處"
 tags: ["移送", "跨機關", "消費者保護"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：行政院消費者保護處

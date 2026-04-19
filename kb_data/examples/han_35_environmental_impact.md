@@ -5,6 +5,7 @@ category: "特殊情況"
 source: "環境部"
 tags: ["環評", "審查", "開發案"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：環境部

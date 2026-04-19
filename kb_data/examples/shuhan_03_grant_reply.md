@@ -5,6 +5,7 @@ category: "日常行政"
 source: "客家委員會"
 tags: ["書函", "補助", "客家"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：客家委員會

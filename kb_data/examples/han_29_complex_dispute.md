@@ -5,6 +5,7 @@ category: "不同複雜度"
 source: "行政院"
 tags: ["訴願", "複雜", "行政救濟"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：行政院

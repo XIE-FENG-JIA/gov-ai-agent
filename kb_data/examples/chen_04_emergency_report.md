@@ -4,6 +4,7 @@ doc_type: "呈"
 agency: "行政院"
 date: 2026-07-28
 tags: ["緊急應變", "天然災害", "颱風", "呈"]
+synthetic: true
 ---
 
 **機關**：行政院

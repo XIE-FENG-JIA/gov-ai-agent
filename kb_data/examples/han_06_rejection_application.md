@@ -5,6 +5,7 @@ category: "否定性公文"
 source: "內政部國土管理署"
 tags: ["駁回", "建築許可", "否定性"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：內政部國土管理署

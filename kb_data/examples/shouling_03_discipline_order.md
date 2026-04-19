@@ -5,6 +5,7 @@ category: "廉政紀律"
 source: "法務部"
 tags: ["手令", "廉政", "紀律", "首長命令"]
 source_level: "A"
+synthetic: true
 ---
 
 法務部  手令

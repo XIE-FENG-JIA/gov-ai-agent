@@ -4,6 +4,7 @@ doc_type: "公告"
 agency: "教育部"
 date: 2025-01-20
 tags: ["人事異動", "主管調任", "教育部"]
+synthetic: true
 ---
 
 **機關**：教育部

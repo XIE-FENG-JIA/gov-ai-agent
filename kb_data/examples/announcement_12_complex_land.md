@@ -5,6 +5,7 @@ category: "不同複雜度"
 source: "內政部"
 tags: ["區段徵收", "土地", "複雜"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：內政部

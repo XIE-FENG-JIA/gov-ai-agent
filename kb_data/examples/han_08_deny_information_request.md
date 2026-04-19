@@ -5,6 +5,7 @@ category: "否定性公文"
 source: "國防部"
 tags: ["否准", "資訊公開", "否定性"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：國防部

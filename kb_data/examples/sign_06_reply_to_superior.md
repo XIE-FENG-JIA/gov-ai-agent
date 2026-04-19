@@ -5,6 +5,7 @@ category: "日常行政"
 source: "勞動部勞動力發展署"
 tags: ["簽辦", "交辦", "回應"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：勞動部勞動力發展署

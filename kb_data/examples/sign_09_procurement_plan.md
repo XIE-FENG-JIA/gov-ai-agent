@@ -5,6 +5,7 @@ category: "採購"
 source: "國家發展委員會"
 tags: ["採購", "委託研究", "簽呈"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：國家發展委員會

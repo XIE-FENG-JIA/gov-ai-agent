@@ -4,6 +4,7 @@ doc_type: "呈"
 agency: "行政院"
 date: 2026-03-01
 tags: ["施政計畫", "年度概算", "呈"]
+synthetic: true
 ---
 
 **機關**：行政院

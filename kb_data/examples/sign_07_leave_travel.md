@@ -5,6 +5,7 @@ category: "日常行政"
 source: "環境部"
 tags: ["公差", "差假", "日常行政"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：環境部

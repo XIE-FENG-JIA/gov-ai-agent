@@ -4,6 +4,7 @@ doc_type: "公告"
 agency: "臺中市政府"
 date: 2025-03-20
 tags: ["土地重劃", "市地重劃", "都市計畫"]
+synthetic: true
 ---
 
 **機關**：臺中市政府

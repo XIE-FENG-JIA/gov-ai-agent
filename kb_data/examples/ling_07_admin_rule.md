@@ -5,6 +5,7 @@ category: "法規"
 source: "金融監督管理委員會"
 tags: ["行政規則", "發布", "法規"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：金融監督管理委員會

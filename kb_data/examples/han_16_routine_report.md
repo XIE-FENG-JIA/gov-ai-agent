@@ -5,6 +5,7 @@ category: "日常行政"
 source: "臺中市政府社會局"
 tags: ["季報", "報告", "社會福利"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：臺中市政府社會局

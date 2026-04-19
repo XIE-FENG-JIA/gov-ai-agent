@@ -4,6 +4,7 @@ doc_type: "簽"
 agency: "內政部"
 date: 2025-04-20
 tags: ["資訊系統升級", "公文管理", "數位轉型"]
+synthetic: true
 ---
 
 **內政部簽**

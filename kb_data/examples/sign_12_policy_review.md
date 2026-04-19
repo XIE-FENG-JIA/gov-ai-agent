@@ -4,6 +4,7 @@ doc_type: "簽"
 agency: "銓敘部"
 date: 2025-05-12
 tags: ["法規檢討", "考績法", "制度改革"]
+synthetic: true
 ---
 
 **銓敘部簽**

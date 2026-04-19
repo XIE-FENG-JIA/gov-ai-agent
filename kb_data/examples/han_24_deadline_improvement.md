@@ -5,6 +5,7 @@ category: "特殊情況"
 source: "勞動部職業安全衛生署"
 tags: ["限期改善", "職安", "特殊"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：勞動部職業安全衛生署

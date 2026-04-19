@@ -5,6 +5,7 @@ category: "採購"
 source: "衛生福利部中央健康保險署"
 tags: ["驗收", "採購", "通知"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：衛生福利部中央健康保險署

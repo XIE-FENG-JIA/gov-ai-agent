@@ -4,6 +4,7 @@ doc_type: "書函"
 agency: "衛生福利部"
 date: 2025-01-20
 tags: ["檢送報告", "性別平等", "成果報告"]
+synthetic: true
 ---
 
 **機關**：衛生福利部

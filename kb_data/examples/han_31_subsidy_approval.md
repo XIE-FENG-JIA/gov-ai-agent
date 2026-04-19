@@ -4,6 +4,7 @@ doc_type: "函"
 agency: "衛生福利部"
 date: 2025-02-28
 tags: ["補助核定", "長期照顧", "社會福利"]
+synthetic: true
 ---
 
 **機關**：衛生福利部

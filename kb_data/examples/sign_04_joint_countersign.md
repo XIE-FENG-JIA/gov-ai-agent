@@ -5,6 +5,7 @@ category: "會銜跨部會"
 source: "數位發展部"
 tags: ["會銜", "跨部會", "資安"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：數位發展部

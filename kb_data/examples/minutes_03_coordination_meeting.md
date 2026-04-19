@@ -5,6 +5,7 @@ category: "跨機關協調"
 source: "環境部"
 tags: ["開會紀錄", "跨機關協調", "環境保護", "協調會議"]
 source_level: "A"
+synthetic: true
 ---
 
 # 環境部114年度空污防制跨機關協調會議開會紀錄

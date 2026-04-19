@@ -5,6 +5,7 @@ category: "法規"
 source: "法務部"
 tags: ["法規解釋", "行政程序法", "法規"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：法務部

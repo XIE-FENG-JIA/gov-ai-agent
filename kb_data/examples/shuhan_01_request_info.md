@@ -5,6 +5,7 @@ category: "日常行政"
 source: "監察院"
 tags: ["書函", "資料調閱", "監察"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：監察院

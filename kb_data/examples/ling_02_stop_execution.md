@@ -5,6 +5,7 @@ category: "否定性公文"
 source: "行政院"
 tags: ["停止執行", "行政處分", "否定性"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：行政院

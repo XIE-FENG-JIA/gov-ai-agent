@@ -5,6 +5,7 @@ category: "會銜跨部會"
 source: "衛生福利部"
 tags: ["會銜", "長照", "跨部會"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：衛生福利部（會銜內政部、勞動部、教育部）

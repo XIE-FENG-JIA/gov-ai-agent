@@ -4,6 +4,7 @@ doc_type: "手令"
 agency: "臺北市政府"
 date: 2026-02-01
 tags: ["人事調動", "手令", "首長令"]
+synthetic: true
 ---
 
 **發令人**：臺北市市長 陳建華

@@ -5,6 +5,7 @@ category: "不同複雜度"
 source: "臺北市政府民政局"
 tags: ["庶務", "基礎", "採購"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：臺北市政府民政局

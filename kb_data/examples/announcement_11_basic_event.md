@@ -5,6 +5,7 @@ category: "不同複雜度"
 source: "新北市政府文化局"
 tags: ["活動", "基礎", "公告"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：新北市政府文化局

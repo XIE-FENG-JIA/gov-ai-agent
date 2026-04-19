@@ -5,6 +5,7 @@ category: "不同複雜度"
 source: "嘉義縣政府"
 tags: ["轉知", "基礎", "行政"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：嘉義縣政府

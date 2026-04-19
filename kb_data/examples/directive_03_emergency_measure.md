@@ -4,6 +4,7 @@ doc_type: "手令"
 agency: "新北市政府"
 date: 2026-03-04
 tags: ["緊急處置", "手令", "颱風"]
+synthetic: true
 ---
 
 **發令人**：新北市市長 黃志明

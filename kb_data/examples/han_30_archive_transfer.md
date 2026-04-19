@@ -5,6 +5,7 @@ category: "日常行政"
 source: "外交部"
 tags: ["檔案", "移轉", "行政"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：外交部

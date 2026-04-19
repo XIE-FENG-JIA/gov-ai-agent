@@ -5,6 +5,7 @@ category: "日常行政"
 source: "交通部"
 tags: ["會議", "業務檢討", "通知"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：交通部

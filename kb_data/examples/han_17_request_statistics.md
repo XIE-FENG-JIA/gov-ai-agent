@@ -5,6 +5,7 @@ category: "日常行政"
 source: "主計總處"
 tags: ["統計", "資料調查", "行政"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：行政院主計總處

@@ -5,6 +5,7 @@ category: "採購"
 source: "行政院公共工程委員會"
 tags: ["採購申訴", "異議", "採購"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：行政院公共工程委員會

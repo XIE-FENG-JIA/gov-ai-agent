@@ -5,6 +5,7 @@ category: "特殊情況"
 source: "臺中市政府"
 tags: ["國家賠償", "拒絕賠償", "特殊"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：臺中市政府

@@ -5,6 +5,7 @@ category: "人事"
 source: "內政部"
 tags: ["獎勵", "嘉獎", "人事"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：內政部

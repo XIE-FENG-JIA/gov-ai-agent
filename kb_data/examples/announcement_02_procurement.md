@@ -4,6 +4,7 @@ doc_type: "公告"
 agency: "衛生福利部"
 date: 2025-02-25
 tags: ["採購公告", "資訊設備", "公開招標"]
+synthetic: true
 ---
 
 **機關**：衛生福利部

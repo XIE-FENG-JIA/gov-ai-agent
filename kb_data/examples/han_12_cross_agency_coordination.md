@@ -5,6 +5,7 @@ category: "會銜跨部會"
 source: "內政部消防署"
 tags: ["跨機關", "協調", "防災"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：內政部消防署

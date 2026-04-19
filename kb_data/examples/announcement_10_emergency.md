@@ -5,6 +5,7 @@ category: "特殊情況"
 source: "行政院"
 tags: ["緊急", "颱風", "應變", "特殊"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：行政院

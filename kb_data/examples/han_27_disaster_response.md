@@ -4,6 +4,7 @@ doc_type: "函"
 agency: "內政部消防署"
 date: 2025-07-18
 tags: ["災害應變", "緊急疏散", "防救災"]
+synthetic: true
 ---
 
 **機關**：內政部消防署

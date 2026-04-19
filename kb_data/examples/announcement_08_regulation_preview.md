@@ -5,6 +5,7 @@ category: "法規"
 source: "數位發展部"
 tags: ["法規預告", "行政規則", "法規"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：數位發展部

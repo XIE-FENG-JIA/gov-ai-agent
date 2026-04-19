@@ -5,6 +5,7 @@ category: "感謝致意"
 source: "教育部"
 tags: ["箋函", "感謝函", "採購協助", "首長往來"]
 source_level: "A"
+synthetic: true
 ---
 
 教育部

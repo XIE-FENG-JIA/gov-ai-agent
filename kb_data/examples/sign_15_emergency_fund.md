@@ -4,6 +4,7 @@ doc_type: "簽"
 agency: "花蓮縣政府"
 date: 2025-04-05
 tags: ["緊急經費", "預備金動支", "震災復建"]
+synthetic: true
 ---
 
 **花蓮縣政府簽**

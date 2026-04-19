@@ -5,6 +5,7 @@ category: "採購"
 source: "國防部軍備局"
 tags: ["決標", "採購", "公告"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：國防部軍備局

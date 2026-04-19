@@ -5,6 +5,7 @@ category: "法規"
 source: "勞動部"
 tags: ["法規命令", "修正", "法規"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：勞動部

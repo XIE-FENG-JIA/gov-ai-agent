@@ -4,6 +4,7 @@ doc_type: "咨"
 agency: "總統府"
 date: 2026-04-22
 tags: ["監察院", "公務員懲戒", "調查", "咨"]
+synthetic: true
 ---
 
 **機關**：總統府

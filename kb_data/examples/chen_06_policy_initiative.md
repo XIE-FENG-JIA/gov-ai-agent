@@ -4,6 +4,7 @@ doc_type: "呈"
 agency: "行政院"
 date: 2026-03-15
 tags: ["AI", "科技政策", "施政計畫", "呈"]
+synthetic: true
 ---
 
 **機關**：行政院

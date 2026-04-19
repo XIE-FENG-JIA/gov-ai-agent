@@ -5,6 +5,7 @@ category: "日常行政"
 source: "數位發展部資通安全署"
 tags: ["資安", "通報", "事件處理"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：數位發展部資通安全署

@@ -5,6 +5,7 @@ category: "機關協調"
 source: "衛生福利部"
 tags: ["箋函", "資料請求", "跨機關協調", "首長往來"]
 source_level: "A"
+synthetic: true
 ---
 
 衛生福利部

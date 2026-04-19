@@ -5,6 +5,7 @@ category: "人事行政"
 source: "臺北市政府"
 tags: ["手令", "職務代理", "人事", "首長命令"]
 source_level: "A"
+synthetic: true
 ---
 
 臺北市政府  手令

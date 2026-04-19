@@ -4,6 +4,7 @@ doc_type: "開會通知單"
 agency: "財政部國稅局"
 date: 2025-04-10
 tags: ["季度檢討", "業務成效", "國稅"]
+synthetic: true
 ---
 
 **開會通知單**

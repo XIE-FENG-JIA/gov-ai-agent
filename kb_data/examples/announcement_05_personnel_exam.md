@@ -5,6 +5,7 @@ category: "人事"
 source: "經濟部"
 tags: ["陞遷", "甄選", "人事"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：經濟部

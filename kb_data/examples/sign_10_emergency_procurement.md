@@ -5,6 +5,7 @@ category: "採購"
 source: "衛生福利部疾病管制署"
 tags: ["緊急採購", "防疫", "採購"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：衛生福利部疾病管制署

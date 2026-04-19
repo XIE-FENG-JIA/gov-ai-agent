@@ -5,6 +5,7 @@ category: "否定性公文"
 source: "文化部"
 tags: ["不予核准", "補助", "否定性"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：文化部

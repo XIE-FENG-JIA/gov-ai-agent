@@ -5,6 +5,7 @@ category: "日常行政"
 source: "財政部國庫署"
 tags: ["內簽", "搬遷", "日常行政"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：財政部國庫署

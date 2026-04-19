@@ -4,6 +4,7 @@ doc_type: "公告"
 agency: "環境部"
 date: 2025-03-15
 tags: ["政策公告", "空氣品質", "環境保護"]
+synthetic: true
 ---
 
 **機關**：環境部

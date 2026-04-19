@@ -5,6 +5,7 @@ category: "日常行政"
 source: "內政部消防署"
 tags: ["預備金", "經費", "救災"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：內政部消防署

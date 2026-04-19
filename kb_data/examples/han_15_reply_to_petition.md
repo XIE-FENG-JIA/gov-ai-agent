@@ -5,6 +5,7 @@ category: "日常行政"
 source: "臺北市政府環境保護局"
 tags: ["陳情", "回覆", "環保"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：臺北市政府環境保護局

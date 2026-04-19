@@ -5,6 +5,7 @@ category: "人事"
 source: "法務部"
 tags: ["加班", "人事", "經費"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：法務部

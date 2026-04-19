@@ -5,6 +5,7 @@ category: "採購"
 source: "臺北市政府捷運工程局"
 tags: ["招標", "選擇性招標", "採購"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：臺北市政府捷運工程局

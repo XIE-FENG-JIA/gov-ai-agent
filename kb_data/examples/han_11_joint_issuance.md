@@ -5,6 +5,7 @@ category: "會銜跨部會"
 source: "衛生福利部"
 tags: ["會銜", "聯合發文", "食品安全"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：衛生福利部（會銜行政院農業委員會、經濟部）

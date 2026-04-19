@@ -4,6 +4,7 @@ doc_type: "簽"
 agency: "內政部"
 date: 2025-03-01
 tags: ["採購計畫", "公務車輛", "汰換"]
+synthetic: true
 ---
 
 **機關**：內政部

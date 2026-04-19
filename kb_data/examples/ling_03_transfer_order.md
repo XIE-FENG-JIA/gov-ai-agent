@@ -5,6 +5,7 @@ category: "人事"
 source: "財政部"
 tags: ["調任", "人事", "令"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：財政部

@@ -5,6 +5,7 @@ category: "緊急應變"
 source: "高雄市政府"
 tags: ["手令", "緊急應變", "災害防救", "首長命令"]
 source_level: "A"
+synthetic: true
 ---
 
 高雄市政府  手令

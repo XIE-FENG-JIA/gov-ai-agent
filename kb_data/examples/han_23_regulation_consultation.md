@@ -5,6 +5,7 @@ category: "法規"
 source: "環境部"
 tags: ["法規研修", "意見徵詢", "法規"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：環境部

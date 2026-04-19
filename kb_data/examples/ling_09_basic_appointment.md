@@ -5,6 +5,7 @@ category: "不同複雜度"
 source: "經濟部"
 tags: ["派代", "基礎", "人事"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：經濟部

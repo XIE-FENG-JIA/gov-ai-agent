@@ -4,6 +4,7 @@ doc_type: "公告"
 agency: "環境部"
 date: 2025-05-25
 tags: ["聽證通知", "環境影響評估", "焚化爐"]
+synthetic: true
 ---
 
 **機關**：環境部

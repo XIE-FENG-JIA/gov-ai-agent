@@ -5,6 +5,7 @@ category: "日常行政"
 source: "新北市政府"
 tags: ["都市計畫", "公開展覽", "公告"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：新北市政府

@@ -5,6 +5,7 @@ category: "法規"
 source: "總統府"
 tags: ["公布", "法律", "令"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：總統府

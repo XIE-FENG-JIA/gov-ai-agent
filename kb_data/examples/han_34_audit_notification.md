@@ -4,6 +4,7 @@ doc_type: "函"
 agency: "監察院審計部"
 date: 2025-04-02
 tags: ["審計通知", "決算審核", "財務稽核"]
+synthetic: true
 ---
 
 **機關**：監察院審計部

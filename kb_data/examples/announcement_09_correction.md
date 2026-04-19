@@ -5,6 +5,7 @@ category: "特殊情況"
 source: "教育部"
 tags: ["更正", "啟事", "特殊"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：教育部

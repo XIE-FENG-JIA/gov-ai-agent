@@ -5,6 +5,7 @@ category: "否定性公文"
 source: "衛生福利部食品藥物管理署"
 tags: ["撤銷", "食品安全", "否定性"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：衛生福利部食品藥物管理署

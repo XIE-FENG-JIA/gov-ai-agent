@@ -5,6 +5,7 @@ category: "行政會議"
 source: "國家發展委員會"
 tags: ["開會紀錄", "施政協調", "會議紀錄"]
 source_level: "A"
+synthetic: true
 ---
 
 # 國家發展委員會114年度第一次施政協調會議開會紀錄

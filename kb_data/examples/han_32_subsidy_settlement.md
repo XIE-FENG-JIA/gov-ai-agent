@@ -5,6 +5,7 @@ category: "日常行政"
 source: "文化部"
 tags: ["結報", "補助", "核銷"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：文化部

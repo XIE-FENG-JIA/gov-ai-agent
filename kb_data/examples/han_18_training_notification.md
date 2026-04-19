@@ -5,6 +5,7 @@ category: "人事"
 source: "行政院人事行政總處"
 tags: ["訓練", "人事", "在職進修"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：行政院人事行政總處

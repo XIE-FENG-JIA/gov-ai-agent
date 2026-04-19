@@ -5,6 +5,7 @@ category: "政策協調"
 source: "行政院性別平等處"
 tags: ["箋函", "性別主流化", "政策協調", "首長往來"]
 source_level: "A"
+synthetic: true
 ---
 
 行政院性別平等處

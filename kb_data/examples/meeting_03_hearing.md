@@ -5,6 +5,7 @@ category: "法規"
 source: "國家通訊傳播委員會"
 tags: ["聽證", "開會通知", "通傳"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：國家通訊傳播委員會

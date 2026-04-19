@@ -4,6 +4,7 @@ doc_type: "簽"
 agency: "交通部觀光署"
 date: 2025-02-05
 tags: ["經費核准", "出國考察", "觀光推廣"]
+synthetic: true
 ---
 
 **機關**：交通部觀光署

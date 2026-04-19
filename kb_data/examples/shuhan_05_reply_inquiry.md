@@ -4,6 +4,7 @@ doc_type: "書函"
 agency: "銓敘部"
 date: 2025-03-05
 tags: ["函覆查詢", "退休年資", "公務人員"]
+synthetic: true
 ---
 
 **機關**：銓敘部

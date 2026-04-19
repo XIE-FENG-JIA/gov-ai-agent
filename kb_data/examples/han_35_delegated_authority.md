@@ -4,6 +4,7 @@ doc_type: "函"
 agency: "勞動部"
 date: 2025-01-25
 tags: ["委任委託", "外國人工作許可", "業務委託"]
+synthetic: true
 ---
 
 **機關**：勞動部

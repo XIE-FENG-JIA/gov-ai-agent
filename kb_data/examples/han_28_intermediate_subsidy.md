@@ -5,6 +5,7 @@ category: "不同複雜度"
 source: "教育部體育署"
 tags: ["補助", "進階", "體育"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：教育部體育署

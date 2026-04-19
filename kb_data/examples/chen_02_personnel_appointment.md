@@ -4,6 +4,7 @@ doc_type: "呈"
 agency: "行政院"
 date: 2026-01-20
 tags: ["人事任命", "高級文官", "呈"]
+synthetic: true
 ---
 
 **機關**：行政院

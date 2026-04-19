@@ -4,6 +4,7 @@ doc_type: "呈"
 agency: "行政院"
 date: 2026-02-15
 tags: ["施政成果", "年度報告", "呈"]
+synthetic: true
 ---
 
 **機關**：行政院

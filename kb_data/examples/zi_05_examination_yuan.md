@@ -4,6 +4,7 @@ doc_type: "咨"
 agency: "總統府"
 date: 2026-06-05
 tags: ["考試院", "文官制度", "考試改革", "咨"]
+synthetic: true
 ---
 
 **機關**：總統府

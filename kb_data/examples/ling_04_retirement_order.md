@@ -5,6 +5,7 @@ category: "人事"
 source: "教育部"
 tags: ["退休", "人事", "令"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：教育部

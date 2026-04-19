@@ -4,6 +4,7 @@ doc_type: "咨"
 agency: "總統府"
 date: 2026-02-10
 tags: ["法律案", "立法院", "咨"]
+synthetic: true
 ---
 
 **機關**：總統府

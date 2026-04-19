@@ -5,6 +5,7 @@ category: "否定性公文"
 source: "公務員懲戒委員會"
 tags: ["撤銷", "懲處", "否定性", "人事"]
 source_level: "A"
+synthetic: true
 ---
 
 **機關**：公務員懲戒委員會

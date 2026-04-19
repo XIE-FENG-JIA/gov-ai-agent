@@ -4,6 +4,7 @@ doc_type: "開會通知單"
 agency: "法務部行政執行署"
 date: 2025-06-25
 tags: ["歡送會議", "退休", "人事"]
+synthetic: true
 ---
 
 **開會通知單**
