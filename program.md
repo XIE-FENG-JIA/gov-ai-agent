@@ -109,7 +109,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### P0.A — ✅ read-only：top-3 公文來源調研（v2.8；原 P0.3 升首）
 
-- [ ] **P0.A** ✅ 不依賴 ACL：寫 `docs/sources-research.md` 首版
+- [x] **P0.A** ✅ 不依賴 ACL：寫 `docs/sources-research.md` 首版
   - 三來源：`data.gov.tw` / `law.moj.gov.tw` / Executive Yuan RSS
   - 每段含：API endpoint / 資料格式 / 授權條款 / curl 範例 / 資料量估計 / 優先級（1-5）
   - **驗**：`ls docs/sources-research.md && grep -c "^## " docs/sources-research.md` ≥ 3
