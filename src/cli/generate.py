@@ -310,12 +310,13 @@ def _export_document(
             )
             md_enc = "utf-8"
         md_path = os.path.splitext(full_output_path)[0] + ".md"
+        console.print(f"  [dim]Markdown 編碼：{md_enc}[/dim]")
         try:
             atomic_text_write(md_path, final_draft, encoding=md_enc)
             enc_note = f"（{md_enc}）" if md_enc != "utf-8" else ""
             console.print(f"  [green]Markdown 版本：{md_path}{enc_note}[/green]")
         except OSError as e:
-            console.print(f"  [yellow]Markdown 匯出失敗：{_sanitize_error(e)}[/yellow]")
+            console.print(f"  [yellow]Markdown 匯出失敗（{md_enc}）：{_sanitize_error(e)}[/yellow]")
 
     # 簡體字偵測
     sc_findings = detect_simplified(final_draft)

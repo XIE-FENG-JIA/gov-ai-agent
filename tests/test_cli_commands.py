@@ -10,7 +10,7 @@ import threading
 from pathlib import Path
 import yaml
 import requests
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, mock_open
 from click.exceptions import Exit as click_Exit
 from typer.testing import CliRunner
 
@@ -1277,18 +1277,20 @@ class TestConfigToolsCommand:
         # 使用者確認更新
         mock_confirm.ask.return_value = True
 
-        # Mock open 和 yaml 操作
+        # Mock yaml 讀取
         mock_yaml.safe_load.return_value = {
             "providers": {"openrouter": {"model": "old-model"}}
         }
 
-        mock_open = MagicMock()
-        with patch("builtins.open", mock_open):
+        # 防止 safe_config_write 觸發真實檔案 IO 與 shrink-guard 讀寫
+        with patch("src.cli.config_tools.safe_config_write") as mock_safe_write, \
+             patch("builtins.open", mock_open(read_data="providers:\n  openrouter:\n    model: old-model\n")):
             result = runner.invoke(config_app, ["fetch-models", "--update"])
 
         assert result.exit_code == 0
         assert "更新成功" in result.stdout
         mock_confirm.ask.assert_called_once()
+        mock_safe_write.assert_called_once()
 
     @patch("src.cli.config_tools.Confirm")
     @patch("src.cli.config_tools.test_connectivity")
@@ -1547,12 +1549,13 @@ class TestConfigToolsCommand:
         # yaml.safe_load 回傳完全沒有 providers 鍵的結構
         mock_yaml.safe_load.return_value = {}
 
-        mock_open = MagicMock()
-        with patch("builtins.open", mock_open):
+        with patch("src.cli.config_tools.safe_config_write") as mock_safe_write, \
+             patch("builtins.open", mock_open(read_data="{}")):
             result = runner.invoke(config_app, ["fetch-models", "--update"])
 
         assert result.exit_code == 0
         assert "更新成功" in result.stdout
+        mock_safe_write.assert_called_once()
 
     @patch("src.cli.config_tools.Confirm")
     @patch("src.cli.config_tools.yaml")
@@ -1590,12 +1593,13 @@ class TestConfigToolsCommand:
         # yaml.safe_load 回傳有 providers 但沒有 openrouter 的結構
         mock_yaml.safe_load.return_value = {"providers": {"ollama": {}}}
 
-        mock_open = MagicMock()
-        with patch("builtins.open", mock_open):
+        with patch("src.cli.config_tools.safe_config_write") as mock_safe_write, \
+             patch("builtins.open", mock_open(read_data="providers:\n  ollama: {}\n")):
             result = runner.invoke(config_app, ["fetch-models", "--update"])
 
         assert result.exit_code == 0
         assert "更新成功" in result.stdout
+        mock_safe_write.assert_called_once()
 
     @patch("src.cli.config_tools.Confirm")
     @patch("src.cli.config_tools.yaml")
@@ -1632,13 +1636,14 @@ class TestConfigToolsCommand:
         # yaml.safe_load 回傳 None（空檔案）
         mock_yaml.safe_load.return_value = None
 
-        mock_open = MagicMock()
-        with patch("builtins.open", mock_open):
+        with patch("src.cli.config_tools.safe_config_write") as mock_safe_write, \
+             patch("builtins.open", mock_open(read_data="")):
             result = runner.invoke(config_app, ["fetch-models", "--update"])
 
         # 不應因 TypeError 崩潰
         assert result.exit_code == 0
         assert "更新成功" in result.stdout
+        mock_safe_write.assert_called_once()
 
 
 class TestConfigShowCommand:

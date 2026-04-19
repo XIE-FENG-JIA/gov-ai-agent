@@ -127,6 +127,17 @@ class TestConfigInit:
         assert created["llm"]["provider"] == "openrouter"
 
     @patch("src.cli.config_tools.Prompt.ask")
+    def test_init_minimax(self, mock_prompt, tmp_path, monkeypatch):
+        """minimax provider 路徑"""
+        monkeypatch.chdir(tmp_path)
+        mock_prompt.side_effect = ["4", "./kb"]
+        from src.cli.config_tools import app as config_app
+        result = runner.invoke(config_app, ["init"])
+        assert "設定檔已建立" in result.output
+        created = yaml.safe_load((tmp_path / "config.yaml").read_text(encoding="utf-8"))
+        assert created["llm"]["provider"] == "minimax"
+
+    @patch("src.cli.config_tools.Prompt.ask")
     @patch("src.cli.config_tools.Confirm.ask", return_value=True)
     def test_init_overwrite_existing(self, mock_confirm, mock_prompt, tmp_path, monkeypatch):
         """config.yaml 已存在、使用者確認覆蓋"""

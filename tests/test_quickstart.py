@@ -189,6 +189,12 @@ class TestPrintLlmFixHint:
         output = _collect_output(mock_console)
         assert "LLM_API_KEY" in output
 
+    def test_minimax_hint(self):
+        with patch("src.cli.quickstart.console") as mock_console:
+            _print_llm_fix_hint("minimax")
+        output = _collect_output(mock_console)
+        assert "MINIMAX_API_KEY" in output
+
     def test_unknown_provider_hint(self):
         with patch("src.cli.quickstart.console") as mock_console:
             _print_llm_fix_hint("unknown_provider")

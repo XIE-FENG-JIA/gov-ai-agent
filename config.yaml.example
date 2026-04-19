@@ -41,3 +41,7 @@ providers:
     api_key: ''
     base_url: https://openrouter.ai/api/v1
     model: ''
+  minimax:
+    api_key: ${MINIMAX_API_KEY}
+    base_url: https://api.minimax.io/v1
+    model: openai/MiniMax-M2.7

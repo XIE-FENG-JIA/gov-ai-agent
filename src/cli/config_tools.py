@@ -316,6 +316,12 @@ _PROVIDER_TEMPLATES = {
         "api_key": "${LLM_API_KEY}",
         "base_url": "https://openrouter.ai/api/v1",
     },
+    "minimax": {
+        "provider": "minimax",
+        "model": "openai/MiniMax-M2.7",
+        "api_key": "${MINIMAX_API_KEY}",
+        "base_url": "https://api.minimax.io/v1",
+    },
 }
 
 
@@ -349,21 +355,25 @@ def init() -> None:
     console.print("  [dim]1) ollama  — 本機部署（免費，需安裝 Ollama）[/dim]")
     console.print("  [dim]2) gemini  — Google Gemini API（需 API Key）[/dim]")
     console.print("  [dim]3) openrouter — OpenRouter 聚合 API（需 API Key）[/dim]")
+    console.print("  [dim]4) minimax — MiniMax API（需 API Key）[/dim]")
 
-    choice = Prompt.ask("請選擇", choices=["1", "2", "3"], default="1")
-    provider_map = {"1": "ollama", "2": "gemini", "3": "openrouter"}
+    choice = Prompt.ask("請選擇", choices=["1", "2", "3", "4"], default="1")
+    provider_map = {"1": "ollama", "2": "gemini", "3": "openrouter", "4": "minimax"}
     provider = provider_map[choice]
     llm_config = dict(_PROVIDER_TEMPLATES[provider])
 
     # 2. 如需要 API Key，引導設定
-    if provider in ("gemini", "openrouter"):
+    if provider in ("gemini", "openrouter", "minimax"):
         console.print("\n[bold]2. 設定 API Key[/bold]")
         if provider == "gemini":
             console.print("  [dim]請至 https://aistudio.google.com/apikey 取得 API Key[/dim]")
             env_var = "GEMINI_API_KEY"
-        else:
+        elif provider == "openrouter":
             console.print("  [dim]請至 https://openrouter.ai/keys 取得 API Key[/dim]")
             env_var = "LLM_API_KEY"
+        else:
+            console.print("  [dim]請至 MiniMax 開放平台取得 API Key[/dim]")
+            env_var = "MINIMAX_API_KEY"
 
         current = os.environ.get(env_var, "")
         if current:

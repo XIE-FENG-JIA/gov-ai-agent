@@ -9,6 +9,7 @@ import logging
 import os
 import shutil
 import tempfile
+import time
 from typing import Any
 
 import yaml
@@ -17,6 +18,30 @@ from rich.console import Console
 logger = logging.getLogger(__name__)
 
 console = Console()
+_ATOMIC_TMP_PREFIXES = (".json_", ".txt_", ".yaml_")
+_ATOMIC_TMP_MAX_AGE_SECONDS = 3600
+
+
+def _cleanup_stale_atomic_tmps(parent: str, *, now: float | None = None) -> None:
+    """清掉原子寫入遺留超過一小時的暫存檔。"""
+    try:
+        entries = list(os.scandir(parent))
+    except OSError:
+        return
+
+    now_ts = time.time() if now is None else now
+    for entry in entries:
+        if not entry.is_file():
+            continue
+        name = entry.name
+        if not name.endswith(".tmp") or not name.startswith(_ATOMIC_TMP_PREFIXES):
+            continue
+        try:
+            if now_ts - entry.stat().st_mtime <= _ATOMIC_TMP_MAX_AGE_SECONDS:
+                continue
+            os.unlink(entry.path)
+        except OSError:
+            continue
 
 
 def atomic_json_write(path: str, data: Any) -> None:
@@ -26,6 +51,7 @@ def atomic_json_write(path: str, data: Any) -> None:
     """
     parent = os.path.dirname(path) or "."
     os.makedirs(parent, exist_ok=True)
+    _cleanup_stale_atomic_tmps(parent)
     fd, tmp_path = tempfile.mkstemp(dir=parent, suffix=".tmp", prefix=".json_")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -46,6 +72,7 @@ def atomic_text_write(path: str, content: str, encoding: str = "utf-8") -> None:
     """
     parent = os.path.dirname(path) or "."
     os.makedirs(parent, exist_ok=True)
+    _cleanup_stale_atomic_tmps(parent)
     fd, tmp_path = tempfile.mkstemp(dir=parent, suffix=".tmp", prefix=".txt_")
     try:
         with os.fdopen(fd, "w", encoding=encoding) as f:
@@ -66,6 +93,7 @@ def atomic_yaml_write(path: str, data: Any) -> None:
     """
     parent = os.path.dirname(path) or "."
     os.makedirs(parent, exist_ok=True)
+    _cleanup_stale_atomic_tmps(parent)
     fd, tmp_path = tempfile.mkstemp(dir=parent, suffix=".tmp", prefix=".yaml_")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:

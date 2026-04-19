@@ -14,7 +14,7 @@ app = typer.Typer()
 def switch(
     provider: str | None = typer.Option(
         None, "--provider", "-p",
-        help="直接指定 LLM 提供者（例如：ollama、gemini、openrouter）",
+        help="直接指定 LLM 提供者（例如：ollama、gemini、openrouter、minimax）",
     )
 ):
     """

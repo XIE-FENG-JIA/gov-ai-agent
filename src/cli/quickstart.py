@@ -152,5 +152,8 @@ def _print_llm_fix_hint(provider: str):
         console.print("  [dim]Gemini 用戶請設定 API Key：export GEMINI_API_KEY=your-key[/dim]")
     elif provider == "openrouter":
         console.print("  [dim]OpenRouter 用戶請設定：export LLM_API_KEY=your-key[/dim]")
+    elif provider == "minimax":
+        console.print("  [dim]MiniMax 用戶請設定：export MINIMAX_API_KEY=your-key[/dim]")
+        console.print("  [dim]並確認 llm.base_url 為 https://api.minimax.io/v1[/dim]")
     else:
         console.print("  [dim]請檢查 config.yaml 中的 LLM 設定。[/dim]")

@@ -92,6 +92,7 @@ gov-ai config fetch-models -u           # 自動更新最佳模型
 ```bash
 gov-ai switch ollama                    # 切換至本地 Ollama
 gov-ai switch openrouter                # 切換至 OpenRouter
+gov-ai switch minimax                   # 切換至 MiniMax
 
 # 啟用詳細日誌
 gov-ai --verbose generate -i "..."      # 顯示 DEBUG 層級日誌
