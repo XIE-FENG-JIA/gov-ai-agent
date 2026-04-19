@@ -3433,8 +3433,11 @@ class TestCoverageImprovement:
             "llm": {"provider": "ollama", "api_key": "", "model": ""},
             "knowledge_base": {"path": "."},
         }
-        with patch("src.api.dependencies.get_config", return_value=mock_config):
-            from api_server import _preflight_check
+        from api_server import _preflight_check
+        with patch.dict(
+            _preflight_check.__globals__,
+            {"get_config": MagicMock(return_value=mock_config)},
+        ):
             with caplog.at_level(logging.WARNING):
                 _preflight_check()
         assert "model" in caplog.text.lower()
@@ -4222,8 +4225,9 @@ class TestCoverageImprovement:
         (md_dir / "doc2.md").write_text("---\ntitle: fail\n---\n內容", encoding="utf-8")
 
         mock_kb = MagicMock()
-        # 第一筆成功，第二筆失敗
-        mock_kb.add_document.side_effect = ["doc-1", None]
+        mock_kb.contextual_retrieval = False
+        # ingest 走 upsert_document：第一筆成功，第二筆失敗
+        mock_kb.upsert_document.side_effect = ["doc-1", None]
         mock_kb.get_stats.return_value = {"examples_count": 1}
 
         with patch("src.cli.kb.ConfigManager") as mock_cm:
@@ -4238,7 +4242,7 @@ class TestCoverageImprovement:
                         "--source-dir", str(md_dir),
                     ])
         assert result.exit_code == 0
-        assert "成功匯入 1" in result.output
+        assert "成功匯入（upsert）1" in result.output
 
 
 class TestIsLlmErrorResponse:

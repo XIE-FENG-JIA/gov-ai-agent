@@ -1,4 +1,5 @@
 import json
+import re
 from unittest.mock import MagicMock
 
 from src.agents.requirement import RequirementAgent
@@ -11,6 +12,7 @@ from src.agents.compliance_checker import ComplianceChecker
 from src.agents.writer import WriterAgent
 from src.agents.org_memory import OrganizationalMemory
 from src.core.models import PublicDocRequirement
+from src.utils.tw_check import to_traditional
 
 
 # ==================== RequirementAgent ====================
@@ -366,6 +368,272 @@ def test_writer_no_examples_prompt_forbids_citations(mock_llm):
     prompt_text = call_args[0][0] if call_args[0] else call_args[1].get("prompt", "")
     # 無範例時 prompt 中應告知不要使用引用標記
     assert "不要使用任何 [^i] 引用標記" in prompt_text
+
+
+def test_writer_postprocess_adds_inline_citation_and_prunes_unused_refs(mock_llm):
+    """有來源但無正文引用時，Writer 應補正文引用且只輸出實際使用的參考來源。"""
+    kb_mock = MagicMock()
+    kb_mock.search_hybrid.return_value = [
+        {
+            "id": "src-1",
+            "content": "法規內容A",
+            "metadata": {
+                "title": "行政程序法",
+                "source_level": "A",
+                "source_url": "https://law.moj.gov.tw/a",
+                "source": "law",
+                "content_hash": "aaaaaaaaaaaaaaaa",
+            },
+            "distance": 0.2,
+        },
+        {
+            "id": "src-2",
+            "content": "法規內容B",
+            "metadata": {
+                "title": "中央法規標準法",
+                "source_level": "A",
+                "source_url": "https://law.moj.gov.tw/b",
+                "source": "law",
+                "content_hash": "bbbbbbbbbbbbbbbb",
+            },
+            "distance": 0.3,
+        },
+    ]
+
+    writer = WriterAgent(mock_llm, kb_mock)
+    mock_llm.generate.return_value = "### 主旨\n測試\n\n### 說明\n一、依據行政程序法規定辦理。"
+
+    req = PublicDocRequirement(
+        doc_type="函", sender="測試機關", receiver="測試單位", subject="測試主旨"
+    )
+    draft = writer.write_draft(req)
+
+    # 正文引用應自動補上
+    assert re.search(r"依據[^\n]{0,30}\[\^1\]", draft)
+    # 只保留實際使用到的來源定義
+    assert "[^1]:" in draft
+    assert "[^2]:" not in draft
+
+
+def test_writer_postprocess_removes_inline_footnote_definition(mock_llm):
+    """正文中的 [^n]: 定義應被移除，改由文末參考來源統一管理。"""
+    kb_mock = MagicMock()
+    kb_mock.search_hybrid.return_value = [
+        {
+            "id": "src-1",
+            "content": "法規內容A",
+            "metadata": {
+                "title": "行政程序法",
+                "source_level": "A",
+                "source_url": "https://law.moj.gov.tw/a",
+                "source": "law",
+                "content_hash": "aaaaaaaaaaaaaaaa",
+            },
+            "distance": 0.2,
+        },
+    ]
+
+    writer = WriterAgent(mock_llm, kb_mock)
+    mock_llm.generate.return_value = (
+        "### 主旨\n測試\n\n### 說明\n一、依據行政程序法辦理[^9]。\n"
+        "[^9]: 這是模型自行產生的定義，應被移除。"
+    )
+
+    req = PublicDocRequirement(
+        doc_type="函", sender="測試機關", receiver="測試單位", subject="測試主旨"
+    )
+    draft = writer.write_draft(req)
+
+    assert "[^9]:" not in draft
+    assert "這是模型自行產生的定義" not in draft
+    assert "### 參考來源 (AI 引用追蹤)" in draft
+    assert "[^1]: [Level A] 行政程序法" in draft
+
+
+def test_writer_postprocess_strips_manual_reference_heading(mock_llm):
+    """模型自行輸出的「參考來源」標題應移除，避免和系統重建段落重複。"""
+    kb_mock = MagicMock()
+    kb_mock.search_hybrid.return_value = [
+        {
+            "id": "src-1",
+            "content": "法規內容A",
+            "metadata": {
+                "title": "行政程序法",
+                "source_level": "A",
+                "source_url": "https://law.moj.gov.tw/a",
+                "source": "law",
+                "content_hash": "aaaaaaaaaaaaaaaa",
+            },
+            "distance": 0.2,
+        },
+    ]
+
+    writer = WriterAgent(mock_llm, kb_mock)
+    mock_llm.generate.return_value = (
+        "### 主旨\n測試\n\n### 說明\n一、依據行政程序法辦理[^1]。\n\n"
+        "**參考來源**：\n[^1]: 這是模型自行輸出的定義。"
+    )
+
+    req = PublicDocRequirement(
+        doc_type="函", sender="測試機關", receiver="測試單位", subject="測試主旨"
+    )
+    draft = writer.write_draft(req)
+
+    assert "**參考來源**：" not in draft
+    assert draft.count("### 參考來源 (AI 引用追蹤)") == 1
+    assert "[^1]: 這是模型自行輸出的定義" not in draft
+
+
+def test_writer_postprocess_sanitizes_placeholder_law_and_copy_units(mock_llm):
+    """無法規來源時應降風險處理占位法條與副本占位機關。"""
+    kb_mock = MagicMock()
+    kb_mock.search_hybrid.return_value = [
+        {
+            "id": "src-1",
+            "content": "範例內容",
+            "metadata": {
+                "title": "召開採購評選委員會議通知",
+                "source_level": "A",
+                "source_url": "https://example.test/source",
+                "source": "example",
+                "content_hash": "aaaaaaaaaaaaaaaa",
+            },
+            "distance": 0.2,
+        },
+    ]
+
+    writer = WriterAgent(mock_llm, kb_mock)
+    mock_llm.generate.return_value = (
+        "### 主旨\n本部會議訂於115年5月6日召開，請各委員撥冗準時出席，請查照。\n\n"
+        "### 說明\n一、依據○○法第○條規定辦理。\n\n"
+        "### 辦法\n一、請依限辦理。\n\n"
+        "正本：數位政府推動委員會各委員\n"
+        "副本：○○司（處）、○○署等相關單位"
+    )
+
+    req = PublicDocRequirement(
+        doc_type="函", sender="測試機關", receiver="測試單位", subject="測試主旨"
+    )
+    draft = writer.write_draft(req)
+
+    assert "撥冗" not in draft
+    assert "○○法" not in draft
+    assert "第○條" not in draft
+    assert (
+        re.search(r"依本部行政作業流程辦理", draft)
+        or re.search(r"為利業務推動與跨單位協調，特通知辦理本案\[\^1\]", draft)
+    )
+    assert "○○司（處）" not in draft
+    assert "○○署" not in draft
+    assert "相關司（處）" in draft
+
+
+def test_writer_postprocess_adjusts_issue_date_before_meeting():
+    """會議通知若出現時序衝突，發文日期應回調到會議日前。"""
+    draft = (
+        "**發文日期**：中華民國115年4月9日\n"
+        "**主旨**：本部會議訂於114年3月5日召開，請各委員準時出席，請查照。"
+    )
+    normalized = WriterAgent._normalize_issue_date_before_meeting(draft)
+
+    issue_match = re.search(r"\*\*發文日期\*\*：中華民國(\d+)年(\d+)月(\d+)日", normalized)
+    meeting_match = re.search(r"訂於(\d+)年(\d+)月(\d+)日", normalized)
+    assert issue_match is not None
+    assert meeting_match is not None
+
+    issue_tuple = tuple(int(issue_match.group(i)) for i in (1, 2, 3))
+    meeting_tuple = tuple(int(meeting_match.group(i)) for i in (1, 2, 3))
+    assert issue_tuple < meeting_tuple
+
+
+def test_writer_postprocess_aligns_doc_number_year_after_date_adjustment():
+    """發文日期回調時，發文字號年度也應同步更新。"""
+    draft = (
+        "**發文日期**：中華民國115年4月10日\n"
+        "**發文字號**：數位發字第1150410001號\n"
+        "**主旨**：本部會議訂於114年3月5日召開。"
+    )
+    normalized = WriterAgent._normalize_issue_date_before_meeting(draft)
+
+    assert "**發文日期**：中華民國114年2月26日" in normalized
+    assert "**發文字號**：數位發字第1140410001號" in normalized
+
+
+def test_writer_postprocess_stabilizes_meeting_notice_fields():
+    """會議通知缺少地點/附件時，應自動補齊並修正主旨語氣。"""
+    draft = (
+        "函\n\n"
+        "**主旨**：檢送第5次會議通知，請查照並出席。\n\n"
+        "**說明**：\n一、會議通知內容。"
+    )
+    normalized = WriterAgent._stabilize_meeting_notice_fields(draft)
+
+    assert "請查照並準時出席" in normalized
+    assert "會議地點：本部第一會議室。" in normalized
+    assert "附件：會議通知及議程資料（隨函附送）" in normalized
+
+
+def test_to_traditional_meeting_notice_common_chars():
+    """會議通知常見簡體混用字應可轉成繁體。"""
+    text = "预定讨論数位政府議题，开會当日請携带資料并於15分钟前报到，拨冗出席。"
+    converted = to_traditional(text)
+    assert "預定" in converted
+    assert "討論" in converted
+    assert "數位政府議題" in converted
+    assert "開會當日" in converted
+    assert "攜帶資料併於15分鐘前報到" in converted
+    assert "撥冗出席" in converted
+
+
+def test_writer_reference_title_normalized_for_meeting_context():
+    """會議文稿若引用明顯不相關來源，應輸出中性追蹤標題。"""
+    draft = "本案係第5次會議通知，請查照[^1]。"
+    sources = [{
+        "index": 1,
+        "title": "函復國家賠償請求案",
+        "source_level": "A",
+        "source_url": "",
+        "content_hash": "",
+    }]
+    lines = WriterAgent._build_reference_lines(draft, sources)
+
+    assert len(lines) == 1
+    assert "會議通知行政範本" in lines[0]
+    assert "函復國家賠償請求案" not in lines[0]
+
+
+def test_writer_reference_title_kept_for_non_meeting_context():
+    """非會議情境下不應強制改寫來源標題。"""
+    draft = "請各縣市政府依規定配合辦理淨零推動事項[^1]。"
+    sources = [{
+        "index": 1,
+        "title": "函復國家賠償請求案",
+        "source_level": "A",
+        "source_url": "",
+        "content_hash": "",
+    }]
+    lines = WriterAgent._build_reference_lines(draft, sources)
+
+    assert len(lines) == 1
+    assert "函復國家賠償請求案" in lines[0]
+    assert "會議通知行政範本" not in lines[0]
+
+
+def test_writer_stabilize_meeting_agenda_fills_missing_items():
+    """議程僅有開頭時，應補齊討論事項與臨時動議。"""
+    draft = "函\n\n**說明**：\n五、本次會議議程如下：\n（一）報告事項："
+    normalized = WriterAgent._stabilize_meeting_agenda(draft)
+
+    assert "（二）討論事項：" in normalized
+    assert "（三）臨時動議。" in normalized
+
+
+def test_writer_normalize_explanation_numbering_resequences():
+    """說明段主項跳號時，應重排為連續編號。"""
+    draft = "函\n\n**說明**：\n一、第一項。\n三、第三項。\n**辦法**：\n一、辦法。"
+    normalized = WriterAgent._normalize_explanation_numbering(draft)
+
+    assert "**說明**：\n一、第一項。\n二、第三項。" in normalized
 
 
 # ==================== FactChecker Enhanced Tests ====================

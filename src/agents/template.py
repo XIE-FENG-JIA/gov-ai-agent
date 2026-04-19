@@ -149,6 +149,13 @@ def _normalize_urgency(urgency: str) -> str:
     return urgency + "件"
 
 
+def _build_default_doc_number(sender: str, roc_year: int, month: int, day: int) -> str:
+    """建立可用的預設發文字號，避免空白 placeholder。"""
+    cleaned = re.sub(r"[^\u4e00-\u9fffA-Za-z0-9]", "", sender or "")
+    prefix = cleaned[:3] if cleaned else "公文"
+    return f"{prefix}字第{roc_year:03d}{month:02d}{day:02d}001號"
+
+
 # ---------------------------------------------------------------------------
 # parse_draft 段落解析：資料定義與輔助函式
 # ---------------------------------------------------------------------------
@@ -402,10 +409,11 @@ class TemplateEngine:
             "sender": requirement.sender or "（未指定）",
             "receiver": requirement.receiver or "（未指定）",
             "urgency": _normalize_urgency(requirement.urgency or "普通"),
+            "security_level": "普通",
             "year": roc_year,
             "month": today.month,
             "day": today.day,
-            "doc_number": "______號",
+            "doc_number": _build_default_doc_number(requirement.sender, roc_year, today.month, today.day),
             "subject": sections.get("subject") or requirement.subject or "（未提供主旨）",
             "explanation_text": sections.get("explanation") or requirement.reason or "",
             "explanation_points": self._parse_list_items(sections.get("explanation") or ""),
@@ -500,9 +508,9 @@ class TemplateEngine:
 
 **機關**：{requirement.sender}
 **發文日期**：中華民國{_roc}年{_today.month}月{_today.day}日
-**發文字號**：______號
+**發文字號**：{_build_default_doc_number(requirement.sender, _roc, _today.month, _today.day)}
 **速別**：{_normalize_urgency(requirement.urgency or "普通")}
-**密等及解密條件或保密期限**：
+**密等及解密條件或保密期限**：普通
 
 **受文者**：{requirement.receiver}
 

@@ -2,44 +2,44 @@
 **發文日期**：中華民國{{ year }}年{{ month }}月{{ day }}日
 **發文字號**：{{ doc_number }}
 **速別**：{{ urgency }}
-**密等及解密條件或保密期限**：
-{%- if attachment_ref %}
+**密等及解密條件或保密期限**：{{ security_level }}
+{% if attachment_ref %}
 **附件**：{{ attachment_ref }}
-{%- endif %}
+{% endif %}
 
 **受文者**：{{ receiver }}
 
 **主旨**：{{ subject }}
-{%- if explanation_points or explanation_text %}
+{% if explanation_points or explanation_text %}
 
 **說明**：
-{%- if explanation_points|length > 1 %}
-{%- for item in explanation_points %}
+{% if explanation_points|length > 1 %}
+{% for item in explanation_points %}
 {{ loop.index|cn }}、{{ item }}
-{%- endfor %}
-{%- else %}
+{% endfor %}
+{% else %}
 {{ explanation_text }}
-{%- endif %}
-{%- endif %}
-{%- if provision_points or provision_text %}
+{% endif %}
+{% endif %}
+{% if provision_points or provision_text %}
 
 **辦法**：
-{%- if provision_points|length > 1 %}
-{%- for item in provision_points %}
+{% if provision_points|length > 1 %}
+{% for item in provision_points %}
 {{ loop.index|cn }}、{{ item }}
-{%- endfor %}
-{%- else %}
+{% endfor %}
+{% else %}
 {{ provision_text }}
-{%- endif %}
-{%- endif %}
-{%- if copies_to %}
+{% endif %}
+{% endif %}
+{% if copies_to %}
 
 正本：{{ copies_to }}
-{%- endif %}
-{%- if cc_copies %}
+{% endif %}
+{% if cc_copies %}
 副本：{{ cc_copies }}
-{%- endif %}
-{%- if attachments %}
+{% endif %}
+{% if attachments %}
 
 附件：{{ attachments | join('、') }}
-{%- endif %}
+{% endif %}

@@ -230,9 +230,12 @@ class EditorInChief:
     ) -> tuple[str, QAReport]:
         """迭代審查：review → refine → re-review，直到收斂或達上限。"""
         current_draft = draft
+        best_draft = draft
         prev_draft: str | None = None
         iteration_history: list[dict] = []
         final_report: QAReport | None = None
+        best_report: QAReport | None = None
+        best_score = -1.0
 
         for round_num in range(1, max_rounds + 1):
             console.print(f"\n[bold cyan]--- 審查第 {round_num}/{max_rounds} 輪 ---[/bold cyan]")
@@ -251,6 +254,12 @@ class EditorInChief:
                 "score": report.overall_score,
                 "risk": report.risk_summary,
             })
+
+            # 追蹤最佳版本：避免「越修越差」時回傳最後一版
+            if report.overall_score >= best_score:
+                best_score = report.overall_score
+                best_report = report
+                best_draft = current_draft
 
             # 收斂條件 1：品質已達標
             if report.risk_summary in ["Safe", "Low"]:
@@ -278,7 +287,8 @@ class EditorInChief:
                         f"（{prev_score:.2f} → {report.overall_score:.2f}），"
                         f"停止迭代。[/yellow]"
                     )
-                    final_report = report
+                    final_report = best_report or report
+                    current_draft = best_draft
                     break
 
             # 未達收斂：自動修正（最後一輪不修正，直接回傳）
@@ -295,10 +305,14 @@ class EditorInChief:
                         report.overall_score, report.risk_summary,
                     )
             else:
-                final_report = report
+                final_report = best_report or report
+                current_draft = best_draft
                 break
 
-            final_report = report
+            final_report = best_report or report
+
+        if final_report is None:
+            final_report = best_report
 
         # 填入迭代資訊
         final_report.rounds_used = len(iteration_history)

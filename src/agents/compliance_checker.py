@@ -203,6 +203,8 @@ Notes:
 - severity="error" means clear policy violation
 - severity="warning" means outdated or imprecise terminology
 - severity="info" means advisory improvement
+- Do NOT flag citation markers like [^1], [^2] or the "參考來源 (AI 引用追蹤)" heading;
+  these are system traceability metadata, not compliance defects.
 """.format(safe_policy=safe_policy, safe_draft=safe_draft)
         try:
             response = self.llm.generate(prompt, temperature=LLM_TEMPERATURE_BALANCED)
