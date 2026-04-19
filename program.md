@@ -99,7 +99,7 @@
 
 ### P0.0 — 誠信救援：真實補交 mvp30_corpus.json（v2.6 NEW，最高優先）
 
-- [ ] **P0.0** 真正把 `benchmark/mvp30_corpus.json` 交進 HEAD
+- [x] **P0.0** 真正把 `benchmark/mvp30_corpus.json` 交進 HEAD
   - 現況：`.gitignore` line 84 `!benchmark/mvp30_corpus.json` 已白名單，但檔案**從未 `git add`**；`git ls-tree -r HEAD -- benchmark/mvp30_corpus.json` 為空；results.log 第 10/12/14 條全部假 PASS
   - 命令：`git add benchmark/mvp30_corpus.json && git commit -m "docs(benchmark): add mvp30 corpus dataset"`
   - **驗（v2.6 PASS 定義）**：`git ls-tree -r HEAD -- benchmark/mvp30_corpus.json` 必須輸出非空
