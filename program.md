@@ -141,7 +141,7 @@
   - commit: `docs(spec): fill openspec project context + per-artifact rules`
   - **為何最前**：沒規格底座，Epic 7 T7.1 的 4 個 change proposal 無根基；auto-engineer prompt 也無法注入紅線；連兩輪延宕 = 從技術債升級為誠信問題
 
-- [ ] **P1.3（原 T8.3）** 測試覆蓋率 baseline（**v2.3 從 Epic 8 升 P1**，T8.1 大檔拆分前安全網）
+- [x] **P1.3（原 T8.3）** 測試覆蓋率 baseline（**v2.3 從 Epic 8 升 P1**，T8.1 大檔拆分前安全網）
   - `pip install pytest-cov`（若未裝）
   - 跑 `pytest --cov=src --cov-report=json:coverage.json --cov-report=term --cov-report=html:htmlcov`
   - 產出：
@@ -416,6 +416,7 @@
 - [x] **P0.5.c** 工作樹空 + 3543 tests passed（v2.3 本輪驗證通過）
 - [x] **P1.1 (T1.5-FAST)** 紅線 1 守衛 155/155 synthetic frontmatter（`5c2dd0e` + `f527279`，v2.3 閉環）
 - [x] **P1.2 (T7.2)** openspec project context + per-artifact rules 已填入 `openspec/config.yaml`（v2.3 閉環）
+- [x] **P1.3 (T8.3)** 產出 `coverage.json` / `htmlcov/` baseline 與 `docs/coverage.md` 缺口分析（v2.3 閉環）
 
 （auto-engineer 會把勾選的任務搬到這裡）
 
