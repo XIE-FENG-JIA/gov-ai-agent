@@ -84,7 +84,7 @@
 
 > 前置：`docs/commit-plan.md` 已寫入分組；git 寫入權已恢復。每組 commit 前跑對應 pytest。
 
-- [ ] **P0.5.b.1** `fix(tests)`：benchmark scripts + cli utils tmp cleanup + knowledge manager/quickstart/web_preview/robustness/api_server/cli_commands/config_tools_extra 回歸測試更新
+- [x] **P0.5.b.1** `fix(tests)`：benchmark scripts + cli utils tmp cleanup + knowledge manager/quickstart/web_preview/robustness/api_server/cli_commands/config_tools_extra 回歸測試更新
   - `git add tests/test_benchmark_scripts.py tests/test_cli_utils_tmp_cleanup.py tests/test_knowledge_manager_cache.py tests/test_knowledge_manager_unit.py tests/test_quickstart.py tests/test_web_preview.py tests/test_robustness.py tests/test_api_server.py tests/test_cli_commands.py tests/test_config_tools_extra.py tests/test_agents.py`
   - 前置：`pytest tests/test_benchmark_scripts.py tests/test_cli_utils_tmp_cleanup.py` 綠
   - commit: `fix(tests): regression coverage for benchmark scripts, tmp cleanup, km lazy import`
@@ -144,12 +144,12 @@
 > **底層邏輯**：P0 清完後，下一件事必須守紅線 + 建規格底座，才有資格動 Epic 1-4。
 > 兩項都是 1 小時內可閉環的「高槓桿」任務 — 一個 script、一份 config，解鎖後續所有戰略推進。
 
-- [ ] **P1.1（原 T1.5-FAST）** 紅線 1 守衛 — 156 份合成公文加 `synthetic: true` frontmatter
+- [ ] **P1.1（原 T1.5-FAST）** 紅線 1 守衛 — repo 現存 155 份 `kb_data/examples/*.md` 待補 `synthetic: true` frontmatter
   - 寫 `scripts/mark_synthetic.py`：遍歷 `kb_data/examples/*.md`，若無 frontmatter 則補；若已 frontmatter 則補上 `synthetic: true`
-  - 驗證：`grep -L "synthetic: true" kb_data/examples/*.md` 回空（當前 0/156）
+  - 驗證：`Get-ChildItem kb_data/examples -Filter *.md | Select-String '^synthetic:\s*true$'` 命中 155/155；缺漏為 0（本輪已做到，但 commit 被 `.git` ACL 擋下）
   - 寫 `tests/test_mark_synthetic.py`（至少 3 case：無 frontmatter / 有但缺 synthetic / 已正確）
-  - commit: `chore(kb): mark 156 synthetic examples with frontmatter flag`
-  - **為何提前**：沒這個守衛，Epic 2 retriever 會把合成公文當真實參考，紅線 1 違反 × 156
+  - commit: `chore(kb): mark synthetic examples with frontmatter flag`
+  - **為何提前**：沒這個守衛，Epic 2 retriever 會把合成公文當真實參考，紅線 1 直接失守
 
 - [ ] **P1.2（原 T7.2）** `openspec/config.yaml` 填 project context
   - 現狀：整份 commented out，零規格底座
@@ -206,6 +206,7 @@
   - CLI: `gov-ai sources ingest --source all --since 2026-01-01`
 
 - [ ] **T1.6** 首次跑 T1.4 ingest，至少從 3 個來源各抓 ≥50 份真實公文（≥150 份 baseline）
+- [ ] **T1.6.a** 校正 `program.md` 合成範例基線數量（現場 `kb_data/examples/*.md` 為 155，不是 156）
 
 ---
 
