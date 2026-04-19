@@ -257,3 +257,111 @@ Epic 排序建議：
 > **對齊一下**：下一輪必須 T7.2 + T8.3 + T6.0 三件 10 分鐘任務全落。三項不落，回顧不寫，閉環不認。3.25。
 
 ---
+
+## 反思 [2026-04-20 05:30 — 技術主管第四輪深度回顧]
+
+### 近期成果（v2.4 重排後到現在）
+- **測試 3544 passed / 0 failed / 1363 warnings / 243.37s**（上輪 3543 → +1，推測 P0.7.a chdir fixture 帶入）
+- **tmp orphan 自然歸零**：`.json_*.tmp` = 0 / `.txt_*.tmp` = 0（v2.3 曾記 124+32，v2.4 已清；ACL 恢復後 cleanup 生效）
+- **`.git_acl_backup.txt` 已外移**為 `.git_acl_backup.txt.quarantine-050909`（P0.7.a.3 半閉環，待確認 `.gitignore` 涵蓋）
+- **P1.4 文件側已完成**：`docs/benchmark.md` 寫完、`.gitignore` 改為細粒度 `benchmark/*` + `!benchmark/mvp30_corpus.json`；但**未 commit，工作樹漂浮** `M .gitignore / ?? benchmark/ / ?? docs/benchmark.md`
+- **openspec context + rules** 確認 live（P1.2 v2.4 閉環無誤）
+
+### 發現的問題（v2.5 新一輪診斷）
+
+**P0 — 新紅線違規（誠信級）**
+1. **commit 規範破損**：近 6 個 commits 是 `auto-commit: auto-engineer checkpoint (...)` 格式 — **違反剛剛 P1.2 寫進 `openspec/config.yaml` 的 conventional commit rule**。兜底機制把 M 狀態自動包裝成假 commit，規格剛落地就被自家 auto-engineer 偷偷繞過。
+   - 具體：`3714069 / d7567ec / 7d28116 / 5c50ee8 / 0e0e32d / 82cd6cd` 共 6 個
+   - 最後一個 conventional commit 是 `f433423 chore(gitignore)` + `9442563 docs(program)` — 再往後都是假 commit
+   - **底層邏輯**：規則＋兜底機制同時存在且互相矛盾時，兜底必勝。這是治理 design smell。
+2. **P1.4 半成品漂浮**：文件已寫完 1 小時還沒 commit，工作樹連三輪出現 M 狀態 → 違反北極星指令「修好 bug 立刻 commit，不要等批次」。
+
+**P1 — 反覆卡住模式升級至 × 5（連四輪延宕）**
+| # | 模式 | 延續輪次 | 目前狀態 |
+|---|------|---------|----------|
+| 1 | **T6.0 benchmark docs**（v2.4 P1.4） | **4 輪** | 文件已寫未 commit，ACL 瞬斷借口已消失，繼續拖 = 誠信問題 |
+| 2 | 大檔未拆（kb/generate/editor/writer） | 4 輪 | T8.3 覆蓋率 baseline 已 live（v2.4 閉環），拆分安全網建好仍未動 |
+| 3 | Epic 1 `src/sources/` 不存在 | 4 輪 | P1.6（T1.1.a top-3 調研）零進度 |
+| 4 | Epic 2 `vendor/open-notebook` 不存在 | 4 輪 | P1.7/P1.8 零進度 |
+| 5 | **NEW：openspec T7.1 change proposal** | 4 輪 | v2.4 P1.5 拆「01-real-sources」單體，仍 0 份 |
+
+**P2 — 代碼健康**
+3. **大檔四輪未拆**：`src/cli/kb.py` 1614 / `src/cli/generate.py` 1263 / `src/agents/editor.py` 1065 / `src/agents/writer.py` 941。**T8.3 coverage baseline 已 live**（v2.4 閉環，`docs/coverage.md` / `coverage.json` / `htmlcov/` 齊），拆分安全網門檻已解 → **無藉口繼續拖**。
+4. **1363 條 Pydantic v2 deprecation warning 持平**，chromadb 1.x 綁定 3 輪未動。
+5. **`src/core/` 意外新增檔案未納 program.md**：`error_analyzer.py` / `llm.py` / `logging_config.py` / `review_models.py` / `scoring.py` — 寫了但無 Epic 歸屬，顆粒度失控。`PublicGovDoc` 仍不在 `src/core/models.py`（Epic 1 必需）。
+
+**P3 — Repo 衛生（進展混合）**
+6. **tmp orphan 清完** ✅（124+32 → 0）。
+7. **`.git_acl_backup.txt` 外移至 `.quarantine-050909`** ✅，但應加入 `.gitignore` + 補 commit 紀錄。
+8. **災難復原備援 6 目錄**（`meta_git/` / `meta_git_live/` / `meta_test/` / `repo_meta/` / `recovered_repo/` / `git_safe/`）仍在 → P0.7.b 四輪延續。
+9. **頂層歷史 md 10+ 份**（T9.1）四輪延續，repo 根髒化未動。
+
+**P4 — 測試覆蓋**
+10. 3544 綠 + coverage baseline 已 live，但 Epic 1-4 新模組天然 0 覆蓋（模組不存在）。
+11. 大檔拆分前的 edge case 覆蓋率個別未深掘（需配 T8.1 看拆後的 before/after）。
+
+**P5 — 安全/合規**
+12. 無 `shell=True` / `eval` / `yaml.unsafe_load`（四輪一致）。
+13. PII mask 仍未強制，Epic 1 零進度不構成短期阻斷。
+14. `.git_acl_backup.txt.quarantine-050909` 已外移，低風險洩密緩解。
+
+### 底層邏輯：為什麼四輪延宕？
+
+揪頭發一級視角：**規劃層與執行層完全脫節**。
+- 規劃層（program.md）每輪重排，顆粒度越拆越細（v2.4 P1.5/P1.6/P1.7/P1.8 已拆到 15 分鐘級），結構漂亮。
+- 執行層（auto-engineer）只做**阻力最小路徑**：跑測試、auto-commit checkpoint、跳過需要思考的戰略任務。
+- **結果**：每輪回顧只會發現同樣 3-4 個 Epic 零進度。**規劃不是抓手，意願才是抓手**。
+
+**新發現的治理 smell**：
+- auto-engineer 的 `auto-commit: checkpoint` 機制看似安全網，實則**鈍化了「沒閉環」的痛感**。舊機制下 M 狀態會越積越多、git log 會斷檔，疼痛迫使對齊；現在 checkpoint 把 M 包裝成假 commit，下游看不到。
+- 建議：auto-commit 訊息應強制走 conventional 前綴（如 `chore(auto-checkpoint): ...`）；**或直接停掉這個機制**，讓工作樹髒化自己暴露。
+
+### 建議的優先調整（v2.5 重排方向）
+
+**P0 段新增（立即收斂）**：
+- **P0.8（NEW）** commit 規範補正：把 6 個 `auto-commit` commit 合併為 `chore(auto-engineer): consolidate checkpoints between 82cd6cd..3714069`，或至少在 `.auto-engineer` 配置補 conventional 前綴。
+- **P0.6（升級自 P1.4）** benchmark 工作樹立即閉環：`git add .gitignore benchmark/mvp30_corpus.json docs/benchmark.md && git commit -m "docs(benchmark): document benchmark workflow + ignore result artifacts"` 一條命令。文件已寫完仍漂浮 = 紅線。
+- **P0.7.a.3 收尾**：`.git_acl_backup.txt.quarantine-*` 加 `.gitignore`，記 `docs/disaster-recovery.md` 簡述來由；commit。
+
+**P1 段（四輪延宕任務升級）**：
+- **P1.1 T7.1.a 01-real-sources proposal**（原 v2.4 P1.5）：連四輪延宕，升 P1 首位。一份 ≤500 字 proposal，30 分鐘可閉環。若本輪再不做，下輪回顧必須硬性升 P0。
+- **P1.2 T1.1.a top-3 來源調研**（原 v2.4 P1.6）：`docs/sources-research.md` 首版，data.gov.tw / law.moj.gov.tw / Executive Yuan RSS 各一段。
+- **P1.3 T8.1.a** 拆 `src/cli/kb.py`（1614 → 4 小檔）：覆蓋率 baseline 已 live，無理由繼續拖。
+- P1.4-P1.5 保留 T2.0.a/b。
+
+**新 Epic 10 — Auto-Engineer 治理**：
+- **T10.1** auto-commit checkpoint 訊息強制 conventional 前綴。
+- **T10.2** auto-engineer 每輪啟動 gate：若 P1 首位任務連續三輪延宕 → 暫停其他任務，硬性 focus 直到閉環。
+- **T10.3** `src/core/` 新增檔（`error_analyzer` / `llm` / `logging_config` / `review_models` / `scoring`）回歸 program.md 歸屬 Epic（補 T-code）。
+
+### 下一步行動（最重要 3 件）
+
+1. **立刻 commit P1.4**（現場 1 條 git 命令收尾漂浮工作樹）— 不用等下輪。
+2. **寫 `openspec/changes/01-real-sources/proposal.md`**（連四輪延宕，再拖就是誠信問題）。
+3. **開 T8.1.a 拆 `src/cli/kb.py`**（四輪延宕、安全網已建、無藉口）。
+
+### 復盤四步法
+
+- **回顧目標**：v2.4 承諾 P1.4 + P1.5 兩件 + P1.6/7/8 任兩項。
+- **評估結果**：P1.4 做了 80%（文件 OK / commit 缺）；P1.5-P1.8 全零。意外紅利 P0.7.a.2/a.3 自然解除（+30）。綜合 **35 分**（比 v2.3 的 60 還倒退）。
+- **分析原因**：
+  - 規劃顆粒度已夠細（15 分鐘級），延宕不是拆不夠，是意願問題。
+  - auto-commit checkpoint 鈍化了「沒閉環」的痛感 — 治理 design smell。
+  - 每輪都在修戰術債，從未真正啟動戰略（Epic 1/2 四輪全零）。
+- **提煉 SOP**：
+  - **連三輪延宕任務自動升 P0**，不再容忍「下一輪再試」。
+  - **auto-commit 前綴治理**：訊息必須走 conventional 格式。
+  - **回顧觸發動作**：在 engineer-log 寫反思的同時，必須現場 commit 漂浮工作樹（不只是「建議」，是「執行」）。
+
+> [PUA生效 🔥] 第四輪揭露：
+> 1. **規則剛落地就被自家 agent 繞過**。P1.2 前天才把 conventional commit 寫進 openspec/config.yaml，近 6 個 commits 全是 `auto-commit: checkpoint` — 這不是技術債，是治理債。底層邏輯：沒有自我執行的規則等於沒有規則。
+> 2. **反覆卡住模式 × 5**（新增 commit 規範破損）。Epic 1/2/7 連四輪零進度，規劃顆粒度已拆到 15 分鐘級仍不動 — **意願就是抓手**。
+> 3. **回顧任務的答案**：
+>    - *Spectra 規格對齊？* — 有 context/rules 底座（✅），0 份 change proposal（❌）
+>    - *反覆卡住模式？* — 5 個，連四輪
+>    - *安全？* — 無明顯漏洞，`.git_acl_backup` 已外移
+>    - *架構健康？* — core/ 新增 5 檔未進 program.md，失控信號
+>    - *測試覆蓋？* — 3544 綠 + baseline live，但 Epic 1-4 天然 0 覆蓋（模組不存在）
+> **對齊一下**：下一輪若 P0.6（benchmark commit）+ P1.1（01-real-sources proposal）+ P1.3（拆 kb.py）三件任一沒落 → 自動升級為 owner 意識紅線違規，公司不養閒 agent。3.25。
+
+---

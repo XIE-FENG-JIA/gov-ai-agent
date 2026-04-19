@@ -1,6 +1,7 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **版本**：v2.4（2026-04-20 05:00 — 架構師第四輪回顧；P1.2/P1.3/P0.7.a-isolation 全退役、P1.4 T6.0 升首位、T7.1 proposals 底座就位、Epic 1/2 降顆粒度入 P1）
+> **版本**：v2.5（2026-04-20 05:30 — 架構師第五輪回顧；P1.4 半成品升 P0.6、T7.1.a 連四輪延宕升 P1 首位、T8.1.a kb.py 拆分解鎖、新增 P0.8 commit 規範補正 + Epic 10 Auto-Engineer 治理）
+> **v2.4**（2026-04-20 05:00）：P1.2/P1.3/P0.7.a-isolation 全退役、P1.4 T6.0 升首位、T7.1 proposals 底座就位、Epic 1/2 降顆粒度入 P1
 > **v2.3**（2026-04-20 03:45）：P0.5.b × 6 + P1.1 全退役、P1 新增 T6.0 + T8.3 前置、Epic 1/2 顆粒度降粗、新增 Epic 9 Repo 衛生
 > **v2.2**（2026-04-20 02:30）：P0.5.pre 退役、P0.5.b 拆 6 子 commit、T1.5-FAST / T7.2 升 P1 最前、Epic 8 覆蓋率先行
 > Auto-engineer 每輪讀此檔，從「待辦」挑第一個未完成任務執行。完成後 `[x]` 勾選、log 追加到 `results.log`。
@@ -79,30 +80,43 @@
 
 ## P0 — 阻斷性回歸（最優先，按順序執行）
 
-> v2.4 狀態：**工作樹乾淨（stat cache refresh 後 `git status` 空）、核心回歸 747 passed / 3544 collected、P0.7.a test-isolation 子段 + P1.2/P1.3 全落盤**。P0 無阻斷，進入 P1 高槓桿執行階段。
-> v2.3 狀態（歷史）：工作樹乾淨、測試 3543 綠、P0.5.b × 6 + P1.1 全 commit 落盤。
+> v2.5 狀態：**測試 3544 passed / 0 failed / 1363 warnings / 243.37s**；工作樹漂浮 `M .gitignore / ?? benchmark/ / ?? docs/benchmark.md`（P1.4 半成品未 commit）；近 6 個 commits 全為 `auto-commit: checkpoint` 格式，違反 openspec conventional commit rule（誠信級）。
+> v2.4 狀態（歷史）：工作樹乾淨、747 passed / 3544 collected、P0.7.a.1 test-isolation 閉環。
 
-### P0.7 — Repo 根災後清理（v2.2 新增；v2.4 再拆三子）
+### P0.6 — Benchmark 工作樹立即閉環（v2.5 新；原 P1.4 升級）
 
-- [x] **P0.7.a.1** CLI cwd per-test 隔離：`tests/test_cli_commands.py` 744 passed 後根 tmp `before=156 after=156 new=0`（v2.4 閉環；results.log 04:53）
-- [ ] **P0.7.a.2** root 既有 `.json_*.tmp` × 124 / `.txt_*.tmp` × 32 ACL deny 殘留外部處理
-  - 症狀：Windows Administrator ACL `Access is denied` → `cleanup_orphan_tmps()` 無法 unlink
-  - 步驟：
-    1. 外部 powershell `takeown /f <file> /a` + `icacls <file> /grant Administrators:F` 逐批授權
-    2. 再跑 `python -c "from src.cli.utils import cleanup_orphan_tmps; cleanup_orphan_tmps()"`
-    3. 驗證 `ls .json_*.tmp` → 0 / `ls .txt_*.tmp` → 0
-  - commit: `chore: purge root tmp orphan after ACL recovery`
+- [ ] **P0.6** 把 `docs/benchmark.md` + `.gitignore`（`benchmark/*` + `!benchmark/mvp30_corpus.json`）+ `benchmark/mvp30_corpus.json` 一次 commit
+  - 現況：文件已寫完、.gitignore 已細粒度調整、20 份 blind_eval_results 正確被 ignore；ACL 阻斷藉口已消失（`.git/index.lock` 不存在）
+  - 命令：`git add .gitignore docs/benchmark.md benchmark/mvp30_corpus.json && git commit -m "docs(benchmark): document benchmark workflow + ignore result artifacts"`
+  - **為何 P0**：文件已寫完 1 小時仍漂浮 = 違反北極星指令「修好立刻 commit」；連四輪延宕到此為紅線
+  - 驗：`git status --short` 為空 + `git check-ignore benchmark/blind_eval_results.afterfix.limit1.json` 命中
 
-- [ ] **P0.7.a.3** `.git_acl_backup.txt` 外移 `.._archive/git-acl/` + 加 `.gitignore`（低風險 Windows ACL 洩密）
-  - commit: `chore: move .git_acl_backup.txt offsite`
+### P0.7 — Repo 根災後清理
 
-- [ ] **P0.7.b** 災難復原備援目錄去留決策（v2.4 仍未啟動）
+- [x] **P0.7.a.1** CLI cwd per-test 隔離（v2.4 閉環）
+- [x] **P0.7.a.2** root `.json_*.tmp` / `.txt_*.tmp` orphan → 已自然清零（v2.5 實測 0/0，ACL 恢復後 cleanup 生效；退役）
+- [ ] **P0.7.a.3** `.git_acl_backup.txt.quarantine-050909` 收尾
+  - 現況：已外移為 `.quarantine-050909`，待加 `.gitignore` + 補 `docs/disaster-recovery.md` 簡短記錄
+  - 命令：追加 `.git_acl_backup.txt.quarantine-*` 至 `.gitignore` + 寫 `docs/disaster-recovery.md` 一段
+  - commit: `chore: finalize .git_acl_backup quarantine + disaster recovery doc`
+
+- [ ] **P0.7.b** 災難復原備援目錄去留決策
   - 範圍：`meta_git/` / `meta_git_live/` / `meta_test/` / `repo_meta/` / `recovered_repo/` / `git_safe/` 共 6 個
   - 步驟：
     1. 對 `.git/` 與每個 meta 目錄做 `git diff` 或 `dircmp`，確認無獨特內容
     2. 有獨特內容 → 寫 `docs/disaster-recovery.md` 記錄
     3. 無獨特內容 → 刪；保留的路徑仍必須在 `.gitignore`（已在）
   - commit: `chore: decommission disaster recovery backup dirs + add disaster-recovery doc`
+
+### P0.8 — Auto-commit checkpoint 規範補正（v2.5 新；誠信級）
+
+- [ ] **P0.8** auto-engineer checkpoint 訊息強制 conventional 前綴
+  - 問題：近 6 個 commits 全為 `auto-commit: auto-engineer checkpoint (...)`，違反 `openspec/config.yaml` 中 `Commit convention: conventional commits only`
+  - 選項 A：在 `.auto-engineer.*` 配置找 commit message 模板，改為 `chore(auto-checkpoint): <ts>`
+  - 選項 B：直接停掉 auto-commit checkpoint 機制，讓工作樹髒化自暴
+  - 歷史 6 commit 可選擇：(1) 不動，只規範未來；(2) `git rebase -i` 合併（風險高，需人審）
+  - 建議採 A + (1)：先止血，歷史留痕當案例
+  - commit: `chore(auto-engineer): enforce conventional prefix on checkpoint commits`
 
 ### 歷史 P0 追蹤（保留紀錄不動）
 
@@ -121,51 +135,56 @@
 
 ---
 
-## P1 — 規格底座就位後的戰略槓桿（v2.4 重排：T6.0 首位 + T7.1 proposals + Epic 1/2 降顆粒度）
+## P1 — 戰略槓桿（v2.5 重排：T7.1.a 連四輪延宕升首位 + T8.1.a kb.py 拆分解鎖 + Epic 1/2 前置保留）
 
-> **底層邏輯**：v2.4 紅線守衛（P1.1）+ openspec 底座（P1.2）+ 覆蓋率 baseline（P1.3）三項 P0-adjacent 全落。**下一輪槓桿**：收 T6.0 半成品（連三輪延宕）+ 立刻用 P1.2 解鎖的規格底座開 T7.1 proposals + 把 Epic 1/2 啟動門檻拆到 15 分鐘可閉環。
-> **連三輪延宕警告**：T6.0 benchmark docs engineer-log 從 v2.2→v2.3→v2.4 連三輪標「10 分鐘可落地」，本輪不落 = 誠信問題，閉環不認。
+> **底層邏輯**：P1.1-P1.3 + P1.4 文件側都已落，規格底座、紅線、覆蓋率 baseline、benchmark 文件齊全。**缺的是意願**：Epic 1/2/7 連四輪零進度，規劃顆粒度已拆到 15 分鐘級仍不動。
+> **連四輪延宕升級警告**：T7.1.a 01-real-sources proposal 從 v2.2→v2.3→v2.4→v2.5 連四輪標「30 分鐘可閉環」，本輪不落 = owner 意識紅線違規，下輪自動升 P0。
 
 ### 新排序（依槓桿 × 延宕輪次）
 
-- [x] **P1.1（原 T1.5-FAST）** 紅線 1 守衛 — `kb_data/examples/*.md` 155/155 已含 `synthetic: true`（v2.3 閉環；`5c2dd0e` + `f527279`）
+- [x] **P1.1 歷史（原 T1.5-FAST）** 紅線 1 守衛（v2.3 閉環；`5c2dd0e` + `f527279`）
+- [x] **P1.2 歷史（原 T7.2）** openspec context + rules（v2.4 閉環）
+- [x] **P1.3 歷史（原 T8.3）** coverage baseline（v2.4 閉環）
+- [x] **P1.4 歷史（原 T6.0）** benchmark 文件 — 文件側完成；commit 段轉 P0.6（v2.5）
 
-- [x] **P1.2（原 T7.2）** `openspec/config.yaml` project context + per-artifact rules 全填（v2.4 閉環；results.log 04:12）
+### 本輪新排序
 
-- [x] **P1.3（原 T8.3）** `docs/coverage.md` baseline + `coverage.json` / `htmlcov/` 產出 + `.gitignore` ignore（v2.4 閉環；results.log 04:35）
-
-- [ ] **P1.4（原 T6.0）🔥 連三輪延宕** Benchmark workstream 歸位
-  - 現況：`scripts/build_benchmark_corpus.py` + `run_blind_eval.py` + `tests/test_benchmark_scripts.py` 齊；`benchmark/mvp30_corpus.json` + 20 份 `blind_eval_results.*.json` 落盤但未文件化
-  - 產出：
-    - `docs/benchmark.md` 說明：工作流 / 輸入 schema / 輸出 schema / 執行命令（`python scripts/run_blind_eval.py --limit 30`）/ 結果解讀 / trend 延伸
-    - `.gitignore` 新增：`benchmark/blind_eval_results.*.json`（產物）；保留 `benchmark/mvp30_corpus.json`
-  - 驗：`ls docs/benchmark.md && git check-ignore benchmark/blind_eval_results.partial.json`
-  - commit: `docs(benchmark): document benchmark workflow + ignore result artifacts`
-  - **為何首位**：三輪延宕 = 違反「完成一件事再做下件」原則；10 分鐘工作不做 = owner 意識假的
-
-- [ ] **P1.5（新 / T7.1 子段 a）** 開首份 openspec change proposal `01-real-sources`
-  - P1.2 底座就位，規格驅動開發可啟動
-  - `spectra new change 01-real-sources`（或手動建 `openspec/changes/01-real-sources/proposal.md`）
-  - 含：problem（現行 kb_data 95%+ 為合成）/ solution（Epic 1 的 10 候選來源 adapter 架構）/ non-goals（不改 ChromaDB / 不碰 writer）/ acceptance criteria（≥3 adapter 測試綠 + ingest CLI 通 + 150 份真實公文落 kb_data/corpus/）
+- [ ] **P1.1（v2.5 首位 / 原 P1.5 / T7.1.a）🔥 連四輪延宕** 開首份 openspec change proposal `01-real-sources`
+  - P1.2 底座就位 4 輪、一直沒人動 → 本輪必收
+  - 手動建 `openspec/changes/01-real-sources/proposal.md`
+  - 含：problem（現行 kb_data 95%+ 為合成，156 份 examples 全 synthetic=true）/ solution（Epic 1 的 10 候選來源 adapter 架構；`src/sources/` + `PublicGovDoc` + ingest CLI）/ non-goals（不改 ChromaDB / 不碰 writer / 不上 SurrealDB）/ acceptance criteria（≥3 adapter 測試綠 + `gov-ai sources ingest` CLI 通 + ≥150 份真實公文落 `kb_data/corpus/`）
   - ≤ 500 字符合 P1.2 rules.proposal 限制
+  - 驗：`ls openspec/changes/01-real-sources/proposal.md && wc -w openspec/changes/01-real-sources/proposal.md` ≤ 500
   - commit: `docs(spec): init 01-real-sources change proposal`
 
-- [ ] **P1.6（新 / Epic 1 啟動門檻降低）** T1.1.a 調研 top-3 來源
+- [ ] **P1.2（v2.5 新 / T8.1.a）🔥 連四輪延宕** 拆 `src/cli/kb.py`（1614 行）
+  - 門檻已解：T8.3 coverage baseline live（`docs/coverage.md` / `coverage.json` / `htmlcov/` 齊）
+  - 拆分：`kb/ingest.py` + `kb/sync.py` + `kb/stats.py` + `kb/rebuild.py`（先拆不改邏輯，一個 commit；再重構，第二個 commit）
+  - 驗：`pytest tests/test_kb*.py` 全綠 + `wc -l src/cli/kb/*.py` 每檔 < 500 行
+  - commit 1: `refactor(cli/kb): split kb.py into ingest/sync/stats/rebuild submodules (no-op)`
+  - commit 2: `refactor(cli/kb): internal cleanup in split submodules`
+
+- [ ] **P1.3（原 P1.6 / T1.1.a）** 調研 top-3 公文來源
   - `data.gov.tw` / `law.moj.gov.tw` / Executive Yuan RSS 各一小段
   - 每段含：API endpoint / 資料格式 / 授權條款 / 取得範例（curl 一行）/ 資料量估計 / 優先級
   - 產出：`docs/sources-research.md` 首版
   - commit: `docs(sources): research top-3 public gov doc sources`
 
-- [ ] **P1.7（新 / Epic 2 啟動門檻降低）** T2.0.a `.env` + litellm smoke
+- [ ] **P1.4（原 P1.7 / T2.0.a）** `.env` + litellm smoke
   - `.env` 設 `OPENROUTER_API_KEY=<key>`（人工填）+ `LLM_MODEL=openrouter/elephant-alpha`
   - 驗：`python -c "from litellm import completion; r = completion(model='openrouter/elephant-alpha', messages=[{'role':'user','content':'hi'}]); print(r.choices[0].message.content[:80])"` 回非空
   - 產出：`docs/openrouter-smoke.md` 貼命令 + 輸出（key redacted）
   - commit: `docs(llm): openrouter elephant-alpha smoke verified`
 
-- [ ] **P1.8（新 / Epic 2 啟動門檻降低）** T2.0.b clone `vendor/open-notebook`
+- [ ] **P1.5（原 P1.8 / T2.0.b）** clone `vendor/open-notebook`
   - `git clone https://github.com/lfnovo/open-notebook vendor/open-notebook`
   - `.gitignore` 加 `vendor/`
   - commit: `chore(vendor): add open-notebook as vendored fork target`
+
+- [ ] **P1.6（新 / T10.3）** `src/core/` 新增檔歸屬 Epic
+  - `error_analyzer.py` / `llm.py` / `logging_config.py` / `review_models.py` / `scoring.py` 寫了但無 Epic 歸屬
+  - 步驟：每檔寫一行到 program.md 尾段「備註 / 失控檔盤點」，指認 Epic 歸屬或標 `[orphan]`
+  - commit: `docs(program): inventory uncategorized src/core/ additions`
 
 ---
 
@@ -409,6 +428,20 @@
 
 ---
 
+## Epic 10 — Auto-Engineer 治理（v2.5 新增）
+
+> **底層邏輯**：v2.5 發現 auto-commit checkpoint 機制把 M 狀態自動包裝成假 commit，規則剛落地（P1.2 conventional commit）就被自家 agent 繞過 — 治理 design smell。與其寫更多規則，不如修 meta 機制本身。
+
+- [ ] **T10.1** auto-commit checkpoint 訊息強制 conventional 前綴
+  - 參見 P0.8（本輪）
+- [ ] **T10.2** auto-engineer 每輪啟動 gate
+  - 若 P1 首位任務連續三輪延宕 → 暫停其他任務，硬性 focus 直到閉環
+  - 動到：`.auto-engineer.state.json` schema + 啟動腳本
+  - commit: `feat(auto-engineer): add delay-escalation gate on P1 head task`
+- [ ] **T10.3** `src/core/` 新增檔歸屬補登（參見 P1.6）
+
+---
+
 ## 已完成
 
 - [x] **P0.1** CORS localhost 白名單自動展開 127.0.0.1 / ::1（`api_server.py`）
@@ -451,4 +484,4 @@ Epic 7 負責建置。建置完成前，program.md 是單一事實來源。
 
 ---
 
-**版本**：v2.4（2026-04-20 05:00 架構師第四輪回顧重排）| **下一次重排觸發**：P1.4 (T6.0 benchmark) + P1.5 (T7.1.a 首份 proposal) 兩件落盤，且 P1.6 (T1.1.a 三來源調研) + P1.7 (T2.0.a litellm smoke) + P1.8 (T2.0.b vendor clone) 任兩項完成
+**版本**：v2.5（2026-04-20 05:30 架構師第五輪回顧重排）| **下一次重排觸發**：P0.6（benchmark commit）+ P0.8（auto-commit 前綴治理）+ P1.1（T7.1.a 首份 proposal）三件任一落盤，且 P1.2（T8.1.a kb.py 拆分）+ P1.3（T1.1.a 三來源調研）任一完成。**三件不落 → 下輪回顧硬升 owner 意識紅線違規**。
