@@ -80,7 +80,8 @@ scripts/autoresearch_eval.py
 .git_acl_backup.txt
 .serena/
 .spectra.yaml
-benchmark/
+benchmark/*
+!benchmark/mvp30_corpus.json
 meta_git/
 meta_test/
 repo_meta/
