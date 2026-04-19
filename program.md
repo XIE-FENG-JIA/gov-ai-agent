@@ -85,7 +85,7 @@
 
 ### P0.6 — Benchmark 工作樹立即閉環（v2.5 新；原 P1.4 升級）
 
-- [ ] **P0.6** 把 `docs/benchmark.md` + `.gitignore`（`benchmark/*` + `!benchmark/mvp30_corpus.json`）+ `benchmark/mvp30_corpus.json` 一次 commit
+- [x] **P0.6** 把 `docs/benchmark.md` + `.gitignore`（`benchmark/*` + `!benchmark/mvp30_corpus.json`）+ `benchmark/mvp30_corpus.json` 一次 commit
   - 現況：文件已寫完、.gitignore 已細粒度調整、20 份 blind_eval_results 正確被 ignore；ACL 阻斷藉口已消失（`.git/index.lock` 不存在）
   - 命令：`git add .gitignore docs/benchmark.md benchmark/mvp30_corpus.json && git commit -m "docs(benchmark): document benchmark workflow + ignore result artifacts"`
   - **為何 P0**：文件已寫完 1 小時仍漂浮 = 違反北極星指令「修好立刻 commit」；連四輪延宕到此為紅線
@@ -449,6 +449,7 @@
 - [x] **P0.3** KnowledgeBaseManager chromadb=None 分流（`src/knowledge/manager.py`）
 - [x] **P0.4** writer citation prune / 多來源追蹤語意拆分（`src/agents/writer.py`）
 - [x] **P0.6** tmp orphan cleanup + .gitignore 擴充（`src/cli/utils.py` / `tests/test_cli_utils_tmp_cleanup.py`）
+- [x] **P0.6（v2.5）** benchmark workflow 文件/ignore/corpus 閉環（`.gitignore` / `docs/benchmark.md` / `benchmark/mvp30_corpus.json`）
 - [x] **P0.5.a** 工作樹 commit 分組（`docs/commit-plan.md`）
 - [x] **P0.5.pre** git 寫入權限阻斷解除（v2.2 退役；02:15 `f208ca6` commit 自然驗證）
 - [x] **P0.5.b.1** `fix(tests)` 224882b — benchmark scripts + cli utils tmp cleanup 測試（v2.3 閉環）
