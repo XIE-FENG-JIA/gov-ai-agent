@@ -8,6 +8,7 @@ import json
 import os
 import threading
 from pathlib import Path
+import pytest
 import yaml
 import requests
 from unittest.mock import MagicMock, patch, mock_open
@@ -17,6 +18,12 @@ from typer.testing import CliRunner
 
 
 runner = CliRunner()
+
+
+@pytest.fixture(autouse=True)
+def isolate_cli_test_cwd(tmp_path, monkeypatch):
+    """每個 CLI 測試都在獨立工作目錄執行，避免污染 repo root。"""
+    monkeypatch.chdir(tmp_path)
 
 
 # ==================== Main CLI ====================

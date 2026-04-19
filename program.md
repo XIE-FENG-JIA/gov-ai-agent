@@ -395,6 +395,12 @@
   - 選項：移至 `docs/archive/commit-plans/2026-04-20-v2.2-split.md` 保留歷史
   - commit: `docs(archive): commit-plan.md fulfilled history`
 
+- [ ] **T9.4** repo root 狀態檔鎖定治理（v2.3 新發現）
+  - 現象：背景 `auto-engineer.sh` 與 CLI 測試共享 repo root 狀態檔，導致 `.gov-ai-history.json` 與其 `.json_*.tmp` / `.txt_*.tmp` 在 Windows 出現 `WinError 5 / Access is denied`
+  - 已落地緩解：`tests/test_cli_commands.py` 已改為每測試自動 `chdir(tmp_path)`，驗證後不再新增 root tmp
+  - 待做：將 auto-engineer / CLI 狀態檔搬到專用 state dir 或提供可配置 state root，避免 repo root file lock 長期再發
+  - commit: `fix(testing): isolate CLI cwd + document repo-root state lock follow-up`
+
 ---
 
 ## 已完成
