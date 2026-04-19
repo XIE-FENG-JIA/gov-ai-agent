@@ -122,11 +122,29 @@ class TestInit:
         """chromadb 為 None 時應標記 _available=False。"""
         import src.knowledge.manager as mgr_module
         monkeypatch.setattr(mgr_module, "chromadb", None)
+        monkeypatch.setattr(mgr_module, "_CHROMADB_IMPORT_FAILED", False)
 
         mgr = mgr_module.KnowledgeBaseManager("/tmp/test", mock_llm)
         assert mgr._available is False
         assert mgr.client is None
         assert mgr.examples_collection is None
+
+    def test_init_retries_when_import_previously_failed(self, mock_llm, monkeypatch):
+        """若模組載入時曾缺 chromadb，後續應允許重新解析恢復。"""
+        import src.knowledge.manager as mgr_module
+
+        mock_client = MagicMock()
+        mock_client.get_or_create_collection.return_value = MagicMock()
+        recovered_chromadb = _make_mock_chromadb()
+        recovered_chromadb.PersistentClient = MagicMock(return_value=mock_client)
+
+        monkeypatch.setattr(mgr_module, "chromadb", None)
+        monkeypatch.setattr(mgr_module, "_CHROMADB_IMPORT_FAILED", True)
+        monkeypatch.setattr(mgr_module.importlib, "import_module", MagicMock(return_value=recovered_chromadb))
+
+        mgr = mgr_module.KnowledgeBaseManager("/tmp/test", mock_llm)
+        assert mgr._available is True
+        assert mgr_module.chromadb is recovered_chromadb
 
     def test_init_with_chromadb_success(self, mock_llm):
         """chromadb 正常時應建立三個 collection。"""

@@ -1,4 +1,5 @@
 import hashlib
+import importlib
 import logging
 import math
 import threading
@@ -14,6 +15,7 @@ try:
     import chromadb
 except ImportError:
     chromadb = None  # type: ignore[assignment]
+_CHROMADB_IMPORT_FAILED = chromadb is None
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +30,27 @@ _EMBED_CACHE_MAXSIZE = 128  # 最多快取 128 筆 embedding
 # 文件集合快取設定（BM25/keyword 搜尋用，避免每次重新從 ChromaDB 拉取全量文件）
 _DOC_CACHE_TTL = 60        # 1 分鐘（文件可能被新增，不宜太長）
 _DOC_CACHE_MAXSIZE = 32    # 按 (集合組合, 篩選條件) 快取
+
+
+def _resolve_chromadb() -> Any:
+    """解析 chromadb 模組。
+
+    只有在模組載入當下因 ImportError 缺失時才重試 import；
+    若執行期間被測試或呼叫端明確設為 None，視為不可用。
+    """
+    global chromadb, _CHROMADB_IMPORT_FAILED
+    if chromadb is not None:
+        return chromadb
+    if not _CHROMADB_IMPORT_FAILED:
+        return None
+    try:
+        chromadb = importlib.import_module("chromadb")
+        _CHROMADB_IMPORT_FAILED = False
+    except ImportError:
+        chromadb = None  # type: ignore[assignment]
+        _CHROMADB_IMPORT_FAILED = True
+    return chromadb
+
 
 class KnowledgeBaseManager:
     """管理本地 ChromaDB 知識庫。"""
@@ -52,7 +75,8 @@ class KnowledgeBaseManager:
         self._doc_cache: TTLCache = TTLCache(maxsize=_DOC_CACHE_MAXSIZE, ttl=_DOC_CACHE_TTL)
         self._doc_cache_lock = threading.Lock()
 
-        if chromadb is None:
+        chromadb_module = _resolve_chromadb()
+        if chromadb_module is None:
             logger.error(
                 "chromadb 未安裝，知識庫功能不可用。請執行: pip install chromadb"
             )
@@ -64,7 +88,7 @@ class KnowledgeBaseManager:
             return
 
         try:
-            self.client = chromadb.PersistentClient(path=persist_path)
+            self.client = chromadb_module.PersistentClient(path=persist_path)
 
             # Initialize collections
             self.examples_collection = self.client.get_or_create_collection(
@@ -567,7 +591,11 @@ class KnowledgeBaseManager:
         Returns:
             list[dict]: 每筆含 id, content, metadata 三個欄位。
         """
-        coll_names = tuple(sorted(c.name for c in collections))
+        def _coll_name(coll: Any) -> str:
+            name = getattr(coll, "name", "")
+            return name if isinstance(name, str) else str(name)
+
+        coll_names = tuple(sorted(_coll_name(c) for c in collections))
         cache_key = (coll_names, source_level, doc_type, source_type)
 
         with self._doc_cache_lock:
@@ -577,6 +605,7 @@ class KnowledgeBaseManager:
 
         all_docs: list[dict] = []
         for coll in collections:
+            coll_name = _coll_name(coll)
             try:
                 count = coll.count()
                 if count == 0:
@@ -584,7 +613,7 @@ class KnowledgeBaseManager:
                 if count > 500:
                     logger.debug(
                         "集合 %s 文件數 %d > 500，僅取前 500 筆",
-                        coll.name, count,
+                        coll_name, count,
                     )
                 data = coll.get(include=["documents", "metadatas"], limit=500)
                 if not data or not data.get("ids"):
@@ -612,7 +641,7 @@ class KnowledgeBaseManager:
                         "metadata": meta,
                     })
             except Exception as e:
-                logger.warning("集合文件拉取失敗 (%s): %s", coll.name, e)
+                logger.warning("集合文件拉取失敗 (%s): %s", coll_name, e)
                 continue
 
         with self._doc_cache_lock:

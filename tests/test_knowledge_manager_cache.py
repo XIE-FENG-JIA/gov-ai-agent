@@ -75,8 +75,9 @@ class TestSearchCache:
         """快取 key 包含所有查詢參數"""
         mock_kb.search_hybrid("查詢", n_results=3, source_level="A")
         mock_kb.search_hybrid("查詢", n_results=3, source_level="B")
-        # 不同 source_level 應各自快取
-        assert mock_kb.llm_provider.embed.call_count == 2
+        # embedding cache 以 query 為 key，可跨 source_level 重用向量
+        assert mock_kb.llm_provider.embed.call_count == 1
+        # 搜尋結果快取仍需包含完整參數，避免不同 source_level 互相污染
         assert len(mock_kb._search_cache) == 2
 
     def test_cache_thread_safety(self, mock_kb):
