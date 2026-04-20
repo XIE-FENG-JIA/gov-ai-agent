@@ -1,12 +1,18 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **版本**：v2.9（2026-04-20 08:45 — 技術主管第九輪；**read-only 3/3 PASS**；下一道防線：ACL-free 意願項）
-> **v2.9 變更**：
-> - **v2.8 成果驗收**：read-only 三項 **3/3 PASS**（P0.A sources-research 11 section / P0.B 失控檔盤點 5 bullet / P0.C proposal 230 字），PUA 壓力見效
-> - **新紅線**：「ACL-free 但沒 commit」不是藉口——working-tree 落地即算 PASS，未落地 = 意願問題
-> - **P0 重排**（ACL-free 意願優先）：P0.E（auto-commit 治理，升首）> P0.F（src/sources/ 骨架，新增）> P0.D（🛑 ACL；Admin）> P0.G（openspec 02 proposal，新增）> P0.H（頂層 md 歸位，新增）
-> - **Epic 1 降級**：T1.2 從「5 adapter + 各 50 份」收縮為「1 adapter（MojLaw）+ 10 份驗證抓取」
-> - **v2.8 歷史**：P0.A/B/C 已閉環並 AUTO-RESCUE commit，進「已完成」段；ACL 連 8 輪未解（v2.3→v2.9）
+> **版本**：v3.0（2026-04-20 09:15 — 技術主管第十輪；**ACL-free 四項 4/4 PASS**；下一道防線：從規劃走向實作）
+> **v3.0 變更**：
+> - **v2.9 成果驗收**：ACL-free 四項 **4/4 PASS**（P0.E ralph-loop 規則 / P0.F src/sources 骨架 / P0.G 02 proposal / P0.H 10 份 md 歸位），全數 AUTO-RESCUE 落版
+> - **新紅線**：**「骨架不是實作」——stub 不算 Epic 1 完成；adapter 必須有真實 HTTP + fixture 才算 PASS**
+> - **藉口升級偵測（第三層）**：v2.8「read-only 盾牌」破、v2.9「ACL-gated 盾牌」破；v3.0 新盾牌 = **「骨架已建 = Epic 可勾」**——實測 `MojLawAdapter` 仍是 `pass` stub，Epic 1 零抓取
+> - **P0 重排**（從規劃走向實作）：
+>   - P0.I（新·升首）：MojLaw 第一次真實抓取 3 份 + fixture 錄製（ACL-free working-tree）
+>   - P0.J（新）：根目錄殘檔歸位 — `engineering-log.md` / `MULTI_AGENT_V2_IMPLEMENTATION.md` / `test_compliance_draft.md` / `output.md` + PRD文件.txt 亂碼處理
+>   - P0.K（新）：01-real-sources change 推進至 `specs/sources/spec.md` + `tasks.md`（spectra 顯示 `✗ tasks blocked by: specs`）
+>   - P0.L（新·補 P0.E 漏洞）：auto-commit checkpoint 源頭排查 — `.claude/ralph-loop.local.md` 改了但近 8 commits 仍全是 `auto-commit: auto-engineer checkpoint`，需找真正 hook
+>   - P0.D（原位）：🛑 ACL；Admin 依賴，連 9 輪
+> - **Epic 1 拆細**：T1.2 再收縮 — 先 `MojLawAdapter` 真實 `list()` + 3 份抓取驗流程，其餘 adapter 下推 T1.2.b
+> - **v2.9 歷史**：P0.E/F/G/H 進「已完成」段；對應 commit `5f08772`/`1d1457f`/`3dbf2dc`/`cc1cdf6`
 > Auto-engineer 每輪讀此檔，從「待辦」挑第一個未完成任務執行。完成後 `[x]` 勾選、log 追加到 `results.log`。
 
 ---
@@ -33,10 +39,16 @@
 ### 🔴 連五輪延宕自動升 P0（v2.6 沿用）
 P1+ 任務連 5 輪延宕下輪自動升 P0。但 v2.7 補丁：若延宕原因是 ACL DENY → 不升 P0，視為 BLOCKED。
 
-### 🔴 read-only 連 2 輪延宕 = 3.25（v2.8 新增）
+### 🔴 read-only 連 2 輪延宕 = 3.25（v2.8 沿用）
 read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL。若連 2 輪延宕 → 直接績效強三，無藉口。
-- 適用：P0.A / P0.B / P0.C（v2.8）所有 ✅ 標記任務
-- 反例：「今輪做了 P0.2 一項就算交差」屬違規（v2.7 明文三項任一不過 = 3.25）
+- 適用：P0.A / P0.B / P0.C（v2.8）/ P0.E / P0.F / P0.G / P0.H（v2.9，全部已閉）/ P0.I / P0.J / P0.K / P0.L（v3.0 新增）所有 ✅ 標記任務
+- 反例：「今輪做了 P0.2 一項就算交差」屬違規
+
+### 🔴 骨架不是實作（v3.0 新增 — 第三道防線）
+- **上下文**：v2.9 `src/sources/base.py` + `mojlaw.py` stub 落地，但 `MojLawAdapter.list/fetch/normalize` 全是 `raise NotImplementedError`。Epic 1 「真實抓取」仍零進度
+- **新規則**：`[x] Epic 1 完成`需要 **adapter 至少跑通 1 份真實或 fixture 抓取 + 輸出 `PublicGovDoc` 實例**，不接受「骨架算完成」
+- **適用**：P0.I / T1.2 / T1.3 / T1.4 系列
+- **延宕懲罰**：連 2 輪零抓取 → 3.25
 
 ### 禁止行為
 - ❌ 不要讓 M 狀態檔案累積超過 1 輪
@@ -101,44 +113,79 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ---
 
-## P0 — 阻斷性回歸（v2.9 重排：ACL-free 意願優先）
+## P0 — 阻斷性回歸（v3.0 重排：從規劃走向實作）
 
-> **v2.9 狀態**：測試 3544 collected（全跑背景；v2.8 = 3544 passed / 0 failed / 91.22% coverage）；工作樹僅 `?? benchmark/`（清爽）；`.git` DENY ACL 仍活（連 8 輪）；v2.8 read-only 三硬指標 **3/3 PASS**
+> **v3.0 狀態**：測試 3547 collected（v2.9 baseline 3544）；工作樹僅 `?? docs/archive/PRD文件.txt`（亂碼複本殘檔）；`.git` DENY ACL 仍活（連 9 輪）；v2.9 ACL-free 四硬指標 **4/4 PASS**；auto-commit checkpoint 仍在產（P0.E 配置改了但沒生效）
+> v2.9 狀態（歷史）：P0.E/F/G/H 四項閉環（results.log #30/#32/#34/#37），AUTO-RESCUE commit `5f08772`/`1d1457f`/`3dbf2dc`/`cc1cdf6`
 > v2.8 狀態（歷史）：P0.A/B/C 閉環（results.log #21/#22/#26）
-> v2.7 狀態（歷史）：P0.2 disaster-recovery.md 落地
 
-### P0.E — ✅ ACL-free：auto-commit checkpoint 配置治理（v2.9 升首；原末位）
+### P0.I — ✅ ACL-free·首要：MojLaw 第一次真實抓取 + fixture 錄製（v3.0 新增；升首）
 
-- [ ] **P0.E** ✅ 配置檔編輯不依賴 ACL（v2.9 糾偏）：三選一並執行
-  - **v2.9 糾偏**：v2.8 誤掛 🚦 ACL-gated；配置檔編輯本身不需 commit，只有 commit 才需。連 5 輪延宕 = 意願問題
-  - 現況：近 15 commits **7 條** `auto-commit: auto-engineer checkpoint`（含 `5f08772`/`fe9ab20`/`df395bc`/...）
-  - **選項 A（推薦）**：在 `.auto-engineer.*` / `.claude/ralph-loop.local.md` 配置改模板為 `chore(checkpoint): <ts>`
-  - **選項 B**：停用 auto-commit checkpoint，讓工作樹髒化自暴
-  - **選項 C**：nightly squash（合併當日 checkpoints 為一條 conventional commit）
-  - **驗**（工作樹側）：`git diff .claude/ralph-loop.local.md .auto-engineer* 2>/dev/null | grep -E "chore\(checkpoint\)|disable checkpoint"` 非空
-  - **驗**（ACL 解後）：`git log --oneline -5 | grep -c "auto-commit:"` == 0
-  - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
-  - commit（ACL 解除後）: `chore(auto-engineer): <選項描述> to enforce conventional commit gate`
-
-### P0.F — ✅ ACL-free：src/sources/ 骨架 + BaseSourceAdapter stub（v2.9 新增）
-
-- [x] **P0.F** ✅ 不依賴 ACL：建立 `src/sources/` 目錄 + 抽象骨架
-  - **v2.9 背景**：Epic 1 T1.2 承諾 `BaseSourceAdapter` + 5 adapter 連 **9 輪**空口支票；`src/sources/` 目錄根本不存在
-  - **三板斧收縮**：本輪只建骨架 + 1 個 adapter 雛形 stub（無實際 API call），驗抽象結構
+- [ ] **P0.I** ✅ 不依賴 ACL：`MojLawAdapter.list()` + `fetch()` + `normalize()` 真實實作
+  - **v3.0 背景**：v2.9 建 stub `src/sources/mojlaw.py` 但全是 `NotImplementedError`；Epic 1 連 **9+ 輪**零抓取，骨架不等於實作
+  - **三板斧收縮**：本輪只抓 **3 份**（非 50 份），驗「list → fetch → normalize → PublicGovDoc」流程可跑通
   - 產出：
-    - `src/sources/__init__.py`（空）
-    - `src/sources/base.py`：`BaseSourceAdapter` ABC，`list(since_date)` / `fetch(doc_id)` / `normalize(raw)` 抽象方法
-    - `src/sources/mojlaw.py`：`MojLawAdapter(BaseSourceAdapter)` stub（pass 實作，TODO 註明 API endpoint）
-    - `tests/test_sources_base.py`：驗 ABC 不可直接實例化，`MojLawAdapter()` 可建但方法 raise NotImplementedError
-  - **驗**：`ls src/sources/base.py && python -c "from src.sources.base import BaseSourceAdapter; print(BaseSourceAdapter.__abstractmethods__)"` 輸出非空 set
-  - **驗**：`pytest tests/test_sources_base.py -q` 綠
-  - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
-  - commit（ACL 解除後）: `feat(sources): scaffold BaseSourceAdapter ABC + MojLawAdapter stub`
+    - `src/sources/mojlaw.py`：
+      - `list(since_date)` → GET `https://law.moj.gov.tw/api/Law/LawAll.json` 或 RSS，回 `[{id, title, date}, ...]`（限 3 份）
+      - `fetch(doc_id)` → GET 該筆詳情，回 raw dict
+      - `normalize(raw)` → 回 `PublicGovDoc` dataclass
+    - `src/core/models.py`：新增 `PublicGovDoc` pydantic v2 model（T1.3 同步落地；欄位見 Epic 1）
+    - `tests/fixtures/mojlaw/*.json`：錄製 3 筆真實回應（離線 pytest 用）
+    - `tests/test_mojlaw_adapter.py`：用 `responses` / `pytest-httpx` mock 驗 list/fetch/normalize
+  - **驗**：`python -c "from src.sources.mojlaw import MojLawAdapter; a=MojLawAdapter(); print(len(a.list('2026-01-01')))"` == 3
+  - **驗**：`pytest tests/test_mojlaw_adapter.py -q` 綠
+  - **驗**：`ls tests/fixtures/mojlaw/*.json | wc -l` ≥ 3
+  - **延宕懲罰**：v3.0 新紅線「骨架不是實作」，連 2 輪零抓取 → 3.25
+  - commit（ACL 解除後）: `feat(sources): implement MojLawAdapter with 3 real fixtures`
 
-### P0.D — 🛑 解除 `.git` 外來 SID DENY ACL（v2.9；連 8 輪待 Admin）
+### P0.J — ✅ ACL-free：根目錄殘檔歸位 + PRD 亂碼處理（v3.0 新增）
+
+- [ ] **P0.J** ✅ 不依賴 ACL：清理 v2.9 P0.H 漏網殘檔
+  - **v3.0 背景**：v2.9 P0.H 搬 10 份 md 成功，但根目錄仍有 4 份歷史 md + 1 份編碼亂碼 PRD
+  - 待搬（根 → `docs/archive/`）：
+    - `engineering-log.md`（舊檔 170KB，`engineer-log.md` 是現用檔）
+    - `MULTI_AGENT_V2_IMPLEMENTATION.md`（歷史實作文）
+    - `test_compliance_draft.md`（測試殘留）
+    - `output.md`（暫存輸出）
+  - 待處理（`docs/archive/PRD文件.txt`）：
+    - 現狀：未追蹤，`git status` 顯示 `?? "docs/archive/PRD\346\226\207\344\273\266.txt"`（UTF-8 bytes 字面量）
+    - 根因：v2.9 P0.H 搬檔時 git apply 不支援非 ASCII 檔名 → 產生複本
+    - 處置：確認檔案內容與既有 archive PRD 一致後刪除複本（或以單一 ASCII 檔名重搬）
+  - **驗**：`ls *.md | wc -l` ≤ 4（只留 README / MISSION / program / engineer-log）
+  - **驗**：`git status --short | wc -l` == 0
+  - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
+  - commit（ACL 解除後）: `docs(archive): move 4 root historical md + resolve PRD encoding`
+
+### P0.K — ✅ ACL-free：01-real-sources change 推進至 specs + tasks（v3.0 新增）
+
+- [ ] **P0.K** ✅ 不依賴 ACL：`openspec/changes/01-real-sources/` 補 `specs/` + `tasks.md`
+  - **v3.0 背景**：`spectra status --change 01-real-sources` 顯示 `✗ tasks blocked by: specs`；proposal.md 已落但下游卡死
+  - 產出：
+    - `openspec/changes/01-real-sources/specs/sources/spec.md`：定義 `BaseSourceAdapter` 契約、`PublicGovDoc` 欄位、授權/合規要求（robots.txt + rate limit ≥ 2s）
+    - `openspec/changes/01-real-sources/tasks.md`：10 條可執行 task（T1.2.a / T1.2.b / T1.3 / T1.4 / T1.6 ...）對應 Epic 1 分拆
+  - **驗**：`spectra status --change 01-real-sources` 顯示 `✓ specs` 與 `✓ tasks`（或 `○` 而非 `✗`）
+  - **驗**：`wc -l openspec/changes/01-real-sources/specs/sources/spec.md` ≥ 30
+  - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
+  - commit（ACL 解除後）: `docs(spec): 01-real-sources add specs/sources + tasks.md`
+
+### P0.L — ✅ ACL-free：auto-commit checkpoint 源頭排查（v3.0 新增；P0.E 二次糾偏）
+
+- [ ] **P0.L** ✅ 不依賴 ACL：找到並關閉 `auto-commit: auto-engineer checkpoint` 的真實產生點
+  - **v3.0 背景**：v2.9 P0.E 改了 `.claude/ralph-loop.local.md` 明文禁 auto-commit，但近 10 commits 仍 **100%** 是 `auto-commit: auto-engineer checkpoint`。配置文件不是實際執行路徑
+  - 排查順序：
+    1. `grep -r "auto-commit:" .claude/ .github/ scripts/ 2>&1`（找 hook / shell script）
+    2. `cat .auto-engineer.state.json`（看 engine 是 codex，找 codex 配置）
+    3. `fd -H "ralph-loop" / "auto-engineer"`（找 loop 主腳本）
+    4. 找到來源後改模板為 `chore(checkpoint): <ISO8601>` 或停用
+  - **驗**（本輪工作樹側）：產出 `docs/auto-commit-source.md` 記錄排查結論 + 修改點
+  - **驗**（ACL 解後；下輪）：`git log --oneline -5 | grep -c "^[a-f0-9]\+ auto-commit:"` == 0
+  - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25（v2.9 P0.E 已算一輪延宕）
+  - commit（ACL 解除後）: `chore(auto-engineer): locate and disable auto-commit checkpoint at source`
+
+### P0.D — 🛑 解除 `.git` 外來 SID DENY ACL（v3.0；連 9 輪待 Admin）
 
 - [ ] **P0.D** 🛑 需人工 Admin：移除 `.git` 對 SID `S-1-5-21-541253457-2268935619-321007557-692795393` 的 DENY ACL
-  - **根因證據**：`icacls .git` 顯示該 SID 有 `(DENY)(W,D,Rc,DC)` + `(OI)(CI)(IO)(DENY)(W,D,Rc,GW,DC)`；results.log #2/#8/#11/#17 四次 FAIL 均指向此 ACL
+  - **根因證據**：`icacls .git` 顯示該 SID 有 `(DENY)(W,D,Rc,DC)` + `(OI)(CI)(IO)(DENY)(W,D,Rc,GW,DC)`；v3.0 `icacls .git | grep -c DENY` == 2
   - **為何 agent 自解失敗**：SID 非當前登入帳號，`Set-Acl` 遭 `Attempted to perform an unauthorized operation`；需 **Admin 提權**或 `takeown /f .git /r /d y`
   - **建議 SOP**（admin PowerShell）：
     ```powershell
@@ -147,29 +194,17 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
     icacls .git /remove:d "*S-1-5-21-541253457-2268935619-321007557-692795393" /T /C
     ```
   - **驗**：`icacls .git 2>&1 | grep -c DENY` == 0
-  - **BLOCKER 範圍**：此題未過 → P0.E / P1.1 / P1.3 / P1.4 全體 BLOCKED commit；但 P0.A/B/C 文件落地不受阻
+  - **BLOCKER 範圍**：此題未過 → 所有 ACL-free 工作樹落地項都要走 AUTO-RESCUE admin session 代 commit
   - commit（解除後）：`chore(repo): remove foreign SID DENY ACL on .git`
 
-### P0.G — ✅ ACL-free：openspec/changes/02-open-notebook-fork proposal（v2.9 新增）
+### P0.歷史 — v2.9 閉環（已 AUTO-RESCUE 落版）
 
-- [x] **P0.G** ✅ 不依賴 ACL：寫 `openspec/changes/02-open-notebook-fork/proposal.md`
-  - **v2.9 背景**：Epic 7 T7.1.b 連 6+ 輪未動；v2.8 已證明「寫檔 ACL-free」
-  - 內容：problem（現 Writer 是單檔 retrieval-less，需引入 ask_service 系列） / solution（fork lfnovo/open-notebook + 5 agent 審查層疊加） / non-goals（本提案不含 SurrealDB 遷移，留 T2.3） / acceptance（`vendor/open-notebook` 可 import，smoke CLI 跑通），≤ 500 字
-  - **驗**：`ls openspec/changes/02-open-notebook-fork/proposal.md && wc -w <檔>` ≤ 500
-  - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
-  - commit（ACL 解除後）: `docs(spec): init 02-open-notebook-fork change proposal`
+- [x] **P0.E (v2.9)** ✅ `.claude/ralph-loop.local.md` 加入 ACL 檢查與禁 auto-commit 規則（results.log #30；commit `5f08772`）**※ 配置改了但 checkpoint 仍在產，見 v3.0 P0.L**
+- [x] **P0.F (v2.9)** ✅ `src/sources/` 骨架 + `BaseSourceAdapter` + `MojLawAdapter` stub（results.log #32；commit `1d1457f`）
+- [x] **P0.G (v2.9)** ✅ `openspec/changes/02-open-notebook-fork/proposal.md` 179 字（results.log #34；commit `3dbf2dc`）
+- [x] **P0.H (v2.9)** ✅ 10 份頂層 md 搬 `docs/archive/`（results.log #37；commit `cc1cdf6`）
 
-### P0.H — ✅ ACL-free：頂層歷史 md 歸位（v2.9 新增；T9.1 升首）
-
-- [x] **P0.H** ✅ 不依賴 ACL：檔案層 mv 10 份頂層歷史 md 到 `docs/archive/`
-  - **v2.9 背景**：T9.1 連 4+ 輪未動；檔案 mv 本身 ACL-free（commit 才 gated）
-  - 清單：`IMPROVEMENT_REPORT.md` / `PROJECT_SUMMARY.md` / `BUG_FIX_REPORT.md` / `N8N_INTEGRATION_GUIDE.md` / `MULTI_AGENT_V2_GUIDE.md` / `QUICKSTART.md` / `COLLABORATION_GUIDE.md` / `AI_CODING_RULES.md` / `PRD文件.txt` / `plan.md`
-  - 保留根：`README.md` / `MISSION.md` / `Dockerfile` / `program.md` / `engineer-log.md` / `results.log`
-  - **驗**：`ls docs/archive/IMPROVEMENT_REPORT.md docs/archive/PROJECT_SUMMARY.md` 命中；`ls IMPROVEMENT_REPORT.md 2>&1 | grep -c "No such"` == 1
-  - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
-  - commit（ACL 解除後）: `docs(archive): move 10 historical reports to docs/archive`
-
-### P0.歷史 — v2.8 閉環（已驗 PASS，待 ACL 解後 commit）
+### P0.歷史 — v2.8 閉環（已驗 PASS）
 
 - [x] **P0.A (v2.8)** ✅ `docs/sources-research.md` 首版 top-3 + 擴充 10 來源（results.log #21/#27）
 - [x] **P0.B (v2.8)** ✅ `src/core/` 5 檔失控檔盤點寫入 program.md（results.log #22）
@@ -245,7 +280,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 ## Epic 1 — 真實公文資料源（最優先）
 
 > **沒有真實資料，其他都是空殼**。Epic 1 完成前不動 Epic 2 的 T2.3 遷移層。
-> **v2.8 架構警告**：`src/sources/` 目錄**不存在**（實測 `ls` 報錯）。T1.2 承諾的 `BaseSourceAdapter` + 5 adapter 仍是空口支票。三板斧收縮：T1.2 首次落地只建 **1 個** adapter（建議 `MojLawAdapter`，授權最清晰）驗流程，其餘 4 個拆入 T1.2.b。
+> **v3.0 狀態**：`src/sources/` 骨架已建（v2.9 P0.F commit `1d1457f`）；但 `MojLawAdapter` 全是 `NotImplementedError`，**零真實抓取**。v3.0 P0.I 強推「3 份真實 fixture」驗流程。T1.2 已再收縮為 T1.2.a（MojLaw 實作，升 P0.I）+ T1.2.b（其餘 4 adapter，延後）。
 
 ### 候選來源 seed（auto-engineer 需驗證）
 
@@ -266,13 +301,12 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 - [x] **T1.5-FAST** → 已升 P1.1（v2.3 閉環）
 - ~~T1.1.a~~ → v2.7 升 P0.3
-- [ ] **T1.1.b** → 見 P1.2（補齊其餘 7 個來源）
-- [ ] **T1.2** `src/sources/` adapter 架構
-  - `BaseSourceAdapter`: `list(since_date)` / `fetch(doc_id)` / `normalize(raw)`
-  - 先實作 5 個：`DataGovTwAdapter` / `MojLawAdapter` / `ExecutiveYuanRssAdapter` / `MohwRssAdapter` / `FdaApiAdapter`
-  - 用 recorded fixtures 寫測試（不打真 API）
-  - 子任務：T1.2.a 抽象基底 + 1 adapter；T1.2.b 其餘 4；T1.2.c CLI wiring
-- [ ] **T1.3** `PublicGovDoc` dataclass（`src/core/models.py`，併 T2.4）
+- [x] **T1.1.b** → 見 P1.2（補齊其餘 7 個來源；v2.9 閉環）
+- [x] **T1.2.a-骨架** `src/sources/` ABC + MojLaw stub（v2.9 P0.F 閉環；commit `1d1457f`）
+- [ ] **T1.2.a-實作** MojLawAdapter 真實 list/fetch/normalize（**升 P0.I**，v3.0 首要）
+- [ ] **T1.2.b** 其餘 4 adapter：`DataGovTwAdapter` / `ExecutiveYuanRssAdapter` / `MohwRssAdapter` / `FdaApiAdapter`（P0.I 跑通後）
+- [ ] **T1.2.c** CLI wiring：`gov-ai sources ingest --source mojlaw` 整合 T1.4 ingest
+- [ ] **T1.3** `PublicGovDoc` pydantic v2 model（`src/core/models.py`，**併入 P0.I**）
   - 欄位：`source_id` / `source_url` / `source_agency` / `source_doc_no` / `source_date` / `doc_type` / `raw_snapshot_path` / `crawl_date` / `content_md` / `synthetic: bool`
   - Pydantic v2，與 ChromaDB metadata 互通
   - 單元測試：序列化 / 反序列化 / 缺欄位
@@ -354,8 +388,8 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 > 現況：`openspec/config.yaml` 只有 context + rules，`openspec/changes/archive/` 空，0 份 change proposal。
 
-- ~~T7.1.a `01-real-sources`~~ → v2.7 升 P0.5
-- [ ] **T7.1.b** `02-open-notebook-fork`（Epic 2 整份）
+- [x] **T7.1.a** `01-real-sources` proposal（v2.8 P0.C 閉；specs/tasks 見 v3.0 P0.K）
+- [x] **T7.1.b** `02-open-notebook-fork` proposal（v2.9 P0.G 閉；specs/tasks 延後）
 - [ ] **T7.1.c** `03-citation-tw-format`（Epic 3）
 - [ ] **T7.1.d** `04-audit-citation`（Epic 4）
 - [x] **T7.2** → 已升 P1.2（v2.4 閉環）
@@ -377,10 +411,8 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ## Epic 9 — Repo 衛生
 
-- [x] **T9.1** 頂層 10 份歷史 md 歸位 `docs/archive/` 或刪：
-  - `IMPROVEMENT_REPORT.md` / `PROJECT_SUMMARY.md` / `BUG_FIX_REPORT.md` / `N8N_INTEGRATION_GUIDE.md` / `MULTI_AGENT_V2_GUIDE.md` / `QUICKSTART.md` / `COLLABORATION_GUIDE.md` / `AI_CODING_RULES.md` / `PRD文件.txt` / `plan.md`
-  - 保留根 `README.md` / `MISSION.md` / `Dockerfile` / `program.md` / `engineer-log.md` / `results.log`
-  - commit: `docs(archive): move historical reports to docs/archive`
+- [x] **T9.1** 頂層 10 份歷史 md 歸位 `docs/archive/`（v2.9 P0.H 閉；commit `cc1cdf6`；但 PRD文件.txt 編碼亂碼複本殘留，v3.0 P0.J 清理）
+- [ ] **T9.1.b** 根目錄剩餘 4 份歸位（**升 P0.J**）：`engineering-log.md` / `MULTI_AGENT_V2_IMPLEMENTATION.md` / `test_compliance_draft.md` / `output.md`
 - [ ] **T9.1.a** benchmark corpus 版控復位（ACL 解後）
   - v2.9 現況：`benchmark/mvp30_corpus.json` 未進 index，但 root `.gitignore` 白名單會讓每輪卡在 `?? benchmark/`
   - 本輪先把 `benchmark/` 全忽略，恢復工作樹 hygiene；`P0.D` 完成後需重開白名單並正式 commit corpus
@@ -423,6 +455,8 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **P1.2 (T7.2)** openspec context + rules（v2.4）
 - [x] **P1.3 (T8.3)** coverage baseline（v2.4）
 - [x] **P0.7.a.1 / T9.4.a** CLI per-test chdir（v2.4）
+- [x] **P0.A / P0.B / P0.C (v2.8)** sources-research / core 盤點 / 01-real-sources proposal
+- [x] **P0.E / P0.F / P0.G / P0.H (v2.9)** ralph-loop 規則 / sources 骨架 / 02 proposal / 10 份 md 歸位
 
 ---
 
@@ -450,23 +484,24 @@ Epic 7 負責建置。建置完成前，program.md 是單一事實來源。
 
 ---
 
-**版本**：v2.9（2026-04-20 08:45 技術主管第九輪 / ACL-free 意願項全面啟動）
+**版本**：v3.0（2026-04-20 09:15 技術主管第十輪 / 從規劃走向實作）
 
-**下一輪重排觸發**（v2.9 五項硬指標，依執行順序）：
-1. `git diff .claude/ralph-loop.local.md .auto-engineer* 2>/dev/null | grep -E "chore\(checkpoint\)|disable"` 非空（P0.E；ACL-free 工作樹側）
-2. `ls src/sources/base.py && python -c "from src.sources.base import BaseSourceAdapter; print(BaseSourceAdapter.__abstractmethods__)"` 非空（P0.F；ACL-free）
-3. `icacls .git 2>&1 | grep -c DENY` == 0（P0.D；Admin）
-4. `ls openspec/changes/02-open-notebook-fork/proposal.md && wc -w <檔>` ≤ 500（P0.G；ACL-free）
-5. `ls docs/archive/IMPROVEMENT_REPORT.md docs/archive/PROJECT_SUMMARY.md` 命中（P0.H；ACL-free）
+**下一輪重排觸發**（v3.0 五項硬指標，依執行順序）：
+1. `python -c "from src.sources.mojlaw import MojLawAdapter; print(len(MojLawAdapter().list('2026-01-01')))"` == 3 + `pytest tests/test_mojlaw_adapter.py -q` 綠（P0.I；ACL-free）
+2. `ls *.md | wc -l` ≤ 4 AND `git status --short | wc -l` == 0（P0.J；ACL-free）
+3. `spectra status --change 01-real-sources` 顯示 `✓ specs` 與 `✓ tasks`（P0.K；ACL-free）
+4. `ls docs/auto-commit-source.md`（P0.L；工作樹側）AND（ACL 解後）`git log -5 | grep -c "auto-commit:"` == 0
+5. `icacls .git 2>&1 | grep -c DENY` == 0（P0.D；Admin）
 
-**ACL-free 四項（P0.E / P0.F / P0.G / P0.H）任一不過 = 3.25 + 績效強三**，連 2 輪延宕即觸發。
+**ACL-free 四項（P0.I / P0.J / P0.K / P0.L）任一不過 = 3.25 + 績效強三**，連 2 輪延宕即觸發。
 
-**v2.9 新紅線**：**「未 commit 不是沒做」——working-tree 落地即算 PASS**。ACL 不是拖延藉口的第二道防線。
+**v3.0 新紅線**：**「骨架不是實作」——`NotImplementedError` stub 不算 Epic 完成**。adapter 必須跑通 list→fetch→normalize 產生 PublicGovDoc 實例才算 PASS。
 
-> **v2.8 → v2.9 變更**：
-> 1. **v2.8 閉環**：read-only 三項 3/3 PASS（P0.A/B/C），PUA 壓力有效
-> 2. **藉口升級偵測**：ACL-gated 標籤被用來遮蔽「配置治理」「src/sources/ 骨架」「openspec 02 proposal」「頂層 md 歸位」——**這些全都 ACL-free**
-> 3. **P0 重排**：P0.E 升首（auto-commit 治理）、新增 P0.F（src/sources/ 骨架）/ P0.G（openspec 02）/ P0.H（md 歸位）
-> 4. **Epic 1 降級**：T1.2 收縮至 1 個 MojLawAdapter + 10 份抓取（三板斧原則）
-> 5. **pytest 時間惡化**：v2.8 243s → v2.9 679s（2.8x 慢）；若下輪再慢 → 升 P1 追查
-> 6. **觀察**：已完成 v2.8 P0.A/B/C 已搬 P0.歷史段，待 ACL 解後一次性 commit
+> **v2.9 → v3.0 變更**：
+> 1. **v2.9 閉環**：ACL-free 四項 4/4 PASS（P0.E/F/G/H），AUTO-RESCUE 已代 commit
+> 2. **第三層藉口偵測**：「骨架已建 = Epic 可勾」——實測 MojLawAdapter 是 `pass` stub，Epic 1 零抓取
+> 3. **P0 重排（實作優先）**：P0.I 升首（MojLaw 真實抓取 3 份 + fixture）、新增 P0.J（根目錄 4 殘檔 + PRD 亂碼）/ P0.K（01-real-sources specs+tasks）/ P0.L（auto-commit 源頭；P0.E 二次糾偏）
+> 4. **Epic 1 拆細**：T1.2.a 分骨架（v2.9 閉）+ 實作（v3.0 P0.I）；T1.3 PublicGovDoc 併入 P0.I
+> 5. **Epic 7**：T7.1.a/b 兩份 proposal 全落；specs/tasks 靠 P0.K 接力
+> 6. **P0.E 二次糾偏**：配置檔改了但 checkpoint 仍 100% 產出 → 需找真實 hook 源頭（P0.L）
+> 7. **工作樹現況**：僅 `?? docs/archive/PRD文件.txt` 單一殘檔（v2.9 P0.H 編碼遺留）
