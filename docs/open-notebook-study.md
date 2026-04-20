@@ -239,14 +239,15 @@ Current measured result in this workspace after adding
 `scripts/smoke_open_notebook.py`:
 
 ```text
-status=vendor-unready message=vendor path has only .git metadata and no checked-out files: vendor\open-notebook version=?
+status=vendor-incomplete message=vendor checkout is incomplete: .git contains [config.lock, description, hooks, info] but is missing [HEAD, config, objects, refs] under vendor\open-notebook version=?
 ```
 
 Interpretation:
 
-- the smoke path now fails with an explicit vendor-state diagnosis
+- the smoke path now distinguishes a half-finished clone from a generic missing checkout
 - the failure is no longer the vague `ImportError: No module named 'open_notebook'`
 - there is still no checked-out Python package under `vendor/open-notebook`
+- the local vendor dir specifically looks like an interrupted clone, not a usable git checkout
 
 Practical consequence:
 
@@ -273,7 +274,7 @@ The biggest near-term risks are:
 ## Next Build Order
 Recommended next order after this study:
 
-1. P0.X: add import smoke script and capture the exact failure mode
+1. complete a real `vendor/open-notebook` checkout instead of the current interrupted clone
 2. keep using the existing seam skeleton as the single boundary
 3. only after a real checkout exists, implement a loader that attempts import
 4. then wire a real service wrapper around vendor `ask_service`

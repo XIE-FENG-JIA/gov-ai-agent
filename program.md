@@ -214,7 +214,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗**：`python scripts/smoke_open_notebook.py 2>&1 | head -1` 不含 `ImportError: No module named 'open_notebook'`
   - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25
   - commit（ACL 解除後）: `chore(vendor): verify open-notebook importability`
-  - **完成（2026-04-20）**：新增 `scripts/smoke_open_notebook.py` 與 `tests/test_smoke_open_notebook_script.py`，支援 flat/src layout import probe、缺依賴回報與 vendor `.git` stub 診斷；實跑 `python scripts/smoke_open_notebook.py` 目前回 `status=vendor-unready`，但已避免落回 `ImportError: No module named 'open_notebook'`
+  - **完成（2026-04-20）**：新增 `scripts/smoke_open_notebook.py` 與 `tests/test_smoke_open_notebook_script.py`，支援 flat/src layout import probe、缺依賴回報與 vendor `.git` stub 診斷；2026-04-20 16:47 追加半殘 clone 判別，實跑 `python scripts/smoke_open_notebook.py` 目前回 `status=vendor-incomplete`（`.git` 只有 `config.lock` / `description` / `hooks` / `info`，缺 `HEAD` / `config` / `objects` / `refs`），但已避免落回 `ImportError: No module named 'open_notebook'`
 
 ### P0.Y — 🟢 ACL-free·agent 側 audit-only 自救原型（v3.8 新增）
 
@@ -230,6 +230,44 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25（誠信類）
   - commit（ACL 解除後）: `feat(scripts): audit-only plan for rewriting auto-commit history to conventional format`
   - **完成（2026-04-20）**：新增 `scripts/rewrite_auto_commit_msgs.py` 與 `tests/test_rewrite_auto_commit_msgs.py`；實跑 `python scripts/rewrite_auto_commit_msgs.py` 產 `docs/rescue-commit-plan.md` **44 行 / 33 筆 rewrite candidates**，覆蓋近 40 commits 的 `auto-commit:` 歷史，且不觸碰 `.git` 歷史
+
+### P0.Z — 🟢 ACL-free·Epic 2 真 import（v3.9 新增；5 分鐘可破）— 🔴 v3.9 首位
+
+- [ ] **P0.Z** ✅ 不依賴 ACL：`vendor/open-notebook` 半殘 clone 修復 / 重新 checkout
+  - **v3.9 背景**：P0.X smoke 實測 `status=vendor-incomplete`（`.git` 缺 `HEAD` / `config` / `objects` / `refs` → 連 checkout 都做不到，只有 `config.lock` / `description` / `hooks` / `info` 殘檔）；P1.4 標「clone 成功」為誤判——**半殘 clone 等同沒 clone**。Epic 2 真實可 import 前置
+  - 產出：
+    - `rm -rf vendor/open-notebook` → `git -C vendor clone --depth 1 https://github.com/lfnovo/open-notebook.git` 重新 clone；若網路 egress 仍擋 → 記 `docs/open-notebook-study.md §6: vendor clone blocked — needs Admin egress`
+    - clone 成功後：`python scripts/smoke_open_notebook.py` 應由 `vendor-incomplete` 切到 `import-ok` 或 `dep-missing: [...]`
+    - 若 Python 依賴缺，清單寫 `docs/open-notebook-study.md §6`（接 P1.3 litellm smoke）
+  - **驗 1**：`ls vendor/open-notebook/*.py vendor/open-notebook/pyproject.toml 2>&1 | wc -l` ≥ 1
+  - **驗 2**：`python scripts/smoke_open_notebook.py 2>&1 | grep -c "vendor-incomplete\|vendor-unready"` == 0
+  - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25（Admin egress 擋則記 blocker 非違規）
+  - commit（ACL 解除後）: `chore(vendor): re-clone open-notebook to repair incomplete .git stub`
+
+### P0.S-ADMIN — 🟢 ACL-free·Admin 治本 audit（v3.9 新增；15 分鐘可破）
+
+- [ ] **P0.S-ADMIN** ✅ 不動 HEAD / 不依賴 ACL：定位 AUTO-RESCUE 腳本源頭並產治本 SOP
+  - **v3.9 背景**：P0.L 已證「源頭不在 repo」；P0.Y audit-only 已準備 rebase plan，缺 Admin 側 template 替換位置定位
+  - 產出：
+    - `scripts/find_auto_commit_source.py`：掃 `$HOME/.claude/`、`$HOME/Documents/PowerShell/`、Task Scheduler（`schtasks /query /fo LIST /xml > /tmp/tasks.xml`）尋 `auto-commit:` / `auto-engineer checkpoint` 字串
+    - `docs/admin-rescue-template.md`：定位結果 + 一行替換建議（`auto-commit: auto-engineer checkpoint (<ts>)` → `chore(rescue): restore auto-engineer working tree (<ISO8601>) — files=<N>`）；三節：§candidates / §template-diff / §admin-action
+  - **驗 1**：`scripts/find_auto_commit_source.py` 至少輸出 1 候選位置（或明確 `not found` 報告）
+  - **驗 2**：`grep -c "§candidates\|§template-diff\|§admin-action" docs/admin-rescue-template.md` ≥ 3
+  - **非破壞承諾**：腳本 **禁** 改寫任何 `$HOME/` 檔；只讀 + report
+  - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25（誠信類）
+  - commit（ACL 解除後）: `docs(auto-engineer): locate AUTO-RESCUE source + admin template diff`
+
+### T9.8-P0 — 🟢 ACL-free·openspec baseline（v3.9 升 P0；20 分鐘可破）
+
+- [ ] **T9.8-P0** ✅ 不依賴 ACL：`openspec/specs/` baseline capability 建檔
+  - **v3.9 背景**：`ls openspec/specs/` 實測 empty；T7.4 Spectra coverage 補洞需 baseline specs 前置；Spectra 規格驅動的 single source of truth 斷裂
+  - 產出：
+    - `openspec/specs/sources.md`：從 `01-real-sources/specs/sources/spec.md` 抽 baseline capability；去除 change-specific 段，保留 `BaseSourceAdapter` 契約、`PublicGovDoc` 欄位、授權/合規要求
+    - `openspec/specs/open-notebook-integration.md`：從 `02-open-notebook-fork/specs/fork/spec.md` 同法抽；保留 `OpenNotebookAdapter` Protocol、three-mode contract、vendor seam 邊界
+  - **驗 1**：`ls openspec/specs/*.md | wc -l` ≥ 2
+  - **驗 2**：`wc -l openspec/specs/sources.md` ≥ 30 AND `wc -l openspec/specs/open-notebook-integration.md` ≥ 30
+  - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
+  - commit（ACL 解除後）: `docs(spec): add sources + open-notebook-integration baseline capabilities`
 
 ---
 
@@ -399,7 +437,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗**：`wc -l docs/architecture.md` ≥ 80 AND `grep -c "## " docs/architecture.md` ≥ 5
   - commit（ACL 解後）: `docs(architecture): add v1 architecture overview covering Epic 1-3`
 
-- [~] **P1.6（v3.3 NEW）→ v3.8 併入 T9.6** engineer-log.md 月度歸檔與 T9.6 同件，避免雙軌顆粒度漂移；執行以 T9.6 為單一事實來源（當前 1300 行 / 閾值 ≤ 500）
+- [x] **P1.6（v3.3 NEW）→ v3.8 併入 T9.6** engineer-log.md 月度歸檔與 T9.6 同件，避免雙軌顆粒度漂移；已以 T9.6 完成封存（主檔 293 行 / 封存檔 1087 行）
 
 - [x] **P1.7（v3.4 NEW）✅ ACL-free** `src/core/llm.py` 定位 — Epic 2 前置
   - **背景**：P0.B 盤點標「Epic 2；LiteLLM/OpenRouter/Ollama provider 工廠，直接支撐 T2.0.a / T2.6 / T2.8」但 Epic 2 文字未反映；啟動 T2.6 ask_service 薄殼時會撞到 provider 選擇 / embedding 工廠設計窗口
@@ -639,14 +677,15 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗**：`Get-ChildItem -File *.ps1,*.docx` == 0
   - commit（ACL 解後）: `chore(repo): archive legacy ps1/docx from root to docs/archive + tests/fixtures`
 
-- [ ] **T9.6（v3.7 NEW；v3.8 本輪必落，連 2 輪延宕 = 3.25）✅ ACL-free** engineer-log.md 月度封存（現 1300 行）
-  - **背景**：engineer-log.md 當前 1158 行 / ~95KB，Read 需 offset + 多次；v3.3 列 P1.6 未做
+- [x] **T9.6（v3.7 NEW；v3.8 本輪必落，連 2 輪延宕 = 3.25）✅ ACL-free** engineer-log.md 月度封存（已完成）
+  - **背景**：engineer-log.md 曾達 1158+ 行 / ~95KB，Read 需 offset + 多次；v3.3 列 P1.6 未做
   - 產出：
     - `docs/archive/engineer-log-202604a.md`：切 v3.1 以前（行 1-750 左右）反思段封存
     - `engineer-log.md`：主檔僅留 v3.3 以後（近 7 天）
     - 檔頭加 reference marker 指向 archive
   - **驗**：`wc -l engineer-log.md` ≤ 500 AND `wc -l docs/archive/engineer-log-202604a.md` ≥ 500
   - commit: `chore(log): archive engineer-log pre-v3.3 reflections to 202604a`
+  - **完成（2026-04-20）**：已產 `docs/archive/engineer-log-202604a.md`（1087 行），主檔 `engineer-log.md` 收斂為 293 行並加上 archive marker
 
 ---
 
@@ -687,7 +726,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **P0.V-flaky (v3.5)** `test_ingest_keeps_fixture_backed_corpus_when_only_fixture_data_is_available` 本輪全量 3590 passed 0 failed 未重現（處置同 P0.S-stale；三軸 SOP 保留供未來）
 - [x] **P0.T-SPIKE (v3.7)** `scripts/live_ingest.py` + `docs/live-ingest-urls.md` + `tests/test_live_ingest_script.py` 已落地；`python scripts/live_ingest.py --help` 正常、`pytest tests/test_live_ingest_script.py -q` = 4 passed，並產出 `docs/live-ingest-report.md` 記錄目前 `mojlaw` require-live probe 仍被 fixture fallback 擋下
 - [x] **P0.W (v3.8)** `src/integrations/open_notebook/` seam 骨架 + `src/cli/open_notebook_cmd.py` 已落地；`OpenNotebookAdapter` Protocol、`off/smoke/writer` 三模式工廠、vendor `.git` stub 偵測與 writer-mode loud fail 已就位；`pytest tests/test_integrations_open_notebook.py -q` = 7 passed，`GOV_AI_OPEN_NOTEBOOK_MODE=smoke python -m src.cli.main open-notebook smoke --question "hi" --doc "first evidence"` 非空
-- [x] **P0.X (v3.8)** vendor smoke import 已落地；`scripts/smoke_open_notebook.py` 會先 probe vendor checkout，再驗 flat/src layout import，缺依賴回報 `missing=<module>`；實跑 `python scripts/smoke_open_notebook.py` 目前回 `status=vendor-unready`（因 `vendor/open-notebook` 只有 `.git`），但已證明 smoke path 不再噴 `ImportError: No module named 'open_notebook'`
+- [x] **P0.X (v3.8)** vendor smoke import 已落地；`scripts/smoke_open_notebook.py` 會先 probe vendor checkout，再驗 flat/src layout import，缺依賴回報 `missing=<module>`；2026-04-20 16:47 實跑已把現況收斂成 `status=vendor-incomplete`（`.git` 僅殘留 `config.lock` / `description` / `hooks` / `info`），不再只說「只有 `.git`」，且 smoke path 不會噴 `ImportError: No module named 'open_notebook'`
 - [x] **P0.Y (v3.8)** audit-only 自救原型：`scripts/rewrite_auto_commit_msgs.py` + `tests/test_rewrite_auto_commit_msgs.py` + `docs/rescue-commit-plan.md` 已落地；實跑報告 44 行 / 33 筆 rewrite candidates，未改任何 git 歷史
 - [x] **T1.12-HARDEN (v3.4)** nightly live smoke 禁 silent fixture fallback；`tests/integration/test_sources_smoke.py` 把 fixture_dir 指向不存在路徑，upstream 掛 → integration FAIL 不再假綠
 - [x] **T1.6.a (v3.4)** 校正 `kb_data/examples/*.md` 合成基線為 155，`tests/test_mark_synthetic.py` 新增 guard
@@ -726,23 +765,25 @@ Epic 7 負責建置。建置完成前，program.md 是單一事實來源。
 
 ---
 
-**版本**：v3.8（2026-04-20 16:25 — P0.W seam 骨架已落地；`pytest tests/ -q` = 3613 passed / 10 skipped / 0 failed；`src/integrations/open_notebook/__init__.py` 已存在，六硬指標升為 2/7 PASS）
+**版本**：v3.9（2026-04-20 16:55 — P0.W/P0.X/P0.Y 三顆 ACL-free 骨牌全破；`pytest tests/ -q` = **3620 passed / 10 skipped / 0 failed / 585.52s**（v3.8 header 3613 → +7）；七硬指標 **4/7 PASS**（新破指標 6 — smoke graceful vendor-incomplete 非 ImportError）；v3.9 新增 **P0.Z vendor re-clone**、**P0.S-ADMIN Admin 治本 audit**、**T9.8-P0 openspec baseline capability** 三條 ACL-free P0；T9.6 engineer-log 封存已被 runtime 自動完成（主檔 380 行 / archive 1087 行））
 
-**下一輪重排觸發**（v3.8 七項硬指標，依執行順序；當前 PASS 狀態指標 2/7）：
-1. ✅ `pytest tests/ -q` 0 failed（目前 **3613 passed / 10 skipped / 0 failed**）
-2. ❌ `git log --oneline -20 | grep -c "auto-commit:"` ≤ 4（目前 16；P0.S / P0.Y 兩路並攻）
-3. ❌ `icacls .git 2>&1 | grep -c DENY` == 0（目前 2；P0.D，Admin 依賴連 >14 輪）
+**下一輪重排觸發**（v3.9 七項硬指標，依執行順序；當前 PASS 狀態 **4/7**）：
+1. ✅ `pytest tests/ -q` 0 failed（目前 **3620 passed / 10 skipped / 0 failed / 585.52s**；v3.8 header 3613 → +7）
+2. ❌ `git log --oneline -20 | grep -c "auto-commit:"` ≤ 4（目前 14；v3.8 起 -2；P0.S-ADMIN + P0.Y 兩路並攻）
+3. ❌ `icacls .git 2>&1 | grep -c DENY` == 0（目前 2；P0.D，Admin 依賴連 >16 輪）
 4. ✅ `ls src/integrations/open_notebook/__init__.py` 存在（P0.W；Epic 2 第一顆骨牌）
 5. ✅ `wc -l docs/open-notebook-study.md` ≥ 80（P1.10；T2.1 等價）
-6. ✅ `python scripts/smoke_open_notebook.py 2>&1` 不噴 `ImportError`（P0.X 已落；當前輸出 `status=vendor-unready`，待 Admin 補齊 vendor checkout）
+6. ✅ `python scripts/smoke_open_notebook.py 2>&1` 不噴 `ImportError`（P0.X；graceful `vendor-incomplete`）→ **P0.Z 目標再升：切 `import-ok`/`dep-missing`**
 7. ❌ `grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` ≥ 9 AND `grep -l "fixture_fallback: true" kb_data/corpus/**/*.md | wc -l` == 0（P0.T-LIVE；Admin 解 egress 後）
 
-**健康護欄**（v3.8 必須持續綠）：
-- `pytest tests/ -q` FAIL 數 == 0（目前 3599 passed / 10 skipped / 0 failed）
+**v4.0 目標**：**5/7 PASS**（新破指標 2 ≤ 12 — P0.S-ADMIN 定位源頭 + Admin 側換模板）；若仍 4/7 = 承諾漂移 v4（3.25 紅線 4）。
+
+**健康護欄**（v3.9 必須持續綠）：
+- `pytest tests/ -q` FAIL 數 == 0（目前 3620 passed / 10 skipped / 0 failed）
 - `grep -l "RequestException" src/sources/*.py | wc -l` ≥ 5（目前 6）
 - `grep -c "\[ \]" openspec/changes/01-real-sources/tasks.md` == 0（目前 0）
 - `wc -l docs/architecture.md` ≥ 80（目前 273）
-- `wc -l engineer-log.md` ≤ 500（目前 1300 — T9.6 待封存）
+- `wc -l engineer-log.md` ≤ 500（目前 380；T9.6 已自動封存至 `docs/archive/engineer-log-202604a.md` 1087 行）
 
 **P0.S 連 >14 輪紅線未解**：conventional commit 規則寫了卻近 20 條 16/20 仍 `auto-commit:` = 誠信級漏洞；v3.8 起 P0.Y（agent 側 audit-only 自救原型）作為 SPIKE，先產 `docs/rescue-commit-plan.md` 記錄所有 AUTO-RESCUE commit 與建議訊息，不動 `.git`，打破「因 ACL 擋所以不動」的第八層藉口。
 **P0.T 承諾仍懸空 9+ 輪（v2.8 起）**：v3.5 拆 SPIKE + LIVE；v3.7 SPIKE 已落，LIVE 等 Admin 解 egress。

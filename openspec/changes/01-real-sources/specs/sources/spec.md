@@ -63,7 +63,7 @@ compliance boundary.
 
 The compliance rules are:
 
-- only public government sources may be onboarded
+- only public government sources SHALL be onboarded
 - robots.txt restrictions MUST be respected
 - request pacing MUST be at least 2 seconds between upstream requests unless the upstream explicitly allows more
 - the User-Agent MUST identify the project as `GovAI-Agent/1.0`
@@ -77,7 +77,7 @@ The compliance rules are:
 
 ### Requirement: Synthetic content stays outside real-source retrieval
 
-Synthetic fixtures may exist for tests and offline development, but they MUST
+Synthetic fixtures SHALL exist only for tests and offline development, and they MUST
 remain explicitly marked and MUST NOT be treated as real-source corpus entries.
 
 #### Scenario: Synthetic fixture is excluded from real corpus semantics
@@ -90,8 +90,9 @@ remain explicitly marked and MUST NOT be treated as real-source corpus entries.
 ### Requirement: The first approved source set is intentionally narrow
 
 The first approved candidate sources for this change are `data.gov.tw`,
-`law.moj.gov.tw`, and Executive Yuan RSS. Additional sources may be added later,
-but they are out of scope for this first change set.
+`law.moj.gov.tw`, and Executive Yuan RSS. Additional sources SHALL be added
+later only through follow-up change sets, and they are out of scope for this
+first change set.
 
 #### Scenario: New work maps to the approved first slice
 
