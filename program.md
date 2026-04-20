@@ -1,6 +1,6 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **版本**：v3.4（2026-04-20 15:00 — v3.3 五硬指標 4/5 PASS；`tests/ -q = 3588 passed / 0 failed`；工作樹 `?? docs/architecture.md` 已在 P1.5；**焦點：誠信血債 P0.S + Epic 1 真通過 P0.T + ACL P0.D**）
+> **版本**：v3.4（2026-04-20 15:00 — v3.3 五硬指標 4/5 PASS；`tests/ -q` 本輪實測 **3589 passed / 1 FAILED / 479s**（單跑 PASS，全量 FAIL = test 汙染 flaky，新 P0.V）；工作樹 `?? docs/architecture.md` 已在 P1.5；**焦點：誠信血債 P0.S + flaky 汙染 P0.V + Epic 1 真通過 P0.T + ACL P0.D**）
 > **v3.4 變更**（v3.3 → v3.4）：
 > - **關閉**（搬歷史）：P0.O（假綠已補 mock + empty-body）、P0.P（`_common.py` + 5 adapter 對稱，`grep RequestException` = 6）、P0.Q（`02-open-notebook-fork/specs/fork` + tasks 已落）、P0.R（`01-real-sources/tasks.md` 全 `[x]`，AUTO-RESCUE 9baa3e8 落版）、P0.S-stale（複驗 30 + 3588 passed，未重現）、P1.5（`docs/architecture.md` 273 行已落）、T1.11（`sources status/stats` CLI）、T1.12（nightly integration smoke）
 > - **合併**：P0.S + P0.L-Admin 本質同件（Admin 側 AUTO-RESCUE 腳本 commit message）→ 合為單一 **P0.S**；近 20 commits 仍 20/20 `auto-commit:`（連 19 輪誠信缺口）
@@ -108,10 +108,10 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ---
 
-## P0 — 阻斷性回歸（v3.4 三條活線：誠信 + ACL + 真通過）
+## P0 — 阻斷性回歸（v3.4 四條活線：誠信 + 汙染 + ACL + 真通過）
 
-> **v3.4 狀態（15:00）**：測試 **3588 passed / 0 failed** / 493s；工作樹：M `program.md` / M `src/sources/ingest.py` / M `tests/test_sources_ingest.py` / `?? docs/architecture.md`；`.git` DENY ACL 連 11 輪；v3.3 五硬指標 **4/5 PASS**（僅差 P0.S 誠信）；**P0.T 升活線**：fixture fallback md 9 份已落 + P0.U 護欄啟動，但真 live 抓取仍零 → Epic 1 真通過未成立
-> v3.3 歷史：P0.O/P/Q/R/S-stale 全閉；測試 3572 → 3588 passed
+> **v3.4 狀態（15:00）**：測試本輪實測 **3589 passed / 1 FAILED / 10 skipped / 1363 warnings / 479.74s**；失敗項 `tests/test_sources_ingest.py::test_ingest_keeps_fixture_backed_corpus_when_only_fixture_data_is_available`（**單跑 4.03s PASS / 全量 FAIL = flaky 汙染，v3.3 紀錄 3588/0 是文案驅動 3.25**）；工作樹：M `program.md` / M `src/sources/ingest.py` / M `tests/test_sources_ingest.py` / `?? docs/architecture.md`；`.git` DENY ACL 連 11 輪
+> v3.3 歷史：P0.O/P/Q/R/S-stale 當時宣稱閉，但 P0.S-stale 僅單跑驗 30 passed 就關 = v3.2 紅線 1（倖存者偏差）本身；本輪全量 1 FAIL 即為復發信號
 > v3.1-3.2 歷史：Epic 1 T1.2.a/b/c + T1.3 + T1.4 全閉；5 adapter + CLI + ingest pipeline 落地；首次爆假綠建「倖存者偏差驗證 = 3.25」紅線
 
 ### P0.S — 🔴 誠信血債·首要：Admin 側 AUTO-RESCUE 腳本 commit message（v3.4 合併 P0.L-Admin）
@@ -140,6 +140,21 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗**：`icacls .git 2>&1 | grep -c DENY` == 0
   - **BLOCKER 範圍**：未過 → 所有 ACL-free 工作樹項目只能靠 AUTO-RESCUE 代 commit
   - commit（解除後）: `chore(repo): remove foreign SID DENY ACL on .git`
+
+### P0.V — 🔴 flaky 汙染·血債（v3.4 新增）：`test_ingest_keeps_fixture_backed_corpus_when_only_fixture_data_is_available`
+
+- [ ] **P0.V** 🔴 不依賴 ACL：全量 `pytest tests -q` 該 case FAIL（line 128 `assert records == []`），單跑 `pytest tests/test_sources_ingest.py::test_ingest_keeps_fixture_backed_corpus_when_only_fixture_data_is_available -v` PASS = 前置 test 汙染
+  - **背景**：v3.4 本輪第一次實測全量打臉 v3.3 反思的 `3588 passed / 0 failed` 文字；單跑/全量不一致 = 共享狀態汙染（monkeypatch 逃逸 / `_adapter_registry` 全局 mutation / `PublicGovDoc` 類 mutation 嫌疑最大）
+  - **修法三段式**：
+    - bisect：`pytest tests/ --lf` 失敗後 `pytest tests/test_sources_ingest.py -p no:randomly -x` 全跑該檔；若仍爆 → `pytest tests -p no:randomly --tb=line | head -50` 找 last passing 前置
+    - 或 `pytest tests/test_sources_ingest.py::test_main_uses_registry_and_prints_written_paths tests/test_sources_ingest.py::test_ingest_keeps_fixture_backed_corpus_when_only_fixture_data_is_available -v` 二人組跑
+    - 定位汙染源後加 `autouse fixture` 或 `monkeypatch.undo()` 補齊隔離
+  - **驗 1**：`pytest tests -q` = 0 failed（目前 1）
+  - **驗 2**：`pytest tests/ -p no:randomly -q` 也為 0 failed（test order 獨立）
+  - **驗 3**：`pytest tests/test_sources_ingest.py -q` 單檔也 0 failed
+  - **延宕懲罰**：誠信類（文案驅動 v3.3 紅線）連 1 輪延宕 = 3.25
+  - **汲取**：P0.S-stale「復驗一次就關」是倖存者偏差（v3.2 紅線 1），本輪不再犯；flaky 須三軸驗（全量 / no:randomly / 單檔）
+  - commit（ACL 解除後）: `fix(sources): isolate ingest fixture-backed corpus test from cross-test pollution`
 
 ### P0.T — 🟢 Epic 1 真通過：3 來源 × 3 份真實 live md（v3.4 升活線）
 
@@ -590,18 +605,20 @@ Epic 7 負責建置。建置完成前，program.md 是單一事實來源。
 
 **版本**：v3.4（2026-04-20 15:00 — P0 從 9 條精簡至 3 條活線；P0.T 升活線）
 
-**下一輪重排觸發**（v3.4 三項硬指標，依執行順序）：
-1. `git log --oneline -5 | grep -c "auto-commit:"` == 0（P0.S；Admin 依賴，誠信血債連 19 輪）
-2. `icacls .git 2>&1 | grep -c DENY` == 0（P0.D；Admin 依賴連 11 輪）
-3. `grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` ≥ 9 AND `grep -l "fixture_fallback: true" kb_data/corpus/**/*.md | wc -l` == 0（P0.T；Epic 1 真通過）
+**下一輪重排觸發**（v3.4 四項硬指標，依執行順序）：
+1. `pytest tests -q` + `pytest tests -p no:randomly -q` 兩軸皆 FAIL == 0（P0.V；本輪新血債，目前全量 1 failed）
+2. `git log --oneline -5 | grep -c "auto-commit:"` == 0（P0.S；Admin 依賴，誠信血債連 19 輪）
+3. `icacls .git 2>&1 | grep -c DENY` == 0（P0.D；Admin 依賴連 11 輪）
+4. `grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` ≥ 9 AND `grep -l "fixture_fallback: true" kb_data/corpus/**/*.md | wc -l` == 0（P0.T；Epic 1 真通過）
 
 **健康護欄**（v3.4 必須持續綠）：
-- `pytest tests/ -q` FAIL 數 == 0（目前 **3588 passed / 0 failed**）
+- `pytest tests/ -q` FAIL 數 == 0（目前 **3589 passed / 1 failed = P0.V flaky 汙染**）
 - `grep -l "RequestException" src/sources/*.py | wc -l` ≥ 5（目前 6）
 - `grep -c "\[ \]" openspec/changes/01-real-sources/tasks.md` == 0（目前 0）
 - `wc -l docs/architecture.md` ≥ 80（目前 273）
 
-**P0.S 連 19 輪紅線未解**：conventional commit 規則寫了卻連 20/20 條 checkpoint 假提交照樣進歷史，這是誠信級漏洞。P0.T 升活線：fixture fallback 護欄雖擋住假冒但「真通過」承諾仍懸空 v2.8 起 6+ 輪。
+**P0.S 連 19 輪紅線未解**：conventional commit 規則寫了卻連 20/20 條 checkpoint 假提交照樣進歷史 = 誠信級漏洞。
+**P0.V 本輪新紅線**：v3.3 反思寫「3588 passed / 0 failed」= 文案驅動（v3.3 紅線 2），agent 本輪踩雷；v3.4 規劃引用文字未親跑 = 3.25。P0.T 真通過承諾仍懸空 v2.8 起 6+ 輪。
 
 **紅線恆定**：
 - **紅線 1（v3.2）**：倖存者偏差驗證 = 假綠 = 3.25 — 驗收禁依賴 cached 目錄 / proxy / 本機狀態；`pytest tmp_path + mock 網路` = 唯一硬驗
