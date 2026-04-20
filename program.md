@@ -175,7 +175,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
     - 每個 adapter 各補 `test_<adapter>_offline_fallback.py` 案例（mock RequestException）
   - **驗**：`grep -l "RequestException" src/sources/*.py | wc -l` ≥ 5
   - **驗**：`pytest tests/test_mojlaw_adapter.py tests/test_datagovtw_adapter.py tests/test_executive_yuan_rss_adapter.py tests/test_mohw_rss_adapter.py tests/test_fda_api_adapter.py tests/test_sources_base.py tests/test_sources_ingest.py -q` = **34 passed**
-  - **驗**：`pytest tests/ -q` = **3576 passed / 0 failed**
+  - **驗**：`pytest tests/ -q` = **3587 passed / 0 failed**
   - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
   - commit（ACL 解除後）: `refactor(sources): unify adapter error handling via _common fallback`
 

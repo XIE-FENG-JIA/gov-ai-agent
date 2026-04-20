@@ -84,7 +84,7 @@ def _render_status_result(snapshots: list[SourceSnapshot]) -> None:
             latest = f"{snapshot.latest_corpus_path.name} @ {latest_ts}"
         last_crawl = "-"
         if snapshot.last_crawl_mtime is not None:
-            last_crawl = datetime.fromtimestamp(snapshot.last_crawl_mtime).strftime("%Y-%m-%d %H:%M")
+            last_crawl = datetime.fromtimestamp(snapshot.last_crawl_mtime).strftime("%Y-%m-%d")
         console.print(
             f"{snapshot.source_key}: corpus={snapshot.corpus_count} raw={snapshot.raw_count} "
             f"raw_bytes={snapshot.raw_bytes} last_crawl={last_crawl} latest={latest}"
