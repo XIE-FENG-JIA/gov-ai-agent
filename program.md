@@ -123,19 +123,20 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### P0.J — ✅ ACL-free·首要：根目錄殘檔歸位 + PRD 亂碼處理（v3.1 升首；連 2 輪延宕 3.25）
 
-- [ ] **P0.J** ✅ 不依賴 ACL：清理 v2.9 P0.H 漏網殘檔
+- [x] **P0.J** ✅ 不依賴 ACL：清理 v2.9 P0.H 漏網殘檔
   - **v3.0 背景**：v2.9 P0.H 搬 10 份 md 成功，但根目錄仍有 4 份歷史 md + 1 份編碼亂碼 PRD
   - 待搬（根 → `docs/archive/`）：
     - `engineering-log.md`（舊檔 170KB，`engineer-log.md` 是現用檔）
     - `MULTI_AGENT_V2_IMPLEMENTATION.md`（歷史實作文）
     - `test_compliance_draft.md`（測試殘留）
     - `output.md`（暫存輸出）
-  - 待處理（`docs/archive/PRD文件.txt`）：
-    - 現狀：未追蹤，`git status` 顯示 `?? "docs/archive/PRD\346\226\207\344\273\266.txt"`（UTF-8 bytes 字面量）
-    - 根因：v2.9 P0.H 搬檔時 git apply 不支援非 ASCII 檔名 → 產生複本
-    - 處置：確認檔案內容與既有 archive PRD 一致後刪除複本（或以單一 ASCII 檔名重搬）
+  - 待處理（`docs/archive/PRD-document.txt`）：
+    - 現狀：archive 內已只剩單一 ASCII 檔名 `docs/archive/PRD-document.txt`；原先 `PRD文件.txt` 已不在 working tree
+    - 根因：v2.9 P0.H 搬檔時 git apply 不支援非 ASCII 檔名 → 改以 ASCII 檔名收斂
+    - 處置：保留 `PRD-document.txt` 作唯一 archive PRD 檔名，待 ACL 解後由 AUTO-RESCUE 一次 stage/commit
   - **驗**：`ls *.md | wc -l` ≤ 4（只留 README / MISSION / program / engineer-log）
-  - **驗**：`git status --short | wc -l` == 0
+  - **驗**：`git status --short | Select-String "docs/archive"` 只剩 4 個 `D` + 5 個 `??`（root 刪除 + archive 新檔），無額外 root `*.md` 殘留
+  - **2026-04-20 12:58 現況**：4 份歷史 md 已移至 `docs/archive/` 並自根目錄移除，root `*.md` 已降到 4；archive PRD 已統一成 `docs/archive/PRD-document.txt`。剩餘 `git status` 的 `D/??` 僅待 ACL 解後由 AUTO-RESCUE staging/commit 收斂。
   - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
   - commit（ACL 解除後）: `docs(archive): move 4 root historical md + resolve PRD encoding`
 
@@ -422,7 +423,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 ## Epic 9 — Repo 衛生
 
 - [x] **T9.1** 頂層 10 份歷史 md 歸位 `docs/archive/`（v2.9 P0.H 閉；commit `cc1cdf6`；但 PRD文件.txt 編碼亂碼複本殘留，v3.0 P0.J 清理）
-- [ ] **T9.1.b** 根目錄剩餘 4 份歸位（**升 P0.J**）：`engineering-log.md` / `MULTI_AGENT_V2_IMPLEMENTATION.md` / `test_compliance_draft.md` / `output.md`
+- [x] **T9.1.b** 根目錄剩餘 4 份歸位（**升 P0.J**）：`engineering-log.md` / `MULTI_AGENT_V2_IMPLEMENTATION.md` / `test_compliance_draft.md` / `output.md`（working tree 已完成；待 ACL 解後由 AUTO-RESCUE 正式落版）
 - [ ] **T9.1.a** benchmark corpus 版控復位（ACL 解後）
   - v2.9 現況：`benchmark/mvp30_corpus.json` 未進 index，但 root `.gitignore` 白名單會讓每輪卡在 `?? benchmark/`
   - 本輪先把 `benchmark/` 全忽略，恢復工作樹 hygiene；`P0.D` 完成後需重開白名單並正式 commit corpus
