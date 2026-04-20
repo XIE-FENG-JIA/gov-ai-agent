@@ -22,6 +22,24 @@ def _writer_runtime_symbols():
 
 class WriterAskServiceMixin:
     @staticmethod
+    def _normalize_open_notebook_diagnostics(
+        diagnostics: dict[str, object],
+        *,
+        mode: str,
+        used_fallback: bool,
+    ) -> dict[str, str]:
+        normalized = {
+            str(key): str(value)
+            for key, value in diagnostics.items()
+        }
+        normalized.setdefault("service", "open-notebook")
+        normalized.setdefault("mode", mode)
+        if used_fallback:
+            normalized.setdefault("used_fallback", "true")
+            normalized.setdefault("fallback_stage", "service")
+        return normalized
+
+    @staticmethod
     def _build_open_notebook_docs(examples: list[dict]) -> list[dict[str, object]]:
         docs: list[dict[str, object]] = []
         for index, example in enumerate(examples, start=1):
@@ -141,7 +159,11 @@ class WriterAskServiceMixin:
 
         try:
             result = service.ask(request)
-            self._last_open_notebook_diagnostics = dict(result.diagnostics)
+            self._last_open_notebook_diagnostics = self._normalize_open_notebook_diagnostics(
+                dict(result.diagnostics),
+                mode=runtime_mode,
+                used_fallback=result.used_fallback,
+            )
         except (runtime["IntegrationDisabled"], runtime["IntegrationSetupError"]) as exc:
             self._last_open_notebook_diagnostics = {
                 "service": "open-notebook",
