@@ -18,6 +18,28 @@ from .stub import (
 )
 
 
+def _probe_git_stub(path: Path) -> tuple[bool, str] | None:
+    git_dir = path / ".git"
+    if not git_dir.is_dir():
+        return None
+
+    git_entries = {entry.name for entry in git_dir.iterdir()}
+    if not git_entries:
+        return None
+    required_entries = ("HEAD", "config", "objects", "refs")
+    missing_entries = [entry for entry in required_entries if entry not in git_entries]
+    if not missing_entries:
+        return None
+
+    visible_entries = ", ".join(sorted(git_entries)) or "<empty>"
+    missing_text = ", ".join(missing_entries)
+    return (
+        False,
+        "vendor checkout is incomplete: "
+        f".git contains [{visible_entries}] but is missing [{missing_text}] under {path}",
+    )
+
+
 @runtime_checkable
 class OpenNotebookAdapter(Protocol):
     """Repo-owned adapter contract for ask/index entrypoints."""
@@ -41,6 +63,9 @@ def probe_vendor_runtime(vendor_path: Path | None = None) -> tuple[bool, str]:
 
     entries = [entry for entry in path.iterdir() if entry.name != ".git"]
     if not entries:
+        git_stub_probe = _probe_git_stub(path)
+        if git_stub_probe is not None:
+            return git_stub_probe
         return False, f"vendor path has only .git metadata and no checked-out files: {path}"
 
     has_python_project = any(

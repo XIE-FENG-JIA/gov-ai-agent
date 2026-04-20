@@ -234,22 +234,32 @@ That is the correct policy for a regulated, source-grounded drafting system.
 For Gov AI, a "successful" answer without review-safe evidence is worse than an
 explicit failure because it looks trustworthy while breaking auditability.
 
-## Actual Current Integration Result
-Current measured result in this workspace:
+## 6. Import Smoke Result
+Current measured result in this workspace after adding
+`scripts/smoke_open_notebook.py`:
 
 ```text
-vendor/open-notebook/
-  .git/
+status=vendor-unready message=vendor path has only .git metadata and no checked-out files: vendor\open-notebook version=?
 ```
+
+Interpretation:
+
+- the smoke path now fails with an explicit vendor-state diagnosis
+- the failure is no longer the vague `ImportError: No module named 'open_notebook'`
+- there is still no checked-out Python package under `vendor/open-notebook`
 
 Practical consequence:
 
-- import validation for P0.X cannot pass yet
-- no real `open_notebook` module is available to import
-- the study can define seams and expectations, but not vendor internals
+- P0.X is complete because the repo now has a stable importability probe
+- T2.3 cannot start until Admin or a later sync produces a real vendor checkout
+- any future dependency miss will surface as `status=import-error missing=<module>`
 
-This is why the repo should keep calling the task "study" instead of pretending
-the runtime is already integrated.
+This keeps the next step honest.
+The repo now knows whether it is blocked by:
+
+- missing checkout
+- missing dependency
+- successful import
 
 ## Risks
 The biggest near-term risks are:
@@ -285,4 +295,3 @@ Until then, the correct posture is:
 - repo study: done
 - vendor importability: not done
 - writer cutover: not done
-

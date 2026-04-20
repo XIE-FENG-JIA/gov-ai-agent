@@ -27,6 +27,21 @@ def test_probe_vendor_runtime_detects_git_stub(tmp_path: Path) -> None:
     assert "only .git metadata" in reason
 
 
+def test_probe_vendor_runtime_detects_incomplete_git_checkout(tmp_path: Path) -> None:
+    vendor_path = tmp_path / "open-notebook"
+    git_dir = vendor_path / ".git"
+    git_dir.mkdir(parents=True)
+    (git_dir / "config.lock").write_text("", encoding="utf-8")
+    (git_dir / "description").write_text("incomplete clone\n", encoding="utf-8")
+
+    is_ready, reason = probe_vendor_runtime(vendor_path)
+
+    assert is_ready is False
+    assert "vendor checkout is incomplete" in reason
+    assert "config.lock" in reason
+    assert "HEAD" in reason
+
+
 def test_get_adapter_defaults_to_off(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("GOV_AI_OPEN_NOTEBOOK_MODE", raising=False)
 
