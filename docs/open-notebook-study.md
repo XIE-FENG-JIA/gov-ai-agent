@@ -4,10 +4,9 @@
 This note closes T2.1 / P1.10 with a repo-first study of the planned
 `vendor/open-notebook` integration.
 
-The local checkout is still incomplete, so this document does not pretend to be
-a code-reading report of the real upstream runtime.
-It is an implementation study based on the approved repo specs, current seam
-code, and the observable local vendor state.
+The vendor checkout now exists locally and passes a flat-layout import smoke.
+This document remains repo-first because the adoption slice is still bounded by
+the approved seam, but it is no longer based on an incomplete clone.
 
 ## Sources Read
 The study is grounded in these repo-owned sources:
@@ -22,20 +21,23 @@ The study is grounded in these repo-owned sources:
 8. `src/integrations/open_notebook/stub.py`
 9. `src/cli/open_notebook_cmd.py`
 10. `tests/test_integrations_open_notebook.py`
+11. `vendor/open-notebook/pyproject.toml`
+12. `vendor/open-notebook/open_notebook/__init__.py`
 
 ## Local Facts
 Observed in this workspace today:
 
 - `vendor/open-notebook/` exists
-- that directory currently contains only `.git/`
-- there is no checked-out Python package under `vendor/open-notebook/`
+- the checkout includes `pyproject.toml`, `open_notebook/`, and the rest of the vendored repo
+- `python scripts/smoke_open_notebook.py` returns `status=ok`
 - `src/integrations/open_notebook/` already exists as a repo-owned seam skeleton
 - `pytest tests/test_integrations_open_notebook.py -q` passes
 - `python -m src.cli.main open-notebook --help` shows the smoke CLI
 
 This means Epic 2 is no longer "zero code".
 The seam is present.
-What is still missing is the real vendor runtime and a validated import path.
+The vendor runtime is now importable.
+What is still missing is real `ask_service` wiring through the repo-owned seam.
 
 ## What The Fork Is Supposed To Own
 Per the approved spec, the forked runtime is expected to own:
@@ -235,24 +237,23 @@ For Gov AI, a "successful" answer without review-safe evidence is worse than an
 explicit failure because it looks trustworthy while breaking auditability.
 
 ## 6. Import Smoke Result
-Current measured result in this workspace after adding
-`scripts/smoke_open_notebook.py`:
+Current measured result in this workspace:
 
 ```text
-status=vendor-incomplete message=vendor checkout is incomplete: .git contains [config.lock, description, hooks, info] but is missing [HEAD, config, objects, refs] under vendor\open-notebook version=?
+status=ok message=imported open_notebook successfully version=? origin=vendor\open-notebook\open_notebook\__init__.py
 ```
 
 Interpretation:
 
-- the smoke path now distinguishes a half-finished clone from a generic missing checkout
-- the failure is no longer the vague `ImportError: No module named 'open_notebook'`
-- there is still no checked-out Python package under `vendor/open-notebook`
-- the local vendor dir specifically looks like an interrupted clone, not a usable git checkout
+- the vendored checkout is present and importable from the current Python environment
+- the smoke path has crossed the `T2.0` bar and no longer reports a fake filesystem blocker
+- `open_notebook.__version__` is still unset, so the current smoke output reports `version=?`
+- this is import validation only, not proof that `ask_service` is wired or safe for writer mode
 
 Practical consequence:
 
-- P0.X is complete because the repo now has a stable importability probe
-- T2.3 cannot start until Admin or a later sync produces a real vendor checkout
+- P0.X and `T2.0` are complete because the repo now has a stable importability probe
+- `T2.3` still cannot start because import success is not the same as seam integration
 - any future dependency miss will surface as `status=import-error missing=<module>`
 
 This keeps the next step honest.

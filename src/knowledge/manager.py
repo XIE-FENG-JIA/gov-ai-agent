@@ -5,15 +5,26 @@ import math
 import threading
 import warnings
 from collections import Counter
+from contextlib import contextmanager
 from typing import Any
 import uuid
 
 from cachetools import TTLCache
 
 from src.core.llm import LLMProvider
-from src.core.warnings_compat import (
-    suppress_known_third_party_deprecations,
-    suppress_known_third_party_deprecations_temporarily,
+import src.core.warnings_compat as warnings_compat
+
+
+@contextmanager
+def _noop_warning_suppression():
+    yield
+
+
+suppress_known_third_party_deprecations = warnings_compat.suppress_known_third_party_deprecations
+suppress_known_third_party_deprecations_temporarily = getattr(
+    warnings_compat,
+    "suppress_known_third_party_deprecations_temporarily",
+    _noop_warning_suppression,
 )
 
 suppress_known_third_party_deprecations()

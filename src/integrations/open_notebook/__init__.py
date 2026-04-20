@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
+import sys
 from typing import Mapping, Protocol, Sequence, runtime_checkable
 
 from .config import (
@@ -38,6 +40,37 @@ def _probe_git_stub(path: Path) -> tuple[bool, str] | None:
         "vendor checkout is incomplete: "
         f".git contains [{visible_entries}] but is missing [{missing_text}] under {path}",
     )
+
+
+def _candidate_sys_paths(path: Path) -> list[str]:
+    entries: list[str] = []
+    for candidate in (path, path / "src"):
+        if candidate.exists():
+            entries.append(str(candidate))
+    return entries
+
+
+def _probe_importable_project(path: Path) -> tuple[bool, str]:
+    module_name = "open_notebook"
+    candidate_entries = _candidate_sys_paths(path)
+    module = None
+    original_module = sys.modules.pop(module_name, None)
+    original_sys_path = list(sys.path)
+    sys.path[:0] = candidate_entries
+    try:
+        module = importlib.import_module(module_name)
+    except ImportError as exc:
+        missing = f" missing={exc.name}" if getattr(exc, "name", None) else ""
+        return False, f"vendor runtime import failed: {type(exc).__name__}: {exc}.{missing}".rstrip()
+    finally:
+        sys.path[:] = original_sys_path
+        sys.modules.pop(module_name, None)
+        if original_module is not None:
+            sys.modules[module_name] = original_module
+
+    version = str(getattr(module, "__version__", "?"))
+    origin = str(getattr(module, "__file__", ""))
+    return True, f"imported open_notebook successfully version={version} origin={origin}"
 
 
 @runtime_checkable
@@ -80,7 +113,7 @@ def probe_vendor_runtime(vendor_path: Path | None = None) -> tuple[bool, str]:
     if not has_python_project:
         return False, f"vendor path does not contain an importable Python project: {path}"
 
-    return True, "ok"
+    return _probe_importable_project(path)
 
 
 def get_adapter(mode: str | None = None) -> OpenNotebookAdapter:

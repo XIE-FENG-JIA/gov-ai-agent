@@ -1,19 +1,19 @@
 # Tasks: 02-open-notebook-fork
 
-- [ ] **T2.0** Vendor or clone `lfnovo/open-notebook` into `vendor/open-notebook` and confirm the repo can import it.  
+- [x] **T2.0** Vendor or clone `lfnovo/open-notebook` into `vendor/open-notebook` and confirm the repo can import it.  
   Requirements:
   - The first integration slice is import and smoke only
   Validation: `python -c "import sys; sys.path.insert(0, 'vendor/open-notebook'); print('ok')"`  
   Commit: `chore(vendor): add open-notebook fork target`
 
-- [ ] **T2.1** Study the vendored runtime and write `docs/open-notebook-study.md` covering entrypoints, ask-service flow, and extension seams.  
+- [x] **T2.1** Study the vendored runtime and write `docs/open-notebook-study.md` covering entrypoints, ask-service flow, and extension seams.  
   Requirements:
   - The forked runtime stays behind a narrow import boundary
   - The first integration slice is import and smoke only
   Validation: `rg -n "ask_service|router|retriev|notebook" docs/open-notebook-study.md`  
   Commit: `docs(integration): study open-notebook runtime seams`
 
-- [ ] **T2.2** Write `docs/integration-plan.md` choosing the repo-owned integration seam between `src/` and `vendor/open-notebook`.  
+- [x] **T2.2** Write `docs/integration-plan.md` choosing the repo-owned integration seam between `src/` and `vendor/open-notebook`.  
   Requirements:
   - The forked runtime stays behind a narrow import boundary
   - The first integration slice is import and smoke only

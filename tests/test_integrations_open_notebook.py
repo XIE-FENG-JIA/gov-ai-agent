@@ -52,6 +52,34 @@ def test_get_adapter_defaults_to_off(monkeypatch: pytest.MonkeyPatch) -> None:
         adapter.ask("hi")
 
 
+def test_probe_vendor_runtime_supports_importable_checkout(tmp_path: Path) -> None:
+    vendor_path = tmp_path / "open-notebook"
+    package_dir = vendor_path / "open_notebook"
+    package_dir.mkdir(parents=True)
+    (vendor_path / "pyproject.toml").write_text("[project]\nname='open-notebook'\n", encoding="utf-8")
+    (package_dir / "__init__.py").write_text("__version__ = '1.8.5'\n", encoding="utf-8")
+
+    is_ready, reason = probe_vendor_runtime(vendor_path)
+
+    assert is_ready is True
+    assert "imported open_notebook successfully" in reason
+    assert "version=1.8.5" in reason
+
+
+def test_probe_vendor_runtime_reports_missing_dependency(tmp_path: Path) -> None:
+    vendor_path = tmp_path / "open-notebook"
+    package_dir = vendor_path / "open_notebook"
+    package_dir.mkdir(parents=True)
+    (vendor_path / "pyproject.toml").write_text("[project]\nname='open-notebook'\n", encoding="utf-8")
+    (package_dir / "__init__.py").write_text("import missing_open_notebook_dep\n", encoding="utf-8")
+
+    is_ready, reason = probe_vendor_runtime(vendor_path)
+
+    assert is_ready is False
+    assert "vendor runtime import failed" in reason
+    assert "missing=missing_open_notebook_dep" in reason
+
+
 def test_get_adapter_returns_smoke_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GOV_AI_OPEN_NOTEBOOK_MODE", "smoke")
 

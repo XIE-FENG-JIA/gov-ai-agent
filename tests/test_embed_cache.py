@@ -3,7 +3,9 @@ KnowledgeBaseManager embedding 快取測試
 
 不依賴 chromadb — 直接測試 _cached_embed 方法的快取行為。
 """
+import importlib
 import threading
+import types
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -91,3 +93,27 @@ class TestEmbedCache:
         assert errors == [], f"執行緒安全錯誤: {errors}"
         # 只有 5 個不同的 query，最多 5 次 embed
         assert mock_kb.llm_provider.embed.call_count <= 5
+
+
+def test_manager_import_survives_missing_temp_warning_helper():
+    """warnings_compat 缺少 temporary helper 時，manager import 仍應可用。"""
+    fake_warnings_compat = types.ModuleType("src.core.warnings_compat")
+    fake_warnings_compat.suppress_known_third_party_deprecations = lambda: None
+
+    with patch.dict(
+        "sys.modules",
+        {
+            "chromadb": None,
+            "src.core.warnings_compat": fake_warnings_compat,
+        },
+    ):
+        import src.knowledge.manager as mgr_module
+
+        mgr_module = importlib.reload(mgr_module)
+        assert hasattr(mgr_module, "suppress_known_third_party_deprecations_temporarily")
+
+        llm = MagicMock(spec=LLMProvider)
+        llm.embed.return_value = [0.1] * 384
+        kb = mgr_module.KnowledgeBaseManager("/fake/path", llm)
+
+    assert kb._available is False

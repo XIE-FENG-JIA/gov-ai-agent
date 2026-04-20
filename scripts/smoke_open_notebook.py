@@ -45,8 +45,17 @@ def smoke_import(vendor_path: Path | None = None) -> SmokeReport:
     resolved_path = vendor_path or get_open_notebook_vendor_path()
     is_ready, reason = probe_vendor_runtime(resolved_path)
     if not is_ready:
-        status = "vendor-incomplete" if "vendor checkout is incomplete" in reason else "vendor-unready"
-        return SmokeReport(status=status, message=reason)
+        if "vendor checkout is incomplete" in reason:
+            status = "vendor-incomplete"
+        elif "vendor runtime import failed" in reason:
+            status = "import-error"
+        else:
+            status = "vendor-unready"
+
+        missing_modules: list[str] = []
+        if "missing=" in reason:
+            missing_modules = [reason.split("missing=", 1)[1].strip().split()[0]]
+        return SmokeReport(status=status, message=reason, missing_modules=missing_modules)
 
     module_name = "open_notebook"
     candidate_entries = _candidate_sys_paths(resolved_path)
