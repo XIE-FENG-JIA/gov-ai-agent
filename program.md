@@ -211,10 +211,11 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### P0.EPIC2-FINISH — 🟢 ACL-free·v4.6 首要·Epic 2 收官（v4.6 新增；25 分鐘）
 
-- [ ] **T2.8** 🟢 ACL-free·Epic 2 ops docs（15 分）：`docs/open-notebook-study.md` / `docs/integration-plan.md` 補 env vars（`OPENROUTER_API_KEY` / `elephant-alpha`）+ non-goals + legacy writer fallback 段
+- [x] **T2.8** 🟢 ACL-free·Epic 2 ops docs（15 分）：`docs/open-notebook-study.md` / `docs/integration-plan.md` 補 env vars（`OPENROUTER_API_KEY` / `elephant-alpha`）+ non-goals + legacy writer fallback 段
   - **驗**：`rg -n "OPENROUTER_API_KEY|elephant-alpha|non-goals|legacy writer" docs/open-notebook-study.md docs/integration-plan.md` 命中 ≥ 4
   - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25（Epic 2 收官前置）
   - commit（ACL 解後）: `docs(integration): document setup and non-goals for fork adoption`
+  - **完成（2026-04-20 20:55）**：`docs/open-notebook-study.md` 與 `docs/integration-plan.md` 已具備 env vars、local setup、legacy writer fallback、current non-goals；本輪補明確 operator notes 後，`rg -n "OPENROUTER_API_KEY|elephant-alpha|non-goals|legacy writer" docs/open-notebook-study.md docs/integration-plan.md` 命中通過
 
 - [ ] **T2.9** 🟢 ACL-free·SurrealDB freeze（10 分）：`docs/integration-plan.md` + `openspec/changes/02-open-notebook-fork/specs/fork/spec.md` 補「human review required before SurrealDB / full writer cutover」段
   - **驗**：`rg -n "human review|required before SurrealDB|frozen" docs/integration-plan.md openspec/changes/02-open-notebook-fork/specs/fork/spec.md` 命中 ≥ 3

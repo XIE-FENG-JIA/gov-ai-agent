@@ -7,9 +7,9 @@ It is based on the current repo architecture and the approved spec in
 
 Current constraint:
 
-- `vendor/open-notebook` is not yet importable as a usable runtime in this workspace
-- the local `vendor/open-notebook/` directory currently contains only an incomplete `.git/` stub
-- therefore this plan is architecture-first and implementation-ready, not vendor-verified
+- `vendor/open-notebook` is importable in this workspace through the repo-owned seam
+- the current slice is still smoke-first and does not prove production writer readiness
+- therefore this plan is architecture-first, implementation-ready, and still intentionally narrow
 
 Human review is still required before any SurrealDB migration or full writer cutover.
 
@@ -152,10 +152,32 @@ Meaning:
 Optional supporting env vars:
 
 - `OPENROUTER_API_KEY`
+- `OPENROUTER_MODEL=elephant-alpha`
 - `GOV_AI_OPEN_NOTEBOOK_VENDOR_PATH`
 - `GOV_AI_OPEN_NOTEBOOK_TIMEOUT_SECONDS`
 
 The final env list can expand after T2.1 vendor study, but the mode flag should be fixed now.
+
+## Local Setup Notes
+Local operators should treat this integration as an opt-in seam, not as the
+default runtime.
+
+Recommended local setup:
+
+1. keep `vendor/open-notebook/` present and importable
+2. set `GOV_AI_OPEN_NOTEBOOK_MODE=smoke` for smoke validation first
+3. export `OPENROUTER_API_KEY` before any vendor-backed ask flow
+4. pin `OPENROUTER_MODEL=elephant-alpha` for the current study slice unless a
+   later review approves a different default
+5. switch to `GOV_AI_OPEN_NOTEBOOK_MODE=writer` only when the operator wants to
+   exercise the explicit legacy writer fallback contract
+
+Operator reminder:
+
+- `writer` mode is not the default production path
+- setup or runtime failure in `writer` mode must fall back to the legacy writer
+- missing evidence is a hard integration failure, not a soft success
+- current non-goals stay in force during local setup; do not treat smoke success as cutover approval
 
 ## Fallback Policy
 Fallback must be explicit and review-safe.
@@ -249,6 +271,15 @@ Frozen until review:
 
 - `T2.3` data-layer migration in `program.md`
 - any claim that `open-notebook` is the production runtime
+
+## Current Non-Goals
+The current non-goals for this slice are intentionally strict:
+
+- no SurrealDB migration work
+- no full writer cutover
+- no review-agent policy move into vendor code
+- no benchmark reset tied to the fork adoption
+- no removal of the legacy writer fallback path
 
 ## Validation Markers
 This document must continue to contain the following anchors for task validation:

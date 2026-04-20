@@ -236,6 +236,35 @@ That is the correct policy for a regulated, source-grounded drafting system.
 For Gov AI, a "successful" answer without review-safe evidence is worse than an
 explicit failure because it looks trustworthy while breaking auditability.
 
+## Operator Setup Snapshot
+The current operator-facing setup should stay minimal and explicit.
+
+Required env/runtime inputs for any real vendor-backed ask flow:
+
+- `OPENROUTER_API_KEY`
+- `OPENROUTER_MODEL=elephant-alpha`
+- `GOV_AI_OPEN_NOTEBOOK_MODE=smoke|writer`
+
+Recommended local order:
+
+1. verify `vendor/open-notebook` is importable
+2. start with `GOV_AI_OPEN_NOTEBOOK_MODE=smoke`
+3. only then test `writer` mode with legacy writer fallback still enabled
+
+The key policy detail is that `writer` mode does not replace the legacy writer.
+It is an explicit opt-in path with a mandatory fallback back to the legacy writer
+when vendor setup, import, or ask execution fails.
+
+## Current Non-Goals
+The current non-goals are not optional footnotes.
+They are the scope fence for the first fork slice.
+
+- no SurrealDB migration
+- no default writer cutover
+- no review-agent rewrite inside vendor code
+- no benchmark reset because of the fork
+- no removal of the legacy writer fallback path
+
 ## 6. Import Smoke Result
 Current measured result in this workspace:
 

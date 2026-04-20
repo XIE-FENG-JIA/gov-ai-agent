@@ -57,11 +57,12 @@
   Commit: `fix(integration): fail clearly and preserve legacy writer fallback`
   - **完成（2026-04-20 20:45）**：`WriterAgent` 會把 open-notebook setup/runtime failure 記到 `_last_open_notebook_diagnostics`，並明確退回 legacy LLM path；service 缺 vendor 時仍 raise `IntegrationSetupError`，讓 smoke path loud fail、writer path 明確 fallback；驗證 `pytest tests/test_open_notebook_service.py -q -k fallback` 與 `pytest tests/test_writer_agent.py -q -k fallback` = passed
 
-- [ ] **T2.8** Add docs and operator notes for required env vars, local setup, and the current non-goals of the fork integration.  
+- [x] **T2.8** Add docs and operator notes for required env vars, local setup, and the current non-goals of the fork integration.  
   Requirements:
   - The repo owns fallback behavior when the fork is absent or fails
   Validation: `rg -n "OPENROUTER_API_KEY|elephant-alpha|non-goals|legacy writer" docs/open-notebook-study.md docs/integration-plan.md`  
   Commit: `docs(integration): document setup and non-goals for fork adoption`
+  - **完成（2026-04-20 20:55）**：`docs/open-notebook-study.md` 與 `docs/integration-plan.md` 已明確列出 `OPENROUTER_API_KEY`、`OPENROUTER_MODEL=elephant-alpha`、local setup 順序、legacy writer fallback 契約與 current non-goals；並補強 `docs/integration-plan.md` 的 operator notes，驗證 `rg -n "OPENROUTER_API_KEY|elephant-alpha|non-goals|legacy writer" docs/open-notebook-study.md docs/integration-plan.md` 命中通過
 
 - [ ] **T2.9** Request human review before any SurrealDB migration or full writer cutover proceeds.  
   Requirements:
