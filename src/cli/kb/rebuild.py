@@ -3,7 +3,14 @@ from pathlib import Path
 import typer
 
 from ._shared import app, console
-from .corpus import _ingest_fetch_results
+from .corpus import _ingest_fetch_results, _load_full_document, _sanitize_metadata, parse_markdown_with_metadata
+
+
+_REBUILD_COLLECTIONS: tuple[tuple[str, str], ...] = (
+    ("examples", "examples"),
+    ("regulations", "regulations"),
+    ("policies", "policies"),
+)
 
 
 def _maybe_ingest(results: list, do_ingest: bool) -> None:
@@ -14,6 +21,88 @@ def _maybe_ingest(results: list, do_ingest: bool) -> None:
     kb = _init_kb()
     count = _ingest_fetch_results(results, kb)
     console.print(f"[green]已匯入 {count} 筆至知識庫[/green]")
+    console.print(f"目前資料庫統計：{kb.get_stats()}")
+
+
+def _should_skip_rebuild_file(metadata: dict, only_real: bool) -> bool:
+    if metadata.get("deprecated"):
+        return True
+    if not only_real:
+        return False
+    return bool(metadata.get("synthetic")) or bool(metadata.get("fixture_fallback"))
+
+
+@app.command("rebuild")
+def rebuild(
+    base_dir: str = typer.Option("./kb_data", "--base-dir", help="知識來源根目錄"),
+    only_real: bool = typer.Option(
+        False,
+        "--only-real",
+        help="只重建真實來源文件（跳過 synthetic / fixture_fallback）",
+    ),
+) -> None:
+    """重建知識庫索引：重設 DB 後重新匯入 examples/regulations/policies。"""
+    from . import _init_kb
+
+    source_root = Path(base_dir)
+    if not source_root.exists():
+        console.print(f"[red]找不到知識來源根目錄：{base_dir}[/red]")
+        raise typer.Exit(1)
+
+    kb = _init_kb()
+    console.print("[bold red]正在重建知識庫索引...[/bold red]")
+    kb.reset_db()
+
+    total_imported = 0
+    total_skipped = 0
+    total_missing_dirs = 0
+
+    for collection, subdir_name in _REBUILD_COLLECTIONS:
+        source_dir = source_root / subdir_name
+        if not source_dir.exists():
+            total_missing_dirs += 1
+            console.print(f"[yellow]跳過缺失目錄：{source_dir}[/yellow]")
+            continue
+
+        files = sorted(source_dir.rglob("*.md"))
+        imported = 0
+        skipped = 0
+        total_chunks = len(files)
+
+        for file_idx, file_path in enumerate(files):
+            metadata, content = parse_markdown_with_metadata(file_path)
+            if _should_skip_rebuild_file(metadata, only_real):
+                skipped += 1
+                continue
+
+            metadata.setdefault("title", file_path.stem)
+            metadata.setdefault("doc_type", "unknown")
+            doc_id = kb.make_deterministic_id(file_path.stem, collection)
+            saved_id = kb.upsert_document(
+                doc_id,
+                content,
+                _sanitize_metadata(metadata),
+                collection_name=collection,
+                full_document=_load_full_document(kb, file_path, content),
+                chunk_index=file_idx,
+                total_chunks=total_chunks,
+            )
+            if saved_id:
+                imported += 1
+
+        total_imported += imported
+        total_skipped += skipped
+        console.print(
+            f"[green]{collection}[/green]：重建 {imported} 筆"
+            + (f" / 跳過 {skipped} 筆" if skipped else "")
+        )
+
+    console.print(
+        f"[bold]重建完成：總計 {total_imported} 筆"
+        + (f" / 跳過 {total_skipped} 筆" if total_skipped else "")
+        + (f" / 缺目錄 {total_missing_dirs} 個" if total_missing_dirs else "")
+        + "[/bold]"
+    )
     console.print(f"目前資料庫統計：{kb.get_stats()}")
 
 

@@ -807,10 +807,10 @@
 
 ### P0.EE — 🟢 ACL-free·Epic 3 proposal 啟動（v4.1 新增；20 分鐘）
 
-- [ ] **P1.CC-INDEX-SMOKE** ✅ 不依賴 ACL：更正過時的 corpus rebuild 驗證命令
-  - **現況**：`P0.CC-CORPUS-CLEAN` 舊驗收指令 `python -m src.chunker.index_cli --rebuild --base-dir kb_data` 在目前 repo 會直接 `ModuleNotFoundError: No module named 'src.chunker'`
-  - **產出**：補上目前仍存在的 KB rebuild / sync smoke 命令，並同步更新 `program.md` / 相關 docs，避免假驗收
-  - **驗**：替代 smoke 命令可在本 repo 實跑，不出 `ModuleNotFoundError`
+- [x] **P1.CC-INDEX-SMOKE** ✅ 不依賴 ACL：更正過時的 corpus rebuild 驗證命令
+  - **完成（2026-04-21）**：補上真正存在的 `gov-ai kb rebuild --base-dir ./kb_data [--only-real]` CLI，取代早已失效的 `python -m src.chunker.index_cli --rebuild --base-dir kb_data`；`kb rebuild` 會 reset DB 後重建 `examples/regulations/policies`，並可在 `--only-real` 模式跳過 `synthetic` / `fixture_fallback` 文件
+  - **驗 1**：`python -m src.cli.main kb rebuild --help` 正常顯示，不再是 `No such command 'rebuild'`
+  - **驗 2**：`python -m pytest tests/test_cli_commands.py -q --no-header -k "kb_rebuild"` = 綠
 
 - [ ] **T-REPORT** ✅ 不依賴 ACL·v4.2 新增（10 分鐘）：`scripts/live_ingest.py --report-path` enumeration 修 count=0 誤報
   - **現況**：`docs/live-ingest-report.md` 實寫 9 份 real md 但 report 記 `count=0`；enumeration 僅算本輪 `ingested`，歷次 idempotent 寫入被吞

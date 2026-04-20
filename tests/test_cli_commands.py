@@ -839,6 +839,92 @@ class TestKBCommands:
     @patch("src.cli.kb.KnowledgeBaseManager")
     @patch("src.cli.kb.get_llm_factory")
     @patch("src.cli.kb.ConfigManager")
+    def test_kb_rebuild_reindexes_standard_collections(self, mock_cm, mock_factory, mock_kb_class, tmp_path):
+        """測試 kb rebuild 會 reset 後重建 examples/regulations/policies。"""
+        from src.cli.main import app
+
+        mock_cm.return_value.config = {
+            "llm": {"provider": "mock"},
+            "knowledge_base": {"path": "./test_kb"},
+        }
+        mock_kb_instance = mock_kb_class.return_value
+        mock_kb_instance.get_stats.return_value = {
+            "examples_count": 1,
+            "regulations_count": 1,
+            "policies_count": 1,
+        }
+        mock_kb_instance.contextual_retrieval = False
+        mock_kb_instance.upsert_document.side_effect = ["ex-1", "reg-1", "pol-1"]
+
+        (tmp_path / "examples" / "example.md").parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / "examples" / "example.md").write_text("# 範例\n內容", encoding="utf-8")
+        (tmp_path / "regulations" / "law.md").parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / "regulations" / "law.md").write_text("# 法規\n內容", encoding="utf-8")
+        (tmp_path / "policies" / "nested" / "policy.md").parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / "policies" / "nested" / "policy.md").write_text("# 政策\n內容", encoding="utf-8")
+
+        result = runner.invoke(app, ["kb", "rebuild", "--base-dir", str(tmp_path)])
+
+        assert result.exit_code == 0
+        mock_kb_instance.reset_db.assert_called_once()
+        assert mock_kb_instance.upsert_document.call_count == 3
+        assert "examples：重建 1 筆" in result.stdout
+        assert "regulations：重建 1 筆" in result.stdout
+        assert "policies：重建 1 筆" in result.stdout
+        assert "重建完成：總計 3 筆" in result.stdout
+
+    @patch("src.cli.kb.KnowledgeBaseManager")
+    @patch("src.cli.kb.get_llm_factory")
+    @patch("src.cli.kb.ConfigManager")
+    def test_kb_rebuild_only_real_skips_synthetic_and_fixture_fallback(self, mock_cm, mock_factory, mock_kb_class, tmp_path):
+        """測試 kb rebuild --only-real 會跳過 synthetic / fixture_fallback 文件。"""
+        from src.cli.main import app
+
+        mock_cm.return_value.config = {
+            "llm": {"provider": "mock"},
+            "knowledge_base": {"path": "./test_kb"},
+        }
+        mock_kb_instance = mock_kb_class.return_value
+        mock_kb_instance.get_stats.return_value = {
+            "examples_count": 1,
+            "regulations_count": 0,
+            "policies_count": 0,
+        }
+        mock_kb_instance.contextual_retrieval = False
+        mock_kb_instance.upsert_document.return_value = "real-1"
+
+        examples_dir = tmp_path / "examples"
+        examples_dir.mkdir(parents=True, exist_ok=True)
+        (examples_dir / "real.md").write_text(
+            "---\n"
+            "title: 真資料\n"
+            "synthetic: false\n"
+            "fixture_fallback: false\n"
+            "---\n"
+            "真內容\n",
+            encoding="utf-8",
+        )
+        (examples_dir / "fixture.md").write_text(
+            "---\n"
+            "title: 假資料\n"
+            "synthetic: true\n"
+            "fixture_fallback: true\n"
+            "---\n"
+            "假內容\n",
+            encoding="utf-8",
+        )
+
+        result = runner.invoke(app, ["kb", "rebuild", "--base-dir", str(tmp_path), "--only-real"])
+
+        assert result.exit_code == 0
+        mock_kb_instance.reset_db.assert_called_once()
+        assert mock_kb_instance.upsert_document.call_count == 1
+        assert "examples：重建 1 筆 / 跳過 1 筆" in result.stdout
+        assert "重建完成：總計 1 筆 / 跳過 1 筆" in result.stdout
+
+    @patch("src.cli.kb.KnowledgeBaseManager")
+    @patch("src.cli.kb.get_llm_factory")
+    @patch("src.cli.kb.ConfigManager")
     def test_kb_search_multiple_results_table(self, mock_cm, mock_factory, mock_kb_class):
         """測試搜尋多個結果時正確顯示表格"""
         from src.cli.main import app
