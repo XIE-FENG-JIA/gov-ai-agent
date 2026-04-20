@@ -9,23 +9,23 @@
 > - ✅ 指標 5（熱 pytest 0 failed）：綠
 > - ✅ 指標 6（Epic 3 tasks `[x]` 9/9）：持平綠
 > - ✅ 指標 7（corpus 9 real / 0 fallback）：持平綠
-> - ❌ 指標 8（胖檔群 ≤ 400）：**manager.py 928 / workflow.py 910 / history.py 681 / exporter.py 617 / api_server.py 529**；`src/cli/generate/pipeline/persist/` 已拆成 **158 / 85 / 22 / 9**，但主債仍紅
+> - ❌ 指標 8（胖檔群 ≤ 400）：**workflow.py 910 / history.py 681 / exporter.py 617 / api_server.py 529** 仍紅；✅ `knowledge manager` 已拆成 **350 / 220 / 341**，`persist/` 維持 **158 / 85 / 22 / 9**
 >
 > **v5.3 實測 5/8 PASS**（v5.2 6/8 → **-1**，指標 8 紅化；因 v5.2 header 把胖檔納入新閥值計分，但 HEAD 0 動）。
 >
 > **v5.3 實錘校準（v5.2 header 過期點）**：
 > - `engineer-log.md` v5.2 寫 699 行 → HEAD **315 行**（v5.2 落版過程封存完成；header 數字過期）
 > - `docs/archive/engineer-log-202604d.md` **未建**（P0.LOGARCHIVE-V3 T9.6-REOPEN-v3 硬 cap 300 未完成；現 315 > 300 擦邊 15 行）
-> - 胖檔群現況：**五大紅檔未動 + persist 已拆綠**（manager / workflow / history / exporter / api_server 仍紅；persist 253 → package max 158）
+> - 胖檔群現況：**四大紅檔未動 + 兩件已拆綠**（workflow / history / exporter / api_server 仍紅；manager 928 → 350/220/341，persist 253 → package max 158）
 >
 > **v5.3 P0 重排（ACL-free；連 2 輪 0 動 = 紅線 X 3.25）**：
-> 1. **P0.ARCH-DEBT-ROTATE** 🔴 首位持平 — 已先破 `persist`，下一刀鎖 `manager.py 928`；剩 `workflow / history / exporter / api_server`
+> 1. **P0.ARCH-DEBT-ROTATE** 🔴 首位持平 — 已破 **2 件**：`persist` + `knowledge manager`；剩 `workflow / history / exporter / api_server`
 > 2. **P0.LOGARCHIVE-V3** 🟡 降 P1 — engineer-log 315 仍 ≤ 500 軟線；硬 cap 300 破 15 行，下輪反思前先封存 v5.0 段即可
 > 3. **P1.EPIC4-PROPOSAL** 🟡 新增 — `openspec/changes/04-audit-citation/` 啟動 proposal + specs + tasks（T7.1.d）；Epic 4 writer 改寫策略 proposal 連 5 輪 0 動，Spectra 對齊度卡 3/5 = 60%
 > 4. **T-FAILURE-MATRIX writer ask-service** 🟡 降 P2 守位（v4.8-v5.2 連 5 輪 0 動，但非當輪血債；Epic 4 啟動前再同步補）
 >
 > **v5.3 下輪硬指標（下輪審查）**：
-> 1. `wc -l src/knowledge/manager.py` or `src/knowledge/manager/*.py` 每檔 ≤ 400（當前單檔 928；**本輪必破**）
+> 1. ✅ `wc -l src/knowledge/manager.py src/knowledge/_manager_search.py src/knowledge/_manager_hybrid.py` 每檔 ≤ 400（現 **350 / 220 / 341**）
 > 2. ✅ `wc -l src/cli/generate/pipeline/persist/*.py` 每檔 ≤ 200（現 **158 / 85 / 22 / 9**；2026-04-21 已破）
 > 3. `ls openspec/changes/04-audit-citation/proposal.md` 存在（當前 ❌）
 > 4. `wc -l engineer-log.md` ≤ 300（當前 315；T9.6-REOPEN-v3）
@@ -36,7 +36,7 @@
 > - **頂部校準**：engineer-log 699 → 315（過期點）；指標 8 分母顯化（胖檔六兄弟 0 動紅）
 > - **重排**：P0.ARCH-DEBT-ROTATE 維持首位；P0.LOGARCHIVE-V3 降 P1（315 > 300 擦邊非緊急）；新增 P1.EPIC4-PROPOSAL
 > - **紅線 X 預警**：P0.ARCH-DEBT-ROTATE 連 1 輪 0 動 = 紅線 X 邊緣；本輪若再跳 = 3.25
-> - **顆粒度**：本輪先破 `persist`；下一刀只鎖 `manager`，避免雙拆失焦
+> - **顆粒度**：本輪已破 `persist + manager`；下一刀只鎖 `workflow` 或 `history`
 > - **歷史保留**：v5.2 header 以下全部不動；已完成紀錄保留
 
 > **🎯 v5.2 當輪執行順序鎖（架構師第三十輪階段性規劃 2026-04-21 03:20；/pua 觸發；alibaba 味；drift 校準 + 反思日誌二度爆紅線；已由 v5.3 取代，保留歷史）**：
@@ -390,15 +390,13 @@
 
 ### P0.ARCH-DEBT-ROTATE — 🔴 ACL-free·v5.2 首要（60 分；v5.1 P1 輪值升 P0）
 
-- [ ] **T-KNOWLEDGE-MANAGER-SPLIT** 🔴 `src/knowledge/manager.py` 811 → **928**（+117）= 拆分 SOP 未擴散
-  - **拆法建議**：`src/knowledge/manager/{__init__, bootstrap, query, mutate, cache, diagnostics}.py`；`__init__.py` re-export `KnowledgeBaseManager`
-  - **相容錨點**：既有 `src.knowledge.manager.KnowledgeBaseManager` import 與 pytest monkeypatch
-  - **SOP 參照**：`docs/arch-split-sop.md` 第 §editor / §writer 兩案；本件屬 domain class，按 responsibility 切（不按行數）
-  - **驗 1**：`wc -l src/knowledge/manager/*.py` 每檔 ≤ 400
-  - **驗 2**：`pytest tests/test_knowledge.py tests/test_knowledge_extended.py tests/test_knowledge_manager_cache.py -q` 全綠
-  - **驗 3**：`python -c "from src.knowledge.manager import KnowledgeBaseManager; print('ok')"` = ok
-  - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25
-  - commit（ACL 解後）: `refactor(knowledge): split manager.py into package modules`
+- [x] **T-KNOWLEDGE-MANAGER-SPLIT** ✅ `src/knowledge/manager.py` **928 → 350**；搜尋/統計/重設拆到 `src/knowledge/_manager_search.py`（220），Hybrid/BM25/RRF 拆到 `src/knowledge/_manager_hybrid.py`（341）
+  - **相容錨點**：既有 `src.knowledge.manager.KnowledgeBaseManager` import 與 pytest monkeypatch 保持不變
+  - **驗 1**：`wc -l src/knowledge/manager.py src/knowledge/_manager_search.py src/knowledge/_manager_hybrid.py` = **350 / 220 / 341**
+  - **驗 2**：`python -m pytest tests/test_knowledge.py tests/test_knowledge_extended.py tests/test_knowledge_manager_cache.py tests/test_knowledge_manager_unit.py tests/test_embed_cache.py -q --no-header` = **180 passed / 0 failed**
+  - **驗 3**：`python -c "from src.knowledge.manager import KnowledgeBaseManager; print('ok', KnowledgeBaseManager.__name__)"` = `ok KnowledgeBaseManager`
+  - **驗 4**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3686 passed / 0 failed**
+  - commit（ACL 解後）: `refactor(knowledge): split manager search and hybrid helpers`
 
 - [ ] **T-WORKFLOW-ROUTER-SPLIT** 🟡 `src/api/routes/workflow.py` 799 → **910**（+111）
   - **拆法**：`src/api/routes/workflow/{__init__, lifecycle, actions, status}.py`；保留 FastAPI router 裝配點
@@ -1371,6 +1369,10 @@
   - **完成（2026-04-21 02:49）**：新增 `docs/integration-nightly.md`，含執行頻率 / 失敗通知 / 復原 SOP；驗證 `pytest tests/test_nightly_integration_runner.py -q` = 4 passed、`python scripts/run_nightly_integration.py --dry-run` = rc 0、`& .\scripts\run_nightly_integration.ps1 --dry-run` = rc 0、全量 `python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3682 passed / 0 failed**
 - [x] **P0.ARCH-SPLIT-SOP (2026-04-21)** `docs/arch-split-sop.md` 已文件化 editor / writer / kb / generate 四大拆分 SOP；固定 trigger、模組切法、相容規約與驗證矩陣，避免同類大檔債重演
   - **完成（2026-04-21 03:03）**：新增 `docs/arch-split-sop.md`；內容收斂 `foo.py -> foo/` package split pattern、`__init__.py` re-export 相容策略、editor/writer/kb/generate 四個 repo 內參考案例、split 後最小驗證矩陣，並把下一批肥檔候選明列為 `knowledge/manager.py` / `workflow.py` / `history.py` / `exporter.py` / `template.py` / `template_cmd.py`
+- [x] **T-KNOWLEDGE-MANAGER-SPLIT (2026-04-21)** `src/knowledge/manager.py` 已拆成 facade + helper modules：`manager.py` **350**、`_manager_search.py` **220**、`_manager_hybrid.py` **341**
+  - **完成（2026-04-21 04:13）**：把搜尋/統計/重設與 Hybrid/BM25/RRF/keyword fallback 從單檔抽離；`KnowledgeBaseManager` 對外介面與 monkeypatch 相容點保留
+  - **驗 1**：`python -m pytest tests/test_knowledge.py tests/test_knowledge_extended.py tests/test_knowledge_manager_cache.py tests/test_knowledge_manager_unit.py tests/test_embed_cache.py -q --no-header` = **180 passed / 0 failed**
+  - **驗 2**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3686 passed / 0 failed**
 - [x] **P0.LOGARCHIVE-V2 (2026-04-21)** `engineer-log.md` 三次封存完成；主檔從 697 行壓回 253 行，避免反思日誌再次成為 blocker
   - **完成（2026-04-21 03:09）**：新增 `docs/archive/engineer-log-202604c.md`，封存 v4.5-v4.9 舊反思；主檔只留 v5.0/v5.1 近兩輪，並補「單輪反思 ≤ 80 行」規則
   - **驗**：`wc -l engineer-log.md` = **253**、`(Get-Content docs/archive/engineer-log-202604c.md).Count` > 200
