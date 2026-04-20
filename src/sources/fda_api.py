@@ -102,6 +102,7 @@ class FdaApiAdapter(BaseSourceAdapter):
         payload = with_fixture_fallback(
             lambda: self._decode_payload(self._request_json()),
             self._load_fixture_payload,
+            handled_exceptions=(requests.RequestException, ValueError, TypeError),
         )
         notices = self._extract_items(payload)
         self._notice_cache = {
@@ -124,7 +125,7 @@ class FdaApiAdapter(BaseSourceAdapter):
         response.raise_for_status()
         return response
 
-    def _load_fixture_payload(self, exc: requests.RequestException) -> Any:
+    def _load_fixture_payload(self, exc: Exception) -> Any:
         if not self.fixture_path.exists():
             raise exc
         return json.loads(self.fixture_path.read_text(encoding="utf-8"))

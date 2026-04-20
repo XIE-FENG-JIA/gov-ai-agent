@@ -30,9 +30,14 @@ def build_headers(*, accept: str, user_agent: str = DEFAULT_USER_AGENT, extra: M
     return headers
 
 
-def with_fixture_fallback(request_loader: Callable[[], T], fallback_loader: Callable[[requests.RequestException], T]) -> T:
-    """Run the live request first and fall back to local fixtures on request errors."""
+def with_fixture_fallback(
+    request_loader: Callable[[], T],
+    fallback_loader: Callable[[Exception], T],
+    *,
+    handled_exceptions: tuple[type[Exception], ...] = (requests.RequestException,),
+) -> T:
+    """Run the live request first and fall back to local fixtures on known request/parsing errors."""
     try:
         return request_loader()
-    except requests.RequestException as exc:
+    except handled_exceptions as exc:
         return fallback_loader(exc)

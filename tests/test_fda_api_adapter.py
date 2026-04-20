@@ -14,7 +14,7 @@ from src.sources.fda_api import FdaApiAdapter
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "fda_api" / "notices.json"
 
 
-@patch("src.sources.fda_api.time.sleep")
+@patch("src.sources._common.time.sleep")
 @patch("src.sources.fda_api.requests.Session.get")
 def test_fda_api_adapter_list_fetch_and_normalize(mock_get: MagicMock, _mock_sleep: MagicMock) -> None:
     mock_response = MagicMock()
@@ -46,7 +46,7 @@ def test_fda_api_adapter_list_fetch_and_normalize(mock_get: MagicMock, _mock_sle
     mock_get.assert_called_once()
 
 
-@patch("src.sources.fda_api.time.sleep")
+@patch("src.sources._common.time.sleep")
 @patch("src.sources.fda_api.requests.Session.get")
 def test_fda_api_adapter_filters_by_since_date(mock_get: MagicMock, _mock_sleep: MagicMock) -> None:
     mock_response = MagicMock()
@@ -61,7 +61,7 @@ def test_fda_api_adapter_filters_by_since_date(mock_get: MagicMock, _mock_sleep:
     assert [item["id"] for item in listed] == ["FDA-001", "FDA-002"]
 
 
-@patch("src.sources.fda_api.time.sleep")
+@patch("src.sources._common.time.sleep")
 @patch("src.sources.fda_api.requests.Session.get")
 def test_fda_api_adapter_fetch_unknown_id_raises(mock_get: MagicMock, _mock_sleep: MagicMock) -> None:
     mock_response = MagicMock()
@@ -76,13 +76,31 @@ def test_fda_api_adapter_fetch_unknown_id_raises(mock_get: MagicMock, _mock_slee
         adapter.fetch("UNKNOWN")
 
 
-@patch("src.sources.fda_api.time.sleep")
+@patch("src.sources._common.time.sleep")
 @patch("src.sources.fda_api.requests.Session.get")
 def test_fda_api_adapter_falls_back_to_local_fixture_on_request_error(
     mock_get: MagicMock,
     _mock_sleep: MagicMock,
 ) -> None:
     mock_get.side_effect = requests.ConnectionError("offline")
+
+    adapter = FdaApiAdapter(rate_limit=0)
+    listed = list(adapter.list(limit=3))
+
+    assert [item["id"] for item in listed] == ["FDA-001", "FDA-002", "FDA-003"]
+
+
+@patch("src.sources._common.time.sleep")
+@patch("src.sources.fda_api.requests.Session.get")
+def test_fda_api_adapter_falls_back_to_local_fixture_on_invalid_json(
+    mock_get: MagicMock,
+    _mock_sleep: MagicMock,
+) -> None:
+    mock_response = MagicMock()
+    mock_response.text = "{not-json}"
+    mock_response.json.side_effect = ValueError("decode from bad payload")
+    mock_response.raise_for_status = MagicMock()
+    mock_get.return_value = mock_response
 
     adapter = FdaApiAdapter(rate_limit=0)
     listed = list(adapter.list(limit=3))

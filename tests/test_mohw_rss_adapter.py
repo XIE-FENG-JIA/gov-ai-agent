@@ -14,7 +14,7 @@ from src.sources.mohw_rss import MohwRssAdapter
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "mohw_rss" / "feed.xml"
 
 
-@patch("src.sources.mohw_rss.time.sleep")
+@patch("src.sources._common.time.sleep")
 @patch("src.sources.mohw_rss.requests.Session.get")
 def test_mohw_rss_adapter_list_fetch_and_normalize(mock_get: MagicMock, _mock_sleep: MagicMock) -> None:
     mock_response = MagicMock()
@@ -45,7 +45,7 @@ def test_mohw_rss_adapter_list_fetch_and_normalize(mock_get: MagicMock, _mock_sl
     mock_get.assert_called_once()
 
 
-@patch("src.sources.mohw_rss.time.sleep")
+@patch("src.sources._common.time.sleep")
 @patch("src.sources.mohw_rss.requests.Session.get")
 def test_mohw_rss_adapter_filters_by_since_date(mock_get: MagicMock, _mock_sleep: MagicMock) -> None:
     mock_response = MagicMock()
@@ -59,7 +59,7 @@ def test_mohw_rss_adapter_filters_by_since_date(mock_get: MagicMock, _mock_sleep
     assert [item["id"] for item in listed] == ["mohw-news-001", "mohw-news-002"]
 
 
-@patch("src.sources.mohw_rss.time.sleep")
+@patch("src.sources._common.time.sleep")
 @patch("src.sources.mohw_rss.requests.Session.get")
 def test_mohw_rss_adapter_fetch_unknown_id_raises(mock_get: MagicMock, _mock_sleep: MagicMock) -> None:
     mock_response = MagicMock()
@@ -73,13 +73,30 @@ def test_mohw_rss_adapter_fetch_unknown_id_raises(mock_get: MagicMock, _mock_sle
         adapter.fetch("UNKNOWN")
 
 
-@patch("src.sources.mohw_rss.time.sleep")
+@patch("src.sources._common.time.sleep")
 @patch("src.sources.mohw_rss.requests.Session.get")
 def test_mohw_rss_adapter_falls_back_to_local_fixture_on_request_error(
     mock_get: MagicMock,
     _mock_sleep: MagicMock,
 ) -> None:
     mock_get.side_effect = requests.ConnectionError("offline")
+
+    adapter = MohwRssAdapter(rate_limit=0)
+    listed = list(adapter.list(limit=3))
+
+    assert [item["id"] for item in listed] == ["mohw-news-001", "mohw-news-002", "mohw-news-003"]
+
+
+@patch("src.sources._common.time.sleep")
+@patch("src.sources.mohw_rss.requests.Session.get")
+def test_mohw_rss_adapter_falls_back_to_local_fixture_on_invalid_xml(
+    mock_get: MagicMock,
+    _mock_sleep: MagicMock,
+) -> None:
+    mock_response = MagicMock()
+    mock_response.text = "<rss><channel><item></rss"
+    mock_response.raise_for_status = MagicMock()
+    mock_get.return_value = mock_response
 
     adapter = MohwRssAdapter(rate_limit=0)
     listed = list(adapter.list(limit=3))

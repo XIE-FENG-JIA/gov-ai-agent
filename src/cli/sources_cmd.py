@@ -4,11 +4,19 @@ from __future__ import annotations
 
 from datetime import date
 from pathlib import Path
+from datetime import datetime
 
 import typer
 from rich.console import Console
 
-from src.sources.ingest import DEFAULT_BASE_DIR, IngestRecord, _adapter_registry, ingest as run_ingest
+from src.sources.ingest import (
+    DEFAULT_BASE_DIR,
+    IngestRecord,
+    SourceSnapshot,
+    _adapter_registry,
+    collect_source_snapshots,
+    ingest as run_ingest,
+)
 
 
 app = typer.Typer(help="公開政府資料來源匯入")
@@ -42,7 +50,47 @@ def ingest_command(
     _render_ingest_result(source_key, records)
 
 
+@app.command("status")
+def status_command(
+    base_dir: Path = typer.Option(DEFAULT_BASE_DIR, "--base-dir", help="匯入根目錄"),
+) -> None:
+    """Show per-source ingest status from local kb_data."""
+    snapshots = collect_source_snapshots(base_dir=base_dir)
+    _render_status_result(snapshots)
+
+
+@app.command("stats")
+def stats_command(
+    base_dir: Path = typer.Option(DEFAULT_BASE_DIR, "--base-dir", help="匯入根目錄"),
+) -> None:
+    """Show aggregate ingest counts from local kb_data."""
+    snapshots = collect_source_snapshots(base_dir=base_dir)
+    _render_stats_result(snapshots, base_dir=base_dir)
+
+
 def _render_ingest_result(source_key: str, records: list[IngestRecord]) -> None:
     console.print(f"[green]完成[/green] 匯入 {len(records)} 筆，來源：{source_key}")
     for record in records:
         console.print(record.corpus_path.as_posix())
+
+
+def _render_status_result(snapshots: list[SourceSnapshot]) -> None:
+    console.print("[bold cyan]公開來源狀態[/bold cyan]")
+    for snapshot in snapshots:
+        latest = "-"
+        if snapshot.latest_corpus_path and snapshot.latest_corpus_mtime is not None:
+            latest_ts = datetime.fromtimestamp(snapshot.latest_corpus_mtime).strftime("%Y-%m-%d %H:%M")
+            latest = f"{snapshot.latest_corpus_path.name} @ {latest_ts}"
+        console.print(
+            f"{snapshot.source_key}: corpus={snapshot.corpus_count} raw={snapshot.raw_count} latest={latest}"
+        )
+
+
+def _render_stats_result(snapshots: list[SourceSnapshot], *, base_dir: Path) -> None:
+    total_corpus = sum(snapshot.corpus_count for snapshot in snapshots)
+    total_raw = sum(snapshot.raw_count for snapshot in snapshots)
+    active_sources = sum(1 for snapshot in snapshots if snapshot.corpus_count or snapshot.raw_count)
+    console.print("[bold cyan]公開來源統計[/bold cyan]")
+    console.print(f"base_dir={base_dir.as_posix()}")
+    console.print(f"sources={len(snapshots)} active={active_sources}")
+    console.print(f"corpus={total_corpus} raw={total_raw}")

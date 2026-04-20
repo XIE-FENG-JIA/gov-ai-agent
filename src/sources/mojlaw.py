@@ -15,6 +15,7 @@ import requests
 
 from src.core.models import PublicGovDoc
 from src.knowledge.fetchers.constants import LAW_API_URL, LAW_DETAIL_URL
+from src.sources._common import build_headers, throttle, with_fixture_fallback
 from src.sources.base import BaseSourceAdapter
 
 
@@ -100,11 +101,11 @@ class MojLawAdapter(BaseSourceAdapter):
         if self._law_cache and not force_refresh:
             return list(self._law_cache.values())
 
-        try:
-            response = self._request_json()
-            laws = self._extract_laws_from_response(response.content)
-        except (requests.RequestException, ValueError, TypeError) as exc:
-            laws = self._load_fixture_catalog(exc)
+        laws = with_fixture_fallback(
+            lambda: self._extract_laws_from_response(self._request_json().content),
+            self._load_fixture_catalog,
+            handled_exceptions=(requests.RequestException, ValueError, TypeError),
+        )
         self._law_cache = {
             str(law.get("PCode", "")).strip(): law
             for law in laws
@@ -116,13 +117,13 @@ class MojLawAdapter(BaseSourceAdapter):
         self._throttle()
         response = self.session.get(
             self.api_url,
-            headers={"User-Agent": self.USER_AGENT, "Accept": "application/json"},
+            headers=build_headers(accept="application/json", user_agent=self.USER_AGENT),
             timeout=self.timeout,
         )
         response.raise_for_status()
         return response
 
-    def _load_fixture_catalog(self, exc: requests.RequestException) -> list[dict[str, Any]]:
+    def _load_fixture_catalog(self, exc: Exception) -> list[dict[str, Any]]:
         if not self.fixture_dir.exists():
             raise exc
 
@@ -132,11 +133,7 @@ class MojLawAdapter(BaseSourceAdapter):
         return laws
 
     def _throttle(self) -> None:
-        now = time.time()
-        elapsed = now - self._last_request_time
-        if elapsed < self.rate_limit:
-            time.sleep(self.rate_limit - elapsed)
-        self._last_request_time = time.time()
+        self._last_request_time = throttle(self._last_request_time, self.rate_limit)
 
     @staticmethod
     def _extract_laws_from_response(data: bytes) -> list[dict[str, Any]]:

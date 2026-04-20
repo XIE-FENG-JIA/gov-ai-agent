@@ -115,6 +115,7 @@ class DataGovTwAdapter(BaseSourceAdapter):
         data = with_fixture_fallback(
             lambda: self._request_json(payload).json(),
             self._load_fixture_catalog,
+            handled_exceptions=(requests.RequestException, ValueError, TypeError),
         )
         payload_data = data.get("payload", {}) if isinstance(data, dict) else {}
         datasets = payload_data.get("search_result", []) if isinstance(payload_data, dict) else []
@@ -144,7 +145,7 @@ class DataGovTwAdapter(BaseSourceAdapter):
         response.raise_for_status()
         return response
 
-    def _load_fixture_catalog(self, exc: requests.RequestException) -> dict[str, Any]:
+    def _load_fixture_catalog(self, exc: Exception) -> dict[str, Any]:
         if not self.fixture_dir.exists():
             raise exc
 

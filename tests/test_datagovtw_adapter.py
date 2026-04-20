@@ -22,7 +22,7 @@ def _fixture_datasets() -> list[dict]:
     return datasets
 
 
-@patch("src.sources.datagovtw.time.sleep")
+@patch("src.sources._common.time.sleep")
 @patch("src.sources.datagovtw.requests.Session.post")
 def test_datagovtw_adapter_list_fetch_and_normalize(mock_post: MagicMock, _mock_sleep: MagicMock) -> None:
     datasets = _fixture_datasets()
@@ -58,7 +58,7 @@ def test_datagovtw_adapter_list_fetch_and_normalize(mock_post: MagicMock, _mock_
     mock_post.assert_called_once()
 
 
-@patch("src.sources.datagovtw.time.sleep")
+@patch("src.sources._common.time.sleep")
 @patch("src.sources.datagovtw.requests.Session.post")
 def test_datagovtw_adapter_filters_by_since_date(mock_post: MagicMock, _mock_sleep: MagicMock) -> None:
     datasets = _fixture_datasets()
@@ -76,7 +76,7 @@ def test_datagovtw_adapter_filters_by_since_date(mock_post: MagicMock, _mock_sle
     assert [item["id"] for item in listed] == ["1001", "1002"]
 
 
-@patch("src.sources.datagovtw.time.sleep")
+@patch("src.sources._common.time.sleep")
 @patch("src.sources.datagovtw.requests.Session.post")
 def test_datagovtw_adapter_fetch_unknown_id_raises(mock_post: MagicMock, _mock_sleep: MagicMock) -> None:
     datasets = _fixture_datasets()
@@ -94,13 +94,30 @@ def test_datagovtw_adapter_fetch_unknown_id_raises(mock_post: MagicMock, _mock_s
         adapter.fetch("UNKNOWN")
 
 
-@patch("src.sources.datagovtw.time.sleep")
+@patch("src.sources._common.time.sleep")
 @patch("src.sources.datagovtw.requests.Session.post")
 def test_datagovtw_adapter_falls_back_to_local_fixtures_on_request_error(
     mock_post: MagicMock,
     _mock_sleep: MagicMock,
 ) -> None:
     mock_post.side_effect = requests.ConnectionError("offline")
+
+    adapter = DataGovTwAdapter(rate_limit=0)
+    listed = list(adapter.list(limit=3))
+
+    assert [item["id"] for item in listed] == ["1001", "1002", "1003"]
+
+
+@patch("src.sources._common.time.sleep")
+@patch("src.sources.datagovtw.requests.Session.post")
+def test_datagovtw_adapter_falls_back_to_local_fixtures_on_invalid_json(
+    mock_post: MagicMock,
+    _mock_sleep: MagicMock,
+) -> None:
+    mock_response = MagicMock()
+    mock_response.raise_for_status = MagicMock()
+    mock_response.json.side_effect = ValueError("bad json")
+    mock_post.return_value = mock_response
 
     adapter = DataGovTwAdapter(rate_limit=0)
     listed = list(adapter.list(limit=3))

@@ -103,6 +103,7 @@ class MohwRssAdapter(BaseSourceAdapter):
         entries = with_fixture_fallback(
             lambda: self._parse_feed(self._request_feed().text),
             self._load_fixture_feed,
+            handled_exceptions=(requests.RequestException, ET.ParseError, ValueError, TypeError),
         )
         self._entry_cache = {
             entry_id: entry
@@ -123,7 +124,7 @@ class MohwRssAdapter(BaseSourceAdapter):
         response.raise_for_status()
         return response
 
-    def _load_fixture_feed(self, exc: requests.RequestException) -> list[dict[str, Any]]:
+    def _load_fixture_feed(self, exc: Exception) -> list[dict[str, Any]]:
         if not self.fixture_path.exists():
             raise exc
         return self._parse_feed(self.fixture_path.read_text(encoding="utf-8"))

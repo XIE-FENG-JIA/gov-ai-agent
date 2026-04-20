@@ -32,6 +32,18 @@ class IngestRecord:
     corpus_path: Path
 
 
+@dataclass
+class SourceSnapshot:
+    """Current on-disk ingest state for one source."""
+
+    source_key: str
+    storage_name: str
+    raw_count: int
+    corpus_count: int
+    latest_corpus_path: Path | None
+    latest_corpus_mtime: float | None
+
+
 def ingest(
     adapter: BaseSourceAdapter,
     since_date: date | None = None,
@@ -104,6 +116,30 @@ def _adapter_registry() -> dict[str, type[BaseSourceAdapter]]:
         "mohw": MohwRssAdapter,
         "mojlaw": MojLawAdapter,
     }
+
+
+def collect_source_snapshots(*, base_dir: Path = DEFAULT_BASE_DIR) -> list[SourceSnapshot]:
+    """Scan kb_data for per-source raw/corpus counts and latest corpus file."""
+    snapshots: list[SourceSnapshot] = []
+    for source_key, adapter_cls in sorted(_adapter_registry().items()):
+        storage_name = _adapter_name(adapter_cls())
+        raw_root = base_dir / "raw" / storage_name
+        corpus_root = base_dir / "corpus" / storage_name
+        raw_files = sorted(raw_root.rglob("*.json")) if raw_root.exists() else []
+        corpus_files = sorted(corpus_root.rglob("*.md")) if corpus_root.exists() else []
+        latest_corpus_path = max(corpus_files, key=lambda path: path.stat().st_mtime, default=None)
+        latest_corpus_mtime = latest_corpus_path.stat().st_mtime if latest_corpus_path else None
+        snapshots.append(
+            SourceSnapshot(
+                source_key=source_key,
+                storage_name=storage_name,
+                raw_count=len(raw_files),
+                corpus_count=len(corpus_files),
+                latest_corpus_path=latest_corpus_path,
+                latest_corpus_mtime=latest_corpus_mtime,
+            )
+        )
+    return snapshots
 
 
 def _adapter_name(adapter: BaseSourceAdapter) -> str:
