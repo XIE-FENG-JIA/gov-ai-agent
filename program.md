@@ -1,6 +1,12 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **版本**：v3.8（2026-04-20 15:55 — 技術主管第十六輪實跑 `pytest tests/ -q` = **3605 passed / 10 skipped / 0 failed / 459.99s**（v3.7 = 3599，+6；首次 < 460s）；工作樹 4 條：`M docs/live-ingest-report.md M program.md M scripts/live_ingest.py M tests/test_live_ingest_script.py` — P0.T-SPIKE 腳本 + doc + test 已落（AUTO-RESCUE `1f4fc8a` 已吞入）但 program.md 未勾 = 承諾漂移 v3；近 20 commits = **4 conventional / 16 `auto-commit:` = 20%**（連 >15 輪零進展，P0.S agent 側自救 0 動作）；`kb_data/corpus/**/*.md` **9 份全 `synthetic=true+fixture_fallback=true`，Epic 1 真通過 = 0/3 source**；**v3.8 底層邏輯：打破「ACL-free 也不動」第八層藉口「方案驅動治理」——P1.9 升 P0.W（seam 骨架）、P1.11 升 P0.X（vendor smoke）、新增 P0.Y（agent 側 audit-only 自救原型）；勾關 P0.T-SPIKE + T9.4.b（事實已完）**）
+> **版本**：v4.1（2026-04-20 17:40 — 技術主管第十九輪深度回顧；測試 baseline 承 v4.0 P0.STALENESS-EDGE 3622 passed / P1.8 3625 passed / 10 skipped / 0 failed；近 20 commits = **14 auto-commit / 6 conventional = 30% conv**（指標 2 零進展）；`kb_data/corpus/**/*.md` **9 份全 `synthetic=true+fixture_fallback=true`**，Epic 1 真通過 = 0/3；**v4.1 底層邏輯：P0.CC 除錯面設計閉環（`src/sources/mojlaw.py` 已補 `5xx retry + Accept-Language: zh-TW`；`scripts/live_ingest.py` 接 `--require-live/--no-require-live`）但未跑 ingest pipeline → 指標 7 未破蛋 = 紅線 6「設計驅動治理」浮現；升 P0.CC-CORPUS（10 分鐘純執行）為首；P0.AA editor.py 拆三連 1 輪漂移禁止二次；新開 P0.EE Epic 3 proposal / P0.FF Pydantic warnings 止癢 / P0.GG Windows gotchas**）
+> **v4.1 變更**（v4.0 → v4.1）：
+> - **紅線 6 新增**：設計驅動治理 = 3.25 —「修 adapter/spec/proposal 不跑 pipeline/test/commit」當輪就是漂移
+> - **勾關（事實已完）**：P0.CC [x]（除錯面）；另 P0.CP950 / P0.STALENESS-EDGE / P0.S-ADMIN / T9.8-P0 / T7.4 / P1.8 / T1.12 在已完成區
+> - **升 P0（本輪必破）**：P0.CC-CORPUS（執行層跑 live ingest）/ P0.AA editor.py 拆三 / P0.BB T9.7 log 去重 / P0.EE Epic 3 proposal / P0.FF Pydantic warnings 止癢 / P0.GG Windows gotchas
+> - **降權**：P0.S-ADMIN 已完 audit，改為 P0.S-FOLLOWUP 等 Admin；T9.6 幻影任務清除
+> - **v4.1 八硬指標目標**：6/8 PASS（指標 7 ≥ 1 破蛋為先；指標 2 降至 ≤ 12 次之）；若仍 5/8 = 承諾漂移 v5（紅線 4 二連）
 > **v3.8 變更**（v3.7 → v3.8）：
 > - **勾關（事實已完）**：P0.T-SPIKE [x]（`scripts/live_ingest.py` 174 行 + `docs/live-ingest-urls.md` 33 行 + `tests/test_live_ingest_script.py` 4 tests 齊；CLI help lazy import + `executive_yuan_rss` alias 已補）；T9.4.b [x]（6 個 CLI 檔 + 新測試皆入 HEAD）；P1.7 [x]（`docs/llm-providers.md` 已落）
 > - **升 P0（ACL-free 零藉口）**：P1.9 → **P0.W**（`src/integrations/open_notebook/` seam 骨架）；P1.11 → **P0.X**（vendor smoke import）；新增 **P0.Y**（agent 側 audit-only 自救原型，產 `docs/rescue-commit-plan.md`）
@@ -283,10 +289,75 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **延宕懲罰**：ACL-free + 已推翻 egress 假設，連 1 輪延宕 = 3.25（第九層藉口「debug 懶得跑」）
   - commit（ACL 解除後）: `fix(sources): diagnose require_live fixture fallback root cause`
   - **完成（2026-04-20 17:38）**：新增 `docs/live-ingest-debug.md`，抓到 `https://law.moj.gov.tw/api/Ch/Law/json` 首次偶發 `HTTP 500` 才是 fixture fallback 根因；`src/sources/mojlaw.py` 補 1 次 transient 5xx retry + `Accept-Language`，`scripts/live_ingest.py` 補 `--require-live/--no-require-live` 參數對齊 SOP。驗證 `pytest tests/test_mojlaw_adapter.py tests/test_live_ingest_script.py -q` = 13 passed，`python scripts/live_ingest.py --sources mojlaw --limit 1 --require-live --base-dir meta_test/p0cc_probe` 產出 `meta_test/p0cc_probe/corpus/mojlaw/A0000001.md`，frontmatter 為 `synthetic: false` / `fixture_fallback: false`
+  - **尾巴（v4.1 拆 P0.CC-CORPUS）**：`meta_test/p0cc_probe/` 只是 probe，**主 `kb_data/corpus/**/*.md` 9 份仍 100% `fixture_fallback=true`**；指標 7 未破蛋 = 紅線 6「設計驅動治理」觸發；剩「跑 live 三源 × 三份到主 corpus」子任務拆出為 P0.CC-CORPUS 首位待辦
+
+### P0.CC-CORPUS — 🔴 ACL-free·v4.1 首位·紅線 6 執行驗證（10 分鐘純執行）
+
+- [ ] **P0.CC-CORPUS** ✅ 不依賴 ACL / 不等 Admin：把 P0.CC adapter fix 的成果**真跑進主 `kb_data/corpus/`**，破指標 7 蛋
+  - **v4.1 升格理由**：P0.CC 已修 mojlaw retry + probe 證明可過，但主 corpus 仍 0/9 `synthetic: false`；**修了 adapter 不跑 pipeline = 紅線 6 設計驅動治理**
+  - **執行**：
+    ```bash
+    python scripts/live_ingest.py \
+      --sources mojlaw,datagovtw,executive_yuan_rss \
+      --limit 3 --require-live \
+      --base-dir kb_data \
+      --report-path docs/live-ingest-report.md
+    ```
+  - **驗 1**：`rg -l "synthetic: false" kb_data/corpus | wc -l` ≥ 1（破蛋目標；≥ 3 延伸；= 9 滿分）
+  - **驗 2**：`rg -l "fixture_fallback: true" kb_data/corpus | wc -l` ≤ 8（從 9 降）
+  - **驗 3**：`docs/live-ingest-report.md` 至少 1 source `live_ingested ≥ 1`
+  - **失敗分類**（若 rerun 仍 fallback）：
+    - mojlaw 500 再現 → retry `N=2` 擴到 `N=3`
+    - datagovtw / executive_yuan_rss 其他 HTTP 狀態 → 同 P0.CC 除錯決策樹
+    - 全 ingested=0 → 不記「完成」，打回 `docs/live-ingest-debug.md` append 第二回合
+  - **延宕懲罰**：ACL-free + adapter 已修 + 10 分鐘顆粒度，連 1 輪延宕 = 3.25（**紅線 6 實錘**）
+  - commit（ACL 解除後）: `feat(sources): first synthetic=false corpus via live ingest (mojlaw retry fix)`
+
+### P0.EE — 🟢 ACL-free·Epic 3 proposal 啟動（v4.1 新增；20 分鐘）
+
+- [ ] **P0.EE** ✅ 不依賴 ACL / 不依賴 Epic 2：`openspec/changes/03-citation-tw-format/proposal.md`（Epic 3 觸發器）
+  - **v4.1 升格理由**：`openspec/changes/` 目前只有 01 / 02 / archive；Epic 3（T3.1-T3.4）規格全空，Spectra baseline 斷鏈；proposal 180+ 字即可啟動後續 specs + tasks
+  - **產出**：
+    - `openspec/changes/03-citation-tw-format/proposal.md`：對齊 `src/core/citation.py` + 台灣公文格式（`## 引用來源` 段）+ Custom Properties metadata（`source_doc_ids` / `citation_count` / `ai_generated` / `engine`）+ `gov-ai verify <docx>` 比對 kb 契約
+  - **驗 1**：`wc -l openspec/changes/03-citation-tw-format/proposal.md` ≥ 20 AND `rg -c "citation|## 引用來源|source_doc_ids" openspec/changes/03-citation-tw-format/proposal.md` ≥ 3
+  - **驗 2**：`spectra analyze 03-citation-tw-format` 不爆 `proposal missing`
+  - **延宕懲罰**：ACL-free 連 2 輪延宕 = 3.25
+  - commit（ACL 解除後）: `docs(spec): add 03-citation-tw-format proposal (Epic 3 trigger)`
+
+### P0.FF — 🟢 ACL-free·Pydantic warnings 止癢（v4.1 新增；10 分鐘）
+
+- [ ] **P0.FF** ✅ 不依賴 ACL：`pyproject.toml` 加 `filterwarnings` 先止癢 1363 Pydantic v2 deprecation
+  - **v4.1 升格理由**：warnings 大宗來自 `chromadb.types` 第三方 1.x 兼容層，非專案碼；T8.2 真修壓力高，先止癢避免 log 信噪比惡化
+  - **產出**：
+    ```toml
+    [tool.pytest.ini_options]
+    filterwarnings = [
+        "ignore::DeprecationWarning:chromadb.*",
+        "ignore::pydantic.PydanticDeprecatedSince20:chromadb.*",
+    ]
+    ```
+  - **驗 1**：`pytest tests/ -q 2>&1 | rg -c "PydanticDeprecatedSince20"` 降 ≥ 80%
+  - **驗 2**：`pytest tests/test_core.py tests/test_api.py -q` 綠（不影響專案碼警告）
+  - **延宕懲罰**：ACL-free 連 2 輪延宕 = 3.25
+  - commit（ACL 解除後）: `chore(pytest): filter chromadb pydantic v2 deprecation warnings`
+
+### P0.GG — 🟢 ACL-free·Windows gotchas（v4.1 升 P0；原 T9.9，15 分鐘）
+
+- [ ] **P0.GG** ✅ 不依賴 ACL：記 Windows bash + pytest buffering + CRLF + icacls SOP
+  - **v4.1 升格理由**：bash 背景 `python -m pytest` 已連 3 輪 exit 0 + output flush 僅 40-50% 截斷，阻塞技術主管自動化驗收
+  - **產出**：`docs/dev-windows-gotchas.md`
+    - §1 pytest buffering：`python -u -m pytest ... 2>&1 | tee` 或 `PYTHONUNBUFFERED=1`
+    - §2 CRLF/LF warnings 與 `git config core.autocrlf` 建議
+    - §3 icacls DENY 檢查 SOP（P0.D 驗收）
+    - §4 `Move-Item` destructive policy 繞道（歸位類 SOP）
+  - **驗**：`wc -l docs/dev-windows-gotchas.md` ≥ 40
+  - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25（連 3 次命中同問題）
+  - commit（ACL 解除後）: `docs: add Windows bash dev gotchas (pytest I/O, CRLF, icacls, Move-Item)`
 
 ### P0.AA — 🟢 ACL-free·Epic 8 首顆升 P0（v4.0 新增；`editor.py` 獨立拆，不依賴 Epic 2）
 
 - [ ] **P0.AA** ✅ 不依賴 ACL / 不依賴 Epic 2：`src/agents/editor.py` 1065 行 → `src/agents/editor/{segment,refine,merge}.py`
+  - **v4.1 警告**：v4.0 承諾 60 分鐘 0 動作 → 連 1 輪延宕觸 3.25 邊緣；v4.1 再跳票 = 紅線 5 方案驅動治理實錘
   - **v4.0 升格理由**：Epic 8 T8.1.b/c 連 >10 輪未動；`editor.py` 是 6 大檔中**唯一不依賴** Epic 2 writer/retriever seam 的檔，可獨立拆；Epic 2 接入前先拆可降 merge 風險
   - **拆法**：
     - `src/agents/editor/__init__.py`：re-export `Editor` class 維持 import 相容
@@ -855,6 +926,7 @@ Epic 7 負責建置。建置完成前，program.md 是單一事實來源。
 - **紅線 3（v3.4）**：文檔驅動治理 = 3.25
 - **紅線 4（v3.5）**：承諾漂移 = 3.25
 - **紅線 5（v3.8 新增）**：方案驅動治理 = 3.25 — 方案（修法 A/B）寫了卻一輪不動手（P0.S 修法 A 寫 2 輪 0 嘗試即案例），以「方案選項列表」遮掩決策真空
+- **紅線 6（v4.1 新增）**：設計驅動治理 = 3.25 — 修了 adapter/spec/proposal 卻沒跑 pipeline/test/commit（P0.CC mojlaw retry 修完但 `kb_data/corpus/` 仍 0/9 synthetic:false 即案例），把「設計層閉環」偷換成「閉環」
 
 > **v3.7 → v3.8 變更摘要**：
 > 1. **承諾漂移升級**：P1.9 → P0.W（seam 骨架）、P1.11 → P0.X（vendor smoke）、新增 P0.Y（agent 側 audit-only 自救）

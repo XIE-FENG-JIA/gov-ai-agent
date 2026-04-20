@@ -495,3 +495,108 @@
 > [PUA生效 🔥] **底層邏輯**：v3.9 破 ACL-free 四骨牌換來 5/8 PASS，但同時留下**三筆「事實已完未勾」承諾漂移**（P0.T-SPIKE / T9.4.b / T9.8）= 第九層藉口「事後文檔懶得更」。**抓手**：v4.0 閉環新規「當輪事實達標就當輪勾，不留下輪」。**顆粒度**：P0.AA 60 分 + P0.BB 30 分 + P0.CC 30-60 分 ≤ 150 分鐘單輪全破。**拉通**：Epic 8 從 P1 升 P0，把「重構當餘力」改成「重構是主道」—— `> 1000` 行檔案繼續累積會讓 Epic 2 writer/retriever 接入代價指數上升，現在不拆以後更貴。**對齊**：指標 7 破蛋只需 1 源 × 1 份真 live md，顆粒度遠比想像小，P0.Z 已證 egress 不是瓶頸，所以 P0.CC 不接受「等 Admin」藉口。因為信任所以簡單——信任是**當輪事實補勾 + 當輪動手除錯**，不是**留待下下輪**。
 
 ---
+
+## 反思 [2026-04-20 17:40] — 技術主管第十九輪深度回顧（v4.0 驗收 → v4.1 候選）
+
+### 近期成果（v4.0 → 本輪實測）
+- **pytest 實跑閉環**：`python -u -m pytest tests/ -q --tb=no` = **3634 passed / 10 skipped / 0 failed / 519.77s / 1363 warnings**（v4.0 P1.8 header = 3625，+9 來自本輪 `test_cite_cmd.py` cp950 子程序回歸 + `test_find_auto_commit_source.py` 3 筆 + `test_staleness.py` edge 新增）。指標 1 維持綠。
+- **P0.CC 除錯驅動首次閉環**：`docs/live-ingest-debug.md` 40 行實證 — 根因非 egress 而是 `mojlaw` catalog 偶發 `HTTP 500`；`src/sources/mojlaw.py` 已落 `one-shot 5xx retry + Accept-Language: zh-TW` 修補，`scripts/live_ingest.py` 已補 `--require-live / --no-require-live` flag。**落地但未重跑主 corpus → `kb_data/corpus/` 仍 9/9 `fixture_fallback=true`**，指標 7 原地踏步。
+- **P0.S-ADMIN + T9.8-P0 + T7.4 + P1.8 四項前批已全勾**：`docs/admin-rescue-template.md` 57 行、`openspec/specs/{sources,open-notebook-integration}.md` 2 份 baseline、Spectra 兩 change 0 findings、README + architecture seam 同步。
+- **P0.CP950 本輪新破**：`src/cli/cite_cmd.py` 清 emoji / 不安全符號；`PYTHONIOENCODING=cp950 python -m src.cli.main --help` rc=0，`tests/test_cite_cmd.py` = 24 passed，新增 cp950 子程序回歸。
+- **P0.STALENESS-EDGE 新破**：`src/knowledge/staleness.py` 改用 UTC `elapsed_days` 整數比對，排除「剛好 7 天」微秒抖動；`pytest tests/test_staleness.py -q` = 30 passed。
+- **engineer-log 再膨脹**：497 行（v4.0 = 408；+89 來自第十八輪反思追加）— 仍在 ≤ 500 邊界內。
+
+### 發現的問題（按嚴重度）
+
+#### 🔴 誠信級
+1. **P0.CC 修了 adapter 但未補 live corpus**：`mojlaw` retry 路徑已修，但本輪未再跑 `python scripts/live_ingest.py --sources mojlaw --limit 3 --require-live` 把 `synthetic: false` 真 md 落盤；= 第十層藉口「修了 adapter 不跑 pipeline」。
+2. **P0.AA 連 1 輪延宕觸 3.25 門檻**：`src/agents/editor.py` **1065 行未拆**；v4.0 承諾「60 分鐘拆三」0 動作。Epic 8 首顆升 P0 後第一輪就崩約。
+3. **P0.BB T9.7 log 去重 0 動作**：ACL-free / 30 分鐘顆粒度；連 2 輪零推進。`results.log` `[BLOCKED-ACL]` 條目仍持續膨脹。
+4. **auto-commit 零進展**：HEAD~20 仍 14 條 `auto-commit:`；P0.Y audit plan 44 行已在 `docs/rescue-commit-plan.md`，但 Admin 側無動作。
+
+#### 🟠 結構級
+5. **ACL DENY 連 >18 輪（P0.D）**：Admin 依賴不解，所有 commit 仍走 AUTO-RESCUE。
+6. **Epic 8 6 大檔共 6692 行未拆**：`src/cli/kb.py` 1614 / `src/cli/generate.py` 1263 / `src/agents/editor.py` 1065 / `src/agents/writer.py` 941 / `src/api/routes/workflow.py` 910 / `src/knowledge/manager.py` 899。T8.1.c editor.py 不依賴 Epic 2 卻連 >11 輪未動。
+7. **T9.5 root hygiene 連 session-blocked 無出口**：10 份 `.ps1` + 5 份 `.docx` 根目錄殘留；`Move-Item` 被 destructive policy 擋不動。
+8. **integration live smoke = 10 skipped 連 >16 輪**：即便 P0.CC 修了 adapter，live smoke 仍靠 env gate 跑不起來。
+
+#### 🟡 質量級
+9. **Pydantic v2 1363 warnings 持平**（chromadb types.py 大宗，非專案碼）— T8.2 可 pin 版本或 `filterwarnings::ignore` 止癢。
+10. **測試/源碼比 69/142 = 48.6%**（v4.0 為 67/142 = 47%；+2 來自 `test_cite_cmd.py` cp950 新增 + `test_find_auto_commit_source.py`）。Epic 1 真通過測試 0 筆（live smoke skipped）。
+11. **pytest Windows buffering 第 3 次重現**：本輪 `python -u -m pytest ... 2>&1 | tail` 背景已跑 >60s 0 bytes；v4.0 標註 `docs/dev-windows-gotchas.md` 未建（T9.9 待辦）。
+
+#### 🟢 流程級
+12. **承諾漂移 v5 苗頭**：本輪閉環的 P0.CP950 / P0.STALENESS-EDGE 兩顆已在 `program.md` 已完成區補勾，但新增 P0.AA / P0.BB / P0.CC / T9.9 無當輪執行 = v4.0 「當輪事實達標就當輪勾」SOP 沒護住**新任務當輪啟動**面向。
+13. **results.log 63KB / 160 行中 > 45 條 `BLOCKED-ACL`**：`BLOCKED-ACL` / `AUTO-RESCUE / PASS` 交錯把訊號淹沒；T9.7 / P0.BB 不破不行。
+
+### 安全性
+- ✅ `src/*.py` 對 `eval(|exec(|pickle.loads|shell=True|yaml.load(` 全掃 **0 命中**（Grep tool 確證）。
+- 🟡 `vendor/open-notebook/` 無 pin commit、無 SBOM；Epic 2 啟動 T2.5+ 前建議至少 `git submodule status` 或 `pip freeze > docs/vendor-open-notebook-pins.txt`。
+- 🟡 `GOV_AI_OPEN_NOTEBOOK_MODE` env 白名單未強驗，但 default `off` + writer-mode loud fail 現場 OK。
+
+### 架構健康度
+- **Spectra 對齊**：`openspec/specs/*.md` 2 份 baseline、`openspec/changes/{01,02}` 0 findings；可動 `03-citation-tw-format` / `04-audit-citation` Epic proposal。
+- **Epic 1 骨架完整 + debug 收斂**：5 adapter + ingest + CLI + `--require-live` guard + P0.CC 真因已解；**下一步純執行問題**：跑 live ingest 收 3 源 × 3 份 real md。
+- **Epic 2 seam 穩定**：off/smoke/writer 三模式 + vendor re-clone 成功 + `import open_notebook` 通；writer/retriever/fallback 可進場。
+- **Epic 8 雜糅**：6 大檔壓 Epic 2 接入窗口，`editor.py` 獨立可拆為首顆。
+
+### 八硬指標（v4.0 → v4.1 驗收）
+
+┌────┬──────────────────────────────────────────┬────────┬──────┬──────┬─────────────┐
+│ #  │ 指標                                     │ 目標   │ 本輪 │ v4.0 │ 結論        │
+├────┼──────────────────────────────────────────┼────────┼──────┼──────┼─────────────┤
+│ 1  │ pytest FAIL                              │ == 0   │ 0(3634p) │ 0(3625p) │ ✅ 維持+9 │
+│ 2  │ auto-commit in last 20                   │ ≤ 4    │ 14   │ 14   │ ❌ 零進展   │
+│ 3  │ icacls .git DENY                         │ == 0   │ 2    │ 2    │ ❌ 零進展   │
+│ 4  │ src/integrations/open_notebook/*.py      │ exists │ ✅   │ ✅   │ ✅ 維持     │
+│ 5  │ docs/open-notebook-study.md ≥ 80         │ ≥ 80   │ 298  │ ✅   │ ✅ 維持     │
+│ 6  │ smoke_open_notebook.py no ImportError    │ ok     │ ✅   │ ✅   │ ✅ 維持     │
+│ 7  │ synthetic=false ≥ 9 & fallback == 0      │ 9/0    │ 0/9  │ 0/9  │ ❌ 零進展   │
+│ 8  │ openspec/specs/*.md ≥ 2                  │ ≥ 2    │ 2    │ 2    │ ✅ 維持     │
+└────┴──────────────────────────────────────────┴────────┴──────┴──────┴─────────────┘
+
+**v4.1 實測 5/8 PASS 與 v4.0 並列**（pytest 3634/10/0 實跑閉環，+9 vs v4.0；指標 1 不再需「buffered baseline 佐證」，直接打閉環）；剩 3/8（指標 2/3/7）共用 Admin + 執行瓶頸未破。
+
+\* pytest 實跑 evidence（2026-04-20 17:50）：
+```
+========= 3634 passed, 10 skipped, 1363 warnings in 519.77s (0:08:39) =========
+```
+
+### 建議的優先調整（v4.0 → v4.1 重排）
+
+#### 勾關（本輪事實已完）
+- **P0.CC（除錯部分） → [x]**：`docs/live-ingest-debug.md` 40 行真因 + mojlaw adapter retry 修補已落；**但剩「live ingest 真 corpus 落盤」子任務拆出為 P0.CC-CORPUS**。
+
+#### 升 P0（從「設計完」進「執行完」）
+- **P0.CC-CORPUS（新）** 🔴 ACL-free：執行 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 3 --require-live`，把 `synthetic: false` 真 md 落 `kb_data/corpus/`；**驗**：`rg -l "synthetic: false" kb_data/corpus 2>&1 | wc -l` ≥ 1（破蛋目標 1 → ≥ 3 是延伸）；連 1 輪延宕 = 3.25（修了 adapter 不跑 pipeline = 第十層藉口）。**估 10 分鐘**（3 adapter × limit=3，rate-limit ≥ 2s 共 ~60s）。
+
+#### 保留 P0 但升排序（連 1 輪延宕 = 3.25 觸發）
+- **P0.AA editor.py 拆三**：v4.0 承諾 60 分鐘，本輪 0 動作 — **v4.1 絕不可再漂移**；驗：每檔 ≤ 400 行 + 向後相容 import。
+- **P0.BB T9.7 log 去重 SOP**：連 2 輪零推進，升為「當輪必破」；30 分鐘 + `pytest tests/test_dedupe_results_log.py`.
+
+#### 新增 P0
+- **P0.EE（新）** 🟠 ACL-free：`openspec/changes/03-citation-tw-format/proposal.md`（Epic 3 觸發器）— proposal 180+ 字，對齊 `src/core/citation.py` + 台灣公文格式（`## 引用來源` 段）+ Custom Properties metadata。**估 20 分鐘**；Spectra baseline + Epic 3 啟動一箭雙鵰。
+- **P0.FF（新）** 🟢 ACL-free：`pyproject.toml` 加 `[tool.pytest.ini_options]` `filterwarnings = ["ignore::DeprecationWarning:chromadb.*"]` 止癢 1363 Pydantic v2 warnings；T8.2 真修交給 Epic 8 時同步推。**估 10 分鐘**。
+
+#### 保留但降權
+- **P0.S-ADMIN**：audit 已完、rescue plan 已落；剩 Admin 執行側 — 不可再佔 P0 排位；**降為 P0.S-FOLLOWUP 等 Admin**。
+- **T9.9 Windows gotchas**：本輪第 3 次命中 — 升 P0.GG（ACL-free 15 分鐘）；拖下去下輪還會卡。
+
+### 下一步行動（最重要 3 件）
+1. **P0.CC-CORPUS**（10 分鐘）：跑 live ingest 三源 × 三份，指標 7 破蛋 ≥ 3。如再卡 500 → `docs/live-ingest-debug.md` append 第二回合。
+2. **P0.AA editor.py 拆三**（60 分鐘）：Epic 8 首顆破蛋；第二次跳票 = 紅線 5 方案驅動治理。
+3. **P0.BB T9.7 log 去重 SOP**（30 分鐘）：`scripts/dedupe_results_log.py` + test；降低後續 KPI 雜訊稀釋。
+
+### v4.1 版本紀要
+- **v4.1 = 「從 debug 設計進 debug 執行 + Epic 8 首顆真拆」**：P0.CC 切 DEBUG / CORPUS；P0.AA 禁止二次漂移；新開 Epic 3 proposal 啟動 (P0.EE)；Pydantic warnings 止癢 (P0.FF)。
+- **v4.0 承諾兌現盤點**：P0.CC 除錯（設計 + adapter fix）✅；P0.AA editor.py 拆 ❌（60 分鐘 0 動作）；P0.BB log 去重 ❌；T9.9 Windows gotchas ❌ = **1/4 兌現** — **退步於 v3.9 的 2/4**。
+- **v4.1 目標**：**8 指標 6/8 PASS**（指標 7 破蛋 ≥ 1 為先；指標 2 次之）；若仍 5/8 = 承諾漂移 v5（3.25 紅線 4 二連）。
+
+#### 紅線 6（v4.1 新增）：**設計驅動治理 = 3.25**
+- **定義**：只修設計層（adapter / spec / proposal）不跑執行層（ingest / test run / commit），把「設計閉環」偷換成「閉環」。
+- **案例**：P0.CC 修了 mojlaw retry 卻沒跑 `live_ingest.py` → `fixture_fallback=true 9 份` 原地；這就是設計驅動治理。
+- **懲罰**：「當輪 debug/fix 已落但未 smoke execute」連 1 輪 = 3.25。
+
+> [PUA生效 🔥] **底層邏輯**：v4.0 把「寫方案」升級成「執行方案」，本輪只兌現 P0.CC 半個（設計端），執行端在 adapter fix 後 30 分鐘內就能跑完的 live ingest 沒跑 → **設計驅動治理**第十層藉口浮現。**抓手**：紅線 6 明文禁止「修 adapter 不跑 pipeline」；P0.CC-CORPUS 顆粒度 10 分鐘，沒有「等」的空間。**顆粒度**：P0.CC-CORPUS 10 分 + P0.AA 60 分 + P0.BB 30 分 + P0.EE 20 分 + P0.FF 10 分 + P0.GG 15 分 = 145 分鐘，單輪可破五顆。**拉通**：Epic 8 editor.py 拆三不做，Epic 2 T2.6 writer 重構 merge 代價每輪漲 15%；Epic 3 proposal 不開，T3.1 citation 就永遠在規劃期。**對齊**：指標 7 破蛋只需 1 份 `synthetic: false` md，mojlaw retry 修完後 `--limit 1 --require-live` 一行搞定；還卡著就是第十層藉口實錘。因為信任所以簡單——信任是**修了就跑、跑了就落**，不是**修了等下輪再跑**。
+
+---
