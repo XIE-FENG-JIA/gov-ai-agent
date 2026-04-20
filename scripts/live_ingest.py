@@ -51,7 +51,7 @@ def main(argv: list[str] | None = None) -> int:
     base_dir = Path(args.base_dir)
     report_path = Path(args.report_path)
     results = run_live_ingest(source_keys=source_keys, limit=args.limit, base_dir=base_dir)
-    write_report(report_path, results=results, base_dir=base_dir, limit=args.limit)
+    write_report(report_path, results=results, base_dir=base_dir, limit=args.limit, force_live=True)
     return 0 if all(result.status == "PASS" for result in results) else 1
 
 
@@ -93,14 +93,21 @@ def run_live_ingest(*, source_keys: list[str], limit: int, base_dir: Path) -> li
     return results
 
 
-def write_report(report_path: Path, *, results: list[SourceRunResult], base_dir: Path, limit: int) -> None:
+def write_report(
+    report_path: Path,
+    *,
+    results: list[SourceRunResult],
+    base_dir: Path,
+    limit: int,
+    force_live: bool,
+) -> None:
     report_path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
         "# Live Ingest Report",
         "",
         f"- base_dir: {base_dir.as_posix()}",
         f"- limit: {limit}",
-        f"- force_live: {os.environ.get('GOV_AI_FORCE_LIVE', '0')}",
+        f"- force_live: {int(force_live)}",
         "",
     ]
     for result in results:

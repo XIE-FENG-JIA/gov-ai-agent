@@ -2,7 +2,7 @@
 
 - base_dir: meta_test/live_ingest_probe
 - limit: 1
-- force_live: 0
+- force_live: 1
 
 ## mojlaw
 - status: FAIL

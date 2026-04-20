@@ -157,15 +157,12 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 #### P0.T-SPIKE — 🟢 ACL-free·agent 可做：live ingest 離線腳本 + URL 可達性盤點（v3.5 新增）
 
-- [ ] **P0.T-SPIKE** ✅ 不依賴網路：準備一鍵 live ingest 腳本，Admin 解 egress 後 agent 可直接 P0.T-LIVE
-  - 產出：
-    - `scripts/live_ingest.py`：`python scripts/live_ingest.py [--sources mojlaw,datagovtw,...] [--limit 3]`，迴圈跑 5 adapter，每源強制 `GOV_AI_FORCE_LIVE=1`、禁 fixture fallback、寫 `docs/live-ingest-report.md`（URL / 抓取筆數 / 首句摘要 / `synthetic`/`fixture_fallback` flag）
-    - `docs/live-ingest-urls.md`：盤點 5 adapter 實際抓取的 URL 清單（mojlaw 的 `/api/` 端點、datagovtw dataset id、executive_yuan_rss feed URL、mohw_rss feed URL、fda DataAction query），每個附 `curl -sI` 預期狀態與 `Content-Type`
-    - `tests/test_live_ingest_script.py`：純離線 mock 驗腳本邏輯（不打真網路）
-  - **驗 1**：`wc -l scripts/live_ingest.py` ≥ 40 AND `python scripts/live_ingest.py --help` 有出參數
-  - **驗 2**：`wc -l docs/live-ingest-urls.md` ≥ 25 AND 5 adapter URL 各一行
-  - **驗 3**：`pytest tests/test_live_ingest_script.py -q` 綠
-  - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
+- [x] **P0.T-SPIKE** ✅ 不依賴網路：`scripts/live_ingest.py` / `docs/live-ingest-urls.md` / `tests/test_live_ingest_script.py` 已落地；`python scripts/live_ingest.py --help` 正常、`pytest tests/test_live_ingest_script.py -q` = 3 passed；另以 `main(['--sources','mojlaw',...])` 生成 `docs/live-ingest-report.md`，實測現環境仍因 fixture fallback 被 `require_live` 擋下，保留 fail report 給後續 P0.T-LIVE 使用
+  - **產出**：
+    - `scripts/live_ingest.py`：支援 `--sources/--limit/--base-dir/--report-path`，逐源強制 `require_live=True` 並輸出 markdown report
+    - `docs/live-ingest-urls.md`：盤點 5 adapter listing/detail URL、預期 `curl -sI` 狀態與 `Content-Type`
+    - `tests/test_live_ingest_script.py`：mock 驗 `GOV_AI_FORCE_LIVE=1`、report table 與 unknown source parser
+    - `docs/live-ingest-report.md`：probe 記錄目前 `mojlaw` 仍回 `live ingest required ... fixture fallback`
   - commit（ACL 解除後）: `feat(scripts): add live ingest spike script + URL reachability inventory`
 
 #### P0.T-LIVE — 🟡 Admin-dep：實跑 live ingest 產生 3 源 × 3 份 `synthetic: false` corpus
@@ -572,9 +569,9 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [ ] **T9.3** `docs/commit-plan.md` 生命週期：本輪史命完成，移 `docs/archive/commit-plans/2026-04-20-v2.2-split.md`
 - [x] **T9.4.a** `tests/test_cli_commands.py` per-test chdir 隔離（v2.4 閉環）
 - [x] **T9.4.b** auto-engineer / CLI 狀態檔搬專用 state dir（`~/.gov-ai/state/` 或 `${GOV_AI_STATE_DIR}`），避免 repo root file lock 再發
-  - **完成（2026-04-20）**：`src/cli/utils.py` 新增 state-dir resolver / fallback；`src/cli/main.py` 在 repo root 自動切到 `~/.gov-ai/state/`（可由 `${GOV_AI_STATE_DIR}` 覆寫）；`src/cli/history.py` 與 `src/web_preview/app.py` 同步支援讀舊檔、寫新 state dir
+  - **完成（2026-04-20）**：`src/cli/utils.py` 新增 state-dir resolver / fallback；`src/cli/main.py` 在 repo root 自動切到 `~/.gov-ai/state/`（可由 `${GOV_AI_STATE_DIR}` 覆寫）；`src/cli/history.py`、`src/web_preview/app.py`、`src/cli/profile_cmd.py` 同步支援讀舊檔、寫新 state dir，並修正 `profile_set()` 直接呼叫時的 `OptionInfo` 預設值解包
   - **相容策略**：repo root 若已有舊 `.gov-ai-*.json` 檔，讀取仍可 fallback；下一次寫入會落到 state dir，避免再污染 root
-  - **驗**：`pytest tests/test_cli_state_dir.py tests/test_stats_cmd.py tests/test_web_preview.py -q` = 45 passed；`pytest tests/test_cli_commands.py -q -k "history_append_and_list or history_clear or history_list_empty or history_archive or duplicate or rename or tag_add or tag_remove or pin or unpin"` = 31 passed；`pytest tests -q` = 3599 passed / 10 skipped / 0 failed
+  - **驗**：`pytest tests/test_cli_state_dir.py -q` = 6 passed；`pytest tests/test_stats_cmd.py tests/test_web_preview.py -q` = 42 passed；`pytest tests/test_cli_commands.py -q -k "history_append_and_list or history_clear or history_list_empty or history_archive or duplicate or rename or tag_add or tag_remove or pin or unpin"` = 31 passed；`pytest tests -q` = 3605 passed / 10 skipped / 0 failed
   - commit: `feat(cli): configurable state dir to avoid repo-root file locks`
 - [ ] **T9.5（v3.3 NEW）** root 11+ 份歷史殘檔歸位
   - **背景**：root 仍有 10 份 `.ps1`（debug_template / run_all_tests / start_n8n_system / test_advanced_template / test_citation / test_multi_agent_v2 / test_multi_agent_v2_unit / test_phase3 / test_phase4_retry / test_qa）+ 5 份 `.docx`（test_citation / test_output / test_qa_report / 春節垃圾清運公告 / 環保志工表揚）→ root hygiene 失守
@@ -629,6 +626,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **P0.U (v3.3)** fixture fallback provenance guard：來源 adapter/ingest 會把 fallback 落盤標成 `synthetic: true` + `fixture_fallback: true`，避免假資料冒充 P0.T 真 ingest
 - [x] **P0.V-live-upgrade (v3.3)** fixture corpus live-upgrade guard：ingest 會跳過既有真資料，但允許既有 fixture corpus 在 live re-ingest 時升級為 `synthetic: false` 真資料；避免先前 fallback 產物永久卡住 P0.T / T1.6
 - [x] **P0.V-flaky (v3.5)** `test_ingest_keeps_fixture_backed_corpus_when_only_fixture_data_is_available` 本輪全量 3590 passed 0 failed 未重現（處置同 P0.S-stale；三軸 SOP 保留供未來）
+- [x] **P0.T-SPIKE (v3.7)** `scripts/live_ingest.py` + `docs/live-ingest-urls.md` + `tests/test_live_ingest_script.py` 已落地；`python scripts/live_ingest.py --help` 正常、`pytest tests/test_live_ingest_script.py -q` = 3 passed，並產出 `docs/live-ingest-report.md` 記錄目前 `mojlaw` require-live probe 仍被 fixture fallback 擋下
 - [x] **T1.12-HARDEN (v3.4)** nightly live smoke 禁 silent fixture fallback；`tests/integration/test_sources_smoke.py` 把 fixture_dir 指向不存在路徑，upstream 掛 → integration FAIL 不再假綠
 - [x] **T1.6.a (v3.4)** 校正 `kb_data/examples/*.md` 合成基線為 155，`tests/test_mark_synthetic.py` 新增 guard
 - [x] **T1.6.b (v3.4)** fixture corpus 升級護欄；ingest 辨識既有 `synthetic: true` / `fixture_fallback: true` 檔，僅 live re-ingest 時覆寫
@@ -664,7 +662,7 @@ Epic 7 負責建置。建置完成前，program.md 是單一事實來源。
 **下一輪重排觸發**（v3.5 四項硬指標，依執行順序）：
 1. `git log --oneline -5 | grep -c "auto-commit:"` == 0（P0.S；Admin 依賴，誠信血債連 20 輪）
 2. `icacls .git 2>&1 | grep -c DENY` == 0（P0.D；Admin 依賴連 12 輪）
-3. `ls scripts/live_ingest.py docs/live-ingest-urls.md` 存在 AND `pytest tests/test_live_ingest_script.py -q` 綠（P0.T-SPIKE；agent-side 可做）
+3. `Get-Content docs/live-ingest-report.md` 可見 `require_live` 失敗證據，待 Admin 解 egress 後直接進 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executiveyuanrss --limit 3`（P0.T-LIVE 前置已齊）
 4. `grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` ≥ 9 AND `grep -l "fixture_fallback: true" kb_data/corpus/**/*.md | wc -l` == 0（P0.T-LIVE；Admin 解 egress 後）
 
 **健康護欄**（v3.5 必須持續綠）：

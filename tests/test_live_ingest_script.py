@@ -73,10 +73,11 @@ def test_write_report_renders_markdown_table(tmp_path: Path) -> None:
         ),
     ]
 
-    live_ingest.write_report(report_path, results=results, base_dir=tmp_path / "kb_data", limit=3)
+    live_ingest.write_report(report_path, results=results, base_dir=tmp_path / "kb_data", limit=3, force_live=True)
 
     content = report_path.read_text(encoding="utf-8")
     assert "# Live Ingest Report" in content
+    assert "- force_live: 1" in content
     assert "| source_url | synthetic | fixture_fallback | first_sentence |" in content
     assert "live ingest required" in content
     assert "- count: 1" in content
