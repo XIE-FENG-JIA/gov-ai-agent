@@ -127,7 +127,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### P0.C — ✅ read-only（v2.8 糾偏）：Open 01-real-sources change proposal
 
-- [ ] **P0.C** ✅ 不依賴 ACL（糾偏）：寫 `openspec/changes/01-real-sources/proposal.md`
+- [x] **P0.C** ✅ 不依賴 ACL（糾偏）：寫 `openspec/changes/01-real-sources/proposal.md`
   - **v2.8 糾偏**：v2.7 誤掛 🚦 ACL-gated；寫檔本身不需 git 寫入，只有 commit 才需。連 7 輪延宕（v2.2→v2.8）= 意願問題
   - 內容：problem / solution / non-goals / acceptance criteria，≤ 500 字
   - **驗**：`ls openspec/changes/01-real-sources/proposal.md && wc -w < openspec/changes/01-real-sources/proposal.md` ≤ 500
