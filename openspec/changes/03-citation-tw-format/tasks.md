@@ -34,28 +34,33 @@
   Commit: `feat(document): record citation metadata fields`
   - **完成（2026-04-21 01:40）**：新增 `src/document/citation_metadata.py`，把 citation export metadata keys、reference parsing、reviewed-source matching 與 DOCX custom-properties readback 收斂成 repo-owned schema；`DocxExporter` 改委派同一套 builder，讓後續 verify flow 可直接讀取 `source_doc_ids` / `citation_count` / `ai_generated` / `engine` / `citation_sources_json`。驗證 `pytest tests/test_document.py tests/test_cli_commands.py -q -k "stamp or verify"` = 11 passed，另 `pytest tests/test_export_citation_metadata.py tests/test_document.py tests/test_exporter_extended.py -q` = 79 passed
 
-- [ ] **T3.4** Add a repo-owned `gov-ai verify <docx>` path that checks exported
+- [x] **T3.4** Add a repo-owned `gov-ai verify <docx>` path that checks exported
   citation metadata and source references against repo evidence.
   Requirements:
   - Verify flow compares exported docx state against knowledge-base evidence
   Validation: `pytest tests/test_cli_commands.py -q -k verify`
   Commit: `feat(cli): add exported docx citation verification`
+  - **完成（2026-04-21 01:43）**：新增 `src/cli/verify_cmd.py`，讀取 DOCX custom properties 的 citation metadata，並掃描 `kb_data/corpus/**/*.md` frontmatter，依 `source_doc_id` / `source_url` / `title` 比對 repo evidence；缺 metadata 或找不到 corpus 對應時明確 FAIL。驗證 `pytest tests/test_cli_commands.py -q -k verify` 通過
 
-- [ ] **T3.5** Requirement coverage: Citation output uses one canonical section
+- [x] **T3.5** Requirement coverage: Citation output uses one canonical section
   marker is satisfied by `T3.0`, `T3.1`, and `T3.2`.
   Validation: `spectra analyze 03-citation-tw-format`
+  - **完成（2026-04-21 01:47）**：`spectra analyze 03-citation-tw-format` = 0 findings，確認 canonical `## 引用來源` requirement 已由 `T3.0` / `T3.1` / `T3.2` 完整覆蓋，無缺口與模糊 requirement 漏洞。
 
-- [ ] **T3.6** Requirement coverage: Citation metadata survives across
+- [x] **T3.6** Requirement coverage: Citation metadata survives across
   generation and export is satisfied by `T3.1`, `T3.2`, and `T3.3`.
   Validation: `spectra analyze 03-citation-tw-format`
+  - **完成（2026-04-21 01:47）**：`spectra analyze 03-citation-tw-format` = 0 findings，確認 citation metadata persistence requirement 已由 formatter / exporter / metadata readback 三段 seam 對齊。
 
-- [ ] **T3.7** Requirement coverage: DOCX export preserves citation verification
+- [x] **T3.7** Requirement coverage: DOCX export preserves citation verification
   metadata is satisfied by `T3.2` and `T3.3`.
   Validation: `spectra analyze 03-citation-tw-format`
+  - **完成（2026-04-21 01:47）**：`spectra analyze 03-citation-tw-format` = 0 findings，確認 DOCX custom-properties verification metadata requirement 已被 `T3.2` / `T3.3` 收斂，不再需要額外 spec 補洞。
 
-- [ ] **T3.8** Requirement coverage: Verify flow compares exported docx state
+- [x] **T3.8** Requirement coverage: Verify flow compares exported docx state
   against knowledge-base evidence is satisfied by `T3.3` and `T3.4`.
   Validation: `spectra analyze 03-citation-tw-format`
+  - **完成（2026-04-21 01:47）**：`spectra analyze 03-citation-tw-format` = 0 findings，確認 `gov-ai verify <docx>` 與 exported metadata readback 已覆蓋 verify-vs-repo-evidence requirement。
 
 ## Requirement Mapping
 

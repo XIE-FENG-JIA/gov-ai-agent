@@ -41,6 +41,7 @@ from src.cli.split_cmd import split as split_cmd
 from src.cli.toc_cmd import toc as toc_cmd
 from src.cli.redact_cmd import redact as redact_cmd
 from src.cli.stamp_cmd import stamp as stamp_cmd
+from src.cli.verify_cmd import verify as verify_cmd
 from src.cli.number_cmd import number as number_cmd
 from src.cli.extract_cmd import extract as extract_cmd
 from src.cli.format_cmd import format_doc as format_cmd
@@ -96,6 +97,7 @@ app.command(name="split")(split_cmd)
 app.command(name="toc")(toc_cmd)
 app.command(name="redact")(redact_cmd)
 app.command(name="stamp")(stamp_cmd)
+app.command(name="verify")(verify_cmd)
 app.command(name="number")(number_cmd)
 app.command(name="extract")(extract_cmd)
 app.command(name="format")(format_cmd)

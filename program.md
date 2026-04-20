@@ -939,7 +939,10 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **完成（2026-04-21 01:33）**：`DocxExporter` 會從 reviewed citation payload 寫入 DOCX custom properties，保留 `source_doc_ids` / `citation_count` / `ai_generated` / `engine` 與 `citation_sources_json`，`generate` 匯出路徑同步把 `WriterAgent._last_sources_list` 與 LLM engine 傳入 exporter。驗證 `pytest tests/test_export_citation_metadata.py tests/test_document.py tests/test_exporter_extended.py -q` = 78 passed，`pytest tests/test_cli_commands.py -q -k "stamp or generate"` = 31 passed
 - [x] **T3.3** citation metadata schema/readback：`src/document/citation_metadata.py` 統一定義 `source_doc_ids` / `citation_count` / `ai_generated` / `engine` / `citation_sources_json`
   - **完成（2026-04-21 01:40）**：抽出 repo-owned citation metadata seam，集中 reference parsing、reviewed-source matching、DOCX export metadata 組裝與 readback；`DocxExporter` 改委派該 seam，後續 `gov-ai verify <docx>` 可以直接讀回同一批 metadata keys。驗證 `pytest tests/test_document.py tests/test_cli_commands.py -q -k "stamp or verify"` = 11 passed，另 `pytest tests/test_export_citation_metadata.py tests/test_document.py tests/test_exporter_extended.py -q` = 79 passed
-- [ ] **T3.4** `gov-ai verify <docx>` 讀 Custom Properties 比對 kb
+- [x] **T3.4** `gov-ai verify <docx>` 讀 Custom Properties 比對 kb
+  - **完成（2026-04-21 01:43）**：新增 `src/cli/verify_cmd.py` 與 `gov-ai verify <docx>` CLI，會讀 DOCX custom properties 的 `source_doc_ids` / `citation_count` / `ai_generated` / `engine` / `citation_sources_json`，再掃 `kb_data/corpus/**/*.md` frontmatter，比對 `source_id/source_url/title` 是否能在 repo evidence 找到對應來源。驗證 `pytest tests/test_cli_commands.py -q -k verify` 通過
+- [x] **T3.5-T3.8** citation spec coverage closure：`03-citation-tw-format` requirement ↔ tasks mapping 與 verify flow coverage 全部閉環
+  - **完成（2026-04-21 01:47）**：`spectra analyze 03-citation-tw-format` = 0 findings，代表 canonical citation heading / metadata persistence / DOCX verification metadata / verify-vs-repo-evidence 四條 requirement 均已被 `T3.0-T3.4` 覆蓋；Epic 3 change package 目前規格層無缺口。
 
 ---
 
@@ -975,7 +978,8 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 - [x] **T7.1.a** `01-real-sources` proposal（v2.8 P0.C 閉；specs/tasks 見 v3.0 P0.K）
 - [x] **T7.1.b** `02-open-notebook-fork` proposal（v2.9 P0.G 閉；specs/tasks 延後）
-- [ ] **T7.1.c** `03-citation-tw-format`（Epic 3）
+- [x] **T7.1.c** `03-citation-tw-format`（Epic 3）
+  - **完成（2026-04-21 01:47）**：`openspec/changes/03-citation-tw-format/{proposal.md,tasks.md,specs/citation/spec.md}` 已齊，`spectra analyze 03-citation-tw-format` = 0 findings；Epic 3 規格鍊閉環。
 - [ ] **T7.1.d** `04-audit-citation`（Epic 4）
 - [x] **T7.2** → 已升 P1.2（v2.4 閉環）
 - [ ] **T7.3** `engineer-log.md` 進版控 + 每輪反思 append 規範
