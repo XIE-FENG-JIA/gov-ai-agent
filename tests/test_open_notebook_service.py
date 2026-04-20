@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -53,6 +54,12 @@ def test_service_passes_request_to_repo_owned_adapter() -> None:
     assert result.diagnostics["adapter"] == "recording"
     assert result.diagnostics["service"] == "open-notebook"
     assert result.diagnostics["mode"] == "writer"
+    assert json.loads(result.diagnostics["retrieved_evidence"]) == [{
+        "title": "doc-1",
+        "snippet": "snippet",
+        "source_url": "",
+        "rank": 1,
+    }]
     assert result.diagnostics["trace_id"] == "trace-123"
     assert result.diagnostics["metadata_filters"] == "agency=epa,doc_type=函"
 
@@ -98,3 +105,19 @@ def test_service_writer_mode_fails_loudly_without_vendor(
 
     assert "writer mode requires a usable vendor/open-notebook checkout" in str(exc_info.value)
     assert "only .git metadata" in str(exc_info.value)
+
+
+def test_service_fallback_missing_vendor_surfaces_setup_error(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    vendor_path = tmp_path / "open-notebook"
+    monkeypatch.setenv("GOV_AI_OPEN_NOTEBOOK_MODE", "writer")
+    monkeypatch.setenv("GOV_AI_OPEN_NOTEBOOK_VENDOR_PATH", str(vendor_path))
+    service = OpenNotebookService()
+
+    with pytest.raises(IntegrationSetupError) as exc_info:
+        service.ask(OpenNotebookAskRequest(question="hi"))
+
+    assert "writer mode requires a usable vendor/open-notebook checkout" in str(exc_info.value)
+    assert "vendor path does not exist" in str(exc_info.value)

@@ -95,6 +95,44 @@ def test_writer_uses_open_notebook_service_when_toggle_enabled(
     mock_llm.generate.assert_not_called()
 
 
+def test_writer_references_open_notebook_retrieved_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("GOV_AI_OPEN_NOTEBOOK_MODE", "smoke")
+    mock_llm = MagicMock()
+    mock_kb = MagicMock()
+    mock_kb.search_hybrid.return_value = [_example()]
+
+    class FakeService:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        def ask(self, request: OpenNotebookAskRequest) -> AskResult:
+            return AskResult(
+                answer_text="### 主旨\nsmoke 草稿\n\n### 說明\n一、依據行政院核定方案辦理[^1]。",
+                evidence=[
+                    RetrievedEvidence(
+                        title="open-notebook 命中證據",
+                        snippet="依據行政院核定方案辦理。",
+                        source_url="https://example.test/retrieved",
+                        rank=1,
+                    )
+                ],
+                diagnostics={"adapter": "smoke"},
+            )
+
+    monkeypatch.setattr("src.agents.writer.OpenNotebookService", FakeService)
+    writer = WriterAgent(mock_llm, mock_kb)
+
+    draft = writer.write_draft(_requirement())
+
+    assert "open-notebook 命中證據" in draft
+    assert "https://example.test/retrieved" in draft
+    assert "https://example.test/doc-1" not in draft
+    assert writer._last_sources_list[0]["evidence_snippet"] == "依據行政院核定方案辦理。"
+    mock_llm.generate.assert_not_called()
+
+
 def test_writer_falls_back_to_legacy_llm_when_open_notebook_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -117,4 +155,41 @@ def test_writer_falls_back_to_legacy_llm_when_open_notebook_fails(
     draft = writer.write_draft(_requirement())
 
     assert "legacy 草稿" in draft
+    assert writer._last_open_notebook_diagnostics["used_fallback"] == "true"
+    assert writer._last_open_notebook_diagnostics["fallback_stage"] == "runtime"
+    assert writer._last_open_notebook_diagnostics["fallback_reason"] == "boom"
+    mock_llm.generate.assert_called_once()
+
+
+def test_writer_records_setup_fallback_when_open_notebook_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("GOV_AI_OPEN_NOTEBOOK_MODE", "writer")
+    mock_llm = MagicMock()
+    mock_llm.generate.return_value = "### 主旨\nlegacy 草稿\n\n### 說明\n依據行政院核定方案辦理。"
+    mock_kb = MagicMock()
+    mock_kb.search_hybrid.return_value = [_example()]
+
+    class SetupFailingService:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        def ask(self, request: OpenNotebookAskRequest) -> AskResult:
+            from src.integrations.open_notebook import IntegrationSetupError
+
+            raise IntegrationSetupError("vendor path missing")
+
+    monkeypatch.setattr("src.agents.writer.OpenNotebookService", SetupFailingService)
+    writer = WriterAgent(mock_llm, mock_kb)
+
+    draft = writer.write_draft(_requirement())
+
+    assert "legacy 草稿" in draft
+    assert writer._last_open_notebook_diagnostics == {
+        "service": "open-notebook",
+        "mode": "writer",
+        "used_fallback": "true",
+        "fallback_stage": "setup",
+        "fallback_reason": "vendor path missing",
+    }
     mock_llm.generate.assert_called_once()

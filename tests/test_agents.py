@@ -12,6 +12,8 @@ from src.agents.compliance_checker import ComplianceChecker
 from src.agents.writer import WriterAgent
 from src.agents.org_memory import OrganizationalMemory
 from src.core.models import PublicDocRequirement
+from src.integrations.open_notebook.service import OpenNotebookAskRequest
+from src.integrations.open_notebook.stub import AskResult, RetrievedEvidence
 from src.utils.tw_check import to_traditional
 
 
@@ -448,6 +450,58 @@ def test_writer_postprocess_removes_inline_footnote_definition(mock_llm):
     assert "這是模型自行產生的定義" not in draft
     assert "### 參考來源 (AI 引用追蹤)" in draft
     assert "[^1]: [Level A] 行政程序法" in draft
+
+
+def test_writer_open_notebook_path_uses_retrieved_evidence_for_reference_tracking(mock_llm, monkeypatch):
+    """open-notebook writer path 應沿用實際 retrieval evidence，而非原 request docs。"""
+    kb_mock = MagicMock()
+    kb_mock.search_hybrid.return_value = [
+        {
+            "id": "src-1",
+            "content": "法規內容A",
+            "metadata": {
+                "title": "原始 KB 範例",
+                "source_level": "A",
+                "source_url": "https://example.test/request-doc",
+                "source": "law",
+                "meta_id": "doc-1",
+                "content_hash": "aaaaaaaaaaaaaaaa",
+            },
+            "distance": 0.2,
+        },
+    ]
+
+    class FakeService:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        def ask(self, request: OpenNotebookAskRequest) -> AskResult:
+            return AskResult(
+                answer_text="### 主旨\n測試\n\n### 說明\n一、依據行政程序法辦理[^1]。",
+                evidence=[
+                    RetrievedEvidence(
+                        title="實際檢索證據",
+                        snippet="依據行政程序法辦理。",
+                        source_url="https://example.test/retrieved-doc",
+                        rank=1,
+                    )
+                ],
+                diagnostics={"adapter": "smoke"},
+            )
+
+    monkeypatch.setenv("GOV_AI_OPEN_NOTEBOOK_MODE", "smoke")
+    monkeypatch.setattr("src.agents.writer.OpenNotebookService", FakeService)
+    writer = WriterAgent(mock_llm, kb_mock)
+
+    req = PublicDocRequirement(
+        doc_type="函", sender="測試機關", receiver="測試單位", subject="測試主旨"
+    )
+    draft = writer.write_draft(req)
+
+    assert "實際檢索證據" in draft
+    assert "https://example.test/retrieved-doc" in draft
+    assert "https://example.test/request-doc" not in draft
+    assert writer._last_sources_list[0]["evidence_snippet"] == "依據行政程序法辦理。"
 
 
 def test_writer_postprocess_strips_manual_reference_heading(mock_llm):

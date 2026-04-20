@@ -42,18 +42,20 @@
   Validation: `pytest tests/test_writer_agent.py -q`  
   Commit: `feat(writer): add optional open-notebook ask-service path`
 
-- [ ] **T2.6** Expose retrieved evidence from the service adapter so fact checker and citation checker can inspect the same payload.  
+- [x] **T2.6** Expose retrieved evidence from the service adapter so fact checker and citation checker can inspect the same payload.  
   Requirements:
   - Ask-service integration preserves source-grounded review flow
   - Five-agent review layering stays repo-owned
   Validation: `pytest tests/test_open_notebook_service.py tests/test_agents.py -q`  
   Commit: `feat(integration): preserve ask-service evidence for review agents`
+  - **完成（2026-04-20 20:32）**：`OpenNotebookService` diagnostics 補 `retrieved_evidence` JSON，`WriterAgent._last_sources_list` 補保留 `evidence_snippet`/`evidence_rank`，讓 citation/fact-check downstream 可檢查同一批 retrieval payload；驗證 `pytest tests/test_open_notebook_service.py tests/test_agents.py tests/test_writer_agent.py -q` = passed
 
-- [ ] **T2.7** Define and implement fallback behavior when the vendor path is missing or ask-service initialization fails.  
+- [x] **T2.7** Define and implement fallback behavior when the vendor path is missing or ask-service initialization fails.  
   Requirements:
   - The repo owns fallback behavior when the fork is absent or fails
   Validation: `pytest tests/test_open_notebook_service.py -q -k fallback`  
   Commit: `fix(integration): fail clearly and preserve legacy writer fallback`
+  - **完成（2026-04-20 20:45）**：`WriterAgent` 會把 open-notebook setup/runtime failure 記到 `_last_open_notebook_diagnostics`，並明確退回 legacy LLM path；service 缺 vendor 時仍 raise `IntegrationSetupError`，讓 smoke path loud fail、writer path 明確 fallback；驗證 `pytest tests/test_open_notebook_service.py -q -k fallback` 與 `pytest tests/test_writer_agent.py -q -k fallback` = passed
 
 - [ ] **T2.8** Add docs and operator notes for required env vars, local setup, and the current non-goals of the fork integration.  
   Requirements:

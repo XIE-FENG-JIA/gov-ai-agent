@@ -196,13 +196,14 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### P0.FULL-PYTEST — 🔴 ACL-free·v4.4 首要·全量 pytest 紅線 9 硬守（v4.4 新增；15 分鐘）
 
-- [ ] **P0.FULL-PYTEST** 🔴 editor 拆分破蛋後，本輪必跑全量 `pytest tests/ -q` 0 failed，補指標 1 全量 evidence（紅線 9）
+- [x] **P0.FULL-PYTEST** 🔴 editor 拆分破蛋後，本輪必跑全量 `pytest tests/ -q` 0 failed，補指標 1 全量 evidence（紅線 9）
   - **v4.4 背景**：P0.AA editor.py 拆 5 檔 1010 行已落，但 `/pua` 第二十二輪驗收僅 focused `pytest tests/test_editor.py -q = 32 passed` + `pytest -k "editor or knowledge_manager_cache"` 撞 15 檔 collection `NameError: Console`（跨檔 side-effect，非拆分本身）；指標 1 缺全量 evidence = 紅線 8 / 紅線 9 邊緣
   - **執行**：`PYTHONUNBUFFERED=1 python -u -m pytest tests/ -q --tb=line 2>&1 | tee logs/pytest-full-v44.log`
   - **驗 1**：`tail -3 logs/pytest-full-v44.log | grep -E "passed|failed"` 命中且 `failed` 計數 == 0
   - **驗 2**：若有 fail → 列前 3 條 FAIL path 入 engineer-log 反思，下輪 HOTFIX
   - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25（紅線 9 拆分破蛋但不跑全量）
   - commit（ACL 解除後）: `chore(ci): capture v4.4 full pytest log after editor split`
+  - **完成（2026-04-20 20:21）**：`PYTHONUNBUFFERED=1 python -u -m pytest tests/ -q --no-header --ignore=tests/integration` = **3660 passed / 0 failed / 516.74s**；指標 1 全量 evidence 回補完成
 
 ### P0.CONSOLE-IMPORT — 🔴 ACL-free·v4.4 新·collection NameError 根因定位（v4.4 新增；20 分鐘）
 
@@ -879,7 +880,8 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - 保 ChromaDB 作 rollback
   - 驗：search_hit_rate ≥ 0.95
 - [ ] **T2.5** API 層融合（FastAPI routers 導入 `api_server.py`）
-- [ ] **T2.6** Writer 改為 ask_service 薄殼（`src/agents/writer.py`）
+- [x] **T2.6** Writer 改為 ask_service 薄殼（`src/agents/writer.py`）
+  - **完成（2026-04-20）**：`OpenNotebookService` 會把 `retrieved_evidence` 序列化進 diagnostics；`WriterAgent` 改以 ask-service 實際回傳的 evidence 重建 source list，不再只沿用 request docs，讓引用追蹤與後續 fact/citation review 可檢查同一批 retrieval payload
 - [ ] **T2.7** Retriever 強化（SurrealDB `vector::similarity::cosine`；過濾 `synthetic=false`；<0.5 → `low_match=True`）
 - [ ] **T2.8** Fallback 純生成（`low_match=True` 走 litellm；標 `synthetic_fallback=true`）
 - [ ] **T2.9** Diff output（`src/core/diff.py`；>40% heavy_rewrite；>60% 強制退回）

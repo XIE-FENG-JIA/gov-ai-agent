@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Mapping, Sequence
 
 from . import get_adapter
-from .stub import AskResult
+from .stub import AskResult, RetrievedEvidence
 
 if TYPE_CHECKING:
     from . import OpenNotebookAdapter
@@ -41,6 +42,10 @@ class OpenNotebookService:
         diagnostics = dict(result.diagnostics)
         diagnostics.setdefault("service", "open-notebook")
         diagnostics.setdefault("mode", self._mode or "env")
+        diagnostics.setdefault(
+            "retrieved_evidence",
+            self._serialize_evidence(result.evidence),
+        )
         if request.trace_id:
             diagnostics["trace_id"] = request.trace_id
         if request.metadata_filters:
@@ -59,6 +64,18 @@ class OpenNotebookService:
             f"{key}={value}"
             for key, value in sorted(metadata_filters.items())
         )
+
+    @staticmethod
+    def _serialize_evidence(evidence: Sequence[RetrievedEvidence]) -> str:
+        return json.dumps([
+            {
+                "title": item.title,
+                "snippet": item.snippet,
+                "source_url": item.source_url,
+                "rank": item.rank,
+            }
+            for item in evidence
+        ], ensure_ascii=False)
 
 
 __all__ = ["OpenNotebookAskRequest", "OpenNotebookService"]

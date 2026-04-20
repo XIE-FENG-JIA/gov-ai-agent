@@ -21,6 +21,7 @@ from src.integrations.open_notebook.service import (
     OpenNotebookAskRequest,
     OpenNotebookService,
 )
+from src.integrations.open_notebook.stub import AskResult
 from src.knowledge.manager import KnowledgeBaseManager
 from src.utils.tw_check import to_traditional
 
@@ -167,6 +168,7 @@ class WriterAgent:
         self.llm = llm_provider
         self.kb = kb_manager
         self._last_sources_list: list[dict] = []
+        self._last_open_notebook_diagnostics: dict[str, str] = {}
 
     # ------------------------------------------------------------------
     # Agentic RAG：搜尋 → 評估相關性 → 精煉查詢 → 重新搜尋
@@ -935,20 +937,70 @@ class WriterAgent:
         )
 
     @staticmethod
-    def _sources_from_open_notebook_docs(docs: list[dict[str, object]]) -> list[dict]:
-        """把 ask docs 轉回 writer downstream 使用的 source list。"""
+    def _sources_from_open_notebook_result(
+        result: AskResult,
+        docs: list[dict[str, object]],
+    ) -> list[dict]:
+        """把 ask-service 實際 evidence 轉成 writer downstream 使用的 source list。"""
+        if not result.evidence:
+            evidence_rows = [
+                {
+                    "title": str(doc.get("title") or f"Source {index}"),
+                    "snippet": str(doc.get("content_md") or ""),
+                    "source_url": str(doc.get("source_url") or ""),
+                    "rank": index,
+                }
+                for index, doc in enumerate(docs, start=1)
+            ]
+        else:
+            evidence_rows = [
+                {
+                    "title": evidence.title,
+                    "snippet": evidence.snippet,
+                    "source_url": evidence.source_url,
+                    "rank": evidence.rank or index,
+                }
+                for index, evidence in enumerate(result.evidence, start=1)
+            ]
+
         sources: list[dict] = []
-        for index, doc in enumerate(docs, start=1):
+        for index, evidence in enumerate(evidence_rows, start=1):
+            matched_doc = WriterAgent._match_open_notebook_doc(evidence, docs)
             sources.append({
                 "index": index,
-                "title": str(doc.get("title") or f"Source {index}"),
-                "source_level": str(doc.get("source_level") or "B"),
-                "source_url": str(doc.get("source_url") or ""),
-                "source_type": str(doc.get("source_type") or ""),
-                "record_id": str(doc.get("record_id") or ""),
+                "title": str(evidence["title"] or f"Source {index}"),
+                "source_level": str(matched_doc.get("source_level") or "B"),
+                "source_url": str(evidence["source_url"] or matched_doc.get("source_url") or ""),
+                "source_type": str(matched_doc.get("source_type") or ""),
+                "record_id": str(matched_doc.get("record_id") or ""),
                 "content_hash": "",
+                "evidence_rank": str(evidence["rank"] or ""),
+                "evidence_snippet": str(evidence["snippet"] or ""),
             })
         return sources
+
+    @staticmethod
+    def _match_open_notebook_doc(
+        evidence: dict[str, object],
+        docs: list[dict[str, object]],
+    ) -> dict[str, object]:
+        rank = evidence.get("rank")
+        if isinstance(rank, int) and 1 <= rank <= len(docs):
+            return docs[rank - 1]
+
+        source_url = str(evidence.get("source_url") or "")
+        if source_url:
+            for doc in docs:
+                if str(doc.get("source_url") or "") == source_url:
+                    return doc
+
+        title = str(evidence.get("title") or "")
+        if title:
+            for doc in docs:
+                if str(doc.get("title") or "") == title:
+                    return doc
+
+        return {}
 
     def _try_open_notebook_draft(
         self,
@@ -971,18 +1023,35 @@ class WriterAgent:
 
         try:
             result = service.ask(request)
+            self._last_open_notebook_diagnostics = dict(result.diagnostics)
         except (IntegrationDisabled, IntegrationSetupError) as exc:
+            self._last_open_notebook_diagnostics = {
+                "service": "open-notebook",
+                "mode": runtime_mode,
+                "used_fallback": "true",
+                "fallback_stage": "setup",
+                "fallback_reason": str(exc),
+            }
             logger.warning("open-notebook writer path unavailable; fallback to legacy LLM: %s", exc)
+            console.print(f"[yellow]open-notebook 不可用，退回 legacy writer：{exc}[/yellow]")
             return None
         except Exception as exc:
+            self._last_open_notebook_diagnostics = {
+                "service": "open-notebook",
+                "mode": runtime_mode,
+                "used_fallback": "true",
+                "fallback_stage": "runtime",
+                "fallback_reason": str(exc),
+            }
             logger.warning("open-notebook writer path failed unexpectedly; fallback to legacy LLM: %s", exc)
+            console.print(f"[yellow]open-notebook 執行失敗，退回 legacy writer：{exc}[/yellow]")
             return None
 
         console.print(
             f"[cyan]open-notebook {runtime_mode} 模式已產生草稿，"
             f"evidence={len(result.evidence)}。[/cyan]"
         )
-        return result.answer_text, self._sources_from_open_notebook_docs(docs)
+        return result.answer_text, self._sources_from_open_notebook_result(result, docs)
 
     def write_draft(self, requirement: PublicDocRequirement) -> str:
         """根據需求和檢索到的範例產生公文草稿。"""
@@ -1004,6 +1073,7 @@ class WriterAgent:
             console.print("[dim]提示：可用 'gov-ai kb ingest' 匯入範例文件以提升生成品質。[/dim]")
             example_parts, sources_list = [], []
         self._last_sources_list = list(sources_list)
+        self._last_open_notebook_diagnostics = {}
 
         # 3. 可選 ask-service path；預設仍走既有 LLM 流程
         open_notebook_result = self._try_open_notebook_draft(requirement, examples)
