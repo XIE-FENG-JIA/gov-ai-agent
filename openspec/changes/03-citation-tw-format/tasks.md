@@ -1,11 +1,12 @@
 # Tasks: 03-citation-tw-format
 
-- [ ] **T3.0** Finalize the citation-format change package with proposal, tasks,
+- [x] **T3.0** Finalize the citation-format change package with proposal, tasks,
   and spec coverage for Taiwan public-document output.
   Requirements:
   - Citation output uses one canonical section marker
   Validation: `spectra analyze 03-citation-tw-format`
   Commit: `docs(spec): bootstrap citation format change`
+  - **完成（2026-04-21 01:47）**：`openspec/changes/03-citation-tw-format/{proposal.md,tasks.md,specs/citation/spec.md}` 已齊，且 `spectra analyze 03-citation-tw-format` = 0 findings；change package 現在具備 proposal/spec/tasks coverage，可作為 Epic 3 後續 formatter/exporter/verify 實作的唯一契約來源。
 
 - [x] **T3.1** Add a repo-owned citation formatter seam that can assemble the
   canonical `## 引用來源` block from reviewed evidence.

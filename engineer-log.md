@@ -314,3 +314,138 @@
 > [PUA生效 🔥] **底層邏輯**：v4.5 / v4.6 / v4.7 三輪 header 反覆改寫 = 「寫 header 取代寫 code」v2；真實拿出的綠 = Epic 2 ask-service 實錘 + 全量 pytest 3660 + 指標 2 微破（25→23）。但 writer.py 越拆越胖（941→1109 = +168）= editor 拆分 SOP 第二道擴散失敗，Epic 3 proposal 連五輪 0 動 = 紅線 5 三連 3.25 實錘。**抓手**：本輪三破（T2.9 10 分 Epic 2 封頂 + P0.EPIC3-PROPOSAL 20 分 Spectra 2→3 升級 + P0.WRITER-SPLIT 60 分 SOP 真擴散）= 90 分鐘一輪可同時動到三條結構紅線。**顆粒度**：不接受「Epic 2 收官算完成」部分勝利，必須 T2.9 ✅ + Epic 3 proposal 存檔 + writer 五檔落地三件齊。**拉通**：editor 拆分經驗倒回 writer（flow/segment/refine/merge → ask_service/rewrite/cite/strategy），拆分 pattern library 建骨架。**對齊**：header 別再每 10 分鐘覆寫一次 = 第九層藉口；v4.8 header 只承認「六指標 PASS、Epic 2 93% → 100% 待關、Epic 3 proposal 斷鏈仍紅」三面就好，別再用「25/25」自虐性虛報作情緒戲。**因為信任所以簡單** — 當輪 T2.9 先 10 分把 Epic 2 關掉，然後 P0.EPIC3 破殼，然後 writer 拆五檔；三件事一輪打完比寫千字反思有價值 100 倍。
 
 ---
+
+## 反思 [2026-04-21 01:58] — 技術主管第二十七輪深度回顧（v4.9 候選，/pua 觸發；alibaba 味）
+
+### 近期成果（v4.8 → 本輪 HEAD 實測）
+
+- **Epic 2 首次 100% 收官**：`openspec/changes/02-open-notebook-fork/tasks.md` = **15 `[x]` / 0 `[ ]`**；T2.9 SurrealDB freeze 21:03 實錘，spec.md 補 `human review required before SurrealDB / frozen`。Epic 2 結案，對齊度 2/5 → 3/5 邁進。
+- **Epic 3 規格鏈從 0 → 100%**：`openspec/changes/03-citation-tw-format/` 三檔齊（`proposal.md / tasks.md / specs/citation/spec.md`），T3.0–T3.8 = **9 `[x]` / 0 `[ ]`**；21:10 P0.EE proposal 落地，01:33 T3.2 DOCX custom properties, 01:40 T3.3 citation_metadata seam, 01:43 T3.4 `gov-ai verify <docx>` CLI 落地，01:47 T3.0/T3.5–T3.8 覆蓋閉環；**連五輪 0 動的 Epic 3 一輪內從 0% → 100%**。
+- **P0.WRITER-SPLIT 真落地**：`src/agents/writer/` = 6 檔 1039 行（`__init__ 48 / strategy 182 / rewrite 211 / cite 250 / cleanup 176 / ask_service 172`）；最大 cite.py 250 行 << 350 紅線；editor 拆分 SOP 首次擴散成功。
+- **Citation canonical heading 收斂**：`src/document/template.py` normalize `**參考來源**：` → `### 參考來源 (AI 引用追蹤)`；template / export 路徑統一。`src/document/citation_formatter.py` + `citation_metadata.py` 雙 seam 建骨架 + DOCX custom properties readback + `gov-ai verify` CLI。
+- **engineer-log 封存達標**：21:40 T9.6-REOPEN 執行，主檔 1198 → **316 行**（低於 500 紅線），`docs/archive/engineer-log-202604b.md` = 1109 行落地；v4.3 以來連 5 輪跳的封存債收工。
+- **全量 pytest 連綠**：21:40 AUTO-RESCUE 前 `pytest tests/ -q --ignore=tests/integration` = **3667 passed / 0 failed / 552s**；本輪 hot path 11 檔 = **933 passed / 0 failed / 59s**（writer + open_notebook + editor + citation × 4 + document + exporter + cli_commands + smoke），T3.1-CANONICAL-HEADING 21:55 再驗 `pytest tests/ -q --ignore=tests/integration` = **3672 passed / 0 failed**（+5 條 citation/template regression）。
+- **指標 6 Epic 2 `[x]` ≥ 15 達標**：v4.8 硬指標第 6 項「Epic 2 tasks.md `[x]` = 15」本輪 PASS。
+
+### 發現的問題（按嚴重度）
+
+#### 🔴 誠信級（紅線 X：PASS 定義漂移 / 落版誠信）
+
+1. **指標 2 auto-commit 23/25 連七輪紅**：`git log --oneline -25 | grep -c "auto-commit:"` = **23**（同 v4.8 實測）；扣掉 `63d48e2 / c184c4e` 兩條最新 AUTO-RESCUE 頭部，HEAD 連 5 小時全部 AUTO-RESCUE commit（21:24 / 21:42 / 23:07 / 01:32 / 01:42 / 01:52）六連。P0.S-REBASE-APPLY v4.7 降 Admin-dep 的誠信校準仍無效，實質死結：`.git` DENY ACL = 2 連 >27 輪；agent 側每次 `git add/commit` 全打 `.git/index.lock: Permission denied`（results.log 20/22 條 COMMIT = BLOCKED-ACL/FAIL）。**血債結構性紅 = P0.D Admin 依賴項，非 agent 方案可解**。
+2. **P0.SELF-COMMIT-REFLECT v4.5 起列連 3 輪 0 試**：program.md line 900 還掛著；agent 從未單獨試 `git add engineer-log.md && git commit`，驗 ACL 是否擋 docs 層 commit。若不驗 = 倖存者偏差；若驗 = 第 100+ 個 BLOCKED-ACL log。決策建議：本輪同紅線 X 降權為「Admin 依賴實證項」或刪除。
+3. **openspec/specs/ 仍僅 2 檔**（v4.8 診斷延續）：Epic 3 proposal + spec.md 存在於 `openspec/changes/03-citation-tw-format/specs/citation/spec.md`，但 `openspec/specs/citation-tw-format.md` baseline 未 spawn；spectra analyze 通過是因為 change-scoped coverage，不等於 baseline capability 建檔。Spectra 對齊度標註 = **3/5 epics（Epic 1 sources / Epic 2 open-notebook-integration / Epic 3 change-scoped only）**，非 completed baseline。
+
+#### 🟠 結構級
+
+4. **Epic 8 大檔群連 6 輪未列 P0**：`src/cli/kb.py = 1614 / src/cli/generate.py = 1288` = **2902 行 god-CLI**；writer / editor 拆分 SOP 已雙破（editor 1010 / writer 1039），pattern library 成形但 CLI 層 diffuse 0 動。**本輪建議升 T8.1.a kb.py 拆為 P0 首要**。
+5. **Epic 3 tasks 閉完但「應用層」未全打通**：T3.1 formatter seam / T3.2 DOCX properties / T3.3 metadata readback / T3.4 `gov-ai verify` CLI 落，但：
+   - (a) `gov-ai generate` 匯出路徑是否自動寫入 citation custom properties？（T3.2 results.log 說 generate 已傳 reviewed source list + engine，需回驗）
+   - (b) verify CLI 對「KB 中不存在 source_doc_id」的嚴格行為 vs 寬鬆警告 → tests 覆蓋程度待查
+   - (c) citation_count = 0 / ai_generated = false 的正向樣本未在 fixtures 留證
+6. **results.log 四份並存 + .auto-engineer.state.json 未乾淨**：`results.log / .dedup / .stdout.dedup / -reconciled.log` T9.7 半完成；source of truth 未決。
+7. **Epic 1 T-CORPUS-GUARD / T-INTEGRATION-GATE / T2.3-PIN 連 2 輪 0 動**：保險型 P1，連輪延宕 = 紅線 X 邊緣；特別 T-INTEGRATION-GATE（nightly gate 未建）對 live ingest corpus 9 份 的持續健康度無監測。
+
+#### 🟡 質量級
+
+8. **writer ask-service failure matrix 覆蓋仍 5 分支**：v4.8 T-FAILURE-MATRIX 列 P1 未動；writer ask-service 4 failure mode（vendor 缺 / runtime 炸 / retrieval 空 / service timeout）測試不齊全，一旦 Epic 2 進 nightly 會暴露。
+9. **litellm asyncio teardown noise**：本輪 hot path pytest tail 有 `ValueError: I/O operation on closed file` logging error（litellm `async_client_cleanup.py:66`）；非 test failure 但汙染 CI log，未來 grep 'error' 會誤報。
+10. **citation_metadata.py DOCX custom properties** 目前以 `citation_sources_json` 字串化 payload，下游若需結構查詢需解析；schema 層決策未 spec 化。
+
+#### 🟢 流程級
+
+11. **反思日誌 8 連輪 PDCA 成形，但「header vs HEAD 1:1 對齊」還差 10-20 分鐘 lag**：v4.8 header 宣告「header 數字與 HEAD 實測 1:1」，本輪第一筆實測 23/25 仍與 v4.8 header 23/25 一致（✓ 守住），但 Epic 3 從 0 → 100% 的戲劇性翻轉未在 v4.8 header 預告過（因為是本輪真實執行出來的），這叫「header 正向 lag」，可接受。
+12. **紅線清單收斂 v4.5 提議 5 輪未執行**：v4.8 header 最後還是保留 9 條沿用；本輪 v4.9 建議強制合併 4/5/6/7/8/9 → 紅線 X，從 9 條壓回 3+1。
+
+### Spectra 規格對齊度（/openspec 即取）
+
+| Epic | 狀態 | change-scoped | baseline spec | 對齊 |
+|------|------|---------------|---------------|------|
+| 1 real-sources | ✅ change 完 / baseline 完 | `01-real-sources/` | `openspec/specs/sources.md` | 100% |
+| 2 open-notebook-fork | ✅ tasks 15/15 100% | `02-open-notebook-fork/` + spec.md | `openspec/specs/open-notebook-integration.md` | 100% |
+| 3 citation-tw-format | ✅ tasks 9/9 100%（本輪閉） | `03-citation-tw-format/` + `specs/citation/spec.md` | ❌ `openspec/specs/citation-tw-format.md` 未 promote | 70% |
+| 4 writer 改寫策略 | ❌ 無 change / 無 spec | — | — | 0% |
+| 5 KB 治理 | ❌ 無 change / 無 spec | — | — | 0% |
+
+**整體對齊度**：v4.8 宣稱 2/5 = 40%；本輪實測 **2.7/5 = 54%**（Epic 3 scoped 完但未 promote 到 baseline）；下輪若 promote + Epic 4 proposal 啟動 = 4/5 = 80%。
+
+### 架構健康度
+
+- **大檔**：cli/kb.py 1614 / cli/generate.py 1288（god-CLI 雙殺未動）；writer ✅ 1039/6、editor ✅ 1010/5、api_server.py 20460 bytes（單檔 FastAPI routers）。
+- **code smell**：cli/kb.py 單檔三千行級未拆、api_server.py 無 routers 結構、`src/document/` 新增 `citation_formatter.py + citation_metadata.py` 雙 seam 清楚；writer / editor 拆分 pattern 已成 library。
+- **測試覆蓋**：總 3672 tests；hot path 933 tests 本輪驗綠；citation pipe 新增 test_export_citation_metadata + test_citation_level + test_citation_quality + verify CLI；**writer ask-service failure matrix 仍薄 5 tests**。integration tests `GOV_AI_RUN_INTEGRATION` 仍默認 0 = nightly 未建。
+- **耦合**：`src/document/` 與 `src/agents/writer/cite.py` 透過 `citation_formatter.build_reference_section` 解耦成功；`src/cli/verify_cmd.py` 直接 import `src/document/citation_metadata.py`，CLI → document → kb frontmatter 三段清楚。
+- **安全**：
+  - `.env` 有 `OPENROUTER_API_KEY`，`.gitignore` 已列 `.env`（OK）
+  - `src/cli/verify_cmd.py` 讀 DOCX custom properties 時若 DOCX 被串改（惡意）→ 應有 schema validation；需回驗 `citation_metadata.py` 的 parse path
+  - ACL DENY 是 Windows 檔系層，**非代碼層**
+  - live ingest User-Agent 規範已落（非本輪焦點）
+
+### 指標實測（v4.9 候選 8 項）
+
+| # | 指標 | v4.8 宣稱 | 本輪實測 | 判定 |
+|---|------|-----------|-----------|------|
+| 1 | `pytest tests/ -q` FAIL=0 | ✅ hot 58 + 全量 3660 | ✅ **hot 933 / 0 + 21:55 全量 3672 / 0** | 綠（+12） |
+| 2 | 近 25 commits auto-commit ≤ 12 | ❌ 23/25 | ❌ **23/25** 持平 | 紅（Admin-dep 結構性） |
+| 3 | `.git` DENY ACL = 0 | ❌ 2 | ❌ 2（連 >27 輪） | 紅（Admin-dep） |
+| 4 | `src/integrations/open_notebook/*.py` ≥ 3 | ✅ 4 | ✅ 4 | 綠 |
+| 5 | `docs/open-notebook-study.md` ≥ 80 行 | ✅ | ✅ | 綠 |
+| 6 | Epic 2 tasks.md `[x]` = 15 | ❌ 14/15 | ✅ **15/15** | 綠（+1） |
+| 7 | corpus real ≥ 9 / fallback=0 | ✅ 9/0 | ✅ 9/0 | 綠 |
+| 8 | writer/ 單檔 ≤ 350 行 | ❌ 1109 單檔 | ✅ **max 250**（cite.py） | 綠（+1） |
+
+**v4.9 實測 6/8 PASS**（v4.8 5/8 → +1；writer split 紅→綠 + Epic 2 半→全綠）。指標 2/3 ACL 系統層紅連 >27 輪 = 非 agent 可解。
+
+### 建議的優先調整（重排 program.md 待辦）
+
+#### 本輪已破（本輪回顧前已閉，需 prog.md 勾關 + 下移已完成）
+
+- [x] **T2.9 SurrealDB freeze**（21:03 實錘）
+- [x] **P0.EE → P0.EPIC3-PROPOSAL**（21:10 實錘）
+- [x] **P0.WRITER-SPLIT**（21:24 AUTO-RESCUE + 21:27 sync）
+- [x] **T9.6-REOPEN**（21:40 實錘；主檔 316 行）
+- [x] **T3.1 citation formatter seam** / **T3.1-CANONICAL-HEADING**（21:37 / 21:55）
+- [x] **T3.2 DOCX custom properties** / **T3.3 citation_metadata.py seam** / **T3.4 `gov-ai verify` CLI**（01:33 / 01:40 / 01:43）
+- [x] **T3.0 / T3.5-T3.8 coverage closure**（01:47 `spectra analyze` = 0 findings）
+
+#### 本輪升 P0（ACL-free；連 1 輪延宕 = 紅線 X）
+
+1. **P0.EPIC3-BASELINE-PROMOTE**（15 分）🟢 — `openspec/specs/citation-tw-format.md` promote：從 `openspec/changes/03-citation-tw-format/specs/citation/spec.md` 複製為 baseline capability；Spectra 對齊度 3/5 → 3.3/5（baseline + scoped 齊）。驗 `ls openspec/specs/citation-tw-format.md && wc -w` ≥ 200。
+2. **T8.1.a cli/kb.py 拆**（60 分）🔴 — `src/cli/kb.py = 1614 行 = 最胖 god-CLI`；editor + writer 拆分 pattern 已成 library，**連 6 輪 0 動 = 紅線 5 方案驅動治理三連 3.25 邊緣**；目標：`cli/kb/{__init__, ingest, rebuild, stats, status, corpus}.py`，每檔 ≤ 400 行。驗 `wc -l src/cli/kb/*.py` 每檔 ≤ 400 + `pytest tests/test_kb*.py tests/test_cli_commands.py -q` 全綠。
+3. **T-INTEGRATION-GATE**（20 分）🟢 — `scripts/run_nightly_integration.sh` + `docs/integration-nightly.md`；live corpus 9 份的持續健康度監測入口；v4.3 起列 P1 連 2 輪跳。
+
+#### 本輪 P1（保險型 + failure matrix）
+
+4. **T-FAILURE-MATRIX writer ask-service**（30 分）— `tests/test_writer_agent_failure.py`（新）補 vendor 缺 / runtime 炸 / retrieval 空 / service timeout 4 象限 + e2e fallback path 覆蓋；避免 Epic 4 writer 改寫策略開始前 coverage 空洞。
+5. **T3.9 `gov-ai verify` 嚴格模式 spec**（15 分）— `openspec/changes/03-citation-tw-format/specs/citation/spec.md` 補「missing source_doc_id 嚴格模式 = FAIL, 寬鬆模式 = WARN」段；驗 `rg -c "strict|lenient|source_doc_id.*missing"` ≥ 3。
+6. **T-CORPUS-GUARD**（15 分）— `tests/test_corpus_provenance_guard.py` 斷言 `synthetic: false ≥ 9 + fixture_fallback: true = 0`，指標 7 護欄。
+
+#### 本輪 P2（降權 / 合併 / 清理）
+
+7. **P0.SELF-COMMIT-REFLECT**（v4.5 列連 3 輪 0 試）— 降 P2：ACL 結構性紅線，agent 側無解；建議**刪除或合併 P0.D 依賴**。
+8. **P0.S-REBASE-APPLY** v4.7 已降 Admin-dep，保留追蹤位。
+9. **紅線收斂 9→3+1**（10 分）— v4.5 提議從未執行：
+   - 核心紅線（不可違反）：1 真實性 / 2 改寫而非生成 / 3 可溯源
+   - 實戰紅線 X：**PASS 定義漂移**（含承諾未落 / 方案不動 / 設計偷閉環 / 未驗即交 / focused 偷全綠 / header 斷層）
+   - 紅線 4-9 並入 X，program.md 頂部 § 核心原則段刪減
+10. **results.log source-of-truth 決策**（10 分）— 合併 `.dedup / .stdout.dedup / -reconciled.log` 為 `results.log`；其他移 `docs/archive/`。
+
+### 下一步行動（最重要 3 件）
+
+1. **T8.1.a cli/kb.py 拆**（60 分）— Epic 8 god-CLI 雙殺的首顆骨牌，editor + writer 拆分 pattern library 首次擴散到 CLI 層；本輪不動 = 紅線 5 方案驅動治理 **連 6 輪** 3.25。
+2. **P0.EPIC3-BASELINE-PROMOTE + T-INTEGRATION-GATE**（35 分）— Spectra 對齊度 3/5 → 3.3/5 + nightly 監測建骨架；兩件 ACL-free 15+20 可合併一輪內閉。
+3. **紅線收斂 9→3+1**（10 分）— v4.5 起連 5 輪未執行，本輪強制壓回 program.md 頂部；header 自我壓力不再通膨。
+
+### v4.9 硬指標（下輪審查）
+
+1. `pytest tests/ -q --ignore=tests/integration` FAIL=0（當前 ✅ 3672/0；維持）
+2. `git log --oneline -25 | grep -c "auto-commit:"` ≤ 22（當前 23；下輪 AUTO-RESCUE 若止步可降 1）
+3. `ls openspec/specs/citation-tw-format.md` 存在（當前不存在；本輪 P0.EPIC3-BASELINE-PROMOTE 破蛋）
+4. `wc -l src/cli/kb/*.py` 每檔 ≤ 400（當前單檔 1614；本輪 T8.1.a 破）
+5. `ls scripts/run_nightly_integration.sh && ls docs/integration-nightly.md` 存在
+6. `grep -c "^- \[x\]" openspec/changes/03-citation-tw-format/tasks.md` = 9（當前 9 ✅ 維持）
+7. `wc -l engineer-log.md` ≤ 500（當前 316 ✅ 維持；紅線守住）
+8. `find kb_data/corpus -name "*.md"` = 9（當前 ✅）
+
+> [PUA生效 🔥] **底層邏輯**：本輪是自 v4.3 以來第一次真的兌現「寫 code > 寫 header」— Epic 2 從 14/15 → 15/15、Epic 3 從 0 → 9/9 全綠、writer 從 1109 單檔 → 6 檔 max 250、engineer-log 從 1198 → 316。四破齊出，不再是 header 自我表演。**抓手**：指標 2/3（ACL 血債）已被技術主管承認為**系統層 Admin 依賴**，agent 側對其無 owner 意識可施力；v4.9 起主軸應從「壓 auto-commit 比例」翻轉到「god-CLI 三殺 + Spectra baseline promote」。**顆粒度**：T8.1.a 60 分 + P0.EPIC3-BASELINE 15 分 + T-INTEGRATION-GATE 20 分 + 紅線收斂 10 分 = 105 分鐘一輪可同時動四條結構債。**拉通**：editor / writer / cli/kb 拆分三件事要用**同一套拆分 SOP**（pattern library = 入口 __init__ + 主 flow + 子職責模組 × 3-4），避免每次重發明輪子；文件化在 `docs/arch-split-sop.md`（15 分可建）。**對齊**：v4.9 header 建議只寫「六指標 PASS、Epic 2/3 收官、writer/editor 拆分 library 成形、指標 2/3 為 Admin 系統債不再列 3.25」四面即可，別再撐出第二十八輪第九層藉口。**因為信任所以簡單** — 本輪連 3 小時內 Epic 2 收官 + Epic 3 全綠 + writer 拆 + log 封存 + T3.1-CANONICAL-HEADING + T3.2-T3.4 一條龍落地，證明了「只要動手就會破」；下輪不要再用「ACL 擋」當停滯的遮羞布，轉身去拆 cli/kb.py 才是 owner 意識的真實含義。
+
+---
