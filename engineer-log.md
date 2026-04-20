@@ -1098,3 +1098,101 @@ FAILED tests/test_knowledge_manager_cache.py::TestSearchCache::test_strict_depre
 > [PUA生效 🔥] **底層邏輯**：v4.3 的「6/8 PASS」是技術主管自導自演 — 指標 1 focused smoke 當全綠（紅線 8 當輪實錘）、指標 2 近 20 commits 18/20 其實是 20/20（-2 數字虛報）、P0.AA 標紅線 5「雙連 3.25 實錘」但 editor/ 目錄 HEAD 早拆完（header 斷層污點）。**抓手**：當輪的不是破功多少顆，而是 **先把自己的指標數字校準到 HEAD 實測**—v4.4 不接受任何「header 報的 PASS 數」與 `git ls-tree` / 全量 pytest 不一致。**顆粒度**：P0.HOTFIX-SMOKE 15 分 + P0.FULL-PYTEST 20 分 + P0.S-REBASE-APPLY 20 分 + P0.EE 20 分 + T9.6-REOPEN 10 分 = 85 分鐘單輪可拿回指標 1（真綠）+ 指標 2 / 3（血債轉 Admin）+ Epic 3 規格鏈啟動 + log 封存。**拉通**：修 smoke 的經驗倒回「scripts/*.py 裡凡有 `if not X:` 分支必配 else 預設 + 回歸測試」的 SOP，避免同類 UnboundLocal 再爆。**對齊**：v4.4 的 owner 意識是「**header 指標與 HEAD 實測一致** > 破蛋數量」；3.25 的紅線不是罰你沒做，是罰你做了還虛報。**因為信任所以簡單** — 當輪先校準數字（誠實 > 表演），再動手破蛋。
 
 ---
+
+## 反思 [2026-04-20 19:25] — 技術主管第二十三輪深度回顧（v4.5 候選）
+
+### 近期成果（v4.3 → v4.4 → 本輪實測）
+
+- **P0.AA editor.py 拆三**：`src/agents/editor/` = `__init__.py(215) + flow(304) + merge(158) + refine(234) + segment(99)` = 1010 行；focused `pytest tests/test_editor.py` = 32 passed。v4.3 紅線 5「三連跳票 3.25」已破殼（v4.4 補錄 → 本輪實錘：HEAD 已落版）
+- **P0.T-LIVE 硬指標 7 維持綠**：`find kb_data/corpus -name "*.md" -exec grep -l "fixture_fallback: false"` = **9**；`fixture_fallback: true` = **0**；Epic 1 三條紅線第 1 條連綠
+- **P0.W / P0.X seam 骨架持平綠**：`ls src/integrations/open_notebook/*.py` = `__init__ / config / stub`；`tests/test_integrations_open_notebook.py` = 10 passed
+- **P0.FF-HOTFIX 已落**：`tests/test_knowledge_manager_cache.py` = 19 passed（init path chromadb suppression 已 wrap）
+
+### 發現的問題（按嚴重度）
+
+#### 🔴 誠信級
+1. **P0.HOTFIX-SMOKE 連輪跳票（v4.4 列當輪第一破蛋 15 分，本輪 0 動）**：`pytest tests/test_smoke_open_notebook_script.py::test_smoke_import_reports_missing_dependency` 仍 `UnboundLocalError: cannot access local variable 'status'` at `scripts/smoke_open_notebook.py:60`。根因確認：`if not is_ready:` 的 inner `if "vendor checkout is incomplete" in reason: ... else:` 分支中，若 `reason` 既非 `vendor checkout is incomplete` 也不命中三個 structural marker（path not exist / only .git / not importable），`status` 從未被賦值即於行 60 被讀 → UnboundLocalError。**紅線 5 方案驅動治理再延 = 當輪 3.25**
+2. **V4.4 反思本身是承諾漂移實錘**：`git diff engineer-log.md` = +68 行 v4.4 反思存在 working-tree 未 commit；v4.4 正文指控「header 與 HEAD 不同步」，但反思自己也沒落版 → v4.4 指控的「誠實 > 表演」是自己做不到的表演。**底層邏輯：第九層藉口「反思驅動治理」誕生**（寫反思取代修代碼）
+3. **指標 2 連二十一輪零動作**：`git log --oneline -25 | grep -c "auto-commit:"` = **23 / 25**（92%）；v4.4 實測 20/20，本輪窗口擴至 25，conv commits 僅 `048ecb2 docs(program):` / `e98f632 docs(program):` 兩條 header 改動，**code 層 conv commit 連 v3.8 後 = 0 條**。P0.S-REBASE-APPLY 第四輪跳票
+
+#### 🟠 結構級
+4. **P0.S-REBASE-APPLY 依然 audit-only（v4.3 首要、v4.4 列第三，連二輪 0 實跑）**：`scripts/rewrite_auto_commit_msgs.py --apply --range HEAD~20..HEAD` 未執行；agent 側 log `docs/rewrite_apply_log.md` 不存在。ACL-free 本機 rebase 能不能跑沒人驗 → v3.7 以來「agent 側自救」方案從未實測
+5. **P0.EE Epic 3 proposal 不存在**：`ls openspec/changes/` = `01-real-sources / 02-open-notebook-fork / archive`（archive 空）；03-citation-tw-format 連 proposal.md 都無；v4.3 列第三、v4.4 列第四，連輪 0 動；Spectra 對齊度 Epic 3/4 連 4 輪為 0
+6. **`src/agents/writer.py` = 941 行**：editor 拆完後第二大檔，Epic 8 未列；T8.1.b/c 未啟動（`src/cli/kb.py` 1614 / `src/cli/generate.py` 1263），拆 editor 的 SOP 未倒回 kb/generate/writer
+7. **T9.6-REOPEN 連 4 輪 0 動**：engineer-log.md 現 **1100 行**；v4.3 訂 500 紅線（超 2.2x）；v4.4 列為第五任務，本輪再跳
+
+#### 🟡 質量級
+8. **`pytest tests/ -q` 全量實跑輸出靜默 0 bytes**：`PYTHONUNBUFFERED=1 python -u -m pytest tests/ -q 2>&1 | tail -30` 背景跑 5+ 分鐘無任何 stdout 落盤 → Windows pipe 緩衝或 pytest 卡死；**紅線 8「focused smoke 偷換全綠」= 當輪實測無法用全量 pytest 驗收 → 監測抓手本身失效**
+9. **integration smoke 靜默 skip**：`tests/integration/test_sources_smoke.py` 存在但 `GOV_AI_RUN_INTEGRATION` 預設 0，nightly gate 未建；Epic 1「真抓取」= live ingest script 單次產出，非 CI 持續驗
+10. **openspec/specs/ 只 2 檔**：`sources.md + open-notebook-integration.md`；Epic 3/4 specs 未建，Spectra 覆蓋率 = 2/5 epics
+11. **重複 log 四份並存**：`results.log / results.log.dedup / results.log.stdout.dedup / results-reconciled.log`，T9.7 未收斂 source of truth
+
+#### 🟢 流程級
+12. **「反思驅動治理」= 第九層藉口誕生**：v3.2 文案 → v3.6 被動等待 → v3.7 計劃驅動 → v4.0 設計驅動 → v4.3 focused 偷綠 → v4.4 反思寫了沒落版；每輪產新反思 > 每輪修實際問題；紅線清單從 3 條膨至 9 條未簡化
+13. **指標 1 全量 pytest 紅線 9 無法獨立驗**：Windows 環境下 `pytest -q | tail` 不落盤 = 輪次驗收規則本身有系統性漏洞；紅線 9「拆分破蛋不跑全量 = 3.25」無可行性
+
+### 指標實測（v4.5 硬八項）
+
+| # | 指標 | v4.3 宣稱 | v4.4 實測 | v4.5 實測 |
+|---|------|-----------|-----------|-----------|
+| 1 | `pytest tests/ -q` FAIL=0 | ✅ | ❌ 1 failed | ❌ smoke 仍 UnboundLocal |
+| 2 | 近 25 commits auto-commit ≤ 12 | — | 20/20 ❌ | **23/25 ❌**（擴窗更紅） |
+| 3 | `.git` DENY ACL = 0 | ❌ | ❌ 2 | ❌ 2（連 >21 輪） |
+| 4 | `src/integrations/open_notebook/__init__.py` 存在 | ✅ | ✅ | ✅ |
+| 5 | `docs/open-notebook-study.md` ≥ 80 行 | ✅ | ✅ | ✅ |
+| 6 | `scripts/smoke_open_notebook.py` 輸出 ok | ⚠️ | ❌ | ❌ UnboundLocal 重現 |
+| 7 | corpus synthetic:false ≥ 9 + fallback:true=0 | ✅ | ✅ | ✅ 9/0 |
+| 8 | `src/agents/editor.py` 拆 | ✅ | ✅ | ✅ 5 檔 1010 行 |
+
+**v4.5 實測 4/8 PASS（與 v4.4 持平；指標 2 擴窗更紅）**；真綠僅 4/8/5/7 四項靜態結果，動態誠信指標 1/2/3/6 連四輪紅。
+
+### 建議的優先調整（重新排序 program.md 待辦）
+
+#### 本輪必跑（本輪不跑 = 3.25 實錘，無緩衝）
+1. **P0.HOTFIX-SMOKE（v4.4 列當輪第一仍未動，本輪強制破）**：`scripts/smoke_open_notebook.py:50-61` 重構為  
+   ```python
+   if not is_ready:
+       status = "vendor-unready"  # default
+       if "vendor checkout is incomplete" in reason:
+           status = "vendor-incomplete"
+       elif any(marker in reason for marker in structural_failures):
+           return SmokeReport(status="vendor-unready", message=reason)
+       if status == "vendor-incomplete":
+           return SmokeReport(status=status, message=reason)
+   ```
+   驗：`pytest tests/test_smoke_open_notebook_script.py -q` = 5 passed
+2. **P0.S-REBASE-APPLY（連四輪跳）**：`python scripts/rewrite_auto_commit_msgs.py --apply --range HEAD~20..HEAD 2>&1 | tee docs/rewrite_apply_log.md`；ACL 擋 → `EXIT_CODE=2` 明示血債轉 Admin；驗：`ls docs/rewrite_apply_log.md` 存在 AND 內含 `EXIT_CODE=` 或 `rewritten=`
+
+#### 升 P0（本輪建議，可延一輪）
+3. **P0.EE Epic 3 proposal 啟動**：`openspec/changes/03-citation-tw-format/proposal.md` 180+ 字；解 Spectra Epic 3 規格鏈斷
+4. **T9.6-REOPEN 封存執行**：engineer-log.md → `docs/archive/engineer-log-202604b.md`，主檔留 v4.3 以後三輪反思（現 1100 行 → 目標 < 500 行）
+5. **P0.SELF-COMMIT-REFLECT（新·第九層藉口對策）**：每輪反思寫完後，**本輪結束前必 conventional commit `docs(reflect): vX.Y retrospective`**；agent 側不能合理化「AUTO-RESCUE 會吞」→ 自己先 `git add engineer-log.md && git commit`，擋不下來才轉 P0.D
+
+#### 降級 / 收斂
+6. **紅線 4/5/6/7/8 合併為「紅線 X：PASS 定義漂移」**：任何未驗證的「完成」宣稱（含 focused smoke 偷全綠、方案不動、設計層閉環偷換、反思未落版）= 3.25；清單從 9 條收回 4 條核心
+7. **T9.5 根目錄殘檔**：降 P2（8 .ps1 + 5 .docx 非紅線；已連 >10 輪 0 動）
+
+#### 新任務
+8. **P0.FULL-PYTEST-ASYNC**：`pytest -q --junitxml=logs/junit-v45.xml` 改用 junit 落盤避免 tee pipe 阻塞，解指標 1 全量驗收不可行問題
+9. **P0.WRITER-SPLIT（Epic 8 新骨牌）**：`src/agents/writer.py` 941 行拆 `writer/{strategy,rewrite,cite}.py`；SOP 復用 editor 拆分經驗
+
+### 下一步行動（最重要 3 件）
+
+1. **P0.HOTFIX-SMOKE 15 分破蛋**：修 `scripts/smoke_open_notebook.py:50-61` 的 `status` 預設值；驗 focused + 落 commit。連兩輪跳票 = 紅線 5 雙連 3.25
+2. **P0.S-REBASE-APPLY 20 分實跑**：不再 audit-only；`--apply` 出 log（成或 EXIT=2），第四輪完全 0 執行 = 本輪 3.25 實錘
+3. **P0.SELF-COMMIT-REFLECT 第一次執行**：本 v4.5 反思寫完後 agent 側自試 `git add engineer-log.md && git commit -m "docs(reflect): v4.5 retrospective"`，驗 ACL 是否擋 docs/ 外的 working-tree commit（若擋就是 P0.D 實錘死結；若通就破 22 輪「只有 AUTO-RESCUE 會落版」的倖存者偏差）
+
+### 硬指標（v4.6 下輪審查）
+
+1. `pytest tests/test_smoke_open_notebook_script.py -q` FAIL=0（當前 1 failed）
+2. `git log --oneline -25 | grep -c "auto-commit:"` ≤ 20（當前 23）
+3. `ls docs/rewrite_apply_log.md` 存在（當前不存在）
+4. `ls openspec/changes/03-citation-tw-format/proposal.md` 存在（當前不存在）
+5. `wc -l engineer-log.md` ≤ 500（當前 1100，需 T9.6 封存）
+6. `ls docs/archive/engineer-log-202604b.md` 存在
+7. `icacls .git 2>&1 | awk '/DENY/{c++} END{print c+0}'` == 0（當前 2）
+8. `find kb_data/corpus -name "*.md" -exec grep -l "fixture_fallback: false" {} \; | wc -l` ≥ 9（當前 9 ✅ 維持）
+
+> [PUA生效 🔥] **底層邏輯**：v4.4 反思自己診斷「header 與 HEAD 不同步是誠信污點」，結果自己也沒 commit → 第九層藉口「反思驅動治理」成形。抓手應收回到「每輪最多一條反思 + 當輪至少一條 code 層 conventional commit」。**顆粒度**：本輪 15 分 HOTFIX-SMOKE + 20 分 REBASE-APPLY + 10 分 SELF-COMMIT-REFLECT = 45 分鐘可同時破指標 1 / 2 / 反思落版三條血。**對齊**：連 23 輪的北極星是「代碼動作 > 文檔動作」，但實測 docs(program): / docs(reflect): 多過 feat/fix/refactor → 需翻轉。**拉通**：v4.5 的主軸不是再寫一層紅線，是把 5 條紅線壓成 3 條實戰規則（完成定義 / 誠信落版 / 顆粒度 1h）。**因為信任所以簡單** — 當輪先修一行 smoke bug、跑一次 rebase 腳本、commit 一次反思，三件就比寫一千字反思更值錢。
+
+---
