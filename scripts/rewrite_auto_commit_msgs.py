@@ -1,15 +1,22 @@
 from __future__ import annotations
 
 import argparse
-import subprocess
-from dataclasses import dataclass
+import json
+import os
 from pathlib import Path
+import shlex
+import subprocess
+import sys
+import tempfile
+from dataclasses import dataclass
 from typing import Callable, Iterable
 
 
 AUTO_COMMIT_PREFIX = "auto-commit:"
 DEFAULT_LIMIT = 40
 DEFAULT_OUTPUT = Path("docs") / "rescue-commit-plan.md"
+DEFAULT_RANGE = "HEAD~20..HEAD"
+AUTO_RESCUE_TOKEN = "AUTO-RESCUE"
 
 
 @dataclass(frozen=True)
@@ -33,6 +40,17 @@ def run_git(args: list[str]) -> str:
         encoding="utf-8",
     )
     return completed.stdout
+
+
+def run_command(args: list[str], env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        args,
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env=env,
+    )
 
 
 def list_recent_commits(limit: int, git_runner: GitRunner = run_git) -> list[tuple[str, str]]:
@@ -163,14 +181,14 @@ def collect_suggestions(limit: int = DEFAULT_LIMIT, git_runner: GitRunner = run_
     return suggestions
 
 
-def render_report(suggestions: list[CommitSuggestion], limit: int) -> str:
+def render_report(suggestions: list[CommitSuggestion], limit: int, mode: str = "audit-only") -> str:
     lines = [
         "# Rescue Commit Plan",
         "",
-        "- mode: audit-only",
+        f"- mode: {mode}",
         f"- scanned_commits: {limit}",
         f"- rewrite_candidates: {len(suggestions)}",
-        "- destructive_ops: none",
+        f"- destructive_ops: {'none' if mode == 'audit-only' else 'git filter-branch --msg-filter'}",
         "",
         "| commit_hash | current_msg | proposed_msg | files_top3 | confidence |",
         "| --- | --- | --- | --- | --- |",
@@ -198,6 +216,73 @@ def write_report(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+def _quote_for_shell(value: str) -> str:
+    return shlex.quote(value)
+
+
+def _build_message_filter_script() -> str:
+    return (
+        "import json, os, sys\n"
+        "mapping = json.loads(os.environ['GOV_AI_REWRITE_MAP'])\n"
+        "commit = os.environ.get('GIT_COMMIT', '')\n"
+        "original = sys.stdin.read()\n"
+        "sys.stdout.write(mapping.get(commit, original))\n"
+    )
+
+
+def git_acl_has_deny(git_dir: Path = Path(".git")) -> bool:
+    if os.name != "nt":
+        return False
+    completed = run_command(["icacls", str(git_dir)])
+    return completed.returncode == 0 and "DENY" in completed.stdout.upper()
+
+
+def apply_rewrites(
+    suggestions: list[CommitSuggestion],
+    commit_range: str,
+    command_runner: Callable[[list[str], dict[str, str] | None], subprocess.CompletedProcess[str]] = run_command,
+) -> int:
+    if not suggestions:
+        print("no auto-commit candidates found; nothing to rewrite")
+        return 0
+
+    rewrite_map = {
+        item.commit_hash: f"{item.proposed_msg} [{AUTO_RESCUE_TOKEN}]"
+        for item in suggestions
+    }
+    base_env = os.environ.copy()
+    base_env["GOV_AI_REWRITE_MAP"] = json.dumps(rewrite_map, ensure_ascii=True)
+
+    with tempfile.TemporaryDirectory(prefix="rewrite-auto-commit-") as tmp_dir:
+        script_path = Path(tmp_dir) / "msg_filter.py"
+        script_path.write_text(_build_message_filter_script(), encoding="utf-8")
+        msg_filter = f"{_quote_for_shell(sys.executable)} {_quote_for_shell(str(script_path))}"
+        completed = command_runner(
+            [
+                "git",
+                "filter-branch",
+                "-f",
+                "--msg-filter",
+                msg_filter,
+                commit_range,
+            ],
+            base_env,
+        )
+
+    if completed.returncode != 0:
+        stderr = (completed.stderr or "").strip()
+        stdout = (completed.stdout or "").strip()
+        detail = stderr or stdout or "unknown git filter-branch failure"
+        print(f"rewrite failed: {detail}", file=sys.stderr)
+        return completed.returncode
+
+    print(
+        f"rewrote {len(suggestions)} auto-commit messages in {commit_range} "
+        f"and preserved token {AUTO_RESCUE_TOKEN}"
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Audit auto-commit messages and propose conventional rewrites.")
     parser.add_argument("--limit", type=int, default=DEFAULT_LIMIT, help="Number of recent commits to scan.")
@@ -207,6 +292,17 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_OUTPUT,
         help="Markdown report path.",
     )
+    parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="Rewrite matching auto-commit subjects inside the selected git range.",
+    )
+    parser.add_argument(
+        "--range",
+        dest="commit_range",
+        default=DEFAULT_RANGE,
+        help="Git revision range to rewrite when --apply is set.",
+    )
     return parser
 
 
@@ -214,9 +310,19 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     suggestions = collect_suggestions(limit=args.limit)
-    write_report(args.output, render_report(suggestions, limit=args.limit))
+    mode = "apply-ready" if args.apply else "audit-only"
+    write_report(args.output, render_report(suggestions, limit=args.limit, mode=mode))
     print(f"wrote {args.output} with {len(suggestions)} rewrite candidates")
-    return 0
+
+    if not args.apply:
+        return 0
+    if git_acl_has_deny():
+        print(
+            "apply blocked: .git ACL contains DENY entries; audit report was still generated",
+            file=sys.stderr,
+        )
+        return 2
+    return apply_rewrites(suggestions, args.commit_range)
 
 
 if __name__ == "__main__":

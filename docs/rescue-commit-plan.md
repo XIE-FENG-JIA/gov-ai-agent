@@ -1,12 +1,24 @@
 # Rescue Commit Plan
 
-- mode: audit-only
+- mode: apply-ready
 - scanned_commits: 40
-- rewrite_candidates: 33
-- destructive_ops: none
+- rewrite_candidates: 34
+- destructive_ops: git filter-branch --msg-filter
 
 | commit_hash | current_msg | proposed_msg | files_top3 | confidence |
 | --- | --- | --- | --- | --- |
+| `d67166131c2a` | auto-commit: auto-engineer checkpoint (2026-04-20 18:34:03) @ 2026-04-20 18:39 | feat(docs): sync docs changes in engineer-log.md, program.md | engineer-log.md, program.md, src/core/warnings_compat.py | med |
+| `3f5d1f04c73c` | auto-commit: auto-engineer checkpoint (2026-04-20 18:23:16) @ 2026-04-20 18:29 | chore(repo): capture auto-rescue changes in program.md, pyproject.toml | program.md, pyproject.toml, scripts/live_ingest.py | low |
+| `3a445daa1e14` | auto-commit: auto-engineer checkpoint (2026-04-20 18:17:06) @ 2026-04-20 18:19 | chore(repo): capture auto-rescue changes in docs/live-ingest-report.md, pyproject.toml | docs/live-ingest-report.md, pyproject.toml, scripts/live_ingest.py | low |
+| `d85d965f3fc5` | auto-commit: auto-engineer checkpoint (2026-04-20 17:58:57) @ 2026-04-20 18:09 | chore(repo): capture auto-rescue changes in docs/live-ingest-report.md, scripts/live_ingest.py | docs/live-ingest-report.md, scripts/live_ingest.py, scripts/purge_fixture_corpus.py | low |
+| `9f64c4af16b2` | auto-commit: auto-engineer checkpoint (2026-04-20 17:53:57) @ 2026-04-20 17:58 | chore(repo): capture auto-rescue changes in docs/live-ingest-report.md, engineer-log.md | docs/live-ingest-report.md, engineer-log.md, program.md | low |
+| `643e39225e7c` | auto-commit: auto-engineer checkpoint (2026-04-20 17:38:40) @ 2026-04-20 17:48 | chore(repo): capture auto-rescue changes in engineer-log.md, program.md | engineer-log.md, program.md, results.log.dedup | low |
+| `2bedd3303c86` | auto-commit: auto-engineer checkpoint (2026-04-20 17:38:08) @ 2026-04-20 17:38 | chore(repo): capture auto-rescue changes in README.md, docs/architecture.md | README.md, docs/architecture.md, docs/live-ingest-debug-cli.txt | low |
+| `aa56cb4ad3d2` | auto-commit: auto-engineer checkpoint (2026-04-20 17:18:20) @ 2026-04-20 17:28 | chore(repo): capture auto-rescue changes in engineer-log.md, openspec/changes/01-real-sources/tasks.md | engineer-log.md, openspec/changes/01-real-sources/tasks.md, openspec/changes/02-open-notebook-fork/tasks.md | low |
+| `d3dccc0a3740` | auto-commit: auto-engineer checkpoint (2026-04-20 17:11:58) @ 2026-04-20 17:18 | chore(repo): capture auto-rescue changes in docs/admin-rescue-template.md, openspec/changes/01-real-sources/tasks.md | docs/admin-rescue-template.md, openspec/changes/01-real-sources/tasks.md, openspec/changes/02-open-notebook-fork/tasks.md | low |
+| `684b5ed590a0` | auto-commit: auto-engineer checkpoint (2026-04-20 17:06:21) @ 2026-04-20 17:07 | chore(repo): capture auto-rescue changes in engineer-log.md, openspec/specs/open-notebook-integration.md | engineer-log.md, openspec/specs/open-notebook-integration.md, openspec/specs/sources.md | low |
+| `e83e5971a780` | auto-commit: auto-engineer checkpoint (2026-04-20 16:55:30) @ 2026-04-20 16:57 | chore(repo): capture auto-rescue changes in docs/archive/engineer-log-202604a.md, docs/open-notebook-study.md | docs/archive/engineer-log-202604a.md, docs/open-notebook-study.md, engineer-log.md | low |
+| `55e6387f2f1d` | auto-commit: auto-engineer checkpoint (2026-04-20 16:42:58) @ 2026-04-20 16:46 | chore(repo): capture auto-rescue changes in docs/open-notebook-study.md, docs/rescue-commit-plan.md | docs/open-notebook-study.md, docs/rescue-commit-plan.md, program.md | low |
 | `56853a99bcec` | auto-commit: auto-engineer checkpoint (2026-04-20 16:26:58) @ 2026-04-20 16:36 | docs(docs): sync docs progress for docs/open-notebook-study.md, program.md | docs/open-notebook-study.md, program.md | high |
 | `354e879732cf` | auto-commit: auto-engineer checkpoint (2026-04-20 16:13:00) @ 2026-04-20 16:25 | chore(repo): capture auto-rescue changes in program.md, src/cli/main.py | program.md, src/cli/main.py, src/cli/open_notebook_cmd.py | low |
 | `7b8a2cfc1ede` | auto-commit: auto-engineer checkpoint (2026-04-20 16:05:49) @ 2026-04-20 16:15 | chore(repo): capture auto-rescue changes in src/cli/main.py, src/cli/open_notebook_cmd.py | src/cli/main.py, src/cli/open_notebook_cmd.py, src/integrations/__init__.py | low |
@@ -29,16 +41,5 @@
 | `2cc39aaa6c3f` | auto-commit: auto-engineer checkpoint (2026-04-20 13:01:30) @ 2026-04-20 13:09 | chore(repo): capture auto-rescue changes in program.md, src/sources/base.py | program.md, src/sources/base.py, src/sources/executive_yuan_rss.py | low |
 | `13d8b74734c1` | auto-commit: auto-engineer checkpoint (2026-04-20 12:58:01) @ 2026-04-20 12:58 | chore(repo): capture auto-rescue changes in docs/auto-commit-source.md, program.md | docs/auto-commit-source.md, program.md, src/sources/datagovtw.py | low |
 | `7a10179f47a1` | auto-commit: auto-engineer checkpoint (2026-04-20 12:46:37) @ 2026-04-20 12:48 | chore(repo): capture auto-rescue changes in .../archive/MULTI_AGENT_V2_IMPLEMENTATION.md, docs/archive/PRD-document.txt | .../archive/MULTI_AGENT_V2_IMPLEMENTATION.md, docs/archive/PRD-document.txt, .../archive/engineering-log.md | med |
-| `b3798236ce7e` | auto-commit: auto-engineer checkpoint (2026-04-20 09:39:35) @ 2026-04-20 09:40 | chore(repo): capture auto-rescue changes in engineer-log.md, .../changes/01-real-sources/specs/sources/spec.md | engineer-log.md, .../changes/01-real-sources/specs/sources/spec.md, openspec/changes/01-real-sources/tasks.md | low |
-| `3a26e4b627c8` | auto-commit: auto-engineer checkpoint (2026-04-20 09:30:08) @ 2026-04-20 09:30 | chore(repo): capture auto-rescue changes in .rescue-enabled | .rescue-enabled | high |
-| `a7d4c9b12e33` | auto-commit: auto-engineer checkpoint (2026-04-20 09:23:11) @ 2026-04-20 09:30 | chore(repo): capture auto-rescue changes in src/core/models.py, src/sources/base.py | src/core/models.py, src/sources/base.py, src/sources/mojlaw.py | low |
-| `cc1cdf6f07e2` | auto-commit: auto-engineer checkpoint (2026-04-20 09:07:44) @ 2026-04-20 09:10 | chore(repo): capture auto-rescue changes in .gitignore, "PRD\346\226\207\344\273\266.txt" | .gitignore, "PRD\346\226\207\344\273\266.txt", .../archive/AI_CODING_RULES.md | med |
-| `3dbf2dc02212` | auto-commit: auto-engineer checkpoint (2026-04-20 08:57:35) @ 2026-04-20 09:00 | chore(repo): capture auto-rescue changes in openspec/changes/02-open-notebook-fork/proposal.md, program.md | openspec/changes/02-open-notebook-fork/proposal.md, program.md, src/sources/__init__.py | low |
-| `1d1457fcb427` | auto-commit: auto-engineer checkpoint (2026-04-20 08:29:59) @ 2026-04-20 08:50 | docs(docs): sync docs progress for engineer-log.md, program.md | engineer-log.md, program.md | high |
-| `5f08772a5ec3` | auto-commit: auto-engineer checkpoint (2026-04-20 08:26:10) @ 2026-04-20 08:29 | chore(repo): capture auto-rescue changes in .claude/ralph-loop.local.md, docs/sources-research.md | .claude/ralph-loop.local.md, docs/sources-research.md, program.md | med |
-| `fe9ab2001364` | auto-commit: auto-engineer checkpoint (2026-04-20 08:03:27) @ 2026-04-20 08:09 | docs(spec): sync spec progress for openspec/changes/01-real-sources/proposal.md, program.md | openspec/changes/01-real-sources/proposal.md, program.md | med |
-| `df395bcf0ad0` | auto-commit: auto-engineer checkpoint (2026-04-20 07:39:52) @ 2026-04-20 07:49 | docs(docs): sync docs progress for program.md | program.md | high |
-| `19ebabb21e97` | auto-commit: auto-engineer checkpoint (2026-04-20 07:29:51) @ 2026-04-20 07:39 | docs(docs): sync docs progress for docs/sources-research.md, program.md | docs/sources-research.md, program.md | high |
-| `0962fc674324` | auto-commit: auto-engineer checkpoint (2026-04-20 07:19:47) @ 2026-04-20 07:29 | docs(docs): sync docs progress for engineer-log.md, program.md | engineer-log.md, program.md | high |
 
 Generated by `scripts/rewrite_auto_commit_msgs.py`. No git history was changed.

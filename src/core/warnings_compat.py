@@ -15,6 +15,8 @@ def _apply_known_third_party_warning_filters() -> None:
     Keep filters narrow so project-local deprecations still fail under
     ``-W error::DeprecationWarning``.
     """
+    chromadb_model_fields_message = r"Accessing the 'model_fields' attribute on the instance is deprecated\."
+    chromadb_model_fields_module = r"(chromadb(\..*)?|pydantic\._internal\._utils)"
     warnings.filterwarnings(
         "ignore",
         message=r"open_text is deprecated\. Use files\(\) instead\.",
@@ -23,9 +25,15 @@ def _apply_known_third_party_warning_filters() -> None:
     )
     warnings.filterwarnings(
         "ignore",
-        message=r"Accessing the 'model_fields' attribute on the instance is deprecated\.",
+        message=chromadb_model_fields_message,
         category=PydanticDeprecatedSince211,
-        module=r"(chromadb\.types|pydantic\._internal\._utils)",
+        module=chromadb_model_fields_module,
+    )
+    warnings.filterwarnings(
+        "ignore",
+        message=chromadb_model_fields_message,
+        category=DeprecationWarning,
+        module=chromadb_model_fields_module,
     )
 
 
@@ -38,6 +46,5 @@ def suppress_known_third_party_deprecations() -> None:
 def suppress_known_third_party_deprecations_temporarily():
     """Re-apply known warning filters inside a local warnings context."""
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", PydanticDeprecatedSince211)
         _apply_known_third_party_warning_filters()
         yield

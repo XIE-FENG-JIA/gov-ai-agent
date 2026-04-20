@@ -368,16 +368,17 @@ class KnowledgeBaseManager:
             return []
 
         try:
-            count = self.policies_collection.count()
-            if count == 0:
-                return []
+            with suppress_known_third_party_deprecations_temporarily():
+                count = self.policies_collection.count()
+                if count == 0:
+                    return []
 
-            where_filter = {"source_level": source_level} if source_level else None
-            results = self.policies_collection.query(
-                query_embeddings=[query_embedding],
-                n_results=min(n_results, count),
-                where=where_filter,
-            )
+                where_filter = {"source_level": source_level} if source_level else None
+                results = self.policies_collection.query(
+                    query_embeddings=[query_embedding],
+                    n_results=min(n_results, count),
+                    where=where_filter,
+                )
         except Exception as e:
             logger.error("政策搜尋查詢失敗: %s", e)
             return []
@@ -400,24 +401,25 @@ class KnowledgeBaseManager:
             return []
 
         try:
-            count = self.examples_collection.count()
-            if count == 0:
-                return []
+            with suppress_known_third_party_deprecations_temporarily():
+                count = self.examples_collection.count()
+                if count == 0:
+                    return []
 
-            # 正規化空字典為 None，避免 ChromaDB 拒絕空 where 條件
-            safe_filter = filter_metadata if filter_metadata else None
-            # 合併 source_level 篩選條件
-            if source_level:
-                level_filter = {"source_level": source_level}
-                if safe_filter:
-                    safe_filter = {"$and": [safe_filter, level_filter]}
-                else:
-                    safe_filter = level_filter
-            results = self.examples_collection.query(
-                query_embeddings=[query_embedding],
-                n_results=min(n_results, count),
-                where=safe_filter,
-            )
+                # 正規化空字典為 None，避免 ChromaDB 拒絕空 where 條件
+                safe_filter = filter_metadata if filter_metadata else None
+                # 合併 source_level 篩選條件
+                if source_level:
+                    level_filter = {"source_level": source_level}
+                    if safe_filter:
+                        safe_filter = {"$and": [safe_filter, level_filter]}
+                    else:
+                        safe_filter = level_filter
+                results = self.examples_collection.query(
+                    query_embeddings=[query_embedding],
+                    n_results=min(n_results, count),
+                    where=safe_filter,
+                )
         except Exception as e:
             logger.error("範例搜尋查詢失敗: %s", e)
             return []
@@ -439,28 +441,29 @@ class KnowledgeBaseManager:
             return []
 
         try:
-            count = self.regulations_collection.count()
-            if count == 0:
-                return []
+            with suppress_known_third_party_deprecations_temporarily():
+                count = self.regulations_collection.count()
+                if count == 0:
+                    return []
 
-            conditions: list[dict] = []
-            if doc_type:
-                conditions.append({"doc_type": doc_type})
-            if source_level:
-                conditions.append({"source_level": source_level})
+                conditions: list[dict] = []
+                if doc_type:
+                    conditions.append({"doc_type": doc_type})
+                if source_level:
+                    conditions.append({"source_level": source_level})
 
-            if len(conditions) > 1:
-                where_filter = {"$and": conditions}
-            elif len(conditions) == 1:
-                where_filter = conditions[0]
-            else:
-                where_filter = None
+                if len(conditions) > 1:
+                    where_filter = {"$and": conditions}
+                elif len(conditions) == 1:
+                    where_filter = conditions[0]
+                else:
+                    where_filter = None
 
-            results = self.regulations_collection.query(
-                query_embeddings=[query_embedding],
-                n_results=min(n_results, count),
-                where=where_filter,
-            )
+                results = self.regulations_collection.query(
+                    query_embeddings=[query_embedding],
+                    n_results=min(n_results, count),
+                    where=where_filter,
+                )
         except Exception as e:
             logger.error("法規搜尋查詢失敗: %s", e)
             return []
@@ -534,14 +537,15 @@ class KnowledgeBaseManager:
 
         for coll in collections:
             try:
-                count = coll.count()
-                if count == 0:
-                    continue
-                results = coll.query(
-                    query_embeddings=[query_embedding],
-                    n_results=min(vector_fetch, count),
-                    where=where_filter,
-                )
+                with suppress_known_third_party_deprecations_temporarily():
+                    count = coll.count()
+                    if count == 0:
+                        continue
+                    results = coll.query(
+                        query_embeddings=[query_embedding],
+                        n_results=min(vector_fetch, count),
+                        where=where_filter,
+                    )
                 vector_results.extend(self._format_query_results(results))
             except Exception as e:
                 logger.warning("混合搜尋向量查詢失敗: %s", e)
@@ -617,15 +621,16 @@ class KnowledgeBaseManager:
         for coll in collections:
             coll_name = _coll_name(coll)
             try:
-                count = coll.count()
-                if count == 0:
-                    continue
-                if count > 500:
-                    logger.debug(
-                        "集合 %s 文件數 %d > 500，僅取前 500 筆",
-                        coll_name, count,
-                    )
-                data = coll.get(include=["documents", "metadatas"], limit=500)
+                with suppress_known_third_party_deprecations_temporarily():
+                    count = coll.count()
+                    if count == 0:
+                        continue
+                    if count > 500:
+                        logger.debug(
+                            "集合 %s 文件數 %d > 500，僅取前 500 筆",
+                            coll_name, count,
+                        )
+                    data = coll.get(include=["documents", "metadatas"], limit=500)
                 if not data or not data.get("ids"):
                     continue
                 for i, doc_id in enumerate(data["ids"]):
@@ -866,11 +871,12 @@ class KnowledgeBaseManager:
                 "regulations_count": 0,
                 "policies_count": 0,
             }
-        return {
-            "examples_count": self.examples_collection.count(),
-            "regulations_count": self.regulations_collection.count(),
-            "policies_count": self.policies_collection.count()
-        }
+        with suppress_known_third_party_deprecations_temporarily():
+            return {
+                "examples_count": self.examples_collection.count(),
+                "regulations_count": self.regulations_collection.count(),
+                "policies_count": self.policies_collection.count()
+            }
 
     def reset_db(self) -> None:
         """危險操作：重設資料庫（刪除所有集合後重建）。
@@ -884,7 +890,8 @@ class KnowledgeBaseManager:
         collection_names = ["public_doc_examples", "regulations", "policies"]
         for name in collection_names:
             try:
-                self.client.delete_collection(name)
+                with suppress_known_third_party_deprecations_temporarily():
+                    self.client.delete_collection(name)
             except Exception as e:
                 logger.debug("集合 %s 不存在，跳過刪除: %s", name, e)
         # 重建集合（使用臨時變數，全部成功才原子替換）
