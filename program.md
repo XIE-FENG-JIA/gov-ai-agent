@@ -9,24 +9,24 @@
 > - ✅ 指標 5（熱 pytest 0 failed）：綠
 > - ✅ 指標 6（Epic 3 tasks `[x]` 9/9）：持平綠
 > - ✅ 指標 7（corpus 9 real / 0 fallback）：持平綠
-> - ❌ 指標 8（胖檔群 ≤ 400）：**manager.py 928 / workflow.py 910 / history.py 681 / exporter.py 617 / api_server.py 529 / persist.py 253**；HEAD 0 動 = 拆分 SOP 第五次擴散未啟動
+> - ❌ 指標 8（胖檔群 ≤ 400）：**manager.py 928 / workflow.py 910 / history.py 681 / exporter.py 617 / api_server.py 529**；`src/cli/generate/pipeline/persist/` 已拆成 **158 / 85 / 22 / 9**，但主債仍紅
 >
 > **v5.3 實測 5/8 PASS**（v5.2 6/8 → **-1**，指標 8 紅化；因 v5.2 header 把胖檔納入新閥值計分，但 HEAD 0 動）。
 >
 > **v5.3 實錘校準（v5.2 header 過期點）**：
 > - `engineer-log.md` v5.2 寫 699 行 → HEAD **315 行**（v5.2 落版過程封存完成；header 數字過期）
 > - `docs/archive/engineer-log-202604d.md` **未建**（P0.LOGARCHIVE-V3 T9.6-REOPEN-v3 硬 cap 300 未完成；現 315 > 300 擦邊 15 行）
-> - 胖檔六兄弟**全部 0 動**（manager / workflow / history / exporter / api_server / persist.py 擦邊 253）
+> - 胖檔群現況：**五大紅檔未動 + persist 已拆綠**（manager / workflow / history / exporter / api_server 仍紅；persist 253 → package max 158）
 >
 > **v5.3 P0 重排（ACL-free；連 2 輪 0 動 = 紅線 X 3.25）**：
-> 1. **P0.ARCH-DEBT-ROTATE** 🔴 首位持平 — v5.2 列 6 件全 0 動；本輪**單輪至少破 2 件**（manager.py 928 + persist.py 253 擦邊優先，後者顆粒度最小）
+> 1. **P0.ARCH-DEBT-ROTATE** 🔴 首位持平 — 已先破 `persist`，下一刀鎖 `manager.py 928`；剩 `workflow / history / exporter / api_server`
 > 2. **P0.LOGARCHIVE-V3** 🟡 降 P1 — engineer-log 315 仍 ≤ 500 軟線；硬 cap 300 破 15 行，下輪反思前先封存 v5.0 段即可
 > 3. **P1.EPIC4-PROPOSAL** 🟡 新增 — `openspec/changes/04-audit-citation/` 啟動 proposal + specs + tasks（T7.1.d）；Epic 4 writer 改寫策略 proposal 連 5 輪 0 動，Spectra 對齊度卡 3/5 = 60%
 > 4. **T-FAILURE-MATRIX writer ask-service** 🟡 降 P2 守位（v4.8-v5.2 連 5 輪 0 動，但非當輪血債；Epic 4 啟動前再同步補）
 >
 > **v5.3 下輪硬指標（下輪審查）**：
 > 1. `wc -l src/knowledge/manager.py` or `src/knowledge/manager/*.py` 每檔 ≤ 400（當前單檔 928；**本輪必破**）
-> 2. `wc -l src/cli/generate/pipeline/persist.py` or `persist/*.py` 每檔 ≤ 200（當前 253；**本輪必破**）
+> 2. ✅ `wc -l src/cli/generate/pipeline/persist/*.py` 每檔 ≤ 200（現 **158 / 85 / 22 / 9**；2026-04-21 已破）
 > 3. `ls openspec/changes/04-audit-citation/proposal.md` 存在（當前 ❌）
 > 4. `wc -l engineer-log.md` ≤ 300（當前 315；T9.6-REOPEN-v3）
 > 5. `rg -c "^### 🔴" program.md` ≤ 6（持平綠）
@@ -36,7 +36,7 @@
 > - **頂部校準**：engineer-log 699 → 315（過期點）；指標 8 分母顯化（胖檔六兄弟 0 動紅）
 > - **重排**：P0.ARCH-DEBT-ROTATE 維持首位；P0.LOGARCHIVE-V3 降 P1（315 > 300 擦邊非緊急）；新增 P1.EPIC4-PROPOSAL
 > - **紅線 X 預警**：P0.ARCH-DEBT-ROTATE 連 1 輪 0 動 = 紅線 X 邊緣；本輪若再跳 = 3.25
-> - **顆粒度**：本輪抓手鎖「manager + persist 雙破」— 60 分 + 20 分 = 80 分鐘閉環
+> - **顆粒度**：本輪先破 `persist`；下一刀只鎖 `manager`，避免雙拆失焦
 > - **歷史保留**：v5.2 header 以下全部不動；已完成紀錄保留
 
 > **🎯 v5.2 當輪執行順序鎖（架構師第三十輪階段性規劃 2026-04-21 03:20；/pua 觸發；alibaba 味；drift 校準 + 反思日誌二度爆紅線；已由 v5.3 取代，保留歷史）**：
@@ -411,13 +411,6 @@
 - [ ] **T-EXPORTER-SPLIT** 🟡 `src/document/exporter.py` 554 → **617**（+63）
   - **拆法**：`src/document/exporter/{__init__, docx, metadata, citation_block}.py`
   - **延宕懲罰**：連 2 輪 0 動 = 3.25
-
-- [ ] **T8.1.c-PIPELINE-PERSIST-TRIM** 🟠 v5.2 新增；`src/cli/generate/pipeline/persist.py` **253** 擦紅線 3 行（拆後新 fatty）
-  - **拆法**：`src/cli/generate/pipeline/persist/{__init__, docx, metadata, progress}.py`；`__init__.py` re-export `persist` 入口
-  - **驗 1**：`wc -l src/cli/generate/pipeline/persist/*.py` 每檔 ≤ 200
-  - **驗 2**：`pytest tests/test_generate_*.py tests/test_cli_commands.py -q` 全綠
-  - **延宕懲罰**：連 1 輪延宕 = 紅線 X「設計驅動不實作」第五次復活 = 3.25
-  - commit（ACL 解後）: `refactor(cli): split generate.pipeline.persist into submodules`
 
 - [ ] **T-API-APP-FACTORY** 🟡 v5.2 新增；`api_server.py` 529 行 shim 殘留（routes/ 已拆 4 檔但 app factory + lifespan + middleware 仍卡單檔）
   - **拆法**：`src/api/app.py` 抽 `create_app()` factory + lifespan + 全局 middleware；`api_server.py` 僅留 `uvicorn` entrypoint 與 legacy alias（≤ 100 行）
@@ -1367,6 +1360,11 @@
   - **驗 1**：`python -m pytest tests/test_cli_commands.py tests/test_batch_perf.py tests/test_workflow_cmd.py tests/test_export_citation_metadata.py -q --no-header` = **794 passed / 0 failed**
   - **驗 2**：`python -c "import src.cli.generate as g; import src.cli.generate.pipeline as p; print(hasattr(p, '_run_core_pipeline'), hasattr(p, '_run_batch'))"` = `True True`
   - commit（ACL 解後）: `refactor(cli): split generate/pipeline.py into package modules`
+- [x] **T8.1.c-PIPELINE-PERSIST-TRIM (2026-04-21)** `src/cli/generate/pipeline/persist.py` 已再拆為 package：`src/cli/generate/pipeline/persist/{__init__,batch_io,batch_runner,item_processor}.py`；保留 `src.cli.generate._load_batch_csv` / `_process_batch_item` / `_run_batch` patch 與匯出相容點
+  - **完成（2026-04-21）**：`wc -l src/cli/generate/pipeline/persist/*.py` = **158 / 85 / 22 / 9**，全數 ≤ 200
+  - **驗 1**：`python -m pytest tests/test_batch_perf.py tests/test_cli_commands.py -q --no-header -k "batch or _load_batch_csv"` = **55 passed / 0 failed**
+  - **驗 2**：熱測 `python -m pytest tests/test_cli_commands.py tests/test_batch_perf.py tests/test_workflow_cmd.py tests/test_export_citation_metadata.py tests/test_agents.py -q --no-header` = **852 passed / 0 failed**
+  - commit（ACL 解後）: `refactor(cli): split generate.pipeline.persist into submodules`
 - [x] **P0.EPIC3-BASELINE-PROMOTE (2026-04-21)** `openspec/specs/citation-tw-format.md` baseline capability 已從 `changes/03-citation-tw-format/specs/citation/spec.md` promote；保留 canonical `## 引用來源`、`source_doc_ids` / `citation_count` / `ai_generated` / `engine`、DOCX verification metadata 與 repo-evidence verify 契約
   - **完成（2026-04-21 02:35）**：新增 baseline spec `openspec/specs/citation-tw-format.md`；驗證 `rg -n "source_doc_ids|citation_count|ai_generated|engine|## 引用來源" openspec/specs/citation-tw-format.md` 命中達標，word count > 200
 - [x] **T-INTEGRATION-GATE (2026-04-21)** 新增 nightly integration gate：`scripts/run_nightly_integration.py` 作為核心 runner，`.sh` / `.ps1` 為雙平台 wrapper，預設以 `GOV_AI_RUN_INTEGRATION=1` 執行 `tests/integration/test_sources_smoke.py` 與 `scripts/live_ingest.py --require-live`，另支援 `--dry-run`
