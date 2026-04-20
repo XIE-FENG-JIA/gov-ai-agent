@@ -5,24 +5,22 @@
 - force_live: 1
 
 ## mojlaw
-- status: PASS
-- live_count: 3
+- status: FAIL
+- count: 0
+- live_count: 0
 - ingested_count: 0
-- fixture_remaining: 3
-- summary: ingested=0 live_total=3 fixture_remaining=3
-
-| source_url | synthetic | fixture_fallback | first_sentence |
-| --- | --- | --- | --- |
-| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0000001 | False | False | 中華民國憲法 第 一 章 總綱 第 1 條 中華民國基於三民主義，為民有民治民享之民主共和國 |
-| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0000002 | False | False | 中華民國憲法增修條文 第 1 條 中華民國自由地區選舉人於立法院提出憲法修正案、領土變更案，經公告半年，應於三個月內投票複決，不適用憲法第四條、第一百七十四條之規定 |
-| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0000003 | False | False | 憲法實施之準備程序 1 一、自憲法公布之日起現行法令之與憲法相牴觸者，國民政府應迅速分別予以修改或廢止，並應於依照本憲法所產生之國民大會集會以前，完成此項工作 |
+- fixture_remaining: 0
+- archived_count: 0
+- summary: not enough values to unpack (expected 3, got 1)
 
 ## datagovtw
 - status: PASS
+- count: 0
 - live_count: 3
 - ingested_count: 0
-- fixture_remaining: 3
-- summary: ingested=0 live_total=3 fixture_remaining=3
+- fixture_remaining: 0
+- archived_count: 0
+- summary: ingested=0 live_total=3 fixture_remaining=0 archived=0
 
 | source_url | synthetic | fixture_fallback | first_sentence |
 | --- | --- | --- | --- |
@@ -32,10 +30,12 @@
 
 ## executive_yuan_rss
 - status: PASS
+- count: 0
 - live_count: 3
 - ingested_count: 0
-- fixture_remaining: 3
-- summary: ingested=0 live_total=3 fixture_remaining=3
+- fixture_remaining: 0
+- archived_count: 0
+- summary: ingested=0 live_total=3 fixture_remaining=0 archived=0
 
 | source_url | synthetic | fixture_fallback | first_sentence |
 | --- | --- | --- | --- |

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import shutil
 from dataclasses import dataclass
 from datetime import date
@@ -57,9 +58,20 @@ def archive_fixture_corpus(
         raw_source = _resolve_raw_path(base_dir=base_dir, raw_snapshot_path=metadata.get("raw_snapshot_path"))
         raw_target = archive_root / raw_source.relative_to(base_dir) if raw_source and raw_source.exists() else None
 
-        _move_within_base(base_dir, corpus_path, corpus_target)
-        if raw_source and raw_target:
-            _move_within_base(base_dir, raw_source, raw_target)
+        try:
+            _move_within_base(base_dir, corpus_path, corpus_target)
+            if raw_source and raw_target:
+                _move_within_base(base_dir, raw_source, raw_target)
+        except PermissionError:
+            _copy_within_base(base_dir, corpus_path, corpus_target)
+            if raw_source and raw_target:
+                _copy_within_base(base_dir, raw_source, raw_target)
+            _write_archived_fixture_stub(
+                corpus_path=corpus_path,
+                metadata=metadata,
+                archive_target=corpus_target,
+                raw_target=raw_target,
+            )
 
         archived.append(
             ArchivedFixture(
@@ -82,7 +94,26 @@ def _move_within_base(base_dir: Path, source: Path, target: Path) -> None:
         raise ValueError(f"refusing to move path outside base_dir: {source}") from exc
 
     target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        if source.read_bytes() != target.read_bytes():
+            raise FileExistsError(f"archive target already exists with different content: {target}")
+        source.unlink(missing_ok=True)
+        return
     shutil.move(str(source), str(target))
+
+
+def _copy_within_base(base_dir: Path, source: Path, target: Path) -> None:
+    source = source.resolve()
+    base_resolved = base_dir.resolve()
+    try:
+        source.relative_to(base_resolved)
+    except ValueError as exc:  # pragma: no cover - defensive guard
+        raise ValueError(f"refusing to copy path outside base_dir: {source}") from exc
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists() and source.read_bytes() == target.read_bytes():
+        return
+    shutil.copy2(str(source), str(target))
 
 
 def _read_metadata(corpus_path: Path) -> dict[str, object]:
@@ -94,6 +125,33 @@ def _read_metadata(corpus_path: Path) -> dict[str, object]:
         return {}
     metadata = yaml.safe_load(parts[1])
     return metadata if isinstance(metadata, dict) else {}
+
+
+def _write_archived_fixture_stub(
+    *,
+    corpus_path: Path,
+    metadata: dict[str, object],
+    archive_target: Path,
+    raw_target: Path | None,
+) -> None:
+    replacement = copy.deepcopy(metadata)
+    replacement["deprecated"] = True
+    replacement["archived_fixture"] = True
+    replacement["fixture_fallback"] = False
+    replacement["archive_target_path"] = archive_target.as_posix()
+    if raw_target is not None:
+        replacement["archived_raw_snapshot_path"] = raw_target.as_posix()
+    frontmatter = yaml.dump(replacement, allow_unicode=True, default_flow_style=False, sort_keys=False).strip()
+    body = "\n".join(
+        [
+            "# Archived fixture corpus",
+            "",
+            "This fixture-backed corpus file has been retired from active ingestion.",
+            f"- archive_target_path: {archive_target.as_posix()}",
+            f"- original_fixture_fallback: {bool(metadata.get('fixture_fallback'))}",
+        ]
+    )
+    corpus_path.write_text(f"---\n{frontmatter}\n---\n{body}\n", encoding="utf-8")
 
 
 def _resolve_raw_path(*, base_dir: Path, raw_snapshot_path: object) -> Path | None:

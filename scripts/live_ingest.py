@@ -11,11 +11,12 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from scripts.purge_fixture_corpus import archive_fixture_corpus
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
+
+from scripts.purge_fixture_corpus import archive_fixture_corpus
 
 
 DEFAULT_REPORT_PATH = Path("docs") / "live-ingest-report.md"
@@ -72,14 +73,16 @@ def main(argv: list[str] | None = None) -> int:
     source_keys = _parse_sources(args.sources, parser)
     base_dir = Path(args.base_dir)
     report_path = Path(args.report_path)
-    results = run_live_ingest(
-        source_keys=source_keys,
-        limit=args.limit,
-        base_dir=base_dir,
-        require_live=args.require_live,
-        prune_fixture_fallback=args.prune_fixture_fallback,
-        archive_label=args.archive_label,
-    )
+    run_kwargs: dict[str, Any] = {
+        "source_keys": source_keys,
+        "limit": args.limit,
+        "base_dir": base_dir,
+        "require_live": args.require_live,
+    }
+    if args.prune_fixture_fallback or args.archive_label is not None:
+        run_kwargs["prune_fixture_fallback"] = args.prune_fixture_fallback
+        run_kwargs["archive_label"] = args.archive_label
+    results = run_live_ingest(**run_kwargs)
     write_report(report_path, results=results, base_dir=base_dir, limit=args.limit, force_live=args.require_live)
     return 0 if all(result.status == "PASS" for result in results) else 1
 
@@ -116,7 +119,7 @@ def run_live_ingest(
                         )
                     )
                 rows = _read_source_records(base_dir=base_dir, storage_names=storage_names)
-                live_rows = [row for row in rows if not row["fixture_fallback"]]
+                live_rows = [row for row in rows if not row["fixture_fallback"] and not row["archived_fixture"]]
                 fixture_remaining = sum(1 for row in rows if row["fixture_fallback"])
                 results.append(
                     SourceRunResult(
@@ -173,7 +176,8 @@ def write_report(
             [
                 f"## {result.source}",
                 f"- status: {result.status}",
-                f"- live_count: {result.count}",
+                f"- count: {result.count}",
+                f"- live_count: {len(result.records)}",
                 f"- ingested_count: {result.ingested_count}",
                 f"- fixture_remaining: {result.fixture_remaining}",
                 f"- archived_count: {result.archived_count}",
@@ -244,6 +248,8 @@ def _read_record(corpus_path: Path) -> dict[str, Any]:
         "source_url": str(metadata.get("source_url", "")).replace("|", "%7C"),
         "synthetic": bool(metadata.get("synthetic")),
         "fixture_fallback": bool(metadata.get("fixture_fallback")),
+        "deprecated": bool(metadata.get("deprecated")),
+        "archived_fixture": bool(metadata.get("archived_fixture")),
         "first_sentence": _first_sentence(body),
     }
 
@@ -268,7 +274,10 @@ def _read_source_records(*, base_dir: Path, storage_names: list[str]) -> list[di
             if path in seen_paths:
                 continue
             seen_paths.add(path)
-            rows.append(_read_record(path))
+            record = _read_record(path)
+            if record["deprecated"] and record["archived_fixture"]:
+                continue
+            rows.append(record)
     return rows
 
 

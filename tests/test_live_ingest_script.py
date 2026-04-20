@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
 import yaml
@@ -91,6 +93,57 @@ def test_run_live_ingest_can_prune_fixture_backed_corpus(tmp_path: Path, monkeyp
     assert results[0].archived_count == 1
     assert not (tmp_path / "corpus" / "mojlaw" / "fixture.md").exists()
     assert (tmp_path / "corpus" / "mojlaw" / "live.md").exists()
+
+
+def test_run_live_ingest_ignores_archived_fixture_stub(tmp_path: Path, monkeypatch) -> None:
+    class FakeAdapter:
+        pass
+
+    def fake_ingest(adapter, *, limit, base_dir, require_live):  # type: ignore[no-untyped-def]
+        corpus_root = base_dir / "corpus" / "mojlaw"
+        corpus_root.mkdir(parents=True, exist_ok=True)
+        (corpus_root / "live.md").write_text(
+            "---\n"
+            "source_url: https://example.test/live\n"
+            "synthetic: false\n"
+            "fixture_fallback: false\n"
+            "---\n"
+            "# Live doc\n\n真資料。\n",
+            encoding="utf-8",
+        )
+        return []
+
+    def fake_archive_fixture_corpus(*, base_dir, storage_names, archive_label=None):  # type: ignore[no-untyped-def]
+        corpus_root = base_dir / "corpus" / "mojlaw"
+        (corpus_root / "fixture.md").write_text(
+            "---\n"
+            "source_url: https://example.test/fixture\n"
+            "synthetic: true\n"
+            "fixture_fallback: false\n"
+            "deprecated: true\n"
+            "archived_fixture: true\n"
+            "---\n"
+            "# Archived fixture corpus\n",
+            encoding="utf-8",
+        )
+        return [object()]
+
+    monkeypatch.setattr(live_ingest, "_available_sources", lambda: {"mojlaw": FakeAdapter})
+    monkeypatch.setattr(live_ingest, "_load_ingest_function", lambda: fake_ingest)
+    monkeypatch.setattr(live_ingest, "archive_fixture_corpus", fake_archive_fixture_corpus)
+
+    results = live_ingest.run_live_ingest(
+        source_keys=["mojlaw"],
+        limit=2,
+        base_dir=tmp_path,
+        prune_fixture_fallback=True,
+    )
+
+    assert results[0].status == "PASS"
+    assert results[0].count == 1
+    assert results[0].fixture_remaining == 0
+    assert results[0].archived_count == 1
+    assert len(results[0].records) == 1
     assert (tmp_path / "archive" / "fixture_20260420" / "corpus" / "mojlaw" / "fixture.md").exists()
 
 
@@ -188,3 +241,16 @@ def test_main_accepts_explicit_require_live_flag(tmp_path: Path, monkeypatch) ->
 
     assert exit_code == 0
     assert observed == [True]
+
+
+def test_cli_help_runs_as_script_entrypoint() -> None:
+    result = subprocess.run(
+        [sys.executable, "scripts/live_ingest.py", "--help"],
+        cwd=Path(__file__).resolve().parents[1],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "--prune-fixture-fallback" in result.stdout
