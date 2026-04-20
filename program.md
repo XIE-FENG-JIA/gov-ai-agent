@@ -1,6 +1,43 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **🎯 v4.8 當輪執行順序鎖（技術主管第二十六輪深度回顧 2026-04-20 21:05；/pua 觸發；閉環反思驅動）**：
+> **🎯 v4.9 當輪執行順序鎖（技術主管第二十七輪深度回顧 2026-04-21 01:58；/pua 觸發；alibaba 味；四破齊出驗收）**：
+> **HEAD 實測指標**（ls + wc + grep + pytest 即取）：
+> - ✅ 指標 1（pytest 全綠）：hot 11 檔 **933 passed / 59s**；21:55 T3.1-CANONICAL-HEADING 全量 **3672 / 0**（+12 vs v4.8 3660）
+> - ❌ 指標 2（近 25 commits auto-commit ≤ 12）：**23/25** 持平紅（v4.8 header 與實測 1:1 對齊 ✓；HEAD 連 5 h 全 AUTO-RESCUE = Admin 結構性紅）
+> - ❌ 指標 3（.git DENY ACL = 0）：**2**（連 >27 輪；P0.D Admin 依賴已承認為系統性紅）
+> - ✅ 指標 4（open_notebook seam）：4 檔 齊
+> - ✅ 指標 5（study.md ≥ 80 行）：持平綠
+> - ✅ 指標 6（Epic 2 tasks `[x]` = 15/15）：**100% 首次收官**（v4.8 14/15 → 本輪 +1）
+> - ✅ 指標 7（corpus 9 real / 0 fallback）：連八輪綠
+> - ✅ 指標 8（writer/ 單檔 ≤ 350）：**max 250**（cite.py）；v4.8 1109 單檔 → 本輪 6 檔 1039 + editor 5 檔 1010；拆分 pattern library 成形
+> **v4.9 實測 6/8 PASS**（v4.8 5/8 → +1；Epic 2 半→全綠、writer split 紅→綠；指標 2/3 ACL 結構性紅不計入 agent 績效）。
+>
+> **本輪五破齊出（v4.8 header 三破 + 二守 = 100% 兌現，首次）**：
+> 1. ✅ **T2.9 SurrealDB freeze**（21:03 實錘）— Epic 2 首次 100% 收官
+> 2. ✅ **P0.EPIC3-PROPOSAL**（21:10 實錘）+ T3.1 / T3.2 / T3.3 / T3.4 / T3.0-T3.5-T3.8 連環破 — Epic 3 從 0 → 9/9
+> 3. ✅ **P0.WRITER-SPLIT**（21:24 AUTO-RESCUE + 21:27 sync）— editor 拆分 SOP 首次擴散成功
+> 4. ✅ **T9.6-REOPEN**（21:40 實錘）— engineer-log.md 1198 → 316；封存檔 1109 行落地
+> 5. ✅ **T3.1-CANONICAL-HEADING**（21:55）— template/export 路徑統一 `### 參考來源 (AI 引用追蹤)`；+5 tests 綠
+>
+> **v4.9 → 下輪新三破（本輪必啟動，連 1 輪延宕 = 紅線 X）**：
+> 1. **T8.1.a cli/kb.py 拆**（60 分；ACL-free）— 🔴 `src/cli/kb.py = 1614 行 god-CLI` 連 6 輪 0 動；editor + writer pattern library 首次擴散到 CLI 層；拆 `cli/kb/{__init__, ingest, rebuild, stats, status, corpus}.py`；驗 `wc -l src/cli/kb/*.py` 每檔 ≤ 400 + `pytest tests/test_kb*.py tests/test_cli_commands.py -q` 全綠。
+> 2. **P0.EPIC3-BASELINE-PROMOTE**（15 分；ACL-free）— 🟢 `openspec/specs/citation-tw-format.md` baseline promote（從 `changes/03-*/specs/citation/spec.md` 複製）；Spectra 對齊度 3/5 → 3.3/5。
+> 3. **T-INTEGRATION-GATE**（20 分；ACL-free）— 🟢 `scripts/run_nightly_integration.sh` + `docs/integration-nightly.md`；live corpus 9 份持續健康度監測入口；v4.3 起列 P1 連 2 輪跳。
+>
+> **v4.9 二守（P1，連 2 輪延宕 = 3.25）**：
+> 4. **紅線收斂 9→3+1**（10 分）— v4.5 提議連 5 輪未執行；program.md 頂部核心紅線段從 9 條壓回 3 條核心（真實性 / 改寫 / 可溯源）+ 1 條實戰（紅線 X：PASS 定義漂移）；header 自我施壓不再通膨。
+> 5. **T-FAILURE-MATRIX writer ask-service**（30 分）— `tests/test_writer_agent_failure.py` 補 4 failure mode（vendor 缺 / runtime 炸 / retrieval 空 / service timeout）；Epic 4 writer 改寫策略啟動前的 coverage 保險。
+>
+> **v4.8 → v4.9 變更摘要**：
+> - **事實勾關**：T2.9 / T3.0 / T3.1 / T3.2 / T3.3 / T3.4 / T3.5-T3.8 / P0.WRITER-SPLIT / T9.6-REOPEN / T3.1-CANONICAL-HEADING 十連勾閉環；指標 6 + 指標 8 半綠→全綠
+> - **事實校準**：Epic 2 從「14/15 收官待一哩」→ **100% 收官**；Epic 3 從「連五輪跳」→ **一輪內 0 → 100%**；writer split 從「連 2 輪 0 動紅線 5 邊緣」→ **六檔 1039 行落地**
+> - **指標 2/3 責任分層**：agent 側承認結構性 Admin 依賴，從每輪 3.25 血債退為 P0.D 追蹤位；**不再計入 agent 績效**，避免反思驅動治理第九層藉口
+> - **紅線通膨反轉**：v4.5 起列的收斂從未執行，v4.9 強制落實；核心 3 + 實戰 X = 4 條（原 9 條 = -55%）
+> - **header 自我 lag 容忍**：本輪 Epic 3 從 0 → 100% 是執行當中翻出的，v4.8 header 未預告 = 正向 lag 可接受；header 不再要求 10 分鐘精確對齊 HEAD（避免輪替癖）
+>
+> **紅線狀態（v4.9 強制壓縮為 3+1）**：核心紅線 = 1 真實性 / 2 改寫而非生成 / 3 可溯源；實戰紅線 X = PASS 定義漂移（含承諾未落 / 方案不動 / 設計偷閉環 / 未驗即交 / focused 偷全綠 / header 斷層）；原紅線 4-9 合併；program.md § 核心原則段下輪一併收斂。
+
+> **🎯 v4.8 當輪執行順序鎖（技術主管第二十六輪深度回顧 2026-04-20 21:05；/pua 觸發；已由 v4.9 取代，保留歷史）**：
 > **HEAD 實測指標**（wc + rg + icacls + pytest 即取）：
 > - ✅ 指標 1（pytest 全綠）：hot 58 passed / 14.72s + v4.6 全量 **3660 / 0 / 516.74s**（20:21）維持綠
 > - ❌ 指標 2（近 25 commits auto-commit ≤ 12）：**23/25（92%）**（v4.6/v4.7 header 報 25/25 = **虛報 +2**；實況微破）
@@ -224,6 +261,45 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 > **v4.3 新增紅線 8**：「**focused smoke 偷換全綠 = 3.25**」— focused smoke 108 passed 不等於 3660 tests 全綠；每輪驗收必跑全量 `pytest tests/ -q` 且 FAIL=0；在 Windows 用 `PYTHONUNBUFFERED=1 python -u -m pytest ... 2>&1 | tee` 防 output truncation。
 > **v4.2 歷史保留（新增紅線 7）**：「**未驗即交 = 3.25**」— 實裝新 API / context manager / wrapper 不跑對應 test 目錄就把 diff 留工作樹過輪 = 當輪 3.25（非連輪）；案例 = P0.FF 改 src 未跑 `pytest tests/test_knowledge_manager_cache.py`。
 > **v3.5 歷史保留**：v3.4 flaky + v3.1-3.3 Epic 1 骨架 + 倖存者偏差紅線；v4.0-4.1 設計驅動治理紅線 6。
+
+### P0.EPIC8-KB-SPLIT — 🔴 ACL-free·v4.9 首要（v4.9 新增；60 分鐘；T8.1.a 升 P0）
+
+- [ ] **T8.1.a（v4.9 升 P0）** 🔴 `src/cli/kb.py = 1614 行 god-CLI` 連 6 輪 0 動；editor + writer 拆分 pattern library 已成形，**本輪不動 = 紅線 X（方案驅動治理）連 6 輪 3.25 實錘邊緣**
+  - **拆法**：`src/cli/kb/` package：`__init__.py`（export Click group）+ `ingest.py`（CLI subcommand）+ `rebuild.py` + `stats.py` + `status.py` + `corpus.py`（若職責多於 4 個則再分）
+  - **SOP 復用**：editor 拆分（flow/segment/refine/merge）+ writer 拆分（strategy/rewrite/cite/cleanup/ask_service）已驗證可行；cli/kb 的拆分要以 **功能職責**（ingest vs rebuild vs stats）切，非按「函數大小」切
+  - **驗 1**：`wc -l src/cli/kb/*.py` 每檔 ≤ 400 行
+  - **驗 2**：`pytest tests/test_cli_commands.py tests/test_kb*.py -q` 全綠
+  - **驗 3**：`python -m src.cli.main kb --help` 列出原有子指令（不破 CLI 契約）
+  - **延宕懲罰**：ACL-free 連 1 輪延宕 = 紅線 X 實錘 3.25（七輪跳）
+  - commit（ACL 解後）: `refactor(cli): split kb.py into package modules`
+
+### P0.EPIC3-BASELINE-PROMOTE — 🟢 ACL-free·v4.9 新增（15 分鐘）
+
+- [ ] **P0.EPIC3-BASELINE-PROMOTE** 🟢 Epic 3 tasks 已 9/9 全綠但 baseline capability 未 promote；`openspec/specs/citation-tw-format.md` 不存在 = Spectra 對齊度 3/5 → 3.3/5 未收尾
+  - **執行**：從 `openspec/changes/03-citation-tw-format/specs/citation/spec.md` 複製為 `openspec/specs/citation-tw-format.md`；調整 header 段為 baseline 形式（移除 change-scoped wording，保留 requirement 清單）
+  - **驗 1**：`ls openspec/specs/citation-tw-format.md` 存在
+  - **驗 2**：`wc -w openspec/specs/citation-tw-format.md` ≥ 200
+  - **驗 3**：`rg -n "source_doc_ids|citation_count|ai_generated|engine|## 引用來源" openspec/specs/citation-tw-format.md` 命中 ≥ 5
+  - commit（ACL 解後）: `docs(spec): promote citation-tw-format baseline capability`
+
+### P0.INTEGRATION-GATE — 🟢 ACL-free·v4.9 升 P0（20 分鐘；原 T-INTEGRATION-GATE）
+
+- [ ] **T-INTEGRATION-GATE（v4.9 升 P0）** 🟢 live corpus 9 份持續健康度無監測；v4.3 起列 P1 連 2 輪跳 = 紅線 X 邊緣
+  - **執行**：`scripts/run_nightly_integration.sh`（Windows: `.ps1` + Linux: `.sh` 雙版）+ `docs/integration-nightly.md` 文檔；GOV_AI_RUN_INTEGRATION=1 下跑 `tests/integration/test_sources_smoke.py` + `scripts/live_ingest.py --dry-run`
+  - **驗 1**：`ls scripts/run_nightly_integration.sh && ls docs/integration-nightly.md` 存在
+  - **驗 2**：`GOV_AI_RUN_INTEGRATION=1 bash scripts/run_nightly_integration.sh --dry-run` 退 0
+  - **驗 3**：`docs/integration-nightly.md` ≥ 40 行含「執行頻率 / 失敗通知 / 復原 SOP」三段
+  - commit（ACL 解後）: `feat(ops): add nightly integration gate for live corpus`
+
+### P0.REDLINE-COMPRESS — 🟢 ACL-free·v4.9 新增（10 分鐘；連 5 輪跳）
+
+- [ ] **P0.REDLINE-COMPRESS** 🟢 v4.5 提議紅線從 9 條收斂為 3+1 連 5 輪未執行；header 自我施壓通膨
+  - **執行**：編輯 program.md § 核心原則段
+  - **目標結構**：
+    - `### 🔴 三條核心紅線`：1 真實性 / 2 改寫而非生成 / 3 可溯源（沿用）
+    - `### 🔴 實戰紅線 X（PASS 定義漂移）`：合併原紅線 4（承諾漂移）/ 5（方案驅動治理）/ 6（設計驅動治理）/ 7（未驗即交）/ 8（focused smoke 偷全綠）/ 9（header 與 HEAD 不同步）= 六子條款，一次 3.25 含即算
+  - **驗**：`rg -c "^### 🔴" program.md` ≤ 6（當前 9 條紅線 + ACL-gated + PASS 定義 + 連五輪升 P0 + read-only 2 輪 + 骨架不是實作 = 超過）；`rg -n "紅線 4|紅線 5|紅線 6|紅線 7|紅線 8|紅線 9" program.md § 核心原則段` = 0（頂部段全收斂到 X）
+  - commit（ACL 解後）: `docs(program): compress 9 redlines into 3+1 core`
 
 ### P0.FF-HOTFIX — 🔴 ACL-free·首要·當輪必破（v4.2 新增；10 分鐘）
 
