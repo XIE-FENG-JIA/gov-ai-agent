@@ -8,8 +8,8 @@
 | `mojlaw` | detail page | `GET` | `https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode={pcode}` | `200` | `text/html; charset=utf-8` |
 | `datagovtw` | dataset search | `POST` | `https://data.gov.tw/api/front/dataset/list` | `200` | `application/json` |
 | `datagovtw` | dataset detail | `GET` | `https://data.gov.tw/dataset/{dataset_id}` | `200` | `text/html; charset=utf-8` |
-| `executiveyuanrss` | RSS feed | `GET` | `https://www.ey.gov.tw/RSS_Content.aspx?ModuleType=3` | `200` | `application/rss+xml` or `application/xml` |
-| `executiveyuanrss` | item detail | `GET` | item `link` from RSS payload | `200` | `text/html; charset=utf-8` |
+| `executive_yuan_rss` | RSS feed | `GET` | `https://www.ey.gov.tw/RSS_Content.aspx?ModuleType=3` | `200` | `application/rss+xml` or `application/xml` |
+| `executive_yuan_rss` | item detail | `GET` | item `link` from RSS payload | `200` | `text/html; charset=utf-8` |
 | `mohw` | RSS feed | `GET` | `https://www.mohw.gov.tw/rss-18-1.html` | `200` | `application/rss+xml` or `application/xml` |
 | `mohw` | item detail | `GET` | item `link` from RSS payload | `200` | `text/html; charset=utf-8` |
 | `fda` | notice listing | `GET` | `https://www.fda.gov.tw/tc/DataAction.aspx` | `200` | `application/json` or `text/plain` JSON |
@@ -31,6 +31,11 @@ curl -sI https://www.fda.gov.tw/tc/DataAction.aspx
 
 - `mojlaw` uses `src/sources/mojlaw.py` and `LAW_API_URL` / `LAW_DETAIL_URL`.
 - `datagovtw` uses `src/sources/datagovtw.py` and `SEARCH_URL` / `OPENDATA_DETAIL_URL`.
-- `executiveyuanrss` uses `src/sources/executive_yuan_rss.py` and reads item links from the RSS feed.
+- `executive_yuan_rss` uses `src/sources/executive_yuan_rss.py` and reads item links from the RSS feed.
 - `mohw` uses `src/sources/mohw_rss.py` and reads item links from the RSS feed.
 - `fda` uses `src/sources/fda_api.py` and resolves detail URLs from listing payload fields.
+
+## Source Key Notes
+
+- `scripts/live_ingest.py` accepts the canonical key `executive_yuan_rss`.
+- The legacy compact alias `executiveyuanrss` is still accepted for backwards compatibility.

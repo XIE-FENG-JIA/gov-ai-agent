@@ -6,6 +6,7 @@ import argparse
 import os
 import sys
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -15,10 +16,14 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from src.sources.ingest import DEFAULT_BASE_DIR, _adapter_registry, ingest
-
 
 DEFAULT_REPORT_PATH = Path("docs") / "live-ingest-report.md"
+DEFAULT_BASE_DIR = Path("kb_data")
+DEFAULT_SOURCES = ["mojlaw", "datagovtw", "executive_yuan_rss", "mohw", "fda"]
+SOURCE_ALIASES = {
+    "executiveyuanrss": "executive_yuan_rss",
+    "executive_yuan_rss": "executive_yuan_rss",
+}
 
 
 @dataclass
@@ -34,8 +39,8 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run require-live ingest for one or more public sources.")
     parser.add_argument(
         "--sources",
-        default=",".join(sorted(_adapter_registry())),
-        help="Comma-separated source keys, e.g. mojlaw,datagovtw,executiveyuanrss",
+        default=",".join(DEFAULT_SOURCES),
+        help="Comma-separated source keys, e.g. mojlaw,datagovtw,executive_yuan_rss",
     )
     parser.add_argument("--limit", type=int, default=3, help="Max documents per source")
     parser.add_argument("--base-dir", default=str(DEFAULT_BASE_DIR), help="Output kb_data root")
@@ -56,15 +61,17 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def run_live_ingest(*, source_keys: list[str], limit: int, base_dir: Path) -> list[SourceRunResult]:
-    registry = _adapter_registry()
+    registry = _available_sources()
+    ingest_fn = _load_ingest_function()
     results: list[SourceRunResult] = []
     previous_force_live = os.environ.get("GOV_AI_FORCE_LIVE")
     os.environ["GOV_AI_FORCE_LIVE"] = "1"
     try:
         for source_key in source_keys:
-            adapter = registry[source_key]()
+            adapter_cls = registry[source_key]
+            adapter = adapter_cls()
             try:
-                records = ingest(adapter, limit=limit, base_dir=base_dir, require_live=True)
+                records = ingest_fn(adapter, limit=limit, base_dir=base_dir, require_live=True)
                 rows = [_read_record(record.corpus_path) for record in records]
                 results.append(
                     SourceRunResult(
@@ -132,14 +139,46 @@ def write_report(
 
 
 def _parse_sources(raw_sources: str, parser: argparse.ArgumentParser) -> list[str]:
-    available = _adapter_registry()
-    source_keys = [item.strip().lower() for item in raw_sources.split(",") if item.strip()]
+    available = _available_sources()
+    source_keys = [_normalize_source_key(item) for item in raw_sources.split(",") if item.strip()]
     if not source_keys:
         parser.error("--sources must include at least one source key")
     invalid = [key for key in source_keys if key not in available]
     if invalid:
         parser.error(f"unsupported source(s): {', '.join(invalid)}")
     return source_keys
+
+
+def _normalize_source_key(raw_source: str) -> str:
+    normalized = raw_source.strip().lower().replace("-", "_")
+    return SOURCE_ALIASES.get(normalized, normalized)
+
+
+@lru_cache(maxsize=1)
+def _available_sources() -> dict[str, type[Any]]:
+    registry = _load_registry()
+    available = dict(registry)
+    for alias, canonical in SOURCE_ALIASES.items():
+        if canonical in registry:
+            available[canonical] = registry[canonical]
+    return available
+
+
+@lru_cache(maxsize=1)
+def _load_registry() -> dict[str, type[Any]]:
+    from src.sources.ingest import _adapter_registry
+
+    registry = dict(_adapter_registry())
+    if "executiveyuanrss" in registry:
+        registry["executive_yuan_rss"] = registry["executiveyuanrss"]
+    return registry
+
+
+@lru_cache(maxsize=1)
+def _load_ingest_function() -> Any:
+    from src.sources.ingest import ingest
+
+    return ingest
 
 
 def _read_record(corpus_path: Path) -> dict[str, Any]:

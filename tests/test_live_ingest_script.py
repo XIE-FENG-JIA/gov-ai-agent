@@ -13,9 +13,6 @@ def test_run_live_ingest_sets_force_live_and_collects_records(tmp_path: Path, mo
 
     observed: list[tuple[str, str | None]] = []
 
-    def fake_registry():  # type: ignore[no-untyped-def]
-        return {"mojlaw": FakeAdapter}
-
     def fake_ingest(adapter, *, limit, base_dir, require_live):  # type: ignore[no-untyped-def]
         observed.append((adapter.__class__.__name__, live_ingest.os.environ.get("GOV_AI_FORCE_LIVE")))
         assert limit == 2
@@ -34,8 +31,8 @@ def test_run_live_ingest_sets_force_live_and_collects_records(tmp_path: Path, mo
         )
         return [type("Record", (), {"corpus_path": corpus_path})()]
 
-    monkeypatch.setattr(live_ingest, "_adapter_registry", fake_registry)
-    monkeypatch.setattr(live_ingest, "ingest", fake_ingest)
+    monkeypatch.setattr(live_ingest, "_available_sources", lambda: {"mojlaw": FakeAdapter})
+    monkeypatch.setattr(live_ingest, "_load_ingest_function", lambda: fake_ingest)
 
     results = live_ingest.run_live_ingest(source_keys=["mojlaw"], limit=2, base_dir=tmp_path)
 
@@ -84,7 +81,7 @@ def test_write_report_renders_markdown_table(tmp_path: Path) -> None:
 
 
 def test_main_rejects_unknown_source(tmp_path: Path, monkeypatch) -> None:
-    monkeypatch.setattr(live_ingest, "_adapter_registry", lambda: {"mojlaw": object})
+    monkeypatch.setattr(live_ingest, "_available_sources", lambda: {"mojlaw": object})
 
     try:
         live_ingest.main(["--sources", "unknown", "--base-dir", str(tmp_path)])
@@ -92,3 +89,20 @@ def test_main_rejects_unknown_source(tmp_path: Path, monkeypatch) -> None:
         assert exc.code == 2
     else:  # pragma: no cover
         raise AssertionError("expected parser to exit on unknown source")
+
+
+def test_main_accepts_underscored_source_alias(tmp_path: Path, monkeypatch) -> None:
+    calls: list[list[str]] = []
+
+    monkeypatch.setattr(live_ingest, "_available_sources", lambda: {"executive_yuan_rss": object})
+    monkeypatch.setattr(
+        live_ingest,
+        "run_live_ingest",
+        lambda *, source_keys, limit, base_dir: calls.append(source_keys) or [],
+    )
+    monkeypatch.setattr(live_ingest, "write_report", lambda *args, **kwargs: None)
+
+    exit_code = live_ingest.main(["--sources", "executiveyuanrss", "--base-dir", str(tmp_path)])
+
+    assert exit_code == 0
+    assert calls == [["executive_yuan_rss"]]
