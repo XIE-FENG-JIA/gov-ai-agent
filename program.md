@@ -174,10 +174,10 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 #### P0.T-LIVE — 🟡 Admin-dep：實跑 live ingest 產生 3 源 × 3 份 `synthetic: false` corpus
 
-- [ ] **P0.T-LIVE** 🟡 需網路（Admin 解 proxy/egress）：fixture-only → 真實 live 抓取落盤
-  - **前置**：P0.T-SPIKE 完成（腳本落地）+ P0.D 解 ACL（可 commit）+ Admin 開 shell egress
+- [ ] **P0.T-LIVE** 🟡 需正式把 live ingest 寫回 `kb_data/`：fixture-only → 真實 live 抓取落盤
+  - **前置**：P0.T-SPIKE 完成（腳本落地）+ P0.D 解 ACL（可 commit）；2026-04-20 已證實 requests 路徑可經 direct retry 繞過壞 proxy，阻塞點已從「egress 不通」收斂為「尚未正式寫回 `kb_data/` / 更新 live report」
   - **v3.4 現況**：`kb_data/corpus/` 9 份 md **100% `synthetic: true` + `fixture_fallback: true`**；`grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` = 0
-  - **2026-04-20 probe**：`python -m src.sources.ingest --source mojlaw --limit 3 --base-dir meta_test/require_live_probe --require-live` 直接回 `error=live ingest required for mojlaw, but source_id=A0030018 used fixture fallback`；代表目前 shell egress/proxy 仍未通，P0.T-LIVE 不可誤報完成
+  - **2026-04-20 probe（更新）**：根因不是「網站沒網路」而是 adapter 路徑三連缺口：壞 env proxy 讓 requests 先 `ProxyError` 後退 fixture、`executive_yuan_rss` 真 feed 帶 `UTF-8-SIG BOM` 但 `response.text` 被誤解碼、`mojlaw` 真 payload 無 `PCode` 需自 `LawURL` 抽 pcode。2026-04-20 已補 `request_with_proxy_bypass`、`executive_yuan_rss` BOM decode + URL-guid 正規化、`mojlaw` live payload pcode/date 對齊；fresh probes `python -m src.sources.ingest --source mojlaw --limit 3 --base-dir meta_test/p0t_live_probe_mojlaw_v4 --require-live`、`python -m src.sources.ingest --source datagovtw --limit 3 --base-dir meta_test/p0t_live_probe_datagovtw_v2 --require-live`、`python -m src.sources.ingest --source executive_yuan_rss --limit 3 --base-dir meta_test/p0t_live_probe_ey_v2 --require-live` 皆可 `ingested=3`，故 P0.T-LIVE 現只剩正式落 `kb_data/` 與報告更新
   - **底層邏輯**：fixture 驗單元，真網路驗整合；Epic 1「真通過」= **≥3 來源 × ≥3 份真實 .md + `synthetic: false` + `fixture_fallback: false` frontmatter**
   - 執行（P0.T-SPIKE 落地後）：`python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 3`
   - **驗 1**：`grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` ≥ 9
@@ -268,9 +268,9 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - commit（ACL 解除後）: `docs(spec): add sources + open-notebook-integration baseline capabilities`
   - **完成（2026-04-20）**：新增 `openspec/specs/sources.md` 與 `openspec/specs/open-notebook-integration.md`，把 real-sources 與 open-notebook seam 從 change-specific 規格抽成 repo baseline；保留 `BaseSourceAdapter` / `PublicGovDoc` / `OpenNotebookAdapter` / `GOV_AI_OPEN_NOTEBOOK_MODE` 契約，以及 fallback、review-layer ownership、SurrealDB freeze 邊界
 
-### P0.CC — 🟢 ACL-free·P0.T-LIVE 除錯驅動（v4.0 新增；P0.Z 推翻 egress 假設後的接棒）
+### P0.CC — ✅ v4.0 現場閉環（2026-04-20 17:38）：MojLaw transient 500 retry + live probe 通過
 
-- [ ] **P0.CC** ✅ 不依賴 ACL / 不等 Admin：重跑 `--require-live` 收 fixture fallback 真因，取代「等 egress 解」的被動姿態
+- [x] **P0.CC** ✅ 不依賴 ACL / 不等 Admin：重跑 `--require-live` 收 fixture fallback 真因，取代「等 egress 解」的被動姿態
   - **v4.0 背景**：P0.Z 附錄（17:00）已證 `git clone https://github.com/lfnovo/open-notebook.git` 於本 shell 暢通 → 推翻連 5 輪「Admin egress 擋」假設；P0.T-LIVE 的 fixture_fallback 真因未知
   - **執行**：`python scripts/live_ingest.py --sources mojlaw --limit 1 --require-live 2>&1 | tee docs/live-ingest-debug.md`
   - **分類決策樹**（按 debug 輸出）：
@@ -282,6 +282,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗 2**：若 debug 揭 adapter bug → 修完後 `grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` ≥ 1（指標 7 破蛋）
   - **延宕懲罰**：ACL-free + 已推翻 egress 假設，連 1 輪延宕 = 3.25（第九層藉口「debug 懶得跑」）
   - commit（ACL 解除後）: `fix(sources): diagnose require_live fixture fallback root cause`
+  - **完成（2026-04-20 17:38）**：新增 `docs/live-ingest-debug.md`，抓到 `https://law.moj.gov.tw/api/Ch/Law/json` 首次偶發 `HTTP 500` 才是 fixture fallback 根因；`src/sources/mojlaw.py` 補 1 次 transient 5xx retry + `Accept-Language`，`scripts/live_ingest.py` 補 `--require-live/--no-require-live` 參數對齊 SOP。驗證 `pytest tests/test_mojlaw_adapter.py tests/test_live_ingest_script.py -q` = 13 passed，`python scripts/live_ingest.py --sources mojlaw --limit 1 --require-live --base-dir meta_test/p0cc_probe` 產出 `meta_test/p0cc_probe/corpus/mojlaw/A0000001.md`，frontmatter 為 `synthetic: false` / `fixture_fallback: false`
 
 ### P0.AA — 🟢 ACL-free·Epic 8 首顆升 P0（v4.0 新增；`editor.py` 獨立拆，不依賴 Epic 2）
 
@@ -499,7 +500,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗**：`ls docs/llm-providers.md` 存在 AND `grep -c "src/core/llm.py" docs/llm-providers.md` ≥ 1
   - commit（ACL 解後）: `docs(llm): inventory core/llm.py provider factory for Epic 2`
 
-- [ ] **P1.8（v3.6 擴充）✅ ACL-free** README + architecture seam 對齊
+- [x] **P1.8（v3.6 擴充）✅ ACL-free** README + architecture seam 對齊
   - **背景**：(a) `README.md` 5 KB 落後 2 sprint，未反映 5 adapter + ingest CLI + Fork 路線；(b) `docs/architecture.md` v1 已落但缺 v3.5 T2.2 選定的 `src/integrations/open_notebook/` seam + `GOV_AI_OPEN_NOTEBOOK_MODE` 描述——P1.9 需此為 spec 錨點
   - 產出（一 commit）：
     - `README.md` §資料源：5 adapter 表 + `gov-ai sources ingest / status / stats` 範例 + 連結 `docs/architecture.md` + `docs/integration-plan.md`
@@ -508,6 +509,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗 2**：`grep -c "GOV_AI_OPEN_NOTEBOOK_MODE" docs/architecture.md` ≥ 1
   - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
   - commit（ACL 解後）: `docs: align README + architecture seam for Epic 1 adapters and Epic 2 integration`
+  - **完成（2026-04-20 17:34）**：`README.md` 已補 5 adapter / `gov-ai sources ingest|status|stats` / `python scripts/live_ingest.py` / `open-notebook` smoke 指南與補充文件連結；`docs/architecture.md` 已補 `src/integrations/open_notebook/` 現況、`GOV_AI_OPEN_NOTEBOOK_MODE=off|smoke|writer`、`GOV_AI_STATE_DIR` 與 operator notes
 
 - [~] **P1.9（v3.6 NEW）→ v3.8 升 P0.W** seam 骨架搬至 P0 活條目段；此處保留歷史視角
   - **背景**：T2.2 `docs/integration-plan.md` 已選 Fork + thin adapter seam，但 `src/integrations/` 目錄不存在；下游 T2.5-T2.8（API / writer / retriever / fallback）全需此 seam 接入。P1.4 vendor clone 被 shell egress 擋住，但 **seam 骨架不需要真 vendor 存在**——可先落 protocol + stub + env gating，vendor 到位後只填實作
@@ -783,6 +785,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **P0.W (v3.8)** `src/integrations/open_notebook/` seam 骨架 + `src/cli/open_notebook_cmd.py` 已落地；`OpenNotebookAdapter` Protocol、`off/smoke/writer` 三模式工廠、vendor `.git` stub 偵測與 writer-mode loud fail 已就位；`pytest tests/test_integrations_open_notebook.py -q` = 7 passed，`GOV_AI_OPEN_NOTEBOOK_MODE=smoke python -m src.cli.main open-notebook smoke --question "hi" --doc "first evidence"` 非空
 - [x] **P0.X (v3.8)** vendor smoke import 已落地；`scripts/smoke_open_notebook.py` 會先 probe vendor checkout，再驗 flat/src layout import，缺依賴回報 `missing=<module>`；2026-04-20 16:47 實跑已把現況收斂成 `status=vendor-incomplete`（`.git` 僅殘留 `config.lock` / `description` / `hooks` / `info`），不再只說「只有 `.git`」，且 smoke path 不會噴 `ImportError: No module named 'open_notebook'`
 - [x] **P0.Y (v3.8)** audit-only 自救原型：`scripts/rewrite_auto_commit_msgs.py` + `tests/test_rewrite_auto_commit_msgs.py` + `docs/rescue-commit-plan.md` 已落地；實跑報告 44 行 / 33 筆 rewrite candidates，未改任何 git 歷史
+- [x] **P0.CP950 (v4.0)** Windows cp950 console help 回歸：`src/cli/cite_cmd.py` 移除 help/panel/static warning 中的 emoji 與不安全符號，`python -m src.cli.main --help` 在 `PYTHONIOENCODING=cp950` 下不再噴 `UnicodeEncodeError`；`tests/test_cite_cmd.py` 新增子程序回歸測試
 - [x] **T7.4（v3.8）** Spectra coverage 補洞：`openspec/changes/{01-real-sources,02-open-notebook-fork}/tasks.md` 已回填逐 task `Requirements:` metadata；`spectra analyze 01-real-sources` 與 `spectra analyze 02-open-notebook-fork` 於 2026-04-20 17:06 實測皆 0 findings
 - [x] **T1.12-HARDEN (v3.4)** nightly live smoke 禁 silent fixture fallback；`tests/integration/test_sources_smoke.py` 把 fixture_dir 指向不存在路徑，upstream 掛 → integration FAIL 不再假綠
 - [x] **T1.6.a (v3.4)** 校正 `kb_data/examples/*.md` 合成基線為 155，`tests/test_mark_synthetic.py` 新增 guard

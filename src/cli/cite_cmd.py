@@ -1,4 +1,4 @@
-"""法規引用建議——給定公文草稿，推薦適用法規與標準引用格式。"""
+"""法規引用建議，給定公文草稿並推薦適用法規與標準引用格式。"""
 
 from __future__ import annotations
 
@@ -133,13 +133,13 @@ def _render_rich(
     console.print(
         Panel(
             f"[bold cyan]公文類型：{type_label}[/bold cyan] {source_note}",
-            title="[bold]gov-ai cite — 法規引用建議[/bold]",
+            title="[bold]gov-ai cite - 法規引用建議[/bold]",
             border_style="cyan",
         )
     )
 
     if not applicable:
-        console.print("[yellow]⚠ 未找到適用法規。請確認公文類型是否正確。[/yellow]")
+        console.print("[yellow]警告：未找到適用法規。請確認公文類型是否正確。[/yellow]")
         return
 
     # ── 適用法規清單 ─────────────────────────────────
@@ -166,7 +166,7 @@ def _render_rich(
     # ── 語意搜尋結果（KB 模式）──────────────────────
     if kb_results:
         console.print()
-        console.print("[bold]📚 知識庫相關條文（語意匹配）[/bold]")
+        console.print("[bold]知識庫相關條文（語意匹配）[/bold]")
         for i, r in enumerate(kb_results, 1):
             title = r.get("metadata", {}).get("title", "未知法規")
             score = r.get("distance", 0.0)
@@ -184,7 +184,7 @@ def _render_rich(
 
     # ── 引用格式提示 ─────────────────────────────────
     console.print()
-    console.print("[bold]📝 法令依據區塊範本[/bold]")
+    console.print("[bold]法令依據區塊範本[/bold]")
     cite_lines = [f"  {reg['cite_format']}" for reg in applicable[:5]]
     console.print(
         Panel("\n".join(cite_lines), title="建議填入「法令依據」欄位", border_style="dim")
@@ -234,7 +234,7 @@ def cite(
         help="自訂法規映射表路徑（預設：kb_data/regulation_doc_type_mapping.yaml）",
     ),
 ) -> None:
-    """📋 法規引用建議 — 給定公文草稿，推薦適用法規與標準引用格式。
+    """法規引用建議 - 給定公文草稿，推薦適用法規與標準引用格式。
 
     \b
     範例：
@@ -267,7 +267,7 @@ def cite(
         detected = True
         if not doc_type:
             console.print(
-                "[yellow]⚠ 無法自動偵測公文類型。請使用 --type 指定。[/yellow]\n"
+                "[yellow]警告：無法自動偵測公文類型。請使用 --type 指定。[/yellow]\n"
                 f"可用類型：{', '.join(_TYPE_LABELS.keys())}"
             )
             raise typer.Exit(1)
@@ -289,7 +289,7 @@ def cite(
             kb_results = _try_kb_search(draft_text, doc_type, top_n)
         if not kb_results:
             console.print(
-                "[dim]⚠ 知識庫查詢無結果（可能尚未執行 gov-ai kb ingest）。[/dim]"
+                "[dim]警告：知識庫查詢無結果（可能尚未執行 gov-ai kb ingest）。[/dim]"
             )
 
     # ── 輸出 ───────────────────────────────────────────

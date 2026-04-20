@@ -132,6 +132,58 @@ def test_mojlaw_adapter_retries_direct_connection_after_proxy_error(
 
 @patch("src.sources.mojlaw.time.sleep")
 @patch("src.sources.mojlaw.requests.Session.get")
+def test_mojlaw_adapter_retries_once_after_transient_http_500(
+    mock_get: MagicMock,
+    _mock_sleep: MagicMock,
+) -> None:
+    laws = _fixture_laws()
+    first_response = MagicMock()
+    first_response.status_code = 500
+    first_response.raise_for_status.side_effect = requests.HTTPError("500 Server Error")
+    second_response = MagicMock()
+    second_response.status_code = 200
+    second_response.content = _make_catalog_zip(laws)
+    second_response.raise_for_status = MagicMock()
+    mock_get.side_effect = [first_response, second_response]
+
+    adapter = MojLawAdapter(rate_limit=0)
+    listed = list(adapter.list(limit=1))
+
+    assert [item["id"] for item in listed] == ["A0030018"]
+    assert adapter.fetch("A0030018")["_fixture_fallback"] is False
+    assert mock_get.call_count == 2
+
+
+@patch("src.sources.mojlaw.time.sleep")
+@patch("src.sources.mojlaw.requests.Session.get")
+def test_mojlaw_adapter_accepts_live_payload_without_explicit_pcode(
+    mock_get: MagicMock,
+    _mock_sleep: MagicMock,
+) -> None:
+    live_law = {
+        "LawName": "中華民國憲法",
+        "LawURL": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0000001",
+        "LawModifiedDate": "19470101",
+        "LawArticles": [{"ArticleNo": "第 1 條", "ArticleContent": "中華民國基於三民主義。"}],
+    }
+    mock_response = MagicMock()
+    mock_response.content = _make_catalog_zip([live_law])
+    mock_response.raise_for_status = MagicMock()
+    mock_get.return_value = mock_response
+
+    adapter = MojLawAdapter(rate_limit=0)
+    listed = list(adapter.list(limit=1))
+    raw = adapter.fetch("A0000001")
+    normalized = adapter.normalize(raw)
+
+    assert listed == [{"id": "A0000001", "title": "中華民國憲法", "date": date(1947, 1, 1)}]
+    assert raw["LawURL"].endswith("pcode=A0000001")
+    assert normalized.source_url.endswith("pcode=A0000001")
+    assert normalized.source_date == date(1947, 1, 1)
+
+
+@patch("src.sources.mojlaw.time.sleep")
+@patch("src.sources.mojlaw.requests.Session.get")
 def test_mojlaw_adapter_falls_back_to_local_fixtures_on_empty_success_response(
     mock_get: MagicMock,
     _mock_sleep: MagicMock,

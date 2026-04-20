@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 import textwrap
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -237,3 +240,19 @@ class TestCiteCLI:
         )
         # fallback 到「函」，正常執行
         assert result.exit_code == 0
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="cp950 help regression is Windows-specific")
+    def test_main_help_survives_cp950_console(self):
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "cp950"
+
+        completed = subprocess.run(
+            [sys.executable, "-m", "src.cli.main", "--help"],
+            cwd=Path(__file__).resolve().parents[1],
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+
+        assert completed.returncode == 0, completed.stderr
+        assert "UnicodeEncodeError" not in completed.stderr

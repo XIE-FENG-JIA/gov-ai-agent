@@ -10,6 +10,7 @@ from collections.abc import Iterable
 from datetime import date
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 import requests
 
@@ -33,12 +34,14 @@ class MojLawAdapter(BaseSourceAdapter):
         api_url: str = LAW_API_URL,
         rate_limit: float = 2.0,
         timeout: float = 60.0,
+        transient_http_retries: int = 1,
         fixture_dir: Path | None = None,
     ) -> None:
         self.session = session or requests.Session()
         self.api_url = api_url
         self.rate_limit = rate_limit
         self.timeout = timeout
+        self.transient_http_retries = transient_http_retries
         self.fixture_dir = fixture_dir if fixture_dir is not None else self.DEFAULT_FIXTURE_DIR
         self._last_request_time = 0.0
         self._law_cache: dict[str, dict[str, Any]] = {}
@@ -52,7 +55,7 @@ class MojLawAdapter(BaseSourceAdapter):
             source_date = self._extract_source_date(raw)
             if since_date is not None and source_date is not None and source_date < since_date:
                 continue
-            doc_id = str(raw.get("PCode", "")).strip()
+            doc_id = self._extract_doc_id(raw)
             if not doc_id:
                 continue
             docs.append(
@@ -77,16 +80,16 @@ class MojLawAdapter(BaseSourceAdapter):
         return self._law_cache[normalized_id]
 
     def normalize(self, raw: dict[str, Any]) -> PublicGovDoc:
-        source_id = str(raw.get("PCode", "")).strip()
+        source_id = self._extract_doc_id(raw)
         if not source_id:
-            raise ValueError("raw law payload is missing PCode")
+            raise ValueError("raw law payload is missing PCode/LawURL pcode")
         law_name = str(raw.get("LawName", "")).strip()
         if not law_name:
             raise ValueError("raw law payload is missing LawName")
 
         return PublicGovDoc(
             source_id=source_id,
-            source_url=LAW_DETAIL_URL.format(pcode=source_id),
+            source_url=str(raw.get("LawURL", "")).strip() or LAW_DETAIL_URL.format(pcode=source_id),
             source_agency=self.SOURCE_AGENCY,
             source_doc_no=source_id,
             source_date=self._extract_source_date(raw),
@@ -109,26 +112,41 @@ class MojLawAdapter(BaseSourceAdapter):
         )
         laws = result.value
         self._law_cache = {
-            str(law.get("PCode", "")).strip(): {
+            self._extract_doc_id(law): {
                 **law,
                 "_fixture_fallback": result.used_fixture,
             }
             for law in laws
-            if str(law.get("PCode", "")).strip()
+            if self._extract_doc_id(law)
         }
         return list(self._law_cache.values())
 
     def _request_json(self) -> requests.Response:
-        self._throttle()
-        response = request_with_proxy_bypass(
-            self.session,
-            "get",
-            self.api_url,
-            headers=build_headers(accept="application/json", user_agent=self.USER_AGENT),
-            timeout=self.timeout,
-        )
-        response.raise_for_status()
-        return response
+        attempts = self.transient_http_retries + 1
+        last_error: requests.HTTPError | None = None
+        for attempt in range(attempts):
+            self._throttle()
+            response = request_with_proxy_bypass(
+                self.session,
+                "get",
+                self.api_url,
+                headers=build_headers(
+                    accept="application/json",
+                    user_agent=self.USER_AGENT,
+                    extra={"Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8"},
+                ),
+                timeout=self.timeout,
+            )
+            try:
+                response.raise_for_status()
+                return response
+            except requests.HTTPError as exc:
+                status_code = getattr(response, "status_code", None)
+                if status_code is None or status_code < 500 or attempt == attempts - 1:
+                    raise
+                last_error = exc
+        assert last_error is not None
+        raise last_error
 
     def _load_fixture_catalog(self, exc: Exception) -> list[dict[str, Any]]:
         if not self.fixture_dir.exists():
@@ -173,11 +191,28 @@ class MojLawAdapter(BaseSourceAdapter):
             if not value:
                 continue
             text = str(value).strip().replace("/", "-")
+            if len(text) >= 8 and text[:8].isdigit():
+                try:
+                    return date.fromisoformat(f"{text[:4]}-{text[4:6]}-{text[6:8]}")
+                except ValueError:
+                    pass
             try:
                 return date.fromisoformat(text[:10])
             except ValueError:
                 continue
         return None
+
+    @staticmethod
+    def _extract_doc_id(raw: dict[str, Any]) -> str:
+        pcode = str(raw.get("PCode", "")).strip()
+        if pcode:
+            return pcode
+
+        law_url = str(raw.get("LawURL", "")).strip()
+        if not law_url:
+            return ""
+        values = parse_qs(urlparse(law_url).query).get("pcode", [])
+        return values[0].strip() if values else ""
 
     @staticmethod
     def _build_content_markdown(law_name: str, articles: Any) -> str:

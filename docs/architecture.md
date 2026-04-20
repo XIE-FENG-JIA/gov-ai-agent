@@ -166,6 +166,8 @@ CLI:
 - 49 CLI modules currently exist under `src/cli/`
 - Source management is grouped under `sources`
 - KB management is grouped under `kb`
+- State files auto-relocate to a user-scoped directory when running from repo root via `src/cli/utils.py`
+- `GOV_AI_STATE_DIR` can override the default state directory
 
 API:
 
@@ -240,6 +242,27 @@ Practical consequence:
 - add one repo-owned adapter module first
 - keep failure fallback to legacy writer flow until integration is proven
 
+Current seam status:
+
+- `src/integrations/open_notebook/` exists and is the only approved import boundary
+- `get_adapter(mode)` currently exposes `off`, `smoke`, and `writer` modes
+- `off` raises a repo-owned `IntegrationDisabled`
+- `smoke` returns a repo-owned in-memory adapter for seam verification
+- `writer` is intentionally reserved and still fails loudly until ask-service wiring is implemented
+- the seam never silently auto-enables vendor code; operators must opt in with `GOV_AI_OPEN_NOTEBOOK_MODE`
+
+Runtime switch:
+
+- `GOV_AI_OPEN_NOTEBOOK_MODE=off` keeps the integration disabled
+- `GOV_AI_OPEN_NOTEBOOK_MODE=smoke` enables `gov-ai open-notebook smoke`
+- `GOV_AI_OPEN_NOTEBOOK_MODE=writer` is a guarded future mode, not a live production path
+
+Operator entrypoints:
+
+- `python scripts/smoke_open_notebook.py`
+- `python -m src.cli.main open-notebook --help`
+- `GOV_AI_OPEN_NOTEBOOK_MODE=smoke python -m src.cli.main open-notebook smoke --question "..." --doc "..."`
+
 ## SurrealDB Freeze
 SurrealDB is mentioned in `program.md` Epic 2 as a future storage migration.
 It is explicitly frozen today.
@@ -261,12 +284,14 @@ Current storage truth:
 - `src/cli/kb.py` and `src/cli/generate.py` are still large modules and remain split candidates
 - `.git` ACL DENY is still blocking normal commit flow, so documentation and code can be locally correct but not yet cleanly landed
 - Epic 1 true-live ingest baseline is still pending; fixture-backed tests are green, but baseline success requires real upstream data
-- `vendor/open-notebook` is not yet available locally, so Epic 2 remains spec-first, not code-first
+- `vendor/open-notebook` is now importable locally, but only smoke validation is wired; writer integration and fallback cutover are still future work
 
 ## Operator Notes
 - Run full regression with `pytest tests -q`
 - Run live source smoke only with `GOV_AI_RUN_INTEGRATION=1`
 - Use `gov-ai sources status --base-dir kb_data` to inspect current source inventory
+- Use `GOV_AI_STATE_DIR=<path>` when you need CLI state outside the default user profile directory
+- Treat `python scripts/smoke_open_notebook.py` as the first health check for the vendored runtime before touching writer work
 - Treat `docs/architecture.md`, `program.md`, and `openspec/` as a matched set when changing architecture
 
 ## Change Rule

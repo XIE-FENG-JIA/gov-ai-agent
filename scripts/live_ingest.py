@@ -45,6 +45,12 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--limit", type=int, default=3, help="Max documents per source")
     parser.add_argument("--base-dir", default=str(DEFAULT_BASE_DIR), help="Output kb_data root")
     parser.add_argument("--report-path", default=str(DEFAULT_REPORT_PATH), help="Markdown report output path")
+    parser.add_argument(
+        "--require-live",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Fail when adapters fall back to local fixtures (default: true).",
+    )
     return parser
 
 
@@ -55,23 +61,35 @@ def main(argv: list[str] | None = None) -> int:
     source_keys = _parse_sources(args.sources, parser)
     base_dir = Path(args.base_dir)
     report_path = Path(args.report_path)
-    results = run_live_ingest(source_keys=source_keys, limit=args.limit, base_dir=base_dir)
-    write_report(report_path, results=results, base_dir=base_dir, limit=args.limit, force_live=True)
+    results = run_live_ingest(
+        source_keys=source_keys,
+        limit=args.limit,
+        base_dir=base_dir,
+        require_live=args.require_live,
+    )
+    write_report(report_path, results=results, base_dir=base_dir, limit=args.limit, force_live=args.require_live)
     return 0 if all(result.status == "PASS" for result in results) else 1
 
 
-def run_live_ingest(*, source_keys: list[str], limit: int, base_dir: Path) -> list[SourceRunResult]:
+def run_live_ingest(
+    *,
+    source_keys: list[str],
+    limit: int,
+    base_dir: Path,
+    require_live: bool = True,
+) -> list[SourceRunResult]:
     registry = _available_sources()
     ingest_fn = _load_ingest_function()
     results: list[SourceRunResult] = []
     previous_force_live = os.environ.get("GOV_AI_FORCE_LIVE")
-    os.environ["GOV_AI_FORCE_LIVE"] = "1"
+    if require_live:
+        os.environ["GOV_AI_FORCE_LIVE"] = "1"
     try:
         for source_key in source_keys:
             adapter_cls = registry[source_key]
             adapter = adapter_cls()
             try:
-                records = ingest_fn(adapter, limit=limit, base_dir=base_dir, require_live=True)
+                records = ingest_fn(adapter, limit=limit, base_dir=base_dir, require_live=require_live)
                 rows = [_read_record(record.corpus_path) for record in records]
                 results.append(
                     SourceRunResult(

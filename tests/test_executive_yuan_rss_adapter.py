@@ -18,6 +18,7 @@ FIXTURE_PATH = Path(__file__).parent / "fixtures" / "executive_yuan_rss" / "feed
 @patch("src.sources.executive_yuan_rss.requests.Session.get")
 def test_executive_yuan_rss_adapter_list_fetch_and_normalize(mock_get: MagicMock, _mock_sleep: MagicMock) -> None:
     mock_response = MagicMock()
+    mock_response.content = FIXTURE_PATH.read_bytes()
     mock_response.text = FIXTURE_PATH.read_text(encoding="utf-8")
     mock_response.raise_for_status = MagicMock()
     mock_get.return_value = mock_response
@@ -49,6 +50,7 @@ def test_executive_yuan_rss_adapter_list_fetch_and_normalize(mock_get: MagicMock
 @patch("src.sources.executive_yuan_rss.requests.Session.get")
 def test_executive_yuan_rss_adapter_filters_by_since_date(mock_get: MagicMock, _mock_sleep: MagicMock) -> None:
     mock_response = MagicMock()
+    mock_response.content = FIXTURE_PATH.read_bytes()
     mock_response.text = FIXTURE_PATH.read_text(encoding="utf-8")
     mock_response.raise_for_status = MagicMock()
     mock_get.return_value = mock_response
@@ -63,6 +65,7 @@ def test_executive_yuan_rss_adapter_filters_by_since_date(mock_get: MagicMock, _
 @patch("src.sources.executive_yuan_rss.requests.Session.get")
 def test_executive_yuan_rss_adapter_fetch_unknown_id_raises(mock_get: MagicMock, _mock_sleep: MagicMock) -> None:
     mock_response = MagicMock()
+    mock_response.content = FIXTURE_PATH.read_bytes()
     mock_response.text = FIXTURE_PATH.read_text(encoding="utf-8")
     mock_response.raise_for_status = MagicMock()
     mock_get.return_value = mock_response
@@ -97,6 +100,7 @@ def test_executive_yuan_rss_adapter_retries_direct_connection_after_proxy_error(
     _mock_sleep: MagicMock,
 ) -> None:
     mock_response = MagicMock()
+    mock_response.content = FIXTURE_PATH.read_bytes()
     mock_response.text = FIXTURE_PATH.read_text(encoding="utf-8")
     mock_response.raise_for_status = MagicMock()
     mock_get.side_effect = [requests.exceptions.ProxyError("proxy down"), mock_response]
@@ -112,6 +116,37 @@ def test_executive_yuan_rss_adapter_retries_direct_connection_after_proxy_error(
     assert mock_get.call_count == 2
 
 
+def test_executive_yuan_rss_adapter_extracts_stable_id_from_live_url() -> None:
+    raw = {
+        "guid": "https://www.ey.gov.tw/Page/9277F759E41CCD91",
+        "link": "https://www.ey.gov.tw/Page/9277F759E41CCD91",
+    }
+
+    assert ExecutiveYuanRssAdapter._extract_entry_id(raw) == "9277F759E41CCD91"
+
+
+@patch("src.sources._common.time.sleep")
+@patch("src.sources.executive_yuan_rss.requests.Session.get")
+def test_executive_yuan_rss_adapter_decodes_utf8_bom_feed(
+    mock_get: MagicMock,
+    _mock_sleep: MagicMock,
+) -> None:
+    xml_text = FIXTURE_PATH.read_text(encoding="utf-8")
+    mock_response = MagicMock()
+    mock_response.content = ("\ufeff" + xml_text).encode("utf-8")
+    mock_response.text = "not-xml"
+    mock_response.raise_for_status = MagicMock()
+    mock_get.return_value = mock_response
+
+    adapter = ExecutiveYuanRssAdapter(rate_limit=0)
+    listed = list(adapter.list(limit=1))
+    normalized = adapter.normalize(adapter.fetch("ey-news-001"))
+
+    assert [item["id"] for item in listed] == ["ey-news-001"]
+    assert normalized.synthetic is False
+    assert normalized.fixture_fallback is False
+
+
 @patch("src.sources._common.time.sleep")
 @patch("src.sources.executive_yuan_rss.requests.Session.get")
 def test_executive_yuan_rss_adapter_falls_back_to_local_fixture_on_invalid_xml(
@@ -119,6 +154,7 @@ def test_executive_yuan_rss_adapter_falls_back_to_local_fixture_on_invalid_xml(
     _mock_sleep: MagicMock,
 ) -> None:
     mock_response = MagicMock()
+    mock_response.content = b"<rss><channel><item></rss"
     mock_response.text = "<rss><channel><item></rss"
     mock_response.raise_for_status = MagicMock()
     mock_get.return_value = mock_response

@@ -98,7 +98,7 @@ def test_main_accepts_underscored_source_alias(tmp_path: Path, monkeypatch) -> N
     monkeypatch.setattr(
         live_ingest,
         "run_live_ingest",
-        lambda *, source_keys, limit, base_dir: calls.append(source_keys) or [],
+        lambda *, source_keys, limit, base_dir, require_live=True: calls.append(source_keys) or [],
     )
     monkeypatch.setattr(live_ingest, "write_report", lambda *args, **kwargs: None)
 
@@ -106,3 +106,20 @@ def test_main_accepts_underscored_source_alias(tmp_path: Path, monkeypatch) -> N
 
     assert exit_code == 0
     assert calls == [["executive_yuan_rss"]]
+
+
+def test_main_accepts_explicit_require_live_flag(tmp_path: Path, monkeypatch) -> None:
+    observed: list[bool] = []
+
+    monkeypatch.setattr(live_ingest, "_available_sources", lambda: {"mojlaw": object})
+    monkeypatch.setattr(
+        live_ingest,
+        "run_live_ingest",
+        lambda *, source_keys, limit, base_dir, require_live=True: observed.append(require_live) or [],
+    )
+    monkeypatch.setattr(live_ingest, "write_report", lambda *args, **kwargs: None)
+
+    exit_code = live_ingest.main(["--sources", "mojlaw", "--base-dir", str(tmp_path), "--require-live"])
+
+    assert exit_code == 0
+    assert observed == [True]

@@ -9,6 +9,7 @@ from datetime import date, datetime
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 
@@ -102,7 +103,7 @@ class ExecutiveYuanRssAdapter(BaseSourceAdapter):
             return list(self._entry_cache.values())
 
         result = with_fixture_fallback(
-            lambda: self._parse_feed(self._request_feed().text),
+            lambda: self._parse_feed(self._decode_feed_text(self._request_feed())),
             self._load_fixture_feed,
             handled_exceptions=(requests.RequestException, ET.ParseError, ValueError, TypeError),
         )
@@ -140,6 +141,13 @@ class ExecutiveYuanRssAdapter(BaseSourceAdapter):
         self._last_request_time = throttle(self._last_request_time, self.rate_limit)
 
     @staticmethod
+    def _decode_feed_text(response: requests.Response) -> str:
+        content = response.content
+        if isinstance(content, (bytes, bytearray)) and content.startswith(b"\xef\xbb\xbf"):
+            return content.decode("utf-8-sig")
+        return response.text
+
+    @staticmethod
     def _parse_feed(xml_text: str) -> list[dict[str, Any]]:
         root = ET.fromstring(xml_text)
         entries: list[dict[str, Any]] = []
@@ -157,7 +165,13 @@ class ExecutiveYuanRssAdapter(BaseSourceAdapter):
 
     @staticmethod
     def _extract_entry_id(raw: dict[str, Any]) -> str:
-        return str(raw.get("guid", raw.get("link", ""))).strip() or str(raw.get("link", "")).strip()
+        candidate = str(raw.get("guid", raw.get("link", ""))).strip() or str(raw.get("link", "")).strip()
+        if candidate.startswith(("http://", "https://")):
+            parsed = urlparse(candidate)
+            for segment in reversed([part for part in parsed.path.split("/") if part]):
+                if segment:
+                    return segment
+        return candidate
 
     @staticmethod
     def _extract_source_date(raw: dict[str, Any]) -> date | None:
