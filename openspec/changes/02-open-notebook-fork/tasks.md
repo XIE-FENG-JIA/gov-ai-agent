@@ -21,7 +21,7 @@
   Validation: `rg -n "integration seam|fallback|review agents|vendor/open-notebook" docs/integration-plan.md`  
   Commit: `docs(integration): define gov-ai and open-notebook boundary`
 
-- [ ] **T2.3** Add a repo-owned service adapter for ask-style calls that wraps vendored runtime imports behind one module.  
+- [x] **T2.3** Add a repo-owned service adapter for ask-style calls that wraps vendored runtime imports behind one module.  
   Requirements:
   - The forked runtime stays behind a narrow import boundary
   - Ask-service integration preserves source-grounded review flow

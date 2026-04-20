@@ -843,12 +843,13 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### 待辦任務
 
-- [ ] **P0.HOTFIX-SMOKE（v4.4 新增；本輪 15 分必破；紅線 8 實錘出口）** 🔴🔴 `scripts/smoke_open_notebook.py:60` `UnboundLocalError: status` — `if not is_ready:` else 分支當 reason 不匹配 structural_failures 時，`status` 從未賦值直接落到 `if status == "vendor-incomplete":` 判斷 → 全量 pytest 首個 FAIL
+- [x] **P0.HOTFIX-SMOKE（v4.4 新增；本輪 15 分必破；紅線 8 實錘出口）** 🔴🔴 `scripts/smoke_open_notebook.py:60` `UnboundLocalError: status` — `if not is_ready:` else 分支當 reason 不匹配 structural_failures 時，`status` 從未賦值直接落到 `if status == "vendor-incomplete":` 判斷 → 全量 pytest 首個 FAIL
   - 修法：在 else 收尾補 `status = "vendor-unready"` 預設值 + 明確 return / raise，或重構成 match-case 明確列舉；另加 regression test case 覆蓋「`is_ready=False` 且 reason 不含兩類 marker」的分支
   - **驗 1**：`pytest tests/test_smoke_open_notebook_script.py -q` = all passed
   - **驗 2**：`PYTHONUNBUFFERED=1 python -u -m pytest tests/ -q --no-header --ignore=tests/integration 2>&1 | tee results-full.log` 結尾 `N passed, 10 skipped, 0 failed`（FAIL=0 才算）
   - **延宕懲罰**：連 1 輪延宕 = 紅線 8 雙連 3.25
   - commit（ACL 解後）: `fix(smoke): initialize status on all branches in smoke_open_notebook`
+  - **完成（2026-04-20 19:42）**：`smoke_import()` 改成對 `vendor-incomplete` / `vendor-unready` 直接明確回傳，其餘 `vendor runtime import failed` 情況繼續走 import probe，避免 `status` 未初始化；實測 `pytest tests/test_smoke_open_notebook_script.py -q` = **5 passed**，`PYTHONUNBUFFERED=1 python -u -m pytest tests/ -q --no-header -x --ignore=tests/integration` = **3656 passed / 0 failed**
 - [ ] **P0.SELF-COMMIT-REFLECT（v4.5 新增；10 分；第九層藉口對策）** 🔴 每輪反思寫入 `engineer-log.md` 後，agent 側強制 `git add engineer-log.md && git commit -m "docs(reflect): vX.Y retrospective"`；破「只有 AUTO-RESCUE 會落版」22 輪倖存者偏差
   - 背景：v4.4 反思 68 行 diff 留 working-tree 未 commit = 「反思驅動治理」第九層藉口實錘；連 23 輪 agent 側從未單獨嘗試 docs/ 層 commit
   - 修法：ralph-loop 結束 hook 加 `git add engineer-log.md program.md && git commit -m "docs(reflect): v$(rev) retrospective"`；若 ACL 擋 → 記 `[BLOCKED-ACL]` 轉 P0.D，但**先嘗試過再判定**
