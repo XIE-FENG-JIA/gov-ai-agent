@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import sys
+from datetime import datetime
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -13,9 +14,10 @@ from src.e2e_rewrite import run_rewrite_e2e
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run deterministic rewrite E2E and emit report.")
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     parser.add_argument(
         "--output-dir",
-        default="output/e2e-rewrite",
+        default=f"output/e2e-rewrite/{timestamp}",
         help="Directory for generated docx artifacts.",
     )
     parser.add_argument(

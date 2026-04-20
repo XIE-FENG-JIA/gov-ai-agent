@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -394,18 +396,23 @@ def run_rewrite_e2e(
         formatted = template_engine.apply_template(requirement, sections)
         audit_result = FormatAuditor(llm, kb).audit(formatted, requirement.doc_type)
 
-        output_file = output_root / f"{scenario.slug}.docx"
-        exported_path = DocxExporter().export(
-            formatted,
-            str(output_file),
-            qa_report=json.dumps(audit_result, ensure_ascii=False),
-            citation_metadata={
-                "reviewed_sources": list(writer._last_sources_list),
-                "engine": "deterministic-e2e",
-                "ai_generated": True,
-            },
-        )
-        metadata = read_docx_citation_metadata(exported_path)
+        output_file = (output_root / f"{scenario.slug}.docx").resolve()
+        with tempfile.TemporaryDirectory(prefix="gov-ai-e2e-") as temp_dir:
+            staged_path = Path(temp_dir) / output_file.name
+            exported_path = DocxExporter().export(
+                formatted,
+                str(staged_path),
+                qa_report=json.dumps(audit_result, ensure_ascii=False),
+                citation_metadata={
+                    "reviewed_sources": list(writer._last_sources_list),
+                    "engine": "deterministic-e2e",
+                    "ai_generated": True,
+                },
+            )
+            if output_file.exists():
+                output_file.unlink()
+            shutil.copy2(exported_path, output_file)
+            metadata = read_docx_citation_metadata(str(output_file))
         citation_sources = list(metadata.get("citation_sources_json") or [])
         traced_paths = [
             corpus[str(item.get("source_doc_id"))]["path"]
@@ -417,7 +424,7 @@ def run_rewrite_e2e(
             "slug": scenario.slug,
             "doc_type": requirement.doc_type,
             "user_input": scenario.user_input,
-            "output_path": exported_path,
+            "output_path": str(output_file),
             "citation_count": int(metadata.get("citation_count") or 0),
             "source_doc_ids": list(metadata.get("source_doc_ids") or []),
             "traced_paths": traced_paths,

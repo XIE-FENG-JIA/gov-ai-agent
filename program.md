@@ -8,21 +8,20 @@
 > 3. **禁新 spec / openspec change**：Epic 4 proposal 等全部**暫停**
 > 4. **禁胖檔 split 重構**（workflow / history / exporter / api_server）：**deprioritize 到 P3**
 >
-> **🎯 P0 強制聚焦：Epic 5 T5.4 端到端測試**（唯一 P0，其他全部降為 P2+）：
+> **🎯 P0 強制聚焦：Epic 5 T5.4 端到端測試**（已完成；人工解鎖前其餘事項仍維持 P2+）：
 > ```
-> T5.4-E2E 🔴 P0（USER OVERRIDE）
+> T5.4-E2E ✅ PASS（2026-04-21 05:08）
 >   輸入 5 個典型公文需求（函/公告/簽/令/開會通知）
 >   跑完整 pipeline：requirement → retriever → writer → auditor → exporter
->   驗證 5 份 docx 產出 + 每份含 citation + 可追源到真實公文
->   Pass 條件：5/5 docx 產出；citation_count > 0；source_doc_ids 可追
->   執行：建 tests/integration/test_e2e_rewrite.py + scripts/run_e2e.py
->   交付：docs/e2e-report.md 寫 5 個需求實測結果
+>   驗證結果：5/5 docx 產出；每份 citation_count = 2；source_doc_ids 全數可追到 `kb_data/corpus`
+>   落地：`tests/integration/test_e2e_rewrite.py` + `scripts/run_e2e.py`
+>   交付：`docs/e2e-report.md` + `output/e2e-rewrite/20260421-050847/*.docx`
 > ```
 >
 > **🛑 為什麼 USER OVERRIDE**：
 > - 26 hr 完成 127 task，但**產品核心 E2E 從未跑通**
 > - 架構師重排 4 次（v2.7/v3.0/v3.8/v4.7+）+ docs 堆積（architecture 273 行）= planning theater
-> - Epic 5 T5.4 尚未動工 ← 這是唯一能證明「公文 AI 可用」的驗證
+> - Epic 5 T5.4 已落地 ← 5/5 docx 產出、每份 `citation_count > 0`、`source_doc_ids` 可追到 `kb_data/corpus`
 > - 每繞 ACL 做 docs/spec 都是 bloat，不是 value
 >
 > **通過 T5.4 後**才解鎖：新 Epic / 重構 / spec 等。規則由人工解除。
@@ -1296,7 +1295,7 @@
 
 - [ ] **T5.2** 真實資料 ≥ 500 份後 `gov-ai kb rebuild --only-real`
 - [ ] **T5.3** 🛑 ChromaDB 停役（凍結，SurrealDB 穩定 ≥ 2 週後）
-- [ ] **T5.4** E2E：5 個典型需求跑完整 pipeline
+- [x] **T5.4** E2E：5 個典型需求跑完整 pipeline（`tests/integration/test_e2e_rewrite.py` + `scripts/run_e2e.py` + `docs/e2e-report.md`；實測 5/5 docx、每份 2 citations、全部可追源）
 
 ---
 
