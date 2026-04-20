@@ -30,7 +30,7 @@
 ---
 
 
-> **🎯 v5.4 當輪執行順序鎖（技術主管第三十二輪深度回顧 2026-04-21 04:10；/pua 觸發；alibaba 味；caveman；v5.3 首位 P0 已閉 / 四胖仍紅 / Spectra 死水）**：
+> **🎯 v5.4 當輪執行順序鎖（技術主管第三十二輪深度回顧 2026-04-21 04:10；/pua 觸發；alibaba 味；caveman；v5.3 首位 P0 已閉 / workflow 已閉 / 三胖仍紅 / Spectra 死水）**：
 > **HEAD 實測指標**（wc + ls + pytest 即取）：
 > - ✅ 指標 1（全量 pytest）：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3686 passed / 0 failed / 341.36s**（v5.2 3682 → +4；manager/persist split 回歸齊）
 > - ❌ 指標 2（近 25 commits auto-commit ≤ 12）：**23/25** 持平紅（Admin-dep 結構性，不計 agent 績效）
@@ -49,10 +49,10 @@
 > - 胖檔群現況：manager ✅ + persist ✅；**剩 workflow/history/exporter/api_server 四胖未動** + `_manager_hybrid 341` 擦邊
 >
 > **v5.4 P0 重排（ACL-free；連 1 輪延宕 = 紅線 X 3.25）**：
-> 1. **T-WORKFLOW-ROUTER-SPLIT** 🔴 **升首位** — v5.2/v5.3 連 2 輪 0 動；workflow.py 910 拆 `api/routes/workflow/{lifecycle,actions,status}.py`；SOP 第六次擴散（API 層）；**連 2 輪 0 動 = 紅線 X 設計驅動不實作第六次復活邊緣**
-> 2. **T-API-APP-FACTORY** 🔴 **升 P0 二位**（v5.2 列 🟡）— api_server.py 529 抽 `src/api/app.py::create_app()` factory；shim ≤ 100；ACL-free 30 分可閉
-> 3. **T-CLI-HISTORY-SPLIT** 🟠 三位 — history.py 681 拆 `cli/history/{list,archive,tag,pin}.py`
-> 4. **T-EXPORTER-SPLIT** 🟠 四位 — exporter.py 617 拆 `document/exporter/{docx,metadata,citation_block}.py`
+> 1. **T-WORKFLOW-ROUTER-SPLIT** ✅ **已閉（2026-04-21 04:47 校準）** — `src/api/routes/workflow/{__init__,_state,_execution,_endpoints,_graph_report}.py`；每檔 **103 / 78 / 389 / 284 / 40**；保留 `src.api.routes.workflow` patch/import 相容點
+> 2. **T-API-APP-FACTORY** 🔴 **升首位**（v5.2 列 🟡）— api_server.py 529 抽 `src/api/app.py::create_app()` factory；shim ≤ 100；ACL-free 30 分可閉
+> 3. **T-CLI-HISTORY-SPLIT** 🟠 二位 — history.py 681 拆 `cli/history/{list,archive,tag,pin}.py`
+> 4. **T-EXPORTER-SPLIT** 🟠 三位 — exporter.py 617 拆 `document/exporter/{docx,metadata,citation_block}.py`
 > 5. **P1.EPIC4-PROPOSAL** 🟡 P1 — `openspec/changes/04-audit-citation/` 連 6 輪 0 動；Spectra 3/5 = 60% 死水；連 2 輪再 0 動 = 3.25
 > 6. **T-FAILURE-MATRIX writer ask-service** 🟡 P2 — 連 5 輪 0 動；Epic 4 啟動前保險
 >
@@ -471,9 +471,13 @@
   - **驗 4**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3686 passed / 0 failed**
   - commit（ACL 解後）: `refactor(knowledge): split manager search and hybrid helpers`
 
-- [ ] **T-WORKFLOW-ROUTER-SPLIT** 🔴 v5.4 升首位（連 2 輪 0 動；紅線 X 邊緣）— `src/api/routes/workflow.py` 799 → **910**（+111）
-  - **拆法**：`src/api/routes/workflow/{__init__, lifecycle, actions, status}.py`；保留 FastAPI router 裝配點
-  - **延宕懲罰**：連 3 輪 0 動 = 3.25
+- [x] **T-WORKFLOW-ROUTER-SPLIT** ✅ `src/api/routes/workflow/{__init__,_state,_execution,_endpoints,_graph_report}.py`
+  - **完成（2026-04-21 04:47）**：將 meeting/download/batch 端點與 workflow 執行邏輯拆離，`_GraphQAReport` 再抽成獨立模組，把 `_execution.py` 壓回 400 行內；保留 `src.api.routes.workflow` 根模組上的 `run_meeting` / `run_batch` / `download_file` / `_execute_document_workflow` / `_execute_via_graph` 與 pytest monkeypatch 相容點
+  - **驗 1**：`python -m pytest tests/test_api_server.py tests/test_graph.py tests/test_robustness.py tests/test_agents_extended.py tests/test_stress.py -q --no-header` = **859 passed / 0 failed**
+  - **驗 2**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3686 passed / 0 failed**
+  - **驗 3**：`Get-ChildItem src/api/routes/workflow -File -Filter *.py | % { "$($_.Name) $((Get-Content $_.FullName).Count)" }` = `__init__.py 103 / _state.py 78 / _execution.py 389 / _endpoints.py 284 / _graph_report.py 40`
+  - **驗 4**：`git diff -- src/api/routes/workflow` 僅剩 package split 相關變更
+  - commit（ACL 解後）: `refactor(api): split workflow route package`
 
 - [ ] **T-CLI-HISTORY-SPLIT** 🟡 `src/cli/history.py` 555 → **681**（+126）
   - **拆法**：`src/cli/history/{__init__, list, archive, tag, pin}.py`；保留 `src.cli.history` 相容匯出
