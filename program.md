@@ -38,7 +38,7 @@
 > - ✅ 指標 5（corpus 9 real / 0 fallback）：持平綠
 > - ✅ 指標 6（Epic 3 tasks `[x]` 9/9）：持平綠
 > - ✅ 指標 7（紅線 ≤ 6）：`rg -c "^### 🔴" program.md` = 3 持平綠
-> - ❌ 指標 8（胖檔 ≤ 400）：`manager 350 ✅（v5.3 首位 P0 已閉）` / `workflow 910 ❌ / history 681 ❌ / exporter 617 ❌ / api_server 529 ❌ / _manager_hybrid 341 🟡 擦邊`；**5 胖 → 4 胖 + 1 擦邊**
+> - ❌ 指標 8（胖檔 ≤ 400）：`manager 350 ✅（v5.3 首位 P0 已閉）` / `workflow 910 ❌ / history 681 ❌ / exporter 617 ❌ / api_server 92 ✅ / _manager_hybrid 341 🟡 擦邊 / app.py 319 ✅`；**5 胖 → 3 胖 + 1 擦邊**
 >
 > **v5.4 實測 6/8 PASS**（v5.3 5/8 → **+1**；manager split 落地 + engineer-log 封存後指標 4 翻綠）。
 >
@@ -49,9 +49,9 @@
 >
 > **v5.4 P0 重排（ACL-free；連 1 輪延宕 = 紅線 X 3.25）**：
 > 1. **T-WORKFLOW-ROUTER-SPLIT** ✅ **已閉（2026-04-21 04:47 校準）** — `src/api/routes/workflow/{__init__,_state,_execution,_endpoints,_graph_report}.py`；每檔 **103 / 78 / 389 / 284 / 40**；保留 `src.api.routes.workflow` patch/import 相容點
-> 2. **T-API-APP-FACTORY** 🔴 **升首位**（v5.2 列 🟡）— api_server.py 529 抽 `src/api/app.py::create_app()` factory；shim ≤ 100；ACL-free 30 分可閉
-> 3. **T-CLI-HISTORY-SPLIT** 🟠 二位 — history.py 681 拆 `cli/history/{list,archive,tag,pin}.py`
-> 4. **T-EXPORTER-SPLIT** 🟠 三位 — exporter.py 617 拆 `document/exporter/{docx,metadata,citation_block}.py`
+> 2. **T-API-APP-FACTORY** ✅ **已閉（2026-04-21 05:41 校準）** — `src/api/app.py::create_app()` 已承接 app 組裝 / lifespan / middleware / router；`api_server.py` shim **92** 行，保留 `from api_server import app` 與 `python api_server.py`
+> 3. **T-CLI-HISTORY-SPLIT** 🔴 升首位 — history.py 681 拆 `cli/history/{list,archive,tag,pin}.py`
+> 4. **T-EXPORTER-SPLIT** ✅ **已閉（2026-04-21 05:43）** — `src/document/exporter/` package 化；`__init__.py / _sections.py / _custom_properties.py` = **319 / 157 / 100**，保留 `src.document.exporter` import/patch 相容面
 > 5. **P1.EPIC4-PROPOSAL** 🟡 P1 — `openspec/changes/04-audit-citation/` 連 6 輪 0 動；Spectra 3/5 = 60% 死水；連 2 輪再 0 動 = 3.25
 > 6. **T-FAILURE-MATRIX writer ask-service** 🟡 P2 — 連 5 輪 0 動；Epic 4 啟動前保險
 >
@@ -173,7 +173,7 @@
 >
 > **v5.1 下一步（P1）**：
 > 4. **T-API-ROUTERS** — 下一輪結構債聚焦 `src/api/routes/workflow.py`；template cluster 已於 2026-04-21 03:21 拆為 package 相容層。
-> 5. **T-KNOWLEDGE-MANAGER-SPLIT / T-EXPORTER-SPLIT** — 第二梯聚焦 `src/knowledge/manager.py`、`src/document/exporter.py` 與 `src/cli/history.py`。
+> 5. **T-CLI-HISTORY-SPLIT / P1.EPIC4-PROPOSAL** — 第二梯聚焦 `src/cli/history.py` 與 `openspec/changes/04-audit-citation/`；`T-KNOWLEDGE-MANAGER-SPLIT` / `T-EXPORTER-SPLIT` 已閉。
 > 6. `P0.VERIFY-DOCX-SCHEMA` / `P0.LITELLM-ASYNC-NOISE` 已於 2026-04-21 03:34 / 03:41 完成；下一個 P0 只剩 `LOGARCHIVE-V3` / `ARCH-DEBT-ROTATE`。
 >
 > **v5.1 新盤點（P1 結構債）**：
@@ -481,19 +481,6 @@
 - [ ] **T-CLI-HISTORY-SPLIT** 🟡 `src/cli/history.py` 555 → **681**（+126）
   - **拆法**：`src/cli/history/{__init__, list, archive, tag, pin}.py`；保留 `src.cli.history` 相容匯出
   - **延宕懲罰**：連 2 輪 0 動 = 3.25
-
-- [ ] **T-EXPORTER-SPLIT** 🟡 `src/document/exporter.py` 554 → **617**（+63）
-  - **拆法**：`src/document/exporter/{__init__, docx, metadata, citation_block}.py`
-  - **延宕懲罰**：連 2 輪 0 動 = 3.25
-
-- [ ] **T-API-APP-FACTORY** 🔴 v5.2 新增·v5.4 升 P0 二位；`api_server.py` 529 行 shim 殘留（routes/ 已拆 4 檔但 app factory + lifespan + middleware 仍卡單檔）
-  - **拆法**：`src/api/app.py` 抽 `create_app()` factory + lifespan + 全局 middleware；`api_server.py` 僅留 `uvicorn` entrypoint 與 legacy alias（≤ 100 行）
-  - **相容錨點**：保留 `from api_server import app` 與 `python api_server.py` CLI
-  - **驗 1**：`wc -l api_server.py` ≤ 100
-  - **驗 2**：`python -c "from api_server import app; print(type(app).__name__)"` = FastAPI
-  - **驗 3**：`pytest tests/test_api_server.py -q` 全綠
-  - **延宕懲罰**：連 2 輪 0 動 = 3.25
-  - commit（ACL 解後）: `refactor(api): extract create_app factory to src/api/app`
 
 ### P0.LOGARCHIVE-V2 — 🔴 ACL-free·v5.1 新增（5 分；engineer-log 破 500 紅線一輪復發）
 
@@ -1449,6 +1436,15 @@
   - **完成（2026-04-21 04:13）**：把搜尋/統計/重設與 Hybrid/BM25/RRF/keyword fallback 從單檔抽離；`KnowledgeBaseManager` 對外介面與 monkeypatch 相容點保留
   - **驗 1**：`python -m pytest tests/test_knowledge.py tests/test_knowledge_extended.py tests/test_knowledge_manager_cache.py tests/test_knowledge_manager_unit.py tests/test_embed_cache.py -q --no-header` = **180 passed / 0 failed**
   - **驗 2**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3686 passed / 0 failed**
+- [x] **T-EXPORTER-SPLIT (2026-04-21 05:43)** `src/document/exporter.py` 已拆為 package：`src/document/exporter/{__init__,_sections,_custom_properties}.py`
+  - **完成（2026-04-21 05:43）**：把 DOCX 段落渲染與 custom-properties ZIP/XML 寫入從單檔抽成 helper modules；保留 `DocxExporter`、`get_platform_fonts`、`KNOWN_DOC_TYPES`、`CUSTOM_PROPERTIES_NS` / `DOC_PROPS_VT_NS` 與 `src.document.exporter` patch/import 相容點
+  - **驗 1**：`python -m pytest tests/test_exporter_extended.py tests/test_export_citation_metadata.py tests/test_document.py tests/test_strict_format.py tests/test_cli_commands.py -q --no-header -k "verify or export or strict"` = **149 passed / 0 failed**
+  - **驗 2**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3687 passed / 0 failed**
+- [x] **T-API-APP-FACTORY (2026-04-21)** `src/api/app.py` 已新增 `create_app()` factory，承接 app 組裝 / lifespan / CORS / middleware / router 掛載；`api_server.py` 收斂為 **92** 行 shim
+  - **完成（2026-04-21 05:41）**：保留 `from api_server import app`、legacy re-export、module-level state proxy 與 `python api_server.py` 啟動路徑；新增 `tests/test_api_server.py::TestAppFactory` 鎖 factory 契約
+  - **驗 1**：`python -c "from api_server import app; print(type(app).__name__)"` = **FastAPI**
+  - **驗 2**：`python -m pytest tests/test_api_server.py -q --no-header` = **258 passed / 0 failed**
+  - **驗 3**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3687 passed / 0 failed**
 - [x] **P0.LOGARCHIVE-V2 (2026-04-21)** `engineer-log.md` 三次封存完成；主檔從 697 行壓回 253 行，避免反思日誌再次成為 blocker
   - **完成（2026-04-21 03:09）**：新增 `docs/archive/engineer-log-202604c.md`，封存 v4.5-v4.9 舊反思；主檔只留 v5.0/v5.1 近兩輪，並補「單輪反思 ≤ 80 行」規則
   - **驗**：`wc -l engineer-log.md` = **253**、`(Get-Content docs/archive/engineer-log-202604c.md).Count` > 200
