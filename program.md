@@ -430,7 +430,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
   - commit（ACL 解後）: `feat(integrations): add open-notebook seam skeleton with off/smoke adapters`
 
-- [ ] **P1.10（v3.8 本輪必落，連 2 輪延宕 = 3.25；與 T2.1 等價）✅ ACL-free** T2.1 open-notebook 研讀 → `docs/open-notebook-study.md`
+- [x] **P1.10（v3.8 本輪必落，連 2 輪延宕 = 3.25；與 T2.1 等價）✅ ACL-free** T2.1 open-notebook 研讀 → `docs/open-notebook-study.md`
   - **背景**：T2.1「研讀 open-notebook」原 pre-request P1.4 clone vendor，但 shell egress 擋；v3.6 改為「repo 內推論」先做——基於 `openspec/changes/02-open-notebook-fork/proposal.md` + `specs/fork/spec.md` + `docs/integration-plan.md` 推 ask_service 介面 / evidence 格式 / SurrealDB 邊界。P1.4 解後再補「實測對照」節
   - 產出 `docs/open-notebook-study.md`：
     - §1 來源引用：proposal / spec / integration-plan
@@ -439,6 +439,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
     - §4 疑點 TODO：P1.4 解後需實測確認
     - §5 對 P1.9 seam 的規格要求（反向餵 P1.9）
   - **驗**：`wc -l docs/open-notebook-study.md` ≥ 80 AND `grep -c "ask_service" docs/open-notebook-study.md` ≥ 3
+  - **完成（2026-04-20）**：新增 `docs/open-notebook-study.md`，基於 `openspec` spec/tasks、`docs/integration-plan.md`、`docs/architecture.md`、`docs/llm-providers.md` 與現有 seam skeleton，整理 `ask_service` 契約推論、evidence payload 最小需求、provider/storage/fallback 邊界，以及目前 `vendor/open-notebook` 僅剩 `.git` stub 的實測結論
 
 - [~] **P1.11（v3.7 NEW）→ v3.8 升 P0.X** vendor smoke import 搬至 P0 活條目段；此處保留歷史視角
   - **背景**：v3.7 發現 `vendor/open-notebook/.git` 已存在，但從未驗證可否 `import`；P1.9 seam 需此前置
@@ -519,7 +520,8 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 - ~~T2.0.a（.env smoke）~~ → 見 P1.3
 - ~~T2.0.b（clone vendor）~~ → 見 P1.4
-- [ ] **T2.1** 研讀 open-notebook → `docs/open-notebook-study.md`
+- [x] **T2.1** 研讀 open-notebook → `docs/open-notebook-study.md`
+  - **完成（2026-04-20）**：新增 `docs/open-notebook-study.md`，把 repo 可驗證的 `ask_service` 契約、`AskResult`/`RetrievedEvidence` 對應、provider/storage 邊界、fallback 規則與 vendor `.git` stub 現況整理成實作前研究稿；後續 P0.X / T2.3 直接以此作接口基線
 - [x] **T2.2** 架構融合決策 `docs/integration-plan.md`（Fork/疊加/重寫三選一；預設 Fork）**🛑 完成後人審**
   - **完成（2026-04-20）**：新增 `docs/integration-plan.md`，明確選定 **Fork + thin adapter seam**；定義 `src/integrations/open_notebook/` 作 repo-owned 邊界，要求 writer / CLI / API 一律經同一 service adapter 進 vendor，並保留 answer + evidence repo contract
   - **寫死規則**：`GOV_AI_OPEN_NOTEBOOK_MODE=off|smoke|writer`；vendor 缺失或 ask-service 初始化失敗時，smoke loud fail、writer mode 回退 legacy writer 並保留 diagnostics；五審查 agent、citation/export 規則、SurrealDB freeze 全留在 repo 端
@@ -682,11 +684,13 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **P0.V-live-upgrade (v3.3)** fixture corpus live-upgrade guard：ingest 會跳過既有真資料，但允許既有 fixture corpus 在 live re-ingest 時升級為 `synthetic: false` 真資料；避免先前 fallback 產物永久卡住 P0.T / T1.6
 - [x] **P0.V-flaky (v3.5)** `test_ingest_keeps_fixture_backed_corpus_when_only_fixture_data_is_available` 本輪全量 3590 passed 0 failed 未重現（處置同 P0.S-stale；三軸 SOP 保留供未來）
 - [x] **P0.T-SPIKE (v3.7)** `scripts/live_ingest.py` + `docs/live-ingest-urls.md` + `tests/test_live_ingest_script.py` 已落地；`python scripts/live_ingest.py --help` 正常、`pytest tests/test_live_ingest_script.py -q` = 4 passed，並產出 `docs/live-ingest-report.md` 記錄目前 `mojlaw` require-live probe 仍被 fixture fallback 擋下
+- [x] **P0.W (v3.8)** `src/integrations/open_notebook/` seam 骨架 + `src/cli/open_notebook_cmd.py` 已落地；`OpenNotebookAdapter` Protocol、`off/smoke/writer` 三模式工廠、vendor `.git` stub 偵測與 writer-mode loud fail 已就位；`pytest tests/test_integrations_open_notebook.py -q` = 7 passed，`GOV_AI_OPEN_NOTEBOOK_MODE=smoke python -m src.cli.main open-notebook smoke --question "hi" --doc "first evidence"` 非空
 - [x] **T1.12-HARDEN (v3.4)** nightly live smoke 禁 silent fixture fallback；`tests/integration/test_sources_smoke.py` 把 fixture_dir 指向不存在路徑，upstream 掛 → integration FAIL 不再假綠
 - [x] **T1.6.a (v3.4)** 校正 `kb_data/examples/*.md` 合成基線為 155，`tests/test_mark_synthetic.py` 新增 guard
 - [x] **T1.6.b (v3.4)** fixture corpus 升級護欄；ingest 辨識既有 `synthetic: true` / `fixture_fallback: true` 檔，僅 live re-ingest 時覆寫
 - [x] **P1.5 (v3.3)** `docs/architecture.md` v1 落地（273 行）涵蓋 CLI/API/ingest + 5 adapter + vendor 邊界 + SurrealDB freeze
 - [x] **P1.7 (v3.4)** `docs/llm-providers.md`（81 行）盤點 `src/core/llm.py` provider 工廠；AUTO-RESCUE `d92bace`
+- [x] **P1.10 (v3.8)** `docs/open-notebook-study.md`（repo-first study）整理 `ask_service`/evidence/provider/storage/fallback 邊界，並記錄 `vendor/open-notebook` 目前僅 `.git` stub 的實測現況
 - [x] **T2.2 (v3.6)** `docs/integration-plan.md` Fork + thin adapter seam 決策；`GOV_AI_OPEN_NOTEBOOK_MODE=off|smoke|writer` 契約；AUTO-RESCUE `d225281`
 - [x] **T9.4.b (v3.7)** `src/cli/utils.py` resolve_state_path + `GOV_AI_STATE_DIR` env；4 個 call-site 搬遷 + `tests/test_cli_state_dir.py` 6 passed；AUTO-RESCUE `d92bace`
 - [x] **P0.CLI-IMPORT (v3.7)** `src/cli/main.py` 改 callback 內 lazy import 修測試 collection `ImportError`；pytest 3599 passed
@@ -718,14 +722,14 @@ Epic 7 負責建置。建置完成前，program.md 是單一事實來源。
 
 ---
 
-**版本**：v3.8（2026-04-20 16:05 — P1.9/P1.10/P1.11 連 2 輪 0 落地升 P0.W/P0.X/P0.Y；P0.T-SPIKE/T9.4.b/P0.CLI-IMPORT/T2.2/P1.7/P1.5/P1.4 搬已完成；footer 六硬指標新增 Epic 2 骨架指標）
+**版本**：v3.8（2026-04-20 16:25 — P0.W seam 骨架已落地；`pytest tests/ -q` = 3613 passed / 10 skipped / 0 failed；`src/integrations/open_notebook/__init__.py` 已存在，六硬指標升為 2/7 PASS）
 
-**下一輪重排觸發**（v3.8 六項硬指標，依執行順序；當前 PASS 狀態僅指標 1/6）：
-1. ✅ `pytest tests/ -q` 0 failed（目前 **3599 passed / 10 skipped / 0 failed**）— 唯一已綠
+**下一輪重排觸發**（v3.8 七項硬指標，依執行順序；當前 PASS 狀態指標 2/7）：
+1. ✅ `pytest tests/ -q` 0 failed（目前 **3613 passed / 10 skipped / 0 failed**）
 2. ❌ `git log --oneline -20 | grep -c "auto-commit:"` ≤ 4（目前 16；P0.S / P0.Y 兩路並攻）
 3. ❌ `icacls .git 2>&1 | grep -c DENY` == 0（目前 2；P0.D，Admin 依賴連 >14 輪）
-4. ❌ `ls src/integrations/open_notebook/__init__.py` 存在（P0.W；Epic 2 第一顆骨牌）
-5. ❌ `wc -l docs/open-notebook-study.md` ≥ 80（P1.10；T2.1 等價）
+4. ✅ `ls src/integrations/open_notebook/__init__.py` 存在（P0.W；Epic 2 第一顆骨牌）
+5. ✅ `wc -l docs/open-notebook-study.md` ≥ 80（P1.10；T2.1 等價）
 6. ❌ `python scripts/smoke_open_notebook.py 2>&1` 不噴 `ImportError`（P0.X；vendor 可 import）
 7. ❌ `grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` ≥ 9 AND `grep -l "fixture_fallback: true" kb_data/corpus/**/*.md | wc -l` == 0（P0.T-LIVE；Admin 解 egress 後）
 
