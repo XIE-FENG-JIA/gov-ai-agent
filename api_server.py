@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Backward-compatible FastAPI entrypoint."""
-
-from __future__ import annotations
-
 import logging
 import os
 import sys
@@ -12,37 +8,17 @@ import types
 import src.api.dependencies as _deps
 import src.api.middleware as _mw
 from src.api.app import (
-    _ALLOWED_HEADERS,
-    _ALLOWED_ORIGINS,
-    _cleanup_old_outputs,
-    _ensure_api_key,
-    _expand_loopback_origins,
-    _preflight_check,
-    _setup_logging,
-    _warmup_law_cache,
-    create_app,
-    lifespan,
-    resolve_bind_host,
+    _ALLOWED_HEADERS, _ALLOWED_ORIGINS, _cleanup_old_outputs, _ensure_api_key,
+    _expand_loopback_origins, _preflight_check, _setup_logging, _warmup_law_cache,
+    create_app, lifespan, resolve_bind_host,
 )
 from src.api.dependencies import executor, get_config, get_kb, get_llm
 from src.api.helpers import (  # noqa: F401
-    ENDPOINT_TIMEOUT as _ENDPOINT_TIMEOUT,
-    MEETING_TIMEOUT as _MEETING_TIMEOUT,
-    _TRUST_PROXY,
-    _get_client_ip,
-    _get_error_code,
-    _sanitize_error,
-    _sanitize_output_filename,
-    review_result_to_dict,
+    ENDPOINT_TIMEOUT as _ENDPOINT_TIMEOUT, MEETING_TIMEOUT as _MEETING_TIMEOUT, _TRUST_PROXY, _get_client_ip,
+    _get_error_code, _sanitize_error, _sanitize_output_filename, review_result_to_dict,
     run_in_executor as _run_in_executor,
 )
-from src.api.middleware import (  # noqa: F401
-    RequestBodyLimitMiddleware,
-    _MetricsCollector,
-    _RATE_LIMIT_RPM,
-    _RateLimiter,
-    security_middleware,
-)
+from src.api.middleware import RequestBodyLimitMiddleware, _MetricsCollector, _RATE_LIMIT_RPM, _RateLimiter, security_middleware  # noqa: F401
 from src.api.models import *  # noqa: F401,F403
 from src.api.routes.agents import *  # noqa: F401,F403
 from src.api.routes.health import *  # noqa: F401,F403
@@ -65,11 +41,7 @@ from fastapi.responses import FileResponse  # noqa: F401
 
 logger = logging.getLogger(__name__)
 app = create_app()
-
-
 class _BackwardCompatModule(types.ModuleType):
-    """Proxy legacy module-level state to split submodules."""
-
     _DEPS_ATTRS = frozenset({"_config", "_llm", "_kb", "_org_memory", "_init_lock"})
     _DEPS_ALIAS_MAP = {"_executor": "executor"}
     _MW_ATTR_MAP = {"_rate_limiter": "rate_limiter", "_metrics": "metrics"}
@@ -99,11 +71,7 @@ class _BackwardCompatModule(types.ModuleType):
             setattr(_mw, self._MW_ATTR_MAP[name], value)
         else:
             super().__setattr__(name, value)
-
-
 sys.modules[__name__] = _BackwardCompatModule(sys.modules[__name__])
-
-
 if __name__ == "__main__":
     import uvicorn
 

@@ -2874,7 +2874,7 @@ class TestProductionReadinessIteration3:
 
     def test_lifespan_shutdown_has_cancel_futures(self):
         """lifespan 的 _executor.shutdown 應包含 cancel_futures=True"""
-        with open("api_server.py", encoding="utf-8") as f:
+        with open("src/api/app.py", encoding="utf-8") as f:
             content = f.read()
         assert "cancel_futures=True" in content, (
             "executor shutdown 應使用 cancel_futures=True 避免永久阻塞"
@@ -2882,7 +2882,7 @@ class TestProductionReadinessIteration3:
 
     def test_lifespan_shutdown_logs_message(self):
         """shutdown 前應有日誌提示"""
-        with open("api_server.py", encoding="utf-8") as f:
+        with open("src/api/app.py", encoding="utf-8") as f:
             content = f.read()
         assert "等待進行中的任務完成" in content
 
