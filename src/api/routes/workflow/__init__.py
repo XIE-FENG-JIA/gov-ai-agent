@@ -32,13 +32,13 @@ from src.graph import build_graph
 
 from ._endpoints import download_file, get_detailed_review, run_batch, run_meeting
 from ._execution import (
-    _GraphQAReport,
     _count_report_issues,
     _execute_document_workflow,
     _execute_via_graph,
     _is_ralph_goal_met,
     _run_ralph_loop,
 )
+from ._graph_report import _GraphQAReport
 from ._state import (
     _BATCH_SEMAPHORE,
     _DETAILED_REVIEW_MAX_ITEMS,

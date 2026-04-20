@@ -3110,10 +3110,19 @@ class TestProductionReadinessIteration4:
 
     def test_meeting_endpoint_uses_longer_timeout(self):
         """meeting endpoint 應使用 MEETING_TIMEOUT 而非預設超時"""
-        with open("src/api/routes/workflow.py", encoding="utf-8") as f:
-            content = f.read()
+        from pathlib import Path
+
+        workflow_pkg = Path("src/api/routes/workflow")
+        content = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in (
+                workflow_pkg / "__init__.py",
+                workflow_pkg / "_endpoints.py",
+                workflow_pkg / "_execution.py",
+            )
+        )
         assert "MEETING_TIMEOUT" in content
-        assert "timeout=MEETING_TIMEOUT" in content
+        assert "timeout=workflow.MEETING_TIMEOUT" in content
 
 
 # ============================================================

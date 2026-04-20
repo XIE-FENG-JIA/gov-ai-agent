@@ -1,5 +1,35 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
+> **🚨 v5.5 USER OVERRIDE（2026-04-21 人工鎖，優先於任何 auto-engineer 自主重排）**：
+>
+> **🔴 禁止事項（auto-engineer 違反即回滾）**：
+> 1. **禁新增 Epic / task**：進化輪禁止 `append` 新任務到 program.md（反思可，但僅重排不增加）
+> 2. **禁架構師重排**：禁止寫 `v5.6`, `v6.0` 等 rearchitect header；現有 v5.4 為當前執行層
+> 3. **禁新 spec / openspec change**：Epic 4 proposal 等全部**暫停**
+> 4. **禁胖檔 split 重構**（workflow / history / exporter / api_server）：**deprioritize 到 P3**
+>
+> **🎯 P0 強制聚焦：Epic 5 T5.4 端到端測試**（唯一 P0，其他全部降為 P2+）：
+> ```
+> T5.4-E2E 🔴 P0（USER OVERRIDE）
+>   輸入 5 個典型公文需求（函/公告/簽/令/開會通知）
+>   跑完整 pipeline：requirement → retriever → writer → auditor → exporter
+>   驗證 5 份 docx 產出 + 每份含 citation + 可追源到真實公文
+>   Pass 條件：5/5 docx 產出；citation_count > 0；source_doc_ids 可追
+>   執行：建 tests/integration/test_e2e_rewrite.py + scripts/run_e2e.py
+>   交付：docs/e2e-report.md 寫 5 個需求實測結果
+> ```
+>
+> **🛑 為什麼 USER OVERRIDE**：
+> - 26 hr 完成 127 task，但**產品核心 E2E 從未跑通**
+> - 架構師重排 4 次（v2.7/v3.0/v3.8/v4.7+）+ docs 堆積（architecture 273 行）= planning theater
+> - Epic 5 T5.4 尚未動工 ← 這是唯一能證明「公文 AI 可用」的驗證
+> - 每繞 ACL 做 docs/spec 都是 bloat，不是 value
+>
+> **通過 T5.4 後**才解鎖：新 Epic / 重構 / spec 等。規則由人工解除。
+
+---
+
+
 > **🎯 v5.4 當輪執行順序鎖（技術主管第三十二輪深度回顧 2026-04-21 04:10；/pua 觸發；alibaba 味；caveman；v5.3 首位 P0 已閉 / 四胖仍紅 / Spectra 死水）**：
 > **HEAD 實測指標**（wc + ls + pytest 即取）：
 > - ✅ 指標 1（全量 pytest）：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3686 passed / 0 failed / 341.36s**（v5.2 3682 → +4；manager/persist split 回歸齊）
