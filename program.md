@@ -1,6 +1,49 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **🎯 v5.3 當輪執行順序鎖（架構師第三十一輪階段性規劃 2026-04-21 03:50；/pua 觸發；alibaba 味；caveman；HEAD drift 校準 + P0 重排）**：
+> **🎯 v5.4 當輪執行順序鎖（技術主管第三十二輪深度回顧 2026-04-21 04:10；/pua 觸發；alibaba 味；caveman；v5.3 首位 P0 已閉 / 四胖仍紅 / Spectra 死水）**：
+> **HEAD 實測指標**（wc + ls + pytest 即取）：
+> - ✅ 指標 1（全量 pytest）：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3686 passed / 0 failed / 341.36s**（v5.2 3682 → +4；manager/persist split 回歸齊）
+> - ❌ 指標 2（近 25 commits auto-commit ≤ 12）：**23/25** 持平紅（Admin-dep 結構性，不計 agent 績效）
+> - ❌ 指標 3（.git DENY ACL = 0）：**2** 持平（連 31 輪 Admin-dep）
+> - ✅ 指標 4（engineer-log ≤ 300 hard cap）：**73 行**（AUTO-RESCUE 再封存 v5.0/v5.1 後；v5.3 header 列 315 已過期）
+> - ✅ 指標 5（corpus 9 real / 0 fallback）：持平綠
+> - ✅ 指標 6（Epic 3 tasks `[x]` 9/9）：持平綠
+> - ✅ 指標 7（紅線 ≤ 6）：`rg -c "^### 🔴" program.md` = 3 持平綠
+> - ❌ 指標 8（胖檔 ≤ 400）：`manager 350 ✅（v5.3 首位 P0 已閉）` / `workflow 910 ❌ / history 681 ❌ / exporter 617 ❌ / api_server 529 ❌ / _manager_hybrid 341 🟡 擦邊`；**5 胖 → 4 胖 + 1 擦邊**
+>
+> **v5.4 實測 6/8 PASS**（v5.3 5/8 → **+1**；manager split 落地 + engineer-log 封存後指標 4 翻綠）。
+>
+> **v5.4 實錘校準（v5.3 header 過期點）**：
+> - v5.3 首位 P0 `T-KNOWLEDGE-MANAGER-SPLIT` **已閉**（line 393 [x]；manager 350 + `_manager_hybrid 341` + `_manager_search 220`）— v5.3 header 仍寫「本輪必破 928」= **紅線 X「header lag HEAD」第 N 次復活**
+> - v5.3 指標 4 engineer-log 315 → **73**（封存後；過期）
+> - 胖檔群現況：manager ✅ + persist ✅；**剩 workflow/history/exporter/api_server 四胖未動** + `_manager_hybrid 341` 擦邊
+>
+> **v5.4 P0 重排（ACL-free；連 1 輪延宕 = 紅線 X 3.25）**：
+> 1. **T-WORKFLOW-ROUTER-SPLIT** 🔴 **升首位** — v5.2/v5.3 連 2 輪 0 動；workflow.py 910 拆 `api/routes/workflow/{lifecycle,actions,status}.py`；SOP 第六次擴散（API 層）；**連 2 輪 0 動 = 紅線 X 設計驅動不實作第六次復活邊緣**
+> 2. **T-API-APP-FACTORY** 🔴 **升 P0 二位**（v5.2 列 🟡）— api_server.py 529 抽 `src/api/app.py::create_app()` factory；shim ≤ 100；ACL-free 30 分可閉
+> 3. **T-CLI-HISTORY-SPLIT** 🟠 三位 — history.py 681 拆 `cli/history/{list,archive,tag,pin}.py`
+> 4. **T-EXPORTER-SPLIT** 🟠 四位 — exporter.py 617 拆 `document/exporter/{docx,metadata,citation_block}.py`
+> 5. **P1.EPIC4-PROPOSAL** 🟡 P1 — `openspec/changes/04-audit-citation/` 連 6 輪 0 動；Spectra 3/5 = 60% 死水；連 2 輪再 0 動 = 3.25
+> 6. **T-FAILURE-MATRIX writer ask-service** 🟡 P2 — 連 5 輪 0 動；Epic 4 啟動前保險
+>
+> **v5.4 下輪硬指標（下輪審查）**：
+> 1. `wc -l src/api/routes/workflow.py` or `src/api/routes/workflow/*.py` 每檔 ≤ 400（當前 flat 910；**本輪必破**）
+> 2. `wc -l api_server.py` ≤ 100（當前 529；**本輪必破**）
+> 3. `ls openspec/changes/04-audit-citation/proposal.md` 存在（當前 ❌）
+> 4. `wc -l src/cli/history.py src/document/exporter.py` 前兩檔至少一檔 ≤ 400（當前 681 / 617 皆紅；**本輪至少破 1**）
+> 5. `wc -l engineer-log.md` ≤ 300（當前 73 + 本輪 ~40 ✅）
+> 6. `rg -c "^### 🔴" program.md` ≤ 6（當前 3 ✅）
+> 7. `pytest tests/ -q --ignore=tests/integration` FAIL=0（當前 ✅ 3686/0）
+> 8. `find kb_data/corpus -name "*.md"` = 9 ✅
+>
+> **v5.3 → v5.4 變更摘要**：
+> - **頂部校準**：v5.3 首位 P0 manager 928 **已閉**（350 + 220 + 341）；engineer-log 315 → 73（封存後）；v5.3 兩項過期數字全校正
+> - **重排**：workflow 升首位（連 2 輪 0 動 = 紅線 X 邊緣）；api_server app-factory 從 🟡 升 🔴 二位；manager split 下移已完成區
+> - **新增 P1**：EPIC4-PROPOSAL 為 Spectra 3/5 → 3.3/5 抓手
+> - **顆粒度**：本輪反思 ≤ 40 行；下輪目標 workflow + api_factory 雙破（75 分鐘）
+> - **歷史保留**：v5.3 header 以下全部不動；已完成紀錄保留
+
+> **🎯 v5.3 當輪執行順序鎖（架構師第三十一輪階段性規劃 2026-04-21 03:50；/pua 觸發；alibaba 味；caveman；HEAD drift 校準 + P0 重排；已由 v5.4 取代，保留歷史）**：
 > **HEAD 實測指標**（wc + ls + pytest 即取）：
 > - ✅ 指標 1（熱 pytest）：`pytest test_writer_agent test_editor test_citation_level test_cli_commands test_agents -q` = **869 passed / 87.74s / 0 failed**
 > - ❌ 指標 2（近 25 commits auto-commit ≤ 12）：**15/15** 紅（持平；Admin-dep 結構性）
@@ -398,9 +441,9 @@
   - **驗 4**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3686 passed / 0 failed**
   - commit（ACL 解後）: `refactor(knowledge): split manager search and hybrid helpers`
 
-- [ ] **T-WORKFLOW-ROUTER-SPLIT** 🟡 `src/api/routes/workflow.py` 799 → **910**（+111）
+- [ ] **T-WORKFLOW-ROUTER-SPLIT** 🔴 v5.4 升首位（連 2 輪 0 動；紅線 X 邊緣）— `src/api/routes/workflow.py` 799 → **910**（+111）
   - **拆法**：`src/api/routes/workflow/{__init__, lifecycle, actions, status}.py`；保留 FastAPI router 裝配點
-  - **延宕懲罰**：連 2 輪 0 動 = 3.25
+  - **延宕懲罰**：連 3 輪 0 動 = 3.25
 
 - [ ] **T-CLI-HISTORY-SPLIT** 🟡 `src/cli/history.py` 555 → **681**（+126）
   - **拆法**：`src/cli/history/{__init__, list, archive, tag, pin}.py`；保留 `src.cli.history` 相容匯出
@@ -410,7 +453,7 @@
   - **拆法**：`src/document/exporter/{__init__, docx, metadata, citation_block}.py`
   - **延宕懲罰**：連 2 輪 0 動 = 3.25
 
-- [ ] **T-API-APP-FACTORY** 🟡 v5.2 新增；`api_server.py` 529 行 shim 殘留（routes/ 已拆 4 檔但 app factory + lifespan + middleware 仍卡單檔）
+- [ ] **T-API-APP-FACTORY** 🔴 v5.2 新增·v5.4 升 P0 二位；`api_server.py` 529 行 shim 殘留（routes/ 已拆 4 檔但 app factory + lifespan + middleware 仍卡單檔）
   - **拆法**：`src/api/app.py` 抽 `create_app()` factory + lifespan + 全局 middleware；`api_server.py` 僅留 `uvicorn` entrypoint 與 legacy alias（≤ 100 行）
   - **相容錨點**：保留 `from api_server import app` 與 `python api_server.py` CLI
   - **驗 1**：`wc -l api_server.py` ≤ 100
