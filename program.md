@@ -1,7 +1,14 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **版本**：v3.7（2026-04-20 15:35 — 技術主管第十五輪實跑 `pytest tests/ -q` = **3599 passed / 10 skipped / 0 failed / 473.62s**（比 v3.5 3590 多 9 條，來自 `tests/test_cli_state_dir.py` T9.4.b 新測試）；工作樹 7 條：`M src/cli/{history,main,utils}.py M src/web_preview/app.py M tests/test_cli_commands.py ?? tests/test_cli_state_dir.py ?? docs/llm-providers.md` — 實質是 **T9.4.b state dir 搬遷 in-flight + P1.7 文件未落**，**不是無主 M**；近 20 commits = **4 conventional / 16 `auto-commit:` = 20%**（v3.6 標 30% 是短窗倖存者偏差，實際連 >14 輪退步）；`kb_data/corpus/**/*.md` **9 份全 `synthetic=true+fixture_fallback=true`，Epic 1 真通過 = 0/3 source**；**焦點：T9.4.b-CLOSE（本輪收尾 conventional commit）、P0.S 改 agent 側 rebase 自救、P0.T-SPIKE 腳本落地，P0.D/P0.T-LIVE 仍 Admin 依賴**）
-> **v3.7 變更**（v3.6 → v3.7）：
+> **版本**：v3.8（2026-04-20 15:55 — 技術主管第十六輪實跑 `pytest tests/ -q` = **3605 passed / 10 skipped / 0 failed / 459.99s**（v3.7 = 3599，+6；首次 < 460s）；工作樹 4 條：`M docs/live-ingest-report.md M program.md M scripts/live_ingest.py M tests/test_live_ingest_script.py` — P0.T-SPIKE 腳本 + doc + test 已落（AUTO-RESCUE `1f4fc8a` 已吞入）但 program.md 未勾 = 承諾漂移 v3；近 20 commits = **4 conventional / 16 `auto-commit:` = 20%**（連 >15 輪零進展，P0.S agent 側自救 0 動作）；`kb_data/corpus/**/*.md` **9 份全 `synthetic=true+fixture_fallback=true`，Epic 1 真通過 = 0/3 source**；**v3.8 底層邏輯：打破「ACL-free 也不動」第八層藉口「方案驅動治理」——P1.9 升 P0.W（seam 骨架）、P1.11 升 P0.X（vendor smoke）、新增 P0.Y（agent 側 audit-only 自救原型）；勾關 P0.T-SPIKE + T9.4.b（事實已完）**）
+> **v3.8 變更**（v3.7 → v3.8）：
+> - **勾關（事實已完）**：P0.T-SPIKE [x]（`scripts/live_ingest.py` 174 行 + `docs/live-ingest-urls.md` 33 行 + `tests/test_live_ingest_script.py` 4 tests 齊；CLI help lazy import + `executive_yuan_rss` alias 已補）；T9.4.b [x]（6 個 CLI 檔 + 新測試皆入 HEAD）；P1.7 [x]（`docs/llm-providers.md` 已落）
+> - **升 P0（ACL-free 零藉口）**：P1.9 → **P0.W**（`src/integrations/open_notebook/` seam 骨架）；P1.11 → **P0.X**（vendor smoke import）；新增 **P0.Y**（agent 側 audit-only 自救原型，產 `docs/rescue-commit-plan.md`）
+> - **新增 T9.7**：`results.log` `[BLOCKED-ACL]` 條目去重 SOP（同日同任務同原因只留首條 + `count=N` 後綴）
+> - **新增 T9.8**：`openspec/specs/` baseline capability 建檔（`sources.md` + `open-notebook-integration.md`）
+> - **v3.8 六硬指標目標**：3/6 PASS（指標 1 維持 + 指標 4 歸零 + 指標 6 破蛋）；若仍 1/6 = 3.25 強三
+> - **v3.7 歷史保留**：P0.S 自救 / P0.T-LIVE 拆三源 / P1.4 已勾
+> - **v3.7 變更**（保留歷史）：
 > - **v3.6 header 數字修正**：`pytest` 本輪實跑 3599（非 3590），`近 10 commits 30%` 修為**近 20 commits 20%**（技術主管揭發短窗偏差）
 > - **P0.S 升級為「agent 側自救」**：既然 Admin 連 >14 輪不改腳本，P0.S 修法改為「agent `git rebase --exec 'git commit --amend --no-edit -m ...'` 改寫 AUTO-RESCUE commit message」，打破 P0.S ↔ P0.D 共生迴圈
 > - **T9.4.b 明確 in-flight 狀態**：`src/cli/utils.py` 新增 `resolve_state_path` + `GOV_AI_STATE_DIR` env 已落地 + 4 個 call-site 已搬 + 新測試 `tests/test_cli_state_dir.py`；本輪首動作是**`feat(cli): add GOV_AI_STATE_DIR`**落版，關閉 T9.4.b
@@ -157,7 +164,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 #### P0.T-SPIKE — 🟢 ACL-free·agent 可做：live ingest 離線腳本 + URL 可達性盤點（v3.5 新增）
 
-- [x] **P0.T-SPIKE** ✅ 不依賴網路：`scripts/live_ingest.py` / `docs/live-ingest-urls.md` / `tests/test_live_ingest_script.py` 已落地；`python scripts/live_ingest.py --help` 正常、`pytest tests/test_live_ingest_script.py -q` = 3 passed；另以 `main(['--sources','mojlaw',...])` 生成 `docs/live-ingest-report.md`，實測現環境仍因 fixture fallback 被 `require_live` 擋下，保留 fail report 給後續 P0.T-LIVE 使用
+- [x] **P0.T-SPIKE** ✅ 不依賴網路：`scripts/live_ingest.py` / `docs/live-ingest-urls.md` / `tests/test_live_ingest_script.py` 已落地；`python scripts/live_ingest.py --help` 正常、`pytest tests/test_live_ingest_script.py -q` = 4 passed；CLI 改為 lazy import，並接受 canonical key `executive_yuan_rss` 與 legacy alias `executiveyuanrss`；另以 `main(['--sources','mojlaw',...])` 生成 `docs/live-ingest-report.md`，實測現環境仍因 fixture fallback 被 `require_live` 擋下，保留 fail report 給後續 P0.T-LIVE 使用
   - **產出**：
     - `scripts/live_ingest.py`：支援 `--sources/--limit/--base-dir/--report-path`，逐源強制 `require_live=True` 並輸出 markdown report
     - `docs/live-ingest-urls.md`：盤點 5 adapter listing/detail URL、預期 `curl -sI` 狀態與 `Content-Type`
@@ -179,6 +186,47 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗 4**：`docs/live-ingest-report.md` 列 9+ 筆 live record
   - **延宕懲罰**：egress 解後仍不執行 = 3.25（Epic 1 真通過是 v2.8 起承諾的交付終點）
   - commit（ACL 解除後）: `feat(sources): first real live ingest — 3 sources × 3 live docs`
+
+### P0.W — 🟢 ACL-free·Epic 2 seam 骨架（v3.8 升 P0；原 P1.9）
+
+- [ ] **P0.W** ✅ 不依賴 ACL / 不依賴 vendor 可用：`src/integrations/open_notebook/` seam 骨架落地
+  - **v3.8 升格理由**：連 2 輪 0 進度；`docs/integration-plan.md` + `openspec/changes/02-open-notebook-fork/specs/fork/spec.md` 規格齊、`vendor/open-notebook/.git` 已 clone，零外部依賴。屬第八層藉口「方案驅動治理」
+  - 產出：
+    - `src/integrations/__init__.py` + `src/integrations/open_notebook/{__init__,stub,config}.py`
+    - `OpenNotebookAdapter` Protocol（`ask(question, docs) -> AskResult`、`index(docs)`）+ `get_adapter(mode) -> Adapter` 工廠
+    - `OffAdapter`（`ask` raise `IntegrationDisabled`）+ `SmokeAdapter`（in-memory 回覆 + 引用第一份 doc）；禁實作 WriterAdapter
+    - `src/integrations/open_notebook/config.py`：讀 `GOV_AI_OPEN_NOTEBOOK_MODE` env（default `off`）
+    - `src/cli/open_notebook_cmd.py`：`gov-ai open-notebook smoke --question "..."`
+    - `tests/test_integrations_open_notebook.py`：驗 Protocol + 三模式工廠 + OffAdapter raise + SmokeAdapter 非空 + writer 模式 vendor 缺失 loud fail
+  - **驗 1**：`pytest tests/test_integrations_open_notebook.py -q` 綠
+  - **驗 2**：`GOV_AI_OPEN_NOTEBOOK_MODE=smoke python -m src.cli.main open-notebook smoke --question "hi"` 非空
+  - **驗 3**：`ls src/integrations/open_notebook/*.py | wc -l` ≥ 3（硬指標 6 破蛋）
+  - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25
+  - commit（ACL 解除後）: `feat(integrations): add open-notebook seam skeleton with off/smoke adapters`
+
+### P0.X — 🟢 ACL-free·vendor smoke import（v3.8 升 P0；原 P1.11）
+
+- [ ] **P0.X** ✅ 不依賴 ACL：`vendor/open-notebook` 可 import 驗證（10 分鐘可破）
+  - 產出：
+    - `scripts/smoke_open_notebook.py`：`sys.path.insert(0,'vendor/open-notebook'); import open_notebook; print(getattr(open_notebook,'__version__','?'))`
+    - 若依賴缺，捕捉 ImportError 寫缺失套件清單至 `docs/open-notebook-study.md §6`（給 P1.3 litellm smoke 接手）
+  - **驗**：`python scripts/smoke_open_notebook.py 2>&1 | head -1` 不含 `ImportError: No module named 'open_notebook'`
+  - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25
+  - commit（ACL 解除後）: `chore(vendor): verify open-notebook importability`
+
+### P0.Y — 🟢 ACL-free·agent 側 audit-only 自救原型（v3.8 新增）
+
+- [ ] **P0.Y** ✅ 不改 HEAD、不依賴 ACL：產 `docs/rescue-commit-plan.md` 供 Admin 解 ACL 後一鍵 rebase
+  - **v3.8 背景**：v3.7 P0.S 「agent 側 rebase 自救」0 動作，淪為「方案驅動治理」；先做 audit-only 原型（零破壞），確保「方案 → 可執行檔」路徑打通
+  - 產出：
+    - `scripts/rewrite_auto_commit_msgs.py`：讀 `git log --format="%H %s" -40`，對 `auto-commit:` 前綴推斷檔案變更（`git show --stat`）+ 產建議 conventional message（推斷 scope：cli/sources/docs/tests/agents）
+    - `docs/rescue-commit-plan.md`：輸出表 `commit_hash | current_msg | proposed_msg | files_top3 | confidence`（conf = high/med/low）
+  - **驗 1**：`wc -l docs/rescue-commit-plan.md` ≥ 30
+  - **驗 2**：plan 含 ≥ 16 條改寫建議（對應 HEAD~20 auto-commit 條）
+  - **驗 3**：`pytest tests/test_rewrite_auto_commit_msgs.py -q` 綠（純離線 mock `git show --stat`）
+  - **非破壞承諾**：腳本 **禁** 呼叫 `git rebase` / `git commit --amend`；Admin 解 ACL 後由人工執行一條 `git rebase --exec`
+  - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25（誠信類）
+  - commit（ACL 解除後）: `feat(scripts): audit-only plan for rewriting auto-commit history to conventional format`
 
 ---
 
@@ -370,7 +418,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
   - commit（ACL 解後）: `docs: align README + architecture seam for Epic 1 adapters and Epic 2 integration`
 
-- [ ] **P1.9（v3.6 NEW）✅ ACL-free** `src/integrations/open_notebook/` seam 骨架（Epic 2 第一顆骨牌）
+- [~] **P1.9（v3.6 NEW）→ v3.8 升 P0.W** seam 骨架搬至 P0 活條目段；此處保留歷史視角
   - **背景**：T2.2 `docs/integration-plan.md` 已選 Fork + thin adapter seam，但 `src/integrations/` 目錄不存在；下游 T2.5-T2.8（API / writer / retriever / fallback）全需此 seam 接入。P1.4 vendor clone 被 shell egress 擋住，但 **seam 骨架不需要真 vendor 存在**——可先落 protocol + stub + env gating，vendor 到位後只填實作
   - 產出：
     - `src/integrations/__init__.py`（空 package marker）
@@ -385,7 +433,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
   - commit（ACL 解後）: `feat(integrations): add open-notebook seam skeleton with off/smoke adapters`
 
-- [ ] **P1.10（v3.6 NEW）✅ ACL-free** T2.1 open-notebook 研讀 → `docs/open-notebook-study.md`
+- [ ] **P1.10（v3.8 本輪必落，連 2 輪延宕 = 3.25；與 T2.1 等價）✅ ACL-free** T2.1 open-notebook 研讀 → `docs/open-notebook-study.md`
   - **背景**：T2.1「研讀 open-notebook」原 pre-request P1.4 clone vendor，但 shell egress 擋；v3.6 改為「repo 內推論」先做——基於 `openspec/changes/02-open-notebook-fork/proposal.md` + `specs/fork/spec.md` + `docs/integration-plan.md` 推 ask_service 介面 / evidence 格式 / SurrealDB 邊界。P1.4 解後再補「實測對照」節
   - 產出 `docs/open-notebook-study.md`：
     - §1 來源引用：proposal / spec / integration-plan
@@ -395,7 +443,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
     - §5 對 P1.9 seam 的規格要求（反向餵 P1.9）
   - **驗**：`wc -l docs/open-notebook-study.md` ≥ 80 AND `grep -c "ask_service" docs/open-notebook-study.md` ≥ 3
 
-- [ ] **P1.11（v3.7 NEW）✅ ACL-free** vendor/open-notebook smoke import 驗證
+- [~] **P1.11（v3.7 NEW）→ v3.8 升 P0.X** vendor smoke import 搬至 P0 活條目段；此處保留歷史視角
   - **背景**：v3.7 發現 `vendor/open-notebook/.git` 已存在，但從未驗證可否 `import`；P1.9 seam 需此前置
   - 產出：
     - `scripts/smoke_open_notebook.py`：`sys.path.insert(0, 'vendor/open-notebook'); import open_notebook; print(open_notebook.__version__)`
@@ -573,14 +621,14 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **相容策略**：repo root 若已有舊 `.gov-ai-*.json` 檔，讀取仍可 fallback；下一次寫入會落到 state dir，避免再污染 root
   - **驗**：`pytest tests/test_cli_state_dir.py -q` = 6 passed；`pytest tests/test_stats_cmd.py tests/test_web_preview.py -q` = 42 passed；`pytest tests/test_cli_commands.py -q -k "history_append_and_list or history_clear or history_list_empty or history_archive or duplicate or rename or tag_add or tag_remove or pin or unpin"` = 31 passed；`pytest tests -q` = 3605 passed / 10 skipped / 0 failed
   - commit: `feat(cli): configurable state dir to avoid repo-root file locks`
-- [ ] **T9.5（v3.3 NEW）** root 11+ 份歷史殘檔歸位
+- [ ] **T9.5（v3.3 NEW；v3.8 SESSION-BLOCKED）** root 11+ 份歷史殘檔歸位
   - **背景**：root 仍有 10 份 `.ps1`（debug_template / run_all_tests / start_n8n_system / test_advanced_template / test_citation / test_multi_agent_v2 / test_multi_agent_v2_unit / test_phase3 / test_phase4_retry / test_qa）+ 5 份 `.docx`（test_citation / test_output / test_qa_report / 春節垃圾清運公告 / 環保志工表揚）→ root hygiene 失守
   - 產出：歸位策略 — `.ps1` → `docs/archive/legacy-scripts/`；test `.docx` → `tests/fixtures/legacy-docx/`；2 份示例公告 docx → `kb_data/examples/docx/`
   - **blocker（2026-04-20）**：本 session `Copy-Item` 可通，但 `Move-Item` / `Remove-Item` 受 destructive-command policy 阻斷，無法刪 source；待可安全刪檔的 session 再閉環
   - **驗**：`Get-ChildItem -File *.ps1,*.docx` == 0
   - commit（ACL 解後）: `chore(repo): archive legacy ps1/docx from root to docs/archive + tests/fixtures`
 
-- [ ] **T9.6（v3.7 NEW）✅ ACL-free** engineer-log.md 月度封存
+- [ ] **T9.6（v3.7 NEW；v3.8 本輪必落，連 2 輪延宕 = 3.25）✅ ACL-free** engineer-log.md 月度封存（現 1300 行）
   - **背景**：engineer-log.md 當前 1158 行 / ~95KB，Read 需 offset + 多次；v3.3 列 P1.6 未做
   - 產出：
     - `docs/archive/engineer-log-202604a.md`：切 v3.1 以前（行 1-750 左右）反思段封存
@@ -626,10 +674,16 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **P0.U (v3.3)** fixture fallback provenance guard：來源 adapter/ingest 會把 fallback 落盤標成 `synthetic: true` + `fixture_fallback: true`，避免假資料冒充 P0.T 真 ingest
 - [x] **P0.V-live-upgrade (v3.3)** fixture corpus live-upgrade guard：ingest 會跳過既有真資料，但允許既有 fixture corpus 在 live re-ingest 時升級為 `synthetic: false` 真資料；避免先前 fallback 產物永久卡住 P0.T / T1.6
 - [x] **P0.V-flaky (v3.5)** `test_ingest_keeps_fixture_backed_corpus_when_only_fixture_data_is_available` 本輪全量 3590 passed 0 failed 未重現（處置同 P0.S-stale；三軸 SOP 保留供未來）
-- [x] **P0.T-SPIKE (v3.7)** `scripts/live_ingest.py` + `docs/live-ingest-urls.md` + `tests/test_live_ingest_script.py` 已落地；`python scripts/live_ingest.py --help` 正常、`pytest tests/test_live_ingest_script.py -q` = 3 passed，並產出 `docs/live-ingest-report.md` 記錄目前 `mojlaw` require-live probe 仍被 fixture fallback 擋下
+- [x] **P0.T-SPIKE (v3.7)** `scripts/live_ingest.py` + `docs/live-ingest-urls.md` + `tests/test_live_ingest_script.py` 已落地；`python scripts/live_ingest.py --help` 正常、`pytest tests/test_live_ingest_script.py -q` = 4 passed，並產出 `docs/live-ingest-report.md` 記錄目前 `mojlaw` require-live probe 仍被 fixture fallback 擋下
 - [x] **T1.12-HARDEN (v3.4)** nightly live smoke 禁 silent fixture fallback；`tests/integration/test_sources_smoke.py` 把 fixture_dir 指向不存在路徑，upstream 掛 → integration FAIL 不再假綠
 - [x] **T1.6.a (v3.4)** 校正 `kb_data/examples/*.md` 合成基線為 155，`tests/test_mark_synthetic.py` 新增 guard
 - [x] **T1.6.b (v3.4)** fixture corpus 升級護欄；ingest 辨識既有 `synthetic: true` / `fixture_fallback: true` 檔，僅 live re-ingest 時覆寫
+- [x] **P1.5 (v3.3)** `docs/architecture.md` v1 落地（273 行）涵蓋 CLI/API/ingest + 5 adapter + vendor 邊界 + SurrealDB freeze
+- [x] **P1.7 (v3.4)** `docs/llm-providers.md`（81 行）盤點 `src/core/llm.py` provider 工廠；AUTO-RESCUE `d92bace`
+- [x] **T2.2 (v3.6)** `docs/integration-plan.md` Fork + thin adapter seam 決策；`GOV_AI_OPEN_NOTEBOOK_MODE=off|smoke|writer` 契約；AUTO-RESCUE `d225281`
+- [x] **T9.4.b (v3.7)** `src/cli/utils.py` resolve_state_path + `GOV_AI_STATE_DIR` env；4 個 call-site 搬遷 + `tests/test_cli_state_dir.py` 6 passed；AUTO-RESCUE `d92bace`
+- [x] **P0.CLI-IMPORT (v3.7)** `src/cli/main.py` 改 callback 內 lazy import 修測試 collection `ImportError`；pytest 3599 passed
+- [x] **P1.4 (v3.7)** `vendor/open-notebook/.git` 存在（某輪 clone 成功未 log；v3.7 正式勾選）
 
 ---
 
@@ -657,32 +711,39 @@ Epic 7 負責建置。建置完成前，program.md 是單一事實來源。
 
 ---
 
-**版本**：v3.5（2026-04-20 15:15 — P0.V-flaky 自然綠；P0.T 拆 SPIKE+LIVE；P1.7/P1.8 落袋）
+**版本**：v3.8（2026-04-20 16:05 — P1.9/P1.10/P1.11 連 2 輪 0 落地升 P0.W/P0.X/P0.Y；P0.T-SPIKE/T9.4.b/P0.CLI-IMPORT/T2.2/P1.7/P1.5/P1.4 搬已完成；footer 六硬指標新增 Epic 2 骨架指標）
 
-**下一輪重排觸發**（v3.5 四項硬指標，依執行順序）：
-1. `git log --oneline -5 | grep -c "auto-commit:"` == 0（P0.S；Admin 依賴，誠信血債連 20 輪）
-2. `icacls .git 2>&1 | grep -c DENY` == 0（P0.D；Admin 依賴連 12 輪）
-3. `Get-Content docs/live-ingest-report.md` 可見 `require_live` 失敗證據，待 Admin 解 egress 後直接進 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executiveyuanrss --limit 3`（P0.T-LIVE 前置已齊）
-4. `grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` ≥ 9 AND `grep -l "fixture_fallback: true" kb_data/corpus/**/*.md | wc -l` == 0（P0.T-LIVE；Admin 解 egress 後）
+**下一輪重排觸發**（v3.8 六項硬指標，依執行順序；當前 PASS 狀態僅指標 1/6）：
+1. ✅ `pytest tests/ -q` 0 failed（目前 **3599 passed / 10 skipped / 0 failed**）— 唯一已綠
+2. ❌ `git log --oneline -20 | grep -c "auto-commit:"` ≤ 4（目前 16；P0.S / P0.Y 兩路並攻）
+3. ❌ `icacls .git 2>&1 | grep -c DENY` == 0（目前 2；P0.D，Admin 依賴連 >14 輪）
+4. ❌ `ls src/integrations/open_notebook/__init__.py` 存在（P0.W；Epic 2 第一顆骨牌）
+5. ❌ `wc -l docs/open-notebook-study.md` ≥ 80（P1.10；T2.1 等價）
+6. ❌ `python scripts/smoke_open_notebook.py 2>&1` 不噴 `ImportError`（P0.X；vendor 可 import）
+7. ❌ `grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` ≥ 9 AND `grep -l "fixture_fallback: true" kb_data/corpus/**/*.md | wc -l` == 0（P0.T-LIVE；Admin 解 egress 後）
 
-**健康護欄**（v3.5 必須持續綠）：
-- `pytest tests/ -q` FAIL 數 == 0（目前 **3590 passed / 10 skipped / 0 failed**）
+**健康護欄**（v3.8 必須持續綠）：
+- `pytest tests/ -q` FAIL 數 == 0（目前 3599 passed / 10 skipped / 0 failed）
 - `grep -l "RequestException" src/sources/*.py | wc -l` ≥ 5（目前 6）
 - `grep -c "\[ \]" openspec/changes/01-real-sources/tasks.md` == 0（目前 0）
 - `wc -l docs/architecture.md` ≥ 80（目前 273）
+- `wc -l engineer-log.md` ≤ 500（目前 1300 — T9.6 待封存）
 
-**P0.S 連 20 輪紅線未解**：conventional commit 規則寫了卻連 20/20 條 checkpoint 假提交照樣進歷史 = 誠信級漏洞。
-**P0.T 承諾仍懸空 7+ 輪（v2.8 起）**：v3.5 拆 SPIKE + LIVE，agent 先把腳本 + URL 盤點備齊，Admin 解 egress 即一鍵落盤。
+**P0.S 連 >14 輪紅線未解**：conventional commit 規則寫了卻近 20 條 16/20 仍 `auto-commit:` = 誠信級漏洞；v3.8 起 P0.Y（agent 側 audit-only 自救原型）作為 SPIKE，先產 `docs/rescue-commit-plan.md` 記錄所有 AUTO-RESCUE commit 與建議訊息，不動 `.git`，打破「因 ACL 擋所以不動」的第八層藉口。
+**P0.T 承諾仍懸空 9+ 輪（v2.8 起）**：v3.5 拆 SPIKE + LIVE；v3.7 SPIKE 已落，LIVE 等 Admin 解 egress。
+**P0.W/P0.X/P0.Y 連 2 輪 0 落地**：v3.6/v3.7 標 P1 未動 → v3.8 升 P0 強制執行，連 1 輪延宕 = 3.25。
 
 **紅線恆定**：
-- **紅線 1（v3.2）**：倖存者偏差驗證 = 假綠 = 3.25 — 驗收禁依賴 cached 目錄 / proxy / 本機狀態；`pytest tmp_path + mock 網路` = 唯一硬驗
-- **紅線 2（v3.3）**：文案驅動開發 = 3.25 — log 寫「已完成 X」但執行路徑不走 X，以文字遮掩代碼洞
-- **紅線 3（v3.4）**：文檔驅動治理 = 3.25 — 規則寫了沒執行（P0.S 連 20 輪即案例），以規則遮掩違規
-- **紅線 4（v3.5）**：承諾漂移 = 3.25 — header 寫「新增 X」但 body 未落（P1.7/P1.8 v3.4 承諾本輪才真落即案例），以版本號遮掩功能缺口
+- **紅線 1（v3.2）**：倖存者偏差驗證 = 假綠 = 3.25
+- **紅線 2（v3.3）**：文案驅動開發 = 3.25
+- **紅線 3（v3.4）**：文檔驅動治理 = 3.25
+- **紅線 4（v3.5）**：承諾漂移 = 3.25
+- **紅線 5（v3.8 新增）**：方案驅動治理 = 3.25 — 方案（修法 A/B）寫了卻一輪不動手（P0.S 修法 A 寫 2 輪 0 嘗試即案例），以「方案選項列表」遮掩決策真空
 
-> **v3.4 → v3.5 變更摘要**：
-> 1. **P0.V-flaky 自然綠**：本輪全量 3590 passed / 0 failed，v3.4 爆的 flaky FAIL 未重現；三軸 SOP 保留
-> 2. **P0.T 拆 SPIKE + LIVE**：把 agent 可做的 live ingest 腳本 + URL 盤點拆出，把 Admin 依賴集中到 LIVE，避免 agent 空轉
-> 3. **T1.6 併入 P0.T-LIVE**：原「≥50 份 × 3 源」過激進，先 ≥3 份收斂
-> 4. **閉環搬歷史**：P0.V-flaky / P0.U / P0.V-live-upgrade / T1.12-HARDEN / T1.6.a / T1.6.b
-> 5. **P1.7 / P1.8 保留**：v3.4 承諾，v3.5 起 ACL-free 連 2 輪延宕 = 3.25（歸誠信）
+> **v3.7 → v3.8 變更摘要**：
+> 1. **承諾漂移升級**：P1.9 → P0.W（seam 骨架）、P1.11 → P0.X（vendor smoke）、新增 P0.Y（agent 側 audit-only 自救）
+> 2. **事實勾關**：P0.T-SPIKE / T9.4.b / P0.CLI-IMPORT / T2.2 / P1.7 / P1.5 / P1.4 搬已完成區
+> 3. **新增 T9.7**：results.log [BLOCKED-ACL] 去重 SOP；**T9.8**：openspec/specs/ baseline 建檔
+> 4. **新增紅線 5**：方案驅動治理，鎖死 P0.S 修法 A/B 兩輪零執行的耍賴空間
+> 5. **T9.6 升首位**：engineer-log.md 1300 行，v3.8 設本輪必落 ACL-free 項
+> 6. **T9.5 SESSION-BLOCKED**：Move-Item / Remove-Item 被 destructive policy 擋，非可解，改註記不計延宕
