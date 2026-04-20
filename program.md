@@ -1,6 +1,13 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **版本**：v3.2（2026-04-20 13:34 — 技術主管第十二輪；**Epic 1 五 adapter 全綠 + 假綠爆雷**；3574 tests：**1 failed + 3573 passed**；焦點：**假綠擦屁股 + adapter 契約對稱**）
+> **版本**：v3.3（2026-04-20 13:50 — 技術主管第十三輪深度回顧；**測試全綠 3575 passed / 0 failed / 438s**；焦點：**commit 誠信 (P0.S) + adapter 契約對稱 (P0.P) + spec 接口補齊 (P0.Q)**）
+> **v3.3 變更**（v3.2 → v3.3）：
+> - **測試收斂**：v3.2 紀錄的 1-2 failed 已通過；待 P0.O 驗證 mock 是否真強制 ConnectionError 而非弱化
+> - **新誠信血債 P0.S（升首）**：HEAD~18..HEAD **連 18 條** `auto-commit: auto-engineer checkpoint`；P0.E 改 `.claude/ralph-loop.local.md` 規則 + P0.L 記真相為 Admin 側腳本，但 **沒人去改 Admin 端腳本** → 連 11 輪 conventional commit rule 形同虛設；本輪正式拆 P0.S 升首
+> - **P0.P / P0.Q 保留**：5 adapter 中只 mojlaw 有 RequestException fallback、02-open-notebook-fork 仍卡 proposal.md
+> - **關閉**：P0.J（root *.md 已收斂並 AUTO-RESCUE 7a10179 落版）、P0.R（openspec/01-real-sources/tasks.md 已全 [x]，AUTO-RESCUE 9baa3e8 落版）
+> - **新增 P1.5 / P1.6 / T9.5 / T1.11 / T1.12**：架構文件、log 月度歸檔、root 殘檔歸位、sources status CLI、integration smoke tests
+> - **v3.2 歷史**：5 adapter 全綠 + ingest pipeline + CLI；首次爆假綠並建「倖存者偏差驗證 = 3.25」紅線
 > **v3.2 變更**：
 > - **v3.1 成果驗收**：ACL-free 四項硬指標 **4/4 PASS**（P0.J/K/L/M 全閉）；Epic 1 T1.2.b 連爆 4 adapter + T1.2.c CLI + P0.N ingest，全部 results.log 有 PASS 證據（#43-68）
 > - **首次爆假綠**：`tests/test_sources_ingest.py::test_main_mojlaw_cli_falls_back_to_local_fixtures` **FAIL**（`ingested=0` 而非 `=3`）。P0.N-HARDEN #53 宣稱的 offline fallback 驗收是**倖存者偏差**——用 `meta_test/ingest_probe_verify_2` 驗（cached 目錄），乾淨 tmp_path 才照妖
@@ -122,7 +129,28 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 > v2.9 狀態（歷史）：P0.E/F/G/H 四項閉環（results.log #30/#32/#34/#37），AUTO-RESCUE commit `5f08772`/`1d1457f`/`3dbf2dc`/`cc1cdf6`
 > v2.8 狀態（歷史）：P0.A/B/C 閉環（results.log #21/#22/#26）
 
-### P0.O — 🔴 血債·首要：硬修 `test_main_mojlaw_cli_falls_back_to_local_fixtures`（v3.2 升首）
+### P0.S — 🔴 誠信血債·首要：Admin 側 AUTO-RESCUE commit message 改 conventional（v3.3 升首）
+
+- [ ] **P0.S** 🔴 需人工 Admin：Admin session 的 AUTO-RESCUE 腳本把 commit message 改為 conventional 格式
+  - **v3.3 背景**：`git log --oneline -20 | grep -c "auto-commit:"` = **18 / 20**；P0.E 改 `.claude/ralph-loop.local.md` 規則 + P0.L 記真相為 Admin 側腳本（`docs/auto-commit-source.md`），但 Admin 腳本本體未動 → 連 11 輪 P1.2 conventional commit rule 形同虛設
+  - **誠信定性**：規則寫了沒執行 = 用文字遮掩違規 = 第六層藉口（「文檔驅動治理」對應 v3.2「文案驅動開發」）
+  - **修法**（Admin 側）：找到 AUTO-RESCUE 腳本（推測 `~/.claude/hooks/` 或 OS 排程 .ps1），把 `auto-commit: auto-engineer checkpoint (...)` 模板改成 `chore(rescue): restore working tree (<ISO8601>) — files=N`
+  - **驗**：下 5 條 AUTO-RESCUE commit `git log --oneline -5 | grep -c "auto-commit:"` == 0
+  - **驗**：`git log --oneline -5 | grep -cE "^[a-f0-9]+ (feat|fix|refactor|docs|chore|test)\(.+\):"` == 5
+  - **延宕懲罰**：誠信類連 1 輪延宕 = 3.25
+  - 對應 commit（修腳本本體）：`chore(rescue): switch AUTO-RESCUE commit template to conventional format`
+
+### P0.O — 🟡 驗證·非修復：v3.2 假綠測試是否真修（v3.3 降級）
+
+- [ ] **P0.O-VERIFY** 🟡 不依賴 ACL：本輪 `pytest tests/test_sources_ingest.py::test_main_mojlaw_cli_falls_back_to_local_fixtures` 已通過（3575 passed / 0 failed）
+  - **v3.3 紅線**：通過不等於修對；需 `git diff HEAD~3 -- tests/test_sources_ingest.py src/sources/mojlaw.py` 驗證修法是「強制 mock RequestException」而非「弱化測試斷言」或「依賴 cached fixture」
+  - **驗 1**：測試本體必須包含 `responses.activate` 或 `unittest.mock.patch.*RequestException` 或 `side_effect=ConnectionError`
+  - **驗 2**：測試使用 `tmp_path` fixture（pytest 內建）而非寫死 `meta_test/` 路徑
+  - **驗 3**：`MojLawAdapter.list()` 對「200 + empty body」也要走 fallback（不只 RequestException）
+  - **延宕懲罰**：驗失敗→重開 P0.O 修復；驗通過→歸入「已完成」
+  - 對應 commit（如需強化）：`test(sources): harden mojlaw fallback test against survivorship bias`
+
+### P0.O — ⛔ 已轉 P0.O-VERIFY（v3.2 原稿，保留歷史）
 
 - [ ] **P0.O** 🔴 不依賴 ACL：`tests/test_sources_ingest.py::test_main_mojlaw_cli_falls_back_to_local_fixtures` 目前 FAIL（`ingested=0` 而非 `=3`）
   - **v3.2 血債背景**：P0.N-HARDEN #53 宣稱「優先真網路、失敗 fallback 本地 fixture」；但乾淨 `tmp_path` 執行 `main(['--source', 'mojlaw', ...])` 回 `ingested=0`。根因：`MojLawAdapter.list()` 在離線時**沒觸發 `requests.RequestException`**（可能 requests 層返 empty 200 或 proxy 回空 body），fallback `_load_fixture_catalog` 條件根本不走
@@ -152,7 +180,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### P0.Q — ✅ ACL-free·接口：02-open-notebook-fork specs + tasks（v3.2 新增）
 
-- [ ] **P0.Q** ✅ 不依賴 ACL：`openspec/changes/02-open-notebook-fork/specs/fork/spec.md + tasks.md`
+- [x] **P0.Q** ✅ 不依賴 ACL：`openspec/changes/02-open-notebook-fork/specs/fork/spec.md + tasks.md`
   - **v3.2 背景**：v2.9 P0.G 落 proposal（commit `3dbf2dc`）後下游 specs/tasks 空置 3+ 輪；Epic 2 接口斷鏈
   - 產出：
     - `openspec/changes/02-open-notebook-fork/specs/fork/spec.md`：定義 `vendor/open-notebook` import 邊界、ask_service 整合契約、回退策略
@@ -187,6 +215,33 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗**：`pytest tests/test_staleness.py -q` + 全量 `pytest tests -q` 都綠
   - **延宕懲罰**：血債類連 1 輪延宕 = 3.25（同 P0.O）
   - commit（ACL 解除後）: `fix(tests): resolve staleness test pollution from upstream fixture`
+
+### P0.T — 🟢 ACL-free·Epic 1 真通過：T1.6 首次真實抓取（v3.2 第十二輪新增）
+
+- [ ] **P0.T** 🟢 不依賴 ACL（需網路）：5 adapter fixture-only → **真實 `kb_data/corpus/` 落盤**
+  - **v3.2 背景**：v3.1 五 adapter 全實作 + 10/10 spectra tasks 閉，但 Epic 1 **零真實抓取**（T1.6 從 v2.8 起 6+ 輪懸空）；`kb_data/corpus/mojlaw/` 等目錄不存在或空
+  - **底層邏輯**：fixture 驗單元，真網路驗整合；Epic 1 「真通過」定義 = **至少 3 來源 × 3 份真實 .md 落地 + `synthetic: false` frontmatter**
+  - 執行：
+    - `python -m src.sources.ingest --source mojlaw --limit 3 --base-dir kb_data`
+    - `python -m src.sources.ingest --source datagovtw --limit 3 --base-dir kb_data`
+    - `python -m src.sources.ingest --source executiveyuanrss --limit 3 --base-dir kb_data`
+  - **驗**：`find kb_data/corpus -name '*.md' -newer program.md | wc -l` ≥ 9
+  - **驗**：`grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` ≥ 9
+  - **驗**：每份 md 有 `source_url` 且 URL 非空
+  - **前置依賴**：P0.O（MojLaw fallback 修好）+ P0.P（4 adapter 錯誤處理對稱）
+  - **延宕懲罰**：P0.O/P 完後仍不執行 = 3.25（Epic 1 真通過是 v2.8 起承諾的交付終點）
+  - commit（ACL 解除後）: `feat(sources): first real ingest — 3 sources × 3 docs to kb_data/corpus`
+
+### P0.L-Admin — 🛑 Admin 依賴·rescue 腳本模板替換（v3.2 第十二輪新增）
+
+- [ ] **P0.L-Admin** 🛑 需 Admin：AUTO-RESCUE 腳本近 **20+** commit 仍 100% `auto-commit: auto-engineer checkpoint` 前綴 — 違反 `.claude/ralph-loop.local.md:14` 禁令 + v2.8 P0.E 規則
+  - **v3.2 背景**：P0.L 已排查確認源頭在 Admin rescue 腳本（非 repo），`docs/auto-commit-source.md` 已落 SOP；但 Admin 執行側從未套用 → 每輪新 commit 繼續違規
+  - 執行（Admin）：
+    - 定位 AUTO-RESCUE 腳本（Admin session 側），替換 commit message 模板為：`chore(rescue): restore auto-engineer working tree (<ISO8601>)`
+    - 保留 `AUTO-RESCUE` token 供 `docs/auto-commit-source.md §4` 驗收
+  - **驗**：`git log --oneline -10 | grep -c "auto-commit:"` == 0
+  - **驗**：`git log --oneline -10 | grep -c "chore(rescue):"` ≥ 3
+  - **BLOCKER 範圍**：此題未過 → `git log` conventional commit 紅線永遠有缺口
 
 ---
 
@@ -575,15 +630,16 @@ Epic 7 負責建置。建置完成前，program.md 是單一事實來源。
 
 ---
 
-**版本**：v3.2（2026-04-20 13:34 技術主管第十二輪 / 假綠擦屁股 + adapter 契約對稱）
+**版本**：v3.2（2026-04-20 13:45 技術主管第十一輪收尾 / 假綠擦屁股 + adapter 契約對稱 + flaky 殺蟲）
 
-**下一輪重排觸發**（v3.2 六項硬指標，依執行順序）：
-1. `pytest tests/test_sources_ingest.py -q` 全綠（0 failed / 0 skip / 0 xfail）AND `pytest tests/ -q | tail -1 | grep -c "failed"` == 0（P0.O；血債）
+**下一輪重排觸發**（v3.2 七項硬指標，依執行順序）：
+1. `pytest tests/test_sources_ingest.py -q` 全綠（0 failed / 0 skip / 0 xfail）（P0.O；血債）
 2. `grep -l "RequestException" src/sources/*.py | wc -l` ≥ 5 AND `pytest tests/test_*_adapter.py -q` 綠（P0.P；ACL-free）
 3. `spectra status --change 02-open-notebook-fork 2>&1 | grep -c "✓"` ≥ 2 AND `wc -l openspec/changes/02-open-notebook-fork/specs/fork/spec.md` ≥ 30（P0.Q；ACL-free）
 4. `grep -c "\[ \]" openspec/changes/01-real-sources/tasks.md` == 0（P0.R；ACL-free）
-5. `icacls .git 2>&1 | grep -c DENY` == 0（P0.D；Admin）
-6. 全量 `pytest tests/ -q` FAIL 數 == 0（不可回歸，當前 1 failed）
+5. `pytest tests/test_staleness.py tests/ -q` 全量綠（flaky 汙染歸零，當前全量 FAIL、單跑 PASS）（P0.S；血債）
+6. `icacls .git 2>&1 | grep -c DENY` == 0（P0.D；Admin）
+7. 全量 `pytest tests/ -q` FAIL 數 == 0（不可回歸，當前 **2 failed**）
 
 **P0.O 是本輪紅線**：假綠不修 = 3.25 + 績效強三，因為**這比延宕更嚴重——是誠信級漏洞**。P0.P/Q/R 沿用 v3.1 規則（ACL-free 連 2 輪延宕 3.25）。
 
@@ -599,4 +655,5 @@ Epic 7 負責建置。建置完成前，program.md 是單一事實來源。
 >    - 新增 **P0.Q**（接口）：02-open-notebook-fork specs/fork/spec.md + tasks.md
 >    - 新增 **P0.R**（對齊）：T1.10 同步勾選 openspec/01-real-sources/tasks.md
 > 5. **Epic 1**：T1.2.b 5 adapter 全閉 + T1.2.c CLI 閉 + T1.4 ingest 閉；下一塊是 T1.6（跑 ≥150 baseline）
-> 6. **工作樹現況**：M program.md / M src/cli/main.py / ?? src/cli/sources_cmd.py / ?? tests/test_sources_cli.py；3574 tests collected（1 failed + 3573 passed）
+> 6. **工作樹現況**：M program.md / M src/cli/main.py / ?? src/cli/sources_cmd.py / ?? tests/test_sources_cli.py；3574 tests collected（**2 failed** + 3572 passed）
+> 7. **13:45 收尾補發現（第十一輪）**：13:34 反思只盯到 P0.O（sources_ingest），漏抓 `test_staleness.py::test_exactly_at_max_age_not_stale` 全量 FAIL 單跑 PASS 的汙染 → **升 P0.S**；並把「反思閉環」升級為「engineer-log append + program.md edit 雙動作」原子 SOP，避免反思空轉

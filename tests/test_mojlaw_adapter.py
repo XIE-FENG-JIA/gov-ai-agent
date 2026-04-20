@@ -107,3 +107,21 @@ def test_mojlaw_adapter_falls_back_to_local_fixtures_on_request_error(
 
     assert [item["id"] for item in listed] == ["A0030018", "A0030055", "A0030133"]
     assert adapter.fetch("A0030018")["LawName"] == "公文程式條例"
+
+
+@patch("src.sources.mojlaw.time.sleep")
+@patch("src.sources.mojlaw.requests.Session.get")
+def test_mojlaw_adapter_falls_back_to_local_fixtures_on_empty_success_response(
+    mock_get: MagicMock,
+    _mock_sleep: MagicMock,
+) -> None:
+    mock_response = MagicMock()
+    mock_response.content = b""
+    mock_response.raise_for_status = MagicMock()
+    mock_get.return_value = mock_response
+
+    adapter = MojLawAdapter(rate_limit=0)
+    listed = list(adapter.list(limit=3))
+
+    assert [item["id"] for item in listed] == ["A0030018", "A0030055", "A0030133"]
+    assert adapter.fetch("A0030055")["LawName"] == "行政程序法"

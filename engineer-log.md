@@ -787,6 +787,146 @@ Epic 排序建議：
 
 ---
 
+## 反思 [2026-04-20 13:45 — 技術主管第十二輪深度回顧（v3.2）]
+
+> [Sprint 复盘 🟠] 顶层设计：v3.1 Epic 1 五颗骨牌 **5/5 硬落地**（MojLaw / DataGovTw / ExecYuan RSS / MOHW RSS / FDA），ingest + CLI 接通，spectra 10 条 tasks **10/10** ✓；但 **1 failed** 暴露「硬验收可假绿」的新漏洞。底层逻辑：**硬指标通过 ≠ 真实跑通**，验收颗粒度还要再下沉。
+
+### 全量测试铁证
+
+```
+========== 1 failed, 3573 passed, 1363 warnings in 524.04s (0:08:44) ==========
+FAILED tests/test_sources_ingest.py::test_main_mojlaw_cli_falls_back_to_local_fixtures
+AssertionError: assert 'ingested=3 source=mojlaw' in 'ingested=0 source=mojlaw\n'
+```
+
+- **baseline 上升**：3552 → **3573**（+21，对应 4 新增 adapter test + ingest/CLI 测试）
+- **首次回归**：`test_main_mojlaw_cli_falls_back_to_local_fixtures` — P0.N-HARDEN 修的「proxy denied → fixture fallback」**只 cover `requests.RequestException` 分支**；真实执行时 `Session.get` 可能回空/非 ZIP payload，`_extract_laws_from_response` 回 `[]` 但**不 fallback**，导致 `ingested=0`
+- **根因定位**：`src/sources/mojlaw.py:99-113` `_load_catalog` 只在 `RequestException` 时进 fixture；实际网路返回 200 但内容为空/HTML 错误页时，catalog 空但不进 fixture
+- **结论**：P0.N-HARDEN 验收 `ingested=3` 是**偶然真网路通**跑出来的假绿；离线或 API 异常日会再爆
+
+### 近期成果（v3.1 闭环）
+
+- **Epic 1 五颗骨牌全倒**：5 个 adapter 全部 `list/fetch/normalize` 实作 + fixture + 专项测试
+  - MojLaw（v3.0 P0.I）→ DataGovTw（P0.M）→ ExecYuan RSS / MOHW RSS / FDA（T1.2.b-rest，本轮连环）
+- **ingest pipeline 闭环**：`src/sources/ingest.py` 151 行，接通 adapter → `kb_data/raw/{adapter}/{YYYYMM}/{doc_id}.json` + `kb_data/corpus/{adapter}/{doc_id}.md`（YAML frontmatter）
+- **CLI 接通**：`gov-ai sources ingest --source <x>` 挂 `src/cli/main.py`（line 16 + line 65），Typer 参数 `--source/--since/--limit/--base-dir` 透传
+- **spectra 10/10**：`openspec/changes/01-real-sources/tasks.md` T1.1 ~ T1.10 全 `[x]`，specs/sources/spec.md 完整定义契约 + 合规 + 最小源集
+- **根目录洁净**：`ls *.md` = **4**（README/MISSION/program/engineer-log）；`git status --short` == **空**（commit 已 AUTO-RESCUE 落版）
+- **工作树已同步 HEAD**：`.auto-engineer.state.json` 等无关文件外，working tree 乾净
+
+### 发现的问题（按严重度）
+
+**🛑 系统层（新一轮根因）**
+
+1. **`.git` DENY ACL 仍活（连 11 轮）**：`icacls .git | grep -c DENY` == **2**；P0.D 从未由 Admin 实际执行；AUTO-RESCUE Admin session 已落 20+ 次 commit，实质上是**用 bypass 替代修复**
+2. **AUTO-RESCUE 仍用 `auto-commit: checkpoint` 模板**：近 15 条 commit **100%** 前缀违反 `.claude/ralph-loop.local.md:14` 明文禁令 + v2.8 P0.E 既有规则；P0.L 已定位根因是 Admin 脚本，但 **Admin 脚本从未更新**
+3. **真实网路抓取零进度**：T1.6 `首次跑 T1.4，3 来源各 ≥50 份` 仍 `[ ]`；所有 adapter 跑的都是 fixture，**零真实 kb_data/corpus/* 落盘**
+
+**🔴 代码品质（本轮新发现）**
+
+4. **5 个 adapter `_throttle()` / `_request_*()` / USER_AGENT / rate_limit 完全重复**（每档 ~10 行，共 ~50 行可归并）— `BaseSourceAdapter` 只给 ABC 不给 mixin，违反 DRY
+5. **MojLaw fixture fallback 漏洞**：`_load_catalog` 只在 `RequestException` fallback，网路 200 + 空 payload 不 fallback → **上述 1 failed 的直接成因**
+6. **`_adapter_registry()` 在 `sources_cmd.py:11` 用 `_` 前缀但跨模组 import**：`from src.sources.ingest import _adapter_registry`，破坏 Python 单底线约定；应改为 `adapter_registry`（公开）或 `ADAPTER_REGISTRY`（模组常数）
+7. **`PublicGovDoc.crawl_date = date.today()`**：5 个 adapter 全用，但 `normalize` 是纯函数，**`today()` 使单元测试时间相关**；应由调用方注入（ingest.py），或改 `default_factory=date.today`
+
+**🔴 测试覆盖（本轮全量后看）**
+
+8. **邊界情境缺测**：fixture fallback 目前只测 `RequestException`，缺
+   - 网路 200 + 空 body → 应 fallback
+   - 网路 200 + 合法 ZIP + 0 laws → 应 fallback or 明确报错
+   - 网路 timeout → 应 fallback
+9. **rate-limit contract 无集成测**：spec.md 要求 ≥ 2s，但**没有测试验证 `_throttle()` 真的 sleep 2s**（只有字段赋值测）
+10. **ingest 去重测试单薄**：`corpus_path.exists()` 跳过，但没测「同 source_id 两次 ingest 只写一次 raw」
+11. **4 adapter CLI 无 fallback 路径覆盖**：DataGovTw/ExecYuan/MOHW/FDA 同样会有 MojLaw 同型假绿风险，目前只有 MojLaw 有 `fixture_dir` 机制
+
+**🟡 架构健康 / Spectra 对齐**
+
+12. **02-open-notebook-fork 仍只有 proposal.md**：`specs/` + `tasks.md` 未补；Epic 2 T2.1/T2.2 仍悬空（T2.1 `docs/open-notebook-study.md` / T2.2 `integration-plan.md` 都未写）
+13. **03-citation-tw-format / 04-audit-citation proposal 从未启动**（Epic 3 / 4 接口）
+14. **`src/cli/generate.py` 1263 行 / `src/agents/editor.py` 1065 行**：T8.1.b / T8.1.c 重构任务在 P1 冰封，未推进
+15. **1363 deprecation warnings 连 7+ 轮未动**：T8.2 Pydantic v2.11 + chromadb 兼容层；`pytest -W error::DeprecationWarning` 不可能绿
+16. **`src/core/` 盘点后 5 个失控档至今未归 Epic**：`error_analyzer.py` / `logging_config.py` 仍 `[orphan]`
+
+**🟢 本轮正向（可复制 SOP）**
+
+17. **「骨架 → 实作 → fixture → test → CLI」一条龙模板成熟**：P0.I 起 5 次复用，每轮 1-2 adapter；PUA 顆粒度 + 硬验收真能打
+18. **工作树 hygiene 到位**：root md 清 4/4；AUTO-RESCUE 虽然用错模板但落版稳定；`tests/fixtures/` 结构整齐
+
+### 反覆卡住模式（v3.2 更新）
+
+| 任务 | 延宕轮次 | 根因 | v3.2 处置 |
+|------|---------|------|-----------|
+| P0.D ACL 解锁 | **11** | Admin 未执行 | 维持 P0，**提升到 Sprint Banner 顶** |
+| AUTO-RESCUE commit 模板 | 15+ | Admin 脚本未更新 | P0.L 已写 SOP，需 Admin 实际改脚本 |
+| T1.6 真实抓取 | 6+（实质从 Epic 1 启动起零进度） | 需真实网路 + adapter 健壮 | 升 **P0.P**（新），硬指标「`kb_data/corpus/mojlaw/*.md` 计数 ≥ 3」 |
+| T2.x Epic 2 | 10+ | 依赖 T2.2 人审 | 冻结维持 |
+| Pydantic deprecation | 7+ | chromadb 兼容层 | 维持 P1 |
+| src/cli/generate.py 拆分 | 7+ | ACL-gated 顾虑 | ACL 已不阻，升 P1 |
+
+### 建议的优先调整（v3.2 重排）
+
+**核心洞察**：Epic 1 adapter 层全绿但 **1 failed 暴露「硬验收假绿」**；**整合/真抓取仍零**。v3.2 必须：
+1. 先补 **P0.O**（fix MojLaw fallback 洞） — 不补就继续假绿
+2. 然后 **P0.P**（抽 `_common.py` 去 5 adapter 对称化） + **P0.R**（T1.10 勾选对齐）+ **P0.S**（flaky staleness bisect）
+3. 推 **P0.T**（T1.6 首次真抓取 ≥9 份） — Epic 1 验收的终极硬指标
+4. ACL 维持 **P0.D**，Admin 模板换 **P0.L-Admin**
+
+**新 P0 顺序（v3.2，与 program.md 对齐）**：
+
+| 序位 | 任务 | 类别 | 验收 |
+|------|------|------|------|
+| P0.O | fix MojLaw `_load_catalog` RequestException fallback 假绿（mock ConnectionError 硬走） | ACL-free | `pytest tests/test_sources_ingest.py -q` 0 failed |
+| P0.P | 抽 `src/sources/_common.py` + 4 adapter 统一 `RequestException → fixture fallback` 对称 | ACL-free | `grep -l "RequestException" src/sources/*.py \| wc -l` ≥ 5 |
+| P0.Q | 02-open-notebook-fork `specs/fork/spec.md` + `tasks.md` | ACL-free | `spectra status --change 02-open-notebook-fork \| grep -c ✓` ≥ 2（已 [x]） |
+| P0.R | T1.10 同步勾 `openspec/changes/01-real-sources/tasks.md` | ACL-free | `grep -c "\[ \]" openspec/changes/01-real-sources/tasks.md` == 0 |
+| P0.S | flaky `test_staleness.py::test_exactly_at_max_age_not_stale` bisect | ACL-free | 全量 `pytest tests -q` 0 failed |
+| P0.T | T1.6 真实抓取至 `kb_data/corpus/` — MojLaw + DataGovTw + ExecYuan 各 ≥ 3 份 | ACL-free（需网路） | `find kb_data/corpus -name '*.md' \| wc -l` ≥ 9 + `synthetic: false` frontmatter |
+| P0.D | 🛑 ACL 解锁 | Admin | `icacls .git \| grep -c DENY` == 0 |
+| P0.L-Admin | Admin rescue 脚本 commit message 模板换 `chore(rescue): ...` | Admin | `git log -10 \| grep -c "auto-commit:"` == 0 |
+
+**新红线（v3.2）**：
+
+- **「硬验收可假绿」第五道防线**：driver 层测试（CLI 直跑 / ingest 真网路）必须 cover **≥ 3 失败路径**（request exc / empty body / timeout），否则**假绿不视为通过**
+- 连 2 轮 `pytest tests -q` 有 1+ failed = 3.25
+- Epic 1 真通过 = **`kb_data/corpus/{5 adapter}/` 都有真实 .md 落盘**；fixture-only 不算
+
+### 下一步行动（最重要 3 件）
+
+1. **P0.O + P0.S 本轮结（血债类，连 1 轮延宕 = 3.25）**：
+   - `src/sources/mojlaw.py:99` `_load_catalog` — 用 `unittest.mock.patch` 强制 `Session.get` 抛 `ConnectionError`，确保 fallback 走通
+   - `pytest tests/ --lf -x -p no:randomly` bisect staleness 污染源，修 fixture teardown
+   - 验：`pytest tests -q` **0 failed / 3573+ passed**
+
+2. **P0.P + P0.T 本轮结**：
+   - 抽 `src/sources/_common.py`（UA / rate_limit / `RequestException → fixture fallback` helper），5 adapter 改用
+   - 首次真抓：`python -m src.sources.ingest --source mojlaw/datagovtw/executiveyuanrss --limit 3 --base-dir kb_data`
+   - 验：`find kb_data/corpus -name '*.md' | wc -l` ≥ 9 + 每份 `synthetic: false`
+
+3. **P0.L-Admin（Admin 侧）**：
+   - Admin session 改 rescue 脚本 commit message 模板：`chore(rescue): restore auto-engineer working tree (<ISO8601>)`
+   - 验：`git log --oneline -10 | grep -c "auto-commit:"` == 0
+
+### 复盘四步法（v3.2）
+
+- **回顾目标**：v3.1 五项硬指标全绿 + Epic 1 骨牌推进
+- **评估结果**：**5/5 硬指标 PASS**（ACL 除外），Epic 1 adapter 层全落；但**测试层 1 failed** 暴露验收洞
+- **分析原因**：PUA 顆粒度 + 硬驗收把骨牌一个个打倒；但验收只 cover happy path，failure path 无测 → driver 层假绿
+- **提炼 SOP**：**「硬验收必须 cover 失败路径 ≥ 3」**—— list `happy / network exc / empty body` 三条最少
+
+### 硬指标（v3.2 下轮审查）
+
+1. `pytest tests -q 2>&1 \| tail -1 \| grep -c "0 failed\|passed$"` ≥ 1 AND **没有 `failed`**（P0.O）
+2. `find kb_data/corpus -name '*.md' \| wc -l` ≥ 9（P0.P；真抓取）
+3. `spectra status --change 02-open-notebook-fork 2>&1 \| grep -c "✓"` ≥ 2（P0.Q）
+4. `icacls .git 2>&1 \| grep -c DENY` == 0（P0.D；Admin）
+5. `git log --oneline -5 \| grep -c "auto-commit:"` == 0（P0.L-Admin）
+
+**ACL-free 三项（1 / 2 / 3）任一不过 = 3.25**。v3.2 核心：**假绿比不做更危险，验收要 cover failure**。
+
+> [PUA生效 🔥] **底層邏輯**：Epic 1 五骨牌连环是 auto-engineer 单轮执行力的天花板证据——P0.I SOP 复制 5 次成功，证明「顆粒度 + 硬驗收」抓手是真顶层设计。但 1 failed 暴露了「happy path 测试 = 假绿温床」的新盾牌。顆粒度要再下沉：从「函数签章」到「失败路径覆盖」。因为信任所以简单：下轮 `0 failed` 不达标 = 3.25，因为连续两轮（v3.1 首次爆 + v3.2 若不修）就是拖延。
+
+---
+
 ## 反思 [2026-04-20 13:34]
 
 ### 近期成果
@@ -941,5 +1081,78 @@ Epic 排序建議：
 5. `icacls .git 2>&1 | grep -c DENY` == 0 — P0.D
 
 > [PUA生效 🔥] **底層邏輯**：13:34 反思寫得很準，但**沒落地 = 價值歸零**。反思閉環三段式：**發現 → 文件 → 落 program**。我今輪的增量動作就是**把 v3.2 真正 commit 到 program.md**，不再只是紙上談兵。顆粒度升到「反思必須帶 program.md edit」；抓手升到「append engineer-log + edit program.md」原子操作。因為信任所以簡單——但**信任只給動作，不給計畫**。
+
+---
+
+---
+## 反思 [2026-04-20 13:50] — 技術主管第十三輪深度回顧（v3.3 候選）
+
+### 近期成果（v3.1 → v3.2 → 本輪）
+- **測試全綠**：`pytest tests/ -q` = **3575 passed / 0 failed** / 1363 warnings / 438.55s（v3.2 紀錄 1 failed 已自行收斂；P0.O 的假綠測試現已通過，需驗證是否仍是倖存者偏差）
+- **Epic 1 五 adapter 全閉**：MojLaw / DataGovTw / ExecutiveYuanRss / MohwRss / FdaApi 各有 fixture + unit test；CLI `gov-ai sources ingest --source <X>` 已接通（25+ adapter tests passed）
+- **Ingest pipeline live**：`src/sources/ingest.py` 151 行，`PublicGovDoc` → kb_data/raw + corpus 落盤，去重邏輯 OK
+- **openspec/01-real-sources**：proposal + specs/sources/spec.md + tasks.md（10/10 全 [x]）三件齊備；P0.R 實際已被 AUTO-RESCUE 9baa3e8 涵蓋
+- **AUTO-RESCUE 機制穩定**：9 條 PASS commit 救援，避開 ACL，Admin 側自動接力
+
+### 發現的問題（按嚴重度排序）
+
+#### 🔴 誠信級
+1. **commit message 格式違規連 18 條**：HEAD~18..HEAD 全是 `auto-commit: auto-engineer checkpoint (...)`；P0.E 改了 `.claude/ralph-loop.local.md` 規則，P0.L 已記真相為 Admin 側腳本，但 **沒人去 Admin 側改腳本** → 連 11 輪 conventional commit rule 形同虛設
+2. **adapter 契約不對稱（P0.P 真）**：`grep -l RequestException src/sources/*.py` 只命中 `mojlaw.py` + `ingest.py` 共 2 個；`datagovtw / executive_yuan_rss / mohw_rss / fda_api` 4 個 adapter offline / proxy / rate-limit 全裸爆。生產環境跑就 5 條炸 4 條
+3. **02-open-notebook-fork 鏈斷**：`openspec/changes/02-open-notebook-fork/` 只有 `proposal.md`；無 `specs/`、無 `tasks.md`，已斷 4+ 輪。Epic 2 任何任務無 spec 依據
+
+#### 🟠 結構級
+4. **engineer-log.md 失控**：當前 1085 行 / ~80KB；超出 Read 工具 25k token 限制需 offset/limit 才能看；應每月歸檔到 `docs/archive/engineer-log-YYYYMM.md`
+5. **root 殘檔 11+ 份**：8 份 `.ps1` 測試腳本（debug_template / run_all_tests / start_n8n_system / test_advanced_template / test_citation / test_multi_agent_v2 / test_multi_agent_v2_unit / test_phase3 / test_phase4_retry / test_qa）+ 5 份 `.docx`（test_citation / test_output / test_qa_report / 春節垃圾清運公告 / 環保志工表揚）→ root hygiene 失守
+6. **`docs/architecture.md` 不存在**：`program.md:102` 寫「架構變動先更新 docs/architecture.md」但檔案根本沒建。Epic 7 規格驅動的承諾跳票
+7. **無 `src/sources/_common.py`**：5 adapter 各 150-240 行，UA 設定 / throttle / RequestException 處理重複代碼預估 30+ 行 × 5
+8. **無 integration test 子目錄**：5 adapter 都是 `unittest.mock.patch` 替網路層；沒有任何「真網路煙霧測試」、「rate-limit 觸發驗收」、「robots.txt 解析驗證」
+9. **狀態檔散 root**：`.auto-engineer.state.json` / `.engineer-loop.state.json.bak-20260419-234144` / `.gov-ai-history.json` / `.autoresearch_memory.json` 4 份在 root（T9.4.b 未做）
+
+#### 🟡 質量級
+10. **Pydantic v2 deprecation 1363 warnings**：T8.2 未進場；chromadb types.py 是大宗來源
+11. **`src/cli/sources_cmd.py` 48 行只接通 1 個 ingest 入口**：但 `gov-ai sources` group 沒有 `list`、`status`、`stats` 指令；Epic 1 T1.6 「3 來源各 ≥50 baseline」沒有 reporting 抓手
+12. **`src/sources/ingest.py` adapter registry 用 dict 硬編碼**：5 adapter 顯式列表，新增 adapter 需改 ingest.py（違反 OCP）。應改為 `BaseSourceAdapter.__subclasses__()` 或 entry_points
+13. **legal/合規閘道缺位**：robots.txt 檢查、`User-Agent: GovAI-Agent/1.0 ...` 散落於各 adapter；無集中 compliance gate
+
+#### 🟢 流程級
+14. **「文案驅動開發」第 5 層藉口**：v3.2 指出但本輪未驗證 P0.O 的測試是「真修了」還是「測試 mock 改弱了」→ 需 git diff 驗
+15. **README.md 5 KB 描述沒提 Epic 1-2 真實資料源 / fork 路線**：對外文件落後 2 個 sprint
+
+### 建議的優先調整（program.md 重排）
+
+#### 即升 P0（本輪緊急）
+- **P0.S（新·誠信血債）**：Admin 側 AUTO-RESCUE 腳本改 commit message 為 `chore(rescue): restore working tree (<ISO8601>)`；驗：`git log -10 | grep -c "auto-commit:"` == 0
+- **P0.P（保留升首，已存在）**：抽 `src/sources/_common.py` 統一 4 adapter fallback；驗：`grep -l "RequestException" src/sources/*.py | wc -l` ≥ 5
+- **P0.Q（保留，已存在）**：`02-open-notebook-fork` specs + tasks 補齊
+- **P0.O（驗證·非修復）**：本輪 `pytest test_main_mojlaw_cli_falls_back_to_local_fixtures` 已通過 → 改為「git diff 驗證 mock 是否真強制 ConnectionError」；若驗失敗→重開 P0.O 修復
+
+#### 降級 / 關閉
+- **P0.R**：openspec/01-real-sources/tasks.md 已全 [x]（AUTO-RESCUE 9baa3e8 已落版），程式 md 中 P0.R 應標 [x] 並關閉
+- **P0.J**：root *.md 已收斂到 4 份，AUTO-RESCUE 已落版 → 已 [x]，正式關
+- **P0.L**：文件已落 `docs/auto-commit-source.md` → [x]；但「Admin 側修腳本」拆出來成 P0.S
+
+#### 新增結構級
+- **P1.5（新）**：`docs/architecture.md` 從零建第一版（Epic 1 / Epic 2 / Epic 3 三層 + 資料流）
+- **P1.6（新）**：engineer-log 月度歸檔 → `docs/archive/engineer-log-202604.md`，主檔僅留近 7 天
+- **T9.5（新）**：root 11 份 `.ps1` + 5 份 `.docx` 殘檔歸位（→ `tests/fixtures/legacy/` 或 `docs/archive/legacy-scripts/`）
+- **T1.11（新 Epic 1）**：`gov-ai sources status / stats` CLI 指令，提供「各 adapter ingested doc count / last_crawl」
+- **T1.12（新 Epic 1）**：integration tests `tests/integration/test_sources_smoke.py` — 真網路 1 doc/adapter 煙霧測試（rate-limit 守 ≥2s）
+
+### 下一步行動（最重要 3 件）
+
+1. **P0.S — Admin 腳本 conventional commit 修正**：今晚必修。連 18 條 `auto-commit:` checkpoint 是誠信級漏洞；修法為 Admin session 腳本（推測在 `~/.claude/` 或 OS 排程）改 commit message 模板
+2. **P0.P — 4 adapter fallback 對稱**：抽 `src/sources/_common.py`（throttle / UA / `RequestException → fixture fallback` helper），4 adapter 改用，補 4 個 `test_<adapter>_offline_fallback.py`。執行成本 1.5h
+3. **P0.Q — 02-open-notebook-fork specs/fork/spec.md + tasks.md**：複製 P0.K SOP，1h 內可閉。Epic 2 整條鏈卡這
+
+### 補充：v3.2 檢核
+- `pytest tests/test_sources_ingest.py -q` 全綠 ✅（5 passed）
+- `pytest tests/ -q` FAIL == 0 ✅
+- `grep -l "RequestException" src/sources/*.py | wc -l` = **2** ❌（目標 ≥ 5）
+- 02-open-notebook-fork specs + tasks ❌（未建）
+- `grep -c "\[ \]" openspec/changes/01-real-sources/tasks.md` = 0 ✅
+- `icacls .git 2>&1 | grep -c DENY` = **2** ❌（連 11 輪等 Admin）
+
+**v3.2 六硬指標 3/6 PASS**；P0.S（commit 誠信）+ P0.P（adapter 對稱）+ P0.Q（spec 接口）為 v3.3 三大主軸。
 
 ---

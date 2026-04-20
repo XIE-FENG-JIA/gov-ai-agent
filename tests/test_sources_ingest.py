@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
+import requests
 import yaml
 
 from src.core.models import PublicGovDoc
@@ -102,7 +104,11 @@ def test_build_argument_parser_includes_rss_and_api_sources() -> None:
 
 
 def test_main_mojlaw_cli_falls_back_to_local_fixtures(tmp_path: Path, capsys) -> None:
-    exit_code = main(["--source", "mojlaw", "--limit", "3", "--base-dir", str(tmp_path)])
+    with patch(
+        "src.sources.mojlaw.requests.Session.get",
+        side_effect=requests.ConnectionError("offline for fixture fallback"),
+    ):
+        exit_code = main(["--source", "mojlaw", "--limit", "3", "--base-dir", str(tmp_path)])
 
     captured = capsys.readouterr()
     assert exit_code == 0

@@ -103,7 +103,7 @@ class MojLawAdapter(BaseSourceAdapter):
         try:
             response = self._request_json()
             laws = self._extract_laws_from_response(response.content)
-        except requests.RequestException as exc:
+        except (requests.RequestException, ValueError, TypeError) as exc:
             laws = self._load_fixture_catalog(exc)
         self._law_cache = {
             str(law.get("PCode", "")).strip(): law
