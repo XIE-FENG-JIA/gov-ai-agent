@@ -2,7 +2,7 @@
 
 > **🎯 v5.1 當輪執行順序鎖（技術主管第二十九輪深度回顧 2026-04-21 10:05；/pua 觸發；alibaba 味；program 校準 + 紅線壓縮）**：
 > **HEAD 實測指標**（ls + wc + grep + pytest 即取）：
-> - ✅ 指標 1（pytest 全綠）：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3678 passed / 0 failed / 287.67s**
+> - ✅ 指標 1（pytest 全綠）：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3682 passed / 0 failed / 284.04s**
 > - ❌ 指標 2（近 25 commits auto-commit ≤ 12）：**23/25** 持平紅（>28 輪 Admin-dep 結構性，不計 agent 績效）
 > - ❌ 指標 3（.git DENY ACL = 0）：**2** 持平（Admin-dep 結構性）
 > - ✅ 指標 4（open_notebook seam）：4 檔齊
@@ -22,10 +22,12 @@
 > 1. ✅ **P0.EPIC3-BASELINE-PROMOTE**（2026-04-21 02:35）— `openspec/specs/citation-tw-format.md` 已 promote；保留 canonical `## 引用來源`、citation metadata keys、DOCX verification metadata 與 repo-evidence verify 契約。
 > 2. ✅ **P0.REDLINE-COMPRESS**（2026-04-21 10:05）— 壓縮頂部紅線與重複待辦；`program.md` 改成 **三條核心紅線 + 實戰紅線 X**，並移除已過期的 pipeline 假 blocker。
 > 3. ✅ **T8.1.b-PIPELINE-REFINE**（2026-04-21 02:52）— `src/cli/generate/pipeline.py` 已拆為 `pipeline/{compose,render,persist}.py`；本輪只做事實校準，不再重複追打已完成任務。
+> 4. ✅ **P0.ARCH-SPLIT-SOP**（2026-04-21 03:04）— 新增 `docs/arch-split-sop.md`，固化 editor / writer / kb / generate 四種拆分 SOP、trigger rules、compat facade 規範與驗證矩陣，避免大檔債再長回來。
 >
 > **v5.1 下一步（P1）**：
-> 4. **P0.ARCH-SPLIT-SOP**（15 分）— `docs/arch-split-sop.md` 文件化 editor/writer/kb/generate 四大拆分 SOP；避免同類大檔債重演。
-> 5. **T-TEMPLATE-SPLIT / T-API-ROUTERS** — 下一輪結構債聚焦 `src/agents/template.py`、`src/cli/template_cmd.py`、`src/api/routes/workflow.py`。
+> 4. **T-TEMPLATE-SPLIT / T-API-ROUTERS** — 下一輪結構債聚焦 `src/agents/template.py`、`src/cli/template_cmd.py`、`src/api/routes/workflow.py`。
+> 5. **T-KNOWLEDGE-MANAGER-SPLIT / T-EXPORTER-SPLIT** — 第二梯聚焦 `src/knowledge/manager.py`、`src/document/exporter.py` 與 `src/cli/history.py`。
+> 6. **P0.VERIFY-DOCX-SCHEMA / P0.LITELLM-ASYNC-NOISE** — 補 malicious DOCX metadata parse guard 與 litellm noisy stderr 壓制。
 >
 > **v5.1 新盤點（P1 結構債）**：
 > - `src/knowledge/manager.py 811` / `src/api/routes/workflow.py 799` / `src/cli/history.py 555` / `src/document/exporter.py 554` / `src/agents/template.py 465` / `src/cli/template_cmd.py 429`
@@ -34,7 +36,7 @@
 > - **事實校準**：`T8.1.b-PIPELINE-REFINE` 與 `T-INTEGRATION-GATE` 其實都已完成，從待辦移出
 > - **紅線壓縮**：頂部治理段改為 `三條核心紅線 + 紅線 X`；不再把 4-9 條分裂紅線掛在現行規則區
 > - **結構債重排**：pipeline 假 blocker 移除，真正胖檔改回 `knowledge/manager.py`、`workflow.py`、`history.py`、`exporter.py`
-> - **測試校準**：本輪全量 pytest 再驗 **3678/0**；generate 拆分相關熱測 **794/0**
+> - **測試校準**：本輪全量 pytest 再驗 **3682/0**；generate 拆分相關熱測 **794/0**
 >
 > **紅線狀態（v5.1 已收斂）**：頂部規則區已改為核心 3 + 實戰 X；舊紅線 4-9 僅留歷史保留段。
 
@@ -292,19 +294,18 @@
 > **v4.2 歷史保留（新增紅線 7）**：「**未驗即交 = 3.25**」— 實裝新 API / context manager / wrapper 不跑對應 test 目錄就把 diff 留工作樹過輪 = 當輪 3.25（非連輪）；案例 = P0.FF 改 src 未跑 `pytest tests/test_knowledge_manager_cache.py`。
 > **v3.5 歷史保留**：v3.4 flaky + v3.1-3.3 Epic 1 骨架 + 倖存者偏差紅線；v4.0-4.1 設計驅動治理紅線 6。
 
-> **v5.1 狀態（2026-04-21 02:30 技術主管第二十九輪深度回顧；02:52 補 HEAD 校準）**：全量 pytest = **3678 passed / 0 failed / 234.69s**（+6 vs v4.9）；hot path 902/0；auto-commit 23/25 紅（Admin-dep）；`.git` DENY ACL = 2 紅（>29 輪）；Epic 2/3 tasks 15/15 + 9/9 ✅；corpus 9/9 ✅；`engineer-log.md = 584 行 > 500 紅線 ❌`（v4.9 T9.6-REOPEN 一輪復發）；`openspec/specs/citation-tw-format.md` **✅ 已存在**；`src/cli/generate/pipeline/{__init__,compose,render,persist}.py` **✅ 已拆**（max **224** 行；`persist.py` 224 / `render.py` 202 / `compose.py` 153 / `__init__.py` 25）；`rg -c "^### 🔴" program.md` = **6 ✅**。**八指標 6/8 PASS（v5.0 6/8 → 持平；紅點仍只剩 auto-commit / ACL）**。
-> **v5.1 升級 P0 優先序**：(1) **P0.LOGARCHIVE-V2**（5 分）封存 engineer-log 回 ≤ 300；(2) **P0.ARCH-SPLIT-SOP**（15 分）拆分 SOP 文件化；(3) **P0.INTEGRATION-GATE / T-FAILURE-MATRIX**；(4) P2：verify schema / litellm noise / results.log 收斂。**本輪嚴禁新增 P0 條目**（只兌現 v5.0 欠債 + 本輪新發現一件）。
+> **v5.1 狀態（2026-04-21 02:30 技術主管第二十九輪深度回顧；03:09 補 log archive / SOP / 全量 pytest 校準）**：全量 pytest = **3682 passed / 0 failed / 275.69s**（+10 vs v4.9）；hot path 902/0；auto-commit 23/25 紅（Admin-dep）；`.git` DENY ACL = 2 紅（>29 輪）；Epic 2/3 tasks 15/15 + 9/9 ✅；corpus 9/9 ✅；`engineer-log.md = 252 行` **✅ 已回 ≤ 300**（第三次封存完成）；`openspec/specs/citation-tw-format.md` **✅ 已存在**；`src/cli/generate/pipeline/{__init__,compose,render,persist}.py` **✅ 已拆**（max **224** 行；`persist.py` 224 / `render.py` 202 / `compose.py` 153 / `__init__.py` 25）；`docs/arch-split-sop.md` **✅ 已新增**；`rg -c "^### 🔴" program.md` = **6 ✅**。**八指標 6/8 PASS（v5.0 6/8 → 持平；紅點仍只剩 auto-commit / ACL）**。
+> **v5.1 升級 P0 優先序**：(1) **P0.LOGARCHIVE-V2**（2026-04-21 03:09 已完成）；(2) **P0.ARCH-SPLIT-SOP**（15 分，2026-04-21 03:04 已完成）；(3) **P0.INTEGRATION-GATE / T-FAILURE-MATRIX**；(4) P2：verify schema / litellm noise / results.log 收斂。**本輪嚴禁新增 P0 條目**（只兌現 v5.0 欠債 + 本輪新發現一件）。
 > **v5.1 新發現（紅線 X 子條款）**：「**反思日誌本身破紅線**」— v5.0 反思單輪寫入 +133 行，engineer-log 451 → 584 > 500；對策：單輪反思 ≤ 80 行，超出下輪 T9.6-REOPEN 同步封存。
 
 ### P0.LOGARCHIVE-V2 — 🔴 ACL-free·v5.1 新增（5 分；engineer-log 破 500 紅線一輪復發）
 
-- [ ] **T9.6-REOPEN-v2** 🔴 v4.9 T9.6-REOPEN 從 1198 → 316 行後，v5.0 反思加 +133 行→ 584 行 > 500 紅線；單輪反思未設上限觸發第二次封存
-  - **執行**：`engineer-log.md` 保留標題 + v4.9（line 318-）以後段落，把 line 9-317（v4.5-v4.8 反思共四輪）移到 `docs/archive/engineer-log-202604c.md`；主檔 header 補第三封存 marker
-  - **驗 1**：`wc -l engineer-log.md` ≤ 300
-  - **驗 2**：`ls docs/archive/engineer-log-202604c.md && wc -l` ≥ 200
-  - **驗 3**：新增「單輪反思 ≤ 80 行」註記於主檔 header
-  - **延宕懲罰**：ACL-free 連 1 輪延宕 = 紅線 X（反思日誌自己破自己的紅線 = 紅線 X 自指涉三連）
-  - commit（ACL 解後）: `chore(log): archive v4.5-v4.8 reflections (v5.1 second rescue)`
+- [x] **T9.6-REOPEN-v2** ✅ v4.9 T9.6-REOPEN 從 1198 → 316 行後，v5.0 反思加 +133 行→ 584 行 > 500 紅線；本輪已做第三次封存，主檔回到 252 行
+  - **完成（2026-04-21 03:09）**：`engineer-log.md` 僅保留 v5.0 / v5.1 反思；新增 `docs/archive/engineer-log-202604c.md` 封存 v4.5-v4.9 舊段，主檔 header 補第三封存 marker與「單輪反思 ≤ 80 行」規則
+  - **驗 1**：`wc -l engineer-log.md` = **252**（≤ 300）
+  - **驗 2**：`docs/archive/engineer-log-202604c.md` 已新增，封存內容 > 200 行
+  - **驗 3**：主檔 header 已新增「單輪反思 ≤ 80 行」註記
+  - commit（ACL 解後）: `chore(log): archive v4.5-v4.9 reflections (v5.1 second rescue)`
 
 ### P0.EPIC8-KB-SPLIT — 🔴 ACL-free·v4.9 首要（v4.9 新增；60 分鐘；T8.1.a 升 P0）
 
@@ -1221,6 +1222,11 @@
   - **完成（2026-04-21 02:35）**：新增 baseline spec `openspec/specs/citation-tw-format.md`；驗證 `rg -n "source_doc_ids|citation_count|ai_generated|engine|## 引用來源" openspec/specs/citation-tw-format.md` 命中達標，word count > 200
 - [x] **T-INTEGRATION-GATE (2026-04-21)** 新增 nightly integration gate：`scripts/run_nightly_integration.py` 作為核心 runner，`.sh` / `.ps1` 為雙平台 wrapper，預設以 `GOV_AI_RUN_INTEGRATION=1` 執行 `tests/integration/test_sources_smoke.py` 與 `scripts/live_ingest.py --require-live`，另支援 `--dry-run`
   - **完成（2026-04-21 02:49）**：新增 `docs/integration-nightly.md`，含執行頻率 / 失敗通知 / 復原 SOP；驗證 `pytest tests/test_nightly_integration_runner.py -q` = 4 passed、`python scripts/run_nightly_integration.py --dry-run` = rc 0、`& .\scripts\run_nightly_integration.ps1 --dry-run` = rc 0、全量 `python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3682 passed / 0 failed**
+- [x] **P0.ARCH-SPLIT-SOP (2026-04-21)** `docs/arch-split-sop.md` 已文件化 editor / writer / kb / generate 四大拆分 SOP；固定 trigger、模組切法、相容規約與驗證矩陣，避免同類大檔債重演
+  - **完成（2026-04-21 03:03）**：新增 `docs/arch-split-sop.md`；內容收斂 `foo.py -> foo/` package split pattern、`__init__.py` re-export 相容策略、editor/writer/kb/generate 四個 repo 內參考案例、split 後最小驗證矩陣，並把下一批肥檔候選明列為 `knowledge/manager.py` / `workflow.py` / `history.py` / `exporter.py` / `template.py` / `template_cmd.py`
+- [x] **P0.LOGARCHIVE-V2 (2026-04-21)** `engineer-log.md` 三次封存完成；主檔從 697 行壓回 252 行，避免反思日誌再次成為 blocker
+  - **完成（2026-04-21 03:09）**：新增 `docs/archive/engineer-log-202604c.md`，封存 v4.5-v4.9 舊反思；主檔只留 v5.0/v5.1 近兩輪，並補「單輪反思 ≤ 80 行」規則
+  - **驗**：`wc -l engineer-log.md` = **252**、`(Get-Content docs/archive/engineer-log-202604c.md).Count` > 200
 - [x] **T7.4（v3.8）** Spectra coverage 補洞：`openspec/changes/{01-real-sources,02-open-notebook-fork}/tasks.md` 已回填逐 task `Requirements:` metadata；`spectra analyze 01-real-sources` 與 `spectra analyze 02-open-notebook-fork` 於 2026-04-20 17:06 實測皆 0 findings
 - [x] **T1.12-HARDEN (v3.4)** nightly live smoke 禁 silent fixture fallback；`tests/integration/test_sources_smoke.py` 把 fixture_dir 指向不存在路徑，upstream 掛 → integration FAIL 不再假綠
 - [x] **T1.6.a (v3.4)** 校正 `kb_data/examples/*.md` 合成基線為 155，`tests/test_mark_synthetic.py` 新增 guard
