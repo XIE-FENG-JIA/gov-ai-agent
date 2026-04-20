@@ -933,7 +933,8 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ## Epic 3 — 溯源（open-notebook citation + 台灣公文格式）
 
-- [ ] **T3.1** `src/core/citation.py` 擴充：ask_service inline `[n]` + refs → 台灣公文格式
+- [x] **T3.1** repo-owned citation formatter seam：`src/document/citation_formatter.py` 統一組裝 citation heading / lines / block，`src/agents/writer/cite.py` 改委派 seam
+  - **完成（2026-04-20 21:37）**：新增 `CitationFormatter` 與 canonical heading 常數，讓 reviewed evidence → reference block 的組裝不再散落在 writer mixin；驗證 `pytest tests/test_citation_level.py tests/test_citation_quality.py -q` = 48 passed，`pytest tests/test_writer_agent.py tests/test_agents.py -q` = 58 passed
 - [ ] **T3.2** `src/core/exporter.py` docx 擴充：Custom Properties（`source_doc_ids` / `citation_count` / `ai_generated: true` / `engine: openrouter/elephant-alpha`）+ 文末引用段
 - [ ] **T3.3** 生成 pipeline 強制 citation（`--no-citation` 才能關）
 - [ ] **T3.4** `gov-ai verify <docx>` 讀 Custom Properties 比對 kb
@@ -1026,15 +1027,15 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - commit（ACL 解後）: `chore(repo): archive legacy ps1/docx from root to docs/archive + tests/fixtures`
 
 - [x] **T9.6（v3.7 NEW；v3.8 本輪必落，連 2 輪延宕 = 3.25）✅ ACL-free** engineer-log.md 月度封存（已完成）
-- [ ] **T9.6-REOPEN（v4.3 新增；10 分鐘）** engineer-log.md 再膨脹至 **727 行**（>500 紅線）；封存第二十輪前歷史到 `docs/archive/engineer-log-202604b.md`，主檔只留最近 3 輪反思與 v4.2/v4.3 紅線段
+- [x] **T9.6-REOPEN（v4.3 新增；10 分鐘）** engineer-log.md 再膨脹至 **727 行**（>500 紅線）；封存第二十輪前歷史到 `docs/archive/engineer-log-202604b.md`，主檔只留最近 3 輪反思與 v4.2/v4.3 紅線段
   - **背景**：engineer-log.md 曾達 1158+ 行 / ~95KB，Read 需 offset + 多次；v3.3 列 P1.6 未做
   - 產出：
     - `docs/archive/engineer-log-202604a.md`：切 v3.1 以前（行 1-750 左右）反思段封存
     - `engineer-log.md`：主檔僅留 v3.3 以後（近 7 天）
     - 檔頭加 reference marker 指向 archive
-  - **驗**：`wc -l engineer-log.md` ≤ 500 AND `wc -l docs/archive/engineer-log-202604a.md` ≥ 500
-  - commit: `chore(log): archive engineer-log pre-v3.3 reflections to 202604a`
-  - **完成（2026-04-20）**：已產 `docs/archive/engineer-log-202604a.md`（1087 行），主檔 `engineer-log.md` 收斂為 293 行並加上 archive marker
+  - **驗**：`wc -l engineer-log.md` ≤ 500 AND `wc -l docs/archive/engineer-log-202604b.md` ≥ 500
+  - commit: `chore(log): archive engineer-log pre-v4.5 reflections to 202604b`
+  - **完成（2026-04-20 21:40）**：已產 `docs/archive/engineer-log-202604b.md`（1109 行），主檔 `engineer-log.md` 收斂為 316 行並加上雙 archive marker
 
 ---
 
@@ -1143,7 +1144,7 @@ Epic 7 負責建置。建置完成前，program.md 是單一事實來源。
 - `grep -c "\[ \]" openspec/changes/01-real-sources/tasks.md` == 0（目前 0）
 - `grep -c "\[ \]" openspec/changes/02-open-notebook-fork/tasks.md` ≤ 2（T2.8 + T2.9 剩 2 條）
 - `wc -l docs/architecture.md` ≥ 80（目前 273）
-- `wc -l engineer-log.md` ≤ 500（目前 **1198** ❌；T9.6-REOPEN 本輪重開）
+- `wc -l engineer-log.md` ≤ 500（目前 **316** ✅；T9.6-REOPEN 已閉環）
 
 **P0.S 連 >14 輪紅線未解**：conventional commit 規則寫了卻近 20 條 16/20 仍 `auto-commit:` = 誠信級漏洞；v3.8 起 P0.Y（agent 側 audit-only 自救原型）作為 SPIKE，先產 `docs/rescue-commit-plan.md` 記錄所有 AUTO-RESCUE commit 與建議訊息，不動 `.git`，打破「因 ACL 擋所以不動」的第八層藉口。
 **P0.T 承諾仍懸空 9+ 輪（v2.8 起）**：v3.5 拆 SPIKE + LIVE；v3.7 SPIKE 已落，LIVE 等 Admin 解 egress。

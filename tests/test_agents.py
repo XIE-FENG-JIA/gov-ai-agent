@@ -163,6 +163,52 @@ def test_template_engine_apply_template():
     assert "測試主旨" in result
 
 
+def test_template_engine_apply_template_uses_canonical_reference_heading():
+    """TemplateEngine 應將參考來源統一成 canonical heading。"""
+    engine = TemplateEngine()
+    req = PublicDocRequirement(
+        doc_type="函",
+        sender="測試機關",
+        receiver="測試單位",
+        subject="測試主旨",
+    )
+    sections = {
+        "subject": "測試主旨",
+        "explanation": "依據行政程序法辦理[^1]。",
+        "provisions": "",
+        "attachments": "",
+        "references": "[^1]: [Level A] 行政程序法 | URL: https://law.moj.gov.tw/a",
+    }
+
+    result = engine.apply_template(req, sections)
+
+    assert "### 參考來源 (AI 引用追蹤)" in result
+    assert "**參考來源**：" not in result
+
+
+def test_template_engine_apply_template_normalizes_legacy_reference_heading():
+    """舊格式 heading 輸入應被正規化，不得重複輸出。"""
+    engine = TemplateEngine()
+    req = PublicDocRequirement(
+        doc_type="函",
+        sender="測試機關",
+        receiver="測試單位",
+        subject="測試主旨",
+    )
+    sections = {
+        "subject": "測試主旨",
+        "explanation": "依據行政程序法辦理[^1]。",
+        "provisions": "",
+        "attachments": "",
+        "references": "**參考來源**：\n[^1]: [Level A] 行政程序法",
+    }
+
+    result = engine.apply_template(req, sections)
+
+    assert result.count("### 參考來源 (AI 引用追蹤)") == 1
+    assert "**參考來源**：" not in result
+
+
 def test_clean_markdown_artifacts():
     """Test markdown artifact removal."""
     text = "```json\n{}\n```\n# Title\n**bold** _italic_ [link](http://x)"

@@ -7,13 +7,14 @@
   Validation: `spectra analyze 03-citation-tw-format`
   Commit: `docs(spec): bootstrap citation format change`
 
-- [ ] **T3.1** Add a repo-owned citation formatter seam that can assemble the
+- [x] **T3.1** Add a repo-owned citation formatter seam that can assemble the
   canonical `## 引用來源` block from reviewed evidence.
   Requirements:
   - Citation output uses one canonical section marker
   - Citation metadata survives across generation and export
   Validation: `pytest tests/test_citation_level.py tests/test_citation_quality.py -q`
   Commit: `feat(citation): add citation formatter seam`
+  - **完成（2026-04-20 21:37）**：新增 `src/document/citation_formatter.py`，把引用段 heading 與 line/block 組裝集中到 repo-owned seam；`src/agents/writer/cite.py` 改為委派此 formatter，保留現行輸出契約並讓後續 markdown / DOCX export 共用同一組 citation 組裝邏輯。驗證 `pytest tests/test_citation_level.py tests/test_citation_quality.py -q` = 48 passed，另 `pytest tests/test_writer_agent.py tests/test_agents.py -q` = 58 passed
 
 - [ ] **T3.2** Wire markdown and DOCX export paths so the same reviewed citation
   payload populates `## 引用來源` and document metadata.

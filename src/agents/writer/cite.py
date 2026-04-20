@@ -1,5 +1,6 @@
 import re
 
+from src.document import CitationFormatter, REFERENCE_SECTION_HEADING
 from src.utils.tw_check import to_traditional
 
 from .rewrite import _PENDING_CITATION_WARNING, _SKELETON_WARNING
@@ -117,48 +118,11 @@ class WriterCitationMixin:
         *,
         preserve_all_sources: bool = False,
     ) -> list[str]:
-        if not sources_list:
-            return []
-
-        used = {int(match) for match in re.findall(r"\[\^(\d+)\](?!:)", draft)}
-        if preserve_all_sources or not used:
-            used = {
-                int(source["index"])
-                for source in sources_list
-                if isinstance(source.get("index"), int)
-            }
-
-        by_index = {
-            int(source["index"]): source
-            for source in sources_list
-            if isinstance(source.get("index"), int)
-        }
-        lines: list[str] = []
-        for idx in sorted(used):
-            source = by_index.get(idx)
-            if source is None:
-                continue
-            title = str(source.get("title", ""))
-            is_meeting_context = (
-                ("會議" in draft or "開會" in draft)
-                and any(keyword in draft for keyword in ("委員會", "會議通知", "開會", "出席"))
-            )
-            if is_meeting_context and not any(
-                keyword in title for keyword in ("會議", "通知", "議程", "委員會")
-            ):
-                title = "會議通知行政範本"
-            lines.append(
-                "[^{i}]: [Level {lvl}] {title}{url}{hash_value}".format(
-                    i=source["index"],
-                    lvl=source["source_level"],
-                    title=title,
-                    url=f" | URL: {source['source_url']}" if source.get("source_url") else "",
-                    hash_value=(
-                        f" | Hash: {source['content_hash']}" if source.get("content_hash") else ""
-                    ),
-                )
-            )
-        return lines
+        return CitationFormatter.build_reference_lines(
+            draft,
+            sources_list,
+            preserve_all_sources=preserve_all_sources,
+        )
 
     @staticmethod
     def _normalize_agency_terms(draft: str) -> str:
@@ -263,7 +227,7 @@ class WriterCitationMixin:
         if not sources_list and add_skeleton_warning and "骨架模式" not in draft:
             draft = _SKELETON_WARNING + draft
 
-        ref_lines = cls._build_reference_lines(
+        reference_block = CitationFormatter.build_reference_block(
             draft,
             effective_sources,
             preserve_all_sources=(
@@ -272,8 +236,8 @@ class WriterCitationMixin:
                 and not had_existing_basis_sentence
             ),
         )
-        if ref_lines:
-            draft += "\n\n### 參考來源 (AI 引用追蹤)\n" + "\n".join(ref_lines)
+        if reference_block:
+            draft += "\n\n" + reference_block
         if "【待補依據】" in draft:
             draft = _PENDING_CITATION_WARNING + draft
         return draft

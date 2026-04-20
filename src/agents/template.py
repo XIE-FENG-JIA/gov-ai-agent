@@ -5,6 +5,7 @@ from datetime import date
 from jinja2 import Environment, FileSystemLoader
 from src.core.models import PublicDocRequirement
 from src.core.constants import CHINESE_NUMBERS, MAX_CHINESE_NUMBER
+from src.document import REFERENCE_SECTION_HEADING
 
 logger = logging.getLogger(__name__)
 
@@ -154,6 +155,23 @@ def _build_default_doc_number(sender: str, roc_year: int, month: int, day: int) 
     cleaned = re.sub(r"[^\u4e00-\u9fffA-Za-z0-9]", "", sender or "")
     prefix = cleaned[:3] if cleaned else "公文"
     return f"{prefix}字第{roc_year:03d}{month:02d}{day:02d}001號"
+
+
+def _normalize_reference_section(references: str) -> str:
+    """Normalize reference text to the canonical citation heading."""
+    if not references:
+        return ""
+
+    cleaned = references.strip()
+    cleaned = re.sub(
+        r"^(?:###\s*參考來源(?:\s*\(AI 引用追蹤\))?|\*\*參考來源\*\*)\s*：?\s*",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    ).strip()
+    if not cleaned:
+        return ""
+    return f"{REFERENCE_SECTION_HEADING}\n{cleaned}"
 
 
 # ---------------------------------------------------------------------------
@@ -481,8 +499,9 @@ class TemplateEngine:
         doc_type_title = context["doc_type"]
         output = f"{doc_type_title}\n\n{output}"
 
-        if sections.get("references"):
-            output += "\n\n**參考來源**：\n" + sections["references"]
+        reference_block = _normalize_reference_section(sections.get("references") or "")
+        if reference_block:
+            output += "\n\n" + reference_block
 
         return output
 

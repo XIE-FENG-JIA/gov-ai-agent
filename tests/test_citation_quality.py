@@ -9,6 +9,7 @@ import pytest
 from src.core.models import PublicDocRequirement
 from src.agents.writer import WriterAgent
 from src.agents.validators import ValidatorRegistry
+from src.document import CitationFormatter, REFERENCE_SECTION_HEADING
 
 
 # ==================== 測試用 Fixture ====================
@@ -360,3 +361,16 @@ class TestWriterAgentIntegration:
 
         # 應該呼叫了 search_hybrid
         assert mock_kb.search_hybrid.call_count >= 1
+
+
+class TestCitationFormatterQuality:
+    def test_meeting_context_normalizes_reference_title(self):
+        draft = "本次會議通知請準時出席[^1]。"
+        block = CitationFormatter.build_reference_block(
+            draft,
+            [{"index": 1, "title": "函復國家賠償請求案", "source_level": "A"}],
+        )
+
+        assert REFERENCE_SECTION_HEADING in block
+        assert "會議通知行政範本" in block
+        assert "函復國家賠償請求案" not in block

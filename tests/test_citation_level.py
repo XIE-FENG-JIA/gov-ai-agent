@@ -19,6 +19,7 @@ from src.knowledge.fetchers.constants import (
     OPENDATA_DETAIL_URL,
 )
 from src.core.models import Citation
+from src.document import CitationFormatter, REFERENCE_SECTION_HEADING
 
 
 # ==================== 常數與工具 ====================
@@ -413,3 +414,38 @@ class TestAuditorWhitelist:
         from src.agents.validators import validator_registry
         assert hasattr(validator_registry, "check_citation_level")
         assert callable(getattr(validator_registry, "check_citation_level"))
+
+
+class TestCitationFormatter:
+    """Repo-owned citation formatter seam tests."""
+
+    def test_build_reference_block_uses_canonical_heading(self):
+        draft = "依據行政程序法辦理[^1]。"
+        block = CitationFormatter.build_reference_block(
+            draft,
+            [
+                {
+                    "index": 1,
+                    "title": "行政程序法",
+                    "source_level": "A",
+                    "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010004",
+                    "content_hash": "a" * 16,
+                }
+            ],
+        )
+
+        assert block.startswith(REFERENCE_SECTION_HEADING)
+        assert "[^1]: [Level A] 行政程序法" in block
+
+    def test_build_reference_block_prunes_unused_sources(self):
+        draft = "依據行政程序法辦理[^2]。"
+        block = CitationFormatter.build_reference_block(
+            draft,
+            [
+                {"index": 1, "title": "來源一", "source_level": "A"},
+                {"index": 2, "title": "來源二", "source_level": "B"},
+            ],
+        )
+
+        assert "[^1]:" not in block
+        assert "[^2]: [Level B] 來源二" in block
