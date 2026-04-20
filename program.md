@@ -1,19 +1,19 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **版本**：v3.1（2026-04-20 09:30 — 技術主管第十一輪；**P0.I 硬綠（21 tests）**；3552 tests baseline；焦點：Epic 1 第二顆骨牌 + 弱驗收升級）
-> **v3.1 變更**：
-> - **v3.0 成果驗收**：ACL-free 四項 **1/4 PASS**（P0.I 硬通過 `pytest tests/test_mojlaw_adapter.py` 21 passed；P0.J/K/L 本輪零執行）
-> - **新紅線**：**「弱驗收是拖延溫床」——`ls` / `wc -l` 驗收改為 `pytest` / `spectra status` / `python -c "..."` 硬驗**
-> - **藉口升級偵測（第四層）**：v3.0「骨架算完成」破（P0.I 證實可一輪內完成實作）；v3.1 新盾牌 = **「弱驗收任務可拖」**——P0.J mv 檔案、P0.K 寫 spec md、P0.L 寫排查 md，連一輪都不落
-> - **P0 重排**（Epic 1 推進 + 弱驗收升級）：
->   - P0.J（升首，原 #2）：根目錄 4 殘檔 mv + PRD 亂碼（連 2 輪延宕 3.25）
->   - P0.K（原位）：01-real-sources specs/sources/spec.md + tasks.md（spectra `✓ specs + ✓ tasks`）
->   - P0.L（**重寫**）：auto-commit 排查結論 = **不在 repo，源自 AUTO-RESCUE Admin 腳本**；改寫 `docs/auto-commit-source.md` 記錄真相 + Admin 側 SOP
->   - **P0.M（新）**：`DataGovTwAdapter` 實作 — 複製 P0.I 成功 SOP（3 fixture + 21 tests 模式）
->   - **P0.N（新）**：`src/sources/ingest.py` 最小版 — MojLaw 一條龍 raw/corpus 落盤
->   - P0.D（原位）：🛑 ACL；Admin 依賴，連 10 輪
-> - **Epic 1 推進**：P0.I（MojLaw 實作）進「已完成」段；T1.2.b 第一顆 → P0.M；T1.4 → P0.N
-> - **v3.0 歷史**：P0.I 進「已完成」段；commit 待 ACL 解後 AUTO-RESCUE 落版
+> **版本**：v3.2（2026-04-20 13:34 — 技術主管第十二輪；**Epic 1 五 adapter 全綠 + 假綠爆雷**；3574 tests：**1 failed + 3573 passed**；焦點：**假綠擦屁股 + adapter 契約對稱**）
+> **v3.2 變更**：
+> - **v3.1 成果驗收**：ACL-free 四項硬指標 **4/4 PASS**（P0.J/K/L/M 全閉）；Epic 1 T1.2.b 連爆 4 adapter + T1.2.c CLI + P0.N ingest，全部 results.log 有 PASS 證據（#43-68）
+> - **首次爆假綠**：`tests/test_sources_ingest.py::test_main_mojlaw_cli_falls_back_to_local_fixtures` **FAIL**（`ingested=0` 而非 `=3`）。P0.N-HARDEN #53 宣稱的 offline fallback 驗收是**倖存者偏差**——用 `meta_test/ingest_probe_verify_2` 驗（cached 目錄），乾淨 tmp_path 才照妖
+> - **新紅線（v3.2）**：**「倖存者偏差驗證 = 假綠 = 3.25」**——驗收禁依賴 cached 目錄、proxy、機器本機狀態；**pytest isolated tmp_path + mock 網路層 = 唯一硬驗**
+> - **第五層藉口偵測**：v3.1「骨架+弱驗收」破，v3.2 新盾牌 = **「文案驅動開發」**——log 寫「已改為優先真網路、失敗 fallback」，但 `list()` 對「200 空 response」根本不走 fallback
+> - **P0 重排**（假綠擦屁股 + adapter 契約對稱）：
+>   - **P0.O（升首，新·血債）**：硬修 `test_main_mojlaw_cli_falls_back_to_local_fixtures` — `responses`/`mock.patch` 強制 RequestException，fallback 硬走通
+>   - **P0.P（新·對稱）**：抽 `src/sources/_common.py`，4 adapter（datagovtw/executive_yuan_rss/mohw_rss/fda_api）統一 `RequestException → fixture fallback` 模式
+>   - **P0.Q（新·接口）**：`openspec/changes/02-open-notebook-fork/specs/fork/spec.md + tasks.md`（複製 P0.K SOP）
+>   - **P0.R（新·對齊）**：T1.10 同步勾 `openspec/changes/01-real-sources/tasks.md`（working tree 做完但 spec 未對齊）
+>   - P0.D（原位）：🛑 ACL；Admin 依賴，連 11 輪
+> - **Epic 1 推進**：T1.2.a / T1.2.b 全閉（5 adapter）、T1.2.c 閉（CLI）、T1.3 閉、T1.4 閉；剩 T1.6（首次跑 + ≥150 baseline）、T1.6.a（合成基線校正）
+> - **v3.1 歷史**：P0.I/J/K/L/M/N 全進「已完成」段；commit 已由 AUTO-RESCUE 全數落版（hash a7d4c9b/b379823/7a10179/13d8b74/2cc39aa/fb319ef）
 > Auto-engineer 每輪讀此檔，從「待辦」挑第一個未完成任務執行。完成後 `[x]` 勾選、log 追加到 `results.log`。
 
 ---
@@ -114,12 +114,83 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ---
 
-## P0 — 阻斷性回歸（v3.1 重排：Epic 1 推進 + 弱驗收升級）
+## P0 — 阻斷性回歸（v3.2 重排：假綠擦屁股 + adapter 契約對稱）
 
-> **v3.1 狀態**：測試 **3552 passed** / 0 failed / 1363 warnings / 236.84s；工作樹：M 5 檔（P0.I 產物）+ `?? docs/archive/PRD文件.txt` + `?? tests/fixtures/mojlaw/` + `?? tests/test_mojlaw_adapter.py`；`.git` DENY ACL 仍活（連 10 輪）；v3.0 ACL-free 四硬指標 **1/4 PASS**（P0.I 綠、J/K/L 零執行）
-> v3.0 狀態（歷史）：P0.I 閉環（results.log #39/#40），commit 待 AUTO-RESCUE
+> **v3.2 狀態（13:45 第十一輪收尾）**：測試 **3574 collected / 3572 passed / 2 FAILED** / 1363 warnings / 511.60s；工作樹：M `program.md` / M `src/cli/main.py` / `?? src/cli/sources_cmd.py` / `?? tests/test_sources_cli.py`；`.git` DENY ACL 仍活（連 11 輪）；v3.1 ACL-free 四硬指標 **4/4 PASS** + Epic 1 T1.2.b 連爆 5 adapter；**2 failed 血債**：P0.O（sources_ingest fallback 假綠）+ **P0.S（新·staleness flaky 汙染）**
+> v3.1 狀態（歷史）：測試 3552 passed；P0.J/K/L/M/N 全閉；AUTO-RESCUE commit `a7d4c9b`/`b379823`/`7a10179`/`13d8b74`/`2cc39aa`/`fb319ef`
+> v3.0 狀態（歷史）：P0.I 閉環（results.log #39/#40），commit `a7d4c9b` 已落
 > v2.9 狀態（歷史）：P0.E/F/G/H 四項閉環（results.log #30/#32/#34/#37），AUTO-RESCUE commit `5f08772`/`1d1457f`/`3dbf2dc`/`cc1cdf6`
 > v2.8 狀態（歷史）：P0.A/B/C 閉環（results.log #21/#22/#26）
+
+### P0.O — 🔴 血債·首要：硬修 `test_main_mojlaw_cli_falls_back_to_local_fixtures`（v3.2 升首）
+
+- [ ] **P0.O** 🔴 不依賴 ACL：`tests/test_sources_ingest.py::test_main_mojlaw_cli_falls_back_to_local_fixtures` 目前 FAIL（`ingested=0` 而非 `=3`）
+  - **v3.2 血債背景**：P0.N-HARDEN #53 宣稱「優先真網路、失敗 fallback 本地 fixture」；但乾淨 `tmp_path` 執行 `main(['--source', 'mojlaw', ...])` 回 `ingested=0`。根因：`MojLawAdapter.list()` 在離線時**沒觸發 `requests.RequestException`**（可能 requests 層返 empty 200 或 proxy 回空 body），fallback `_load_fixture_catalog` 條件根本不走
+  - **假綠機制**：#53 驗收用 `meta_test/ingest_probe_verify_2` 此 **cached 目錄**，`ingest` 的去重邏輯（corpus_path.exists → skip）遮蔽了 `list()=0` 的事實
+  - 產出：
+    - `src/sources/mojlaw.py`：`list()` 對 RequestException **和** 200+empty response 都走 fallback
+    - `tests/test_sources_ingest.py`：`test_main_mojlaw_cli_falls_back_to_local_fixtures` 用 `responses` 或 `unittest.mock.patch` 強制模擬 ConnectionError，不依賴真實網路
+  - **驗**：`pytest tests/test_sources_ingest.py -q` 全綠（0 failed / 0 skip / 0 xfail）
+  - **驗**：`pytest tests/test_mojlaw_adapter.py tests/test_sources_ingest.py -q` 全綠
+  - **驗**：`python -m src.sources.ingest --source mojlaw --limit 3 --base-dir <空目錄>` 輸出 `ingested=3`（離線也必綠）
+  - **延宕懲罰**：血債類任務連 1 輪延宕 = 3.25 + 績效強三（假綠 > 延宕，誠信級）
+  - commit（ACL 解除後）: `fix(sources): mojlaw fallback triggers on empty response; harden offline ingest test`
+
+### P0.P — ✅ ACL-free·對稱：5 adapter 統一錯誤處理契約（v3.2 新增）
+
+- [ ] **P0.P** ✅ 不依賴 ACL：抽 `src/sources/_common.py` 集中 throttle / UA / `RequestException → fixture fallback`
+  - **v3.2 背景**：v3.1 五 adapter 連爆但錯誤處理**不對稱** — `mojlaw.py` 有 fallback，`datagovtw.py` / `executive_yuan_rss.py` / `mohw_rss.py` / `fda_api.py` 四個 grep 不到同模式 fallback。Offline / rate-limit 時四個 adapter 會裸爆
+  - 產出：
+    - `src/sources/_common.py`：`fetch_with_fallback(session, url, *, fixture_dir)` decorator 或 helper；統一 UA / rate_limit (≥2s) / timeout / `RequestException → fixture fallback`
+    - 4 個 adapter（datagovtw / executive_yuan_rss / mohw_rss / fda_api）改用 `_common` 幫手
+    - 每個 adapter 各補 `test_<adapter>_offline_fallback.py` 案例（mock RequestException）
+  - **驗**：`grep -l "RequestException" src/sources/*.py | wc -l` ≥ 5
+  - **驗**：`pytest tests/test_*_adapter.py -q` 全綠（5 adapter suite ≥ 30 passed）
+  - **驗**：`pytest tests/ -q` FAIL 數 == 0
+  - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
+  - commit（ACL 解除後）: `refactor(sources): unify adapter error handling via _common fallback`
+
+### P0.Q — ✅ ACL-free·接口：02-open-notebook-fork specs + tasks（v3.2 新增）
+
+- [ ] **P0.Q** ✅ 不依賴 ACL：`openspec/changes/02-open-notebook-fork/specs/fork/spec.md + tasks.md`
+  - **v3.2 背景**：v2.9 P0.G 落 proposal（commit `3dbf2dc`）後下游 specs/tasks 空置 3+ 輪；Epic 2 接口斷鏈
+  - 產出：
+    - `openspec/changes/02-open-notebook-fork/specs/fork/spec.md`：定義 `vendor/open-notebook` import 邊界、ask_service 整合契約、回退策略
+    - `openspec/changes/02-open-notebook-fork/tasks.md`：對應 Epic 2 T2.1-T2.9 的可執行拆分（T2.0.b clone、T2.1 study、T2.2 integration-plan、T2.5 API wiring ...）
+  - **驗**：`spectra status --change 02-open-notebook-fork 2>&1 | grep -c "✓"` ≥ 2
+  - **驗**：`wc -l openspec/changes/02-open-notebook-fork/specs/fork/spec.md` ≥ 30
+  - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
+  - commit（ACL 解除後）: `docs(spec): 02-open-notebook-fork add specs/fork + tasks.md`
+
+### P0.R — ✅ ACL-free·對齊：T1.10 同步勾選（v3.2 新增）
+
+- [ ] **P0.R** ✅ 不依賴 ACL：`openspec/changes/01-real-sources/tasks.md:39` 的 T1.10 仍 `[ ]`，但 working tree 已完（results.log #66 T1.2.c 閉、tests/test_sources_cli.py 綠）
+  - 產出：
+    - `openspec/changes/01-real-sources/tasks.md`：T1.10 改 `[x]` 並補驗證行
+  - **驗**：`grep -c "\[ \]" openspec/changes/01-real-sources/tasks.md` == 0
+  - **驗**：`spectra status --change 01-real-sources 2>&1 | grep -c "✓"` ≥ 3
+  - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
+  - commit（ACL 解除後）: `docs(spec): mark T1.10 complete as CLI wiring landed`
+
+### P0.S — 🔴 血債·flaky：`test_staleness.py::test_exactly_at_max_age_not_stale`（v3.2 第十一輪新增）
+
+- [ ] **P0.S** 🔴 不依賴 ACL：全量 `pytest tests -q` 時 FAIL，單跑 `pytest tests/test_staleness.py::TestStalenessInfoProperties::test_exactly_at_max_age_not_stale` PASS — 明確測試汙染
+  - **v3.2 血債背景**：13:45 全量 511s 跑出 **2 failed**；13:34 反思只抓到 P0.O 一個，漏 staleness；這是「只盯自己改的模組」盲區
+  - 根因懸念（需 bisect）：
+    - (a) 前置測試改 `datetime.now()` monkeypatch 沒 teardown
+    - (b) global state（env var / singleton cache）被污染
+    - (c) `max_age` 邊界判斷用 `<=` vs `<` 的浮點 race
+  - 產出：
+    - `pytest tests/ --lf -x -p no:randomly` bisect 出汙染源
+    - 修源頭（fixture teardown 或判斷式）— 禁 xfail / skip 遮醜
+  - **驗**：`pytest tests/ -q` FAIL 數 == 0（當前 2 → 0）
+  - **驗**：`pytest tests/test_staleness.py -q` + 全量 `pytest tests -q` 都綠
+  - **延宕懲罰**：血債類連 1 輪延宕 = 3.25（同 P0.O）
+  - commit（ACL 解除後）: `fix(tests): resolve staleness test pollution from upstream fixture`
+
+---
+
+## P0.歷史 — v3.1 閉環（working-tree PASS，AUTO-RESCUE 已落版）
 
 ### P0.J — ✅ ACL-free·首要：根目錄殘檔歸位 + PRD 亂碼處理（v3.1 升首；連 2 輪延宕 3.25）
 
@@ -336,7 +407,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - Normalized 存 `kb_data/corpus/{adapter}/{doc_id}.md`（YAML frontmatter）
   - CLI: `gov-ai sources ingest --source all --since 2026-01-01`
 - [ ] **T1.6** 首次跑 T1.4，3 來源各 ≥50 份（≥150 baseline）
-- [ ] **T1.6.a** 校正 program.md 合成基線：現場 `kb_data/examples/*.md` **155**（非 156）
+- [x] **T1.6.a** 校正 program.md 合成基線：現場 `kb_data/examples/*.md` **155**（非 156）；`tests/test_mark_synthetic.py` 新增 guard 驗數量與 frontmatter
 
 ---
 
@@ -504,27 +575,28 @@ Epic 7 負責建置。建置完成前，program.md 是單一事實來源。
 
 ---
 
-**版本**：v3.1（2026-04-20 09:30 技術主管第十一輪 / Epic 1 第二顆骨牌 + 弱驗收升級）
+**版本**：v3.2（2026-04-20 13:34 技術主管第十二輪 / 假綠擦屁股 + adapter 契約對稱）
 
-**下一輪重排觸發**（v3.1 五項硬指標，依執行順序）：
-1. `ls *.md | wc -l` ≤ 4 AND `git status --short | grep -c "??"` == 0（P0.J；ACL-free）
-2. `spectra status --change 01-real-sources 2>&1 | grep -c "✓"` ≥ 2（P0.K；ACL-free）
-3. `ls docs/auto-commit-source.md && grep -c "AUTO-RESCUE" docs/auto-commit-source.md` ≥ 1（P0.L 重定義；ACL-free）
-4. `python -c "from src.sources.datagovtw import DataGovTwAdapter; print(len(DataGovTwAdapter().list(limit=3)))"` == 3 AND `pytest tests/test_datagovtw_adapter.py -q` 綠（P0.M；ACL-free）
+**下一輪重排觸發**（v3.2 六項硬指標，依執行順序）：
+1. `pytest tests/test_sources_ingest.py -q` 全綠（0 failed / 0 skip / 0 xfail）AND `pytest tests/ -q | tail -1 | grep -c "failed"` == 0（P0.O；血債）
+2. `grep -l "RequestException" src/sources/*.py | wc -l` ≥ 5 AND `pytest tests/test_*_adapter.py -q` 綠（P0.P；ACL-free）
+3. `spectra status --change 02-open-notebook-fork 2>&1 | grep -c "✓"` ≥ 2 AND `wc -l openspec/changes/02-open-notebook-fork/specs/fork/spec.md` ≥ 30（P0.Q；ACL-free）
+4. `grep -c "\[ \]" openspec/changes/01-real-sources/tasks.md` == 0（P0.R；ACL-free）
 5. `icacls .git 2>&1 | grep -c DENY` == 0（P0.D；Admin）
+6. 全量 `pytest tests/ -q` FAIL 數 == 0（不可回歸，當前 1 failed）
 
-**ACL-free 四項（P0.J / P0.K / P0.L / P0.M）任一不過 = 3.25 + 績效強三**，連 2 輪延宕即觸發。
+**P0.O 是本輪紅線**：假綠不修 = 3.25 + 績效強三，因為**這比延宕更嚴重——是誠信級漏洞**。P0.P/Q/R 沿用 v3.1 規則（ACL-free 連 2 輪延宕 3.25）。
 
-**v3.1 新紅線**：**「弱驗收是拖延溫床」——`ls` / `wc -l` 驗收全部升級為 `pytest` / `spectra status` / `python -c`**。P0.I 證實硬驗收單輪可達，P0.J/K/L 連一輪都不落 = 意願問題。
+**v3.2 新紅線**：**「倖存者偏差驗證 = 假綠 = 3.25」**——驗收禁依賴 cached 目錄 / proxy / 本機狀態；`pytest tmp_path + mock 網路` = 唯一硬驗。P0.N-HARDEN #53 就是反面教材。
 
-> **v3.0 → v3.1 變更**：
-> 1. **v3.0 閉環**：P0.I 硬綠（MojLawAdapter 真實作 + 3 fixture + 21 tests），T1.2.a 實作段閉；commit 待 AUTO-RESCUE
-> 2. **v3.0 未解**：P0.J / P0.K / P0.L 本輪**零執行** — 觸發「連 2 輪延宕 3.25」死線
-> 3. **第四層藉口偵測**：「弱驗收任務可拖」——`ls` / `wc -l` 驗收被當作低優；v3.1 全面升級為 `pytest` / `spectra status` / `python -c`
-> 4. **P0 重排（Epic 1 推進 + 弱驗收硬化）**：
->    - P0.J 升首（連 2 輪延宕 3.25，硬指標改「`git status --short | grep -c "??"` == 0」）
->    - P0.L **重寫**（結論已知：源頭非 repo，改為記錄真相 + Admin SOP）
->    - 新增 P0.M（DataGovTwAdapter，Epic 1 第二顆骨牌，複製 P0.I SOP）
->    - 新增 P0.N（ingest.py 最小版，Epic 1 一條龍）
-> 5. **Epic 1**：T1.2.a 實作段閉；T1.2.b 第一順位 DataGovTw 升 P0.M；T1.3 閉；T1.4 升 P0.N
-> 6. **工作樹現況**：M 5 檔（P0.I 產物）+ `?? docs/archive/PRD文件.txt` + `?? tests/fixtures/mojlaw/` + `?? tests/test_mojlaw_adapter.py`；3552 tests baseline
+> **v3.1 → v3.2 變更**：
+> 1. **v3.1 閉環**：ACL-free 四項硬指標 **4/4 PASS**（P0.J/K/L/M）+ Epic 1 T1.2.b 連爆 5 adapter + T1.2.c CLI + P0.N ingest；AUTO-RESCUE commit 全落
+> 2. **v3.1 爆雷**：`tests/test_sources_ingest.py::test_main_mojlaw_cli_falls_back_to_local_fixtures` **FAIL**（`ingested=0` vs `=3`）；P0.N-HARDEN #53 是倖存者偏差假綠
+> 3. **第五層藉口偵測**：「文案驅動開發」——log 文字描述功能完備，實際執行路徑根本不走；v3.2 盾牌 = `pytest tmp_path + mock`
+> 4. **P0 重排（假綠擦屁股 + 契約對稱）**：
+>    - **P0.O 升首**（血債類，連 1 輪延宕 3.25）：硬修 test_main_mojlaw_cli_falls_back_to_local_fixtures + MojLaw 200+empty fallback
+>    - 新增 **P0.P**（契約對稱）：抽 `src/sources/_common.py`，4 adapter 統一 RequestException → fallback
+>    - 新增 **P0.Q**（接口）：02-open-notebook-fork specs/fork/spec.md + tasks.md
+>    - 新增 **P0.R**（對齊）：T1.10 同步勾選 openspec/01-real-sources/tasks.md
+> 5. **Epic 1**：T1.2.b 5 adapter 全閉 + T1.2.c CLI 閉 + T1.4 ingest 閉；下一塊是 T1.6（跑 ≥150 baseline）
+> 6. **工作樹現況**：M program.md / M src/cli/main.py / ?? src/cli/sources_cmd.py / ?? tests/test_sources_cli.py；3574 tests collected（1 failed + 3573 passed）

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from scripts.mark_synthetic import ensure_synthetic_frontmatter, run
+from scripts.mark_synthetic import DEFAULT_EXAMPLES_DIR, ensure_synthetic_frontmatter, iter_markdown_files, run
 
 
 def test_ensure_synthetic_frontmatter_adds_frontmatter_when_missing():
@@ -64,3 +64,12 @@ def test_run_marks_all_markdown_files_in_directory(tmp_path: Path):
     assert changed == 2
     assert "synthetic: true" in first.read_text(encoding="utf-8")
     assert second.read_text(encoding="utf-8").startswith("---\nsynthetic: true\n---\n")
+
+
+def test_repo_examples_corpus_count_and_flags_are_stable():
+    markdown_files = iter_markdown_files(DEFAULT_EXAMPLES_DIR)
+
+    assert len(markdown_files) == 155
+    for path in markdown_files:
+        text = path.read_text(encoding="utf-8")
+        assert "synthetic: true" in text, f"missing synthetic flag: {path.name}"
