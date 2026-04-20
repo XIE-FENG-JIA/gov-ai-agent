@@ -1,5 +1,35 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
+> **🎯 v4.8 當輪執行順序鎖（技術主管第二十六輪深度回顧 2026-04-20 21:05；/pua 觸發；閉環反思驅動）**：
+> **HEAD 實測指標**（wc + rg + icacls + pytest 即取）：
+> - ✅ 指標 1（pytest 全綠）：hot 58 passed / 14.72s + v4.6 全量 **3660 / 0 / 516.74s**（20:21）維持綠
+> - ❌ 指標 2（近 25 commits auto-commit ≤ 12）：**23/25（92%）**（v4.6/v4.7 header 報 25/25 = **虛報 +2**；實況微破）
+> - ❌ 指標 3（.git DENY ACL = 0）：**2**（連 >24 輪 Admin 依賴；P0.S-REBASE-APPLY v4.7 已正式降 Admin P0.D）
+> - ✅ 指標 4（open_notebook seam 骨架）：4 檔 `__init__ + config + service + stub` 齊
+> - ✅ 指標 5（study.md ≥ 80 行）：持平綠
+> - ✅ 指標 6（smoke ok）：5 passed（19:42 閉環；v4.5 UnboundLocal 已破）
+> - ✅ 指標 7（corpus 9 real / 0 fixture_fallback:true）：`9/9 real + 0 fallback:true`
+> - ✅ 指標 8（editor 拆五）：`editor/{__init__ 215 + flow 304 + segment 99 + refine 234 + merge 158}` = 1010 行齊
+> **v4.8 實測 6/8 PASS**（v4.7 實測 5/8；+1；指標 2 擴窗 25/25 → 實況 23/25 微破）。
+>
+> **本輪三破（連 1 輪不動 = 紅線 X 實錘）**：
+> 1. **T2.9 SurrealDB freeze**（10 分；ACL-free）— 🟢 **Epic 2 收官最後一哩**；`docs/integration-plan.md + openspec/changes/02-open-notebook-fork/specs/fork/spec.md` 補「human review required before SurrealDB / full writer cutover」段；驗 `rg -n "human review|required before SurrealDB|frozen" docs/integration-plan.md openspec/changes/02-open-notebook-fork/specs/fork/spec.md` ≥ 3；破後 Epic 2 首次 **100% 關閉**。
+> 2. **P0.EPIC3-PROPOSAL**（20 分；ACL-free；改 P0.EE 名）— 🔴🔴🔴 **連五輪跳票 = 紅線 5 方案驅動治理三連 3.25 實錘**；`openspec/changes/03-citation-tw-format/proposal.md` 180+ 字 + `tasks.md` 骨架 T3.0-T3.5；驗 `ls openspec/changes/03-citation-tw-format/proposal.md && wc -w` ≥ 180。
+> 3. **P0.WRITER-SPLIT**（60 分；ACL-free）— 🔴🔴 **writer.py 1109 行 = editor 拆分 SOP 第二道擴散失敗**（v4.5 941 → v4.7 1109 = +168）；拆 `src/agents/writer/{__init__, ask_service, rewrite, cite, strategy}.py`；SOP 復用 editor 四檔（flow/segment/refine/merge）；驗 `wc -l src/agents/writer/*.py` 每檔 ≤ 350 + `pytest tests/test_writer*.py -q` 全綠。
+>
+> **本輪二守（P1，連 2 輪延宕 = 3.25）**：
+> 4. **T9.6-REOPEN 強制封存**（10 分）— engineer-log.md **1312 行**（含本輪反思）>> 500 紅線 2.6x；封存第二十五輪前到 `docs/archive/engineer-log-202604b.md`，主檔留 v4.5/v4.6/v4.7/v4.8 四輪。
+> 5. **紅線收斂 9→3 條**（10 分）— v4.5 提議未執行；4/5/6/7/8 合併為「紅線 X：PASS 定義漂移」；保留核心 3 條（真實性 / 改寫 / 可溯源）+ 實戰 3 條（PASS 定義 / 落版誠信 / 顆粒度 1h）。
+>
+> **v4.7 → v4.8 變更摘要**：
+> - **事實勾關**：T2.3 / T2.4 / T2.5 / T2.6 / T2.7 / T2.8 六連勾閉環（Epic 2 14/15 = 93%）；P0.FULL-PYTEST [x] 3660/0（20:21）；P0.HOTFIX-SMOKE [x] 5/0（19:42）
+> - **新增紅線判定**：writer.py 越拆越胖 → P0.WRITER-SPLIT 升 P0 首要第三；Epic 3 proposal 連五輪 0 動 → P0.EPIC3-PROPOSAL 升 P0 首要第二
+> - **header 漂移校準**：v4.6 / v4.7 header 報 25/25 = 情緒性虛報（實測 23/25）；v4.8 開始 header 數字與 HEAD 實測 1:1 對齊
+> - **Epic 2 header 文案校準**：從「收官入口打開」改為「14/15 = 93%；T2.9 為最後一哩」，避免未來式誤導
+> - **降權**：P0.S-REBASE-APPLY 沿用 v4.7 Admin P0.D 依賴定位；不再每輪列 3.25 血債假動作
+>
+> **紅線狀態（v4.8 進行中，下輪落實收斂）**：暫沿 v4.3-v4.7 九條，本輪列任務 5「紅線收斂 9→3」處理；若第二十七輪 header 紅線仍 9 條 = 流程紅線自身漂移。
+
 > **🎯 v4.7 階段性規劃微整（架構師第二十五輪 2026-04-20 20:40；/pua 觸發；規劃純更新·零代碼）**：
 > **HEAD 實測指標**（rg + icacls + wc 即取）：
 > - ✅ 指標 1（pytest 全綠）：v4.6 記 3660/0/516.74s 維持（僅讀程式碼，無新 diff）
