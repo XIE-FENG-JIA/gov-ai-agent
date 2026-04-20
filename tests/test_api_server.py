@@ -2390,6 +2390,20 @@ class TestLifespan:
         api_server._kb = None
 
 
+class TestAppFactory:
+    """app factory 基本契約測試"""
+
+    def test_create_app_preserves_core_mounts(self):
+        """新 app factory 應保留既有 docs、middleware、router 掛載"""
+        from src.api.app import create_app
+
+        app = create_app()
+
+        assert app.title == "公文 AI Agent API"
+        assert any(route.path == "/api/v1/health" for route in app.routes)
+        assert any(route.path == "/ui" for route in app.routes)
+
+
 # ==================== Outer Exception Handler Coverage ====================
 
 class TestOuterExceptionHandlers:
