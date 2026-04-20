@@ -100,6 +100,7 @@ def run_live_ingest(
     ingest_fn = _load_ingest_function()
     results: list[SourceRunResult] = []
     previous_force_live = os.environ.get("GOV_AI_FORCE_LIVE")
+    had_force_live = "GOV_AI_FORCE_LIVE" in os.environ
     if require_live:
         os.environ["GOV_AI_FORCE_LIVE"] = "1"
     try:
@@ -127,7 +128,7 @@ def run_live_ingest(
                         status="PASS",
                         count=len(live_rows),
                         summary=(
-                            f"ingested={len(records)} live_total={len(live_rows)} "
+                            f"live_total={len(live_rows)} newly_ingested={len(records)} "
                             f"fixture_remaining={fixture_remaining} archived={archived_count}"
                         ),
                         records=live_rows,
@@ -147,10 +148,10 @@ def run_live_ingest(
                     )
                 )
     finally:
-        if previous_force_live is None:
-            os.environ.pop("GOV_AI_FORCE_LIVE", None)
-        else:
+        if require_live and had_force_live and previous_force_live not in (None, "1"):
             os.environ["GOV_AI_FORCE_LIVE"] = previous_force_live
+        else:
+            os.environ.pop("GOV_AI_FORCE_LIVE", None)
     return results
 
 
@@ -239,9 +240,14 @@ def _load_ingest_function() -> Any:
     return ingest
 
 
-def _read_record(corpus_path: Path) -> dict[str, Any]:
+def _read_record(corpus_path: Path) -> dict[str, Any] | None:
     text = corpus_path.read_text(encoding="utf-8")
-    _, raw_meta, body = text.split("---\n", 2)
+    if not text.startswith("---\n"):
+        return None
+    parts = text.split("---\n", 2)
+    if len(parts) < 3:
+        return None
+    _, raw_meta, body = parts
     metadata = yaml.safe_load(raw_meta) or {}
     return {
         "path": corpus_path.as_posix(),
@@ -275,6 +281,8 @@ def _read_source_records(*, base_dir: Path, storage_names: list[str]) -> list[di
                 continue
             seen_paths.add(path)
             record = _read_record(path)
+            if record is None:
+                continue
             if record["deprecated"] and record["archived_fixture"]:
                 continue
             rows.append(record)

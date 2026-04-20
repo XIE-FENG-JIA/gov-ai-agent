@@ -51,12 +51,19 @@ def archive_fixture_corpus(
             continue
 
         metadata = _read_metadata(corpus_path)
-        if not metadata.get("fixture_fallback"):
+        if metadata and not metadata.get("fixture_fallback"):
             continue
 
-        corpus_target = archive_root / corpus_path.relative_to(base_dir)
+        corpus_target = _resolve_archive_target(
+            source=corpus_path,
+            target=archive_root / corpus_path.relative_to(base_dir),
+        )
         raw_source = _resolve_raw_path(base_dir=base_dir, raw_snapshot_path=metadata.get("raw_snapshot_path"))
-        raw_target = archive_root / raw_source.relative_to(base_dir) if raw_source and raw_source.exists() else None
+        raw_target = (
+            _resolve_archive_target(source=raw_source, target=archive_root / raw_source.relative_to(base_dir))
+            if raw_source and raw_source.exists()
+            else None
+        )
 
         try:
             _move_within_base(base_dir, corpus_path, corpus_target)
@@ -95,10 +102,9 @@ def _move_within_base(base_dir: Path, source: Path, target: Path) -> None:
 
     target.parent.mkdir(parents=True, exist_ok=True)
     if target.exists():
-        if source.read_bytes() != target.read_bytes():
-            raise FileExistsError(f"archive target already exists with different content: {target}")
-        source.unlink(missing_ok=True)
-        return
+        if source.read_bytes() == target.read_bytes():
+            source.unlink(missing_ok=True)
+            return
     shutil.move(str(source), str(target))
 
 
@@ -114,6 +120,20 @@ def _copy_within_base(base_dir: Path, source: Path, target: Path) -> None:
     if target.exists() and source.read_bytes() == target.read_bytes():
         return
     shutil.copy2(str(source), str(target))
+
+
+def _resolve_archive_target(*, source: Path, target: Path) -> Path:
+    if not target.exists():
+        return target
+    if source.read_bytes() == target.read_bytes():
+        return target
+
+    candidate = target
+    index = 1
+    while candidate.exists():
+        candidate = target.with_name(f"{target.stem}.dup{index}{target.suffix}")
+        index += 1
+    return candidate
 
 
 def _read_metadata(corpus_path: Path) -> dict[str, object]:

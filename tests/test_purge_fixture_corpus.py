@@ -63,6 +63,50 @@ def test_main_prints_archive_summary(tmp_path: Path, capsys) -> None:
     assert "fixture_20260420" in captured.out
 
 
+def test_archive_fixture_corpus_moves_malformed_probe(tmp_path: Path) -> None:
+    base_dir = tmp_path / "kb_data"
+    bad_path = base_dir / "corpus" / "mojlaw" / "A0030018.md"
+    bad_path.parent.mkdir(parents=True, exist_ok=True)
+    bad_path.write_text("probe\n", encoding="utf-8")
+
+    archived = purge_fixture_corpus.archive_fixture_corpus(
+        base_dir=base_dir,
+        storage_names=["mojlaw"],
+        archive_label="fixture_20260420",
+    )
+
+    assert len(archived) == 1
+    assert not bad_path.exists()
+    assert (base_dir / "archive" / "fixture_20260420" / "corpus" / "mojlaw" / "A0030018.md").exists()
+
+
+def test_archive_fixture_corpus_uses_collision_safe_name(tmp_path: Path) -> None:
+    base_dir = tmp_path / "kb_data"
+    corpus_path = base_dir / "corpus" / "mojlaw" / "A0030018.md"
+    corpus_path.parent.mkdir(parents=True, exist_ok=True)
+    corpus_path.write_text(
+        "---\n"
+        "raw_snapshot_path: kb_data\\raw\\mojlaw\\202604\\A0030018.json\n"
+        "fixture_fallback: true\n"
+        "---\n"
+        "# Fixture doc\n",
+        encoding="utf-8",
+    )
+    archive_target = base_dir / "archive" / "fixture_20260420" / "corpus" / "mojlaw" / "A0030018.md"
+    archive_target.parent.mkdir(parents=True, exist_ok=True)
+    archive_target.write_text("probe\n", encoding="utf-8")
+
+    archived = purge_fixture_corpus.archive_fixture_corpus(
+        base_dir=base_dir,
+        storage_names=["mojlaw"],
+        archive_label="fixture_20260420",
+    )
+
+    assert len(archived) == 1
+    assert archived[0].corpus_target.name == "A0030018.dup1.md"
+    assert (archive_target.parent / "A0030018.dup1.md").exists()
+
+
 def test_archive_fixture_corpus_falls_back_to_copy_and_stub_on_permission_error(tmp_path: Path, monkeypatch) -> None:
     base_dir = tmp_path / "kb_data"
     corpus_path = base_dir / "corpus" / "mojlaw" / "fixture.md"

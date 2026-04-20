@@ -3,6 +3,7 @@ import importlib
 import logging
 import math
 import threading
+import warnings
 from collections import Counter
 from typing import Any
 import uuid
@@ -10,6 +11,9 @@ import uuid
 from cachetools import TTLCache
 
 from src.core.llm import LLMProvider
+from src.core.warnings_compat import suppress_known_third_party_deprecations
+
+suppress_known_third_party_deprecations()
 
 try:
     import chromadb
@@ -88,7 +92,13 @@ class KnowledgeBaseManager:
             return
 
         try:
-            self.client = chromadb_module.PersistentClient(path=persist_path)
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    message=r"Accessing the 'model_fields' attribute on the instance is deprecated\.",
+                    category=DeprecationWarning,
+                )
+                self.client = chromadb_module.PersistentClient(path=persist_path)
 
             # Initialize collections
             self.examples_collection = self.client.get_or_create_collection(

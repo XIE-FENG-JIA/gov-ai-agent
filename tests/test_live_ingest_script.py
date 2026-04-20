@@ -87,12 +87,13 @@ def test_run_live_ingest_can_prune_fixture_backed_corpus(tmp_path: Path, monkeyp
     )
 
     assert results[0].status == "PASS"
-    assert results[0].count == 1
+    assert len(results[0].records) == 1
     assert results[0].ingested_count == 0
     assert results[0].fixture_remaining == 0
     assert results[0].archived_count == 1
     assert not (tmp_path / "corpus" / "mojlaw" / "fixture.md").exists()
     assert (tmp_path / "corpus" / "mojlaw" / "live.md").exists()
+    assert (tmp_path / "archive" / "fixture_20260420" / "corpus" / "mojlaw" / "fixture.md").exists()
 
 
 def test_run_live_ingest_ignores_archived_fixture_stub(tmp_path: Path, monkeypatch) -> None:
@@ -140,11 +141,10 @@ def test_run_live_ingest_ignores_archived_fixture_stub(tmp_path: Path, monkeypat
     )
 
     assert results[0].status == "PASS"
-    assert results[0].count == 1
+    assert len(results[0].records) == 1
     assert results[0].fixture_remaining == 0
     assert results[0].archived_count == 1
     assert len(results[0].records) == 1
-    assert (tmp_path / "archive" / "fixture_20260420" / "corpus" / "mojlaw" / "fixture.md").exists()
 
 
 def test_write_report_renders_markdown_table(tmp_path: Path) -> None:
@@ -154,7 +154,7 @@ def test_write_report_renders_markdown_table(tmp_path: Path) -> None:
             source="mojlaw",
             status="PASS",
             count=1,
-            summary="ingested=1 live_total=1 fixture_remaining=0",
+            summary="live_total=1 newly_ingested=1 fixture_remaining=0",
             records=[
                 {
                     "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030018",
@@ -189,6 +189,35 @@ def test_write_report_renders_markdown_table(tmp_path: Path) -> None:
     assert "- live_count: 1" in content
     assert "- ingested_count: 1" in content
     assert "- archived_count: 1" in content
+
+
+def test_run_live_ingest_ignores_malformed_corpus_files(tmp_path: Path, monkeypatch) -> None:
+    class FakeAdapter:
+        pass
+
+    def fake_ingest(adapter, *, limit, base_dir, require_live):  # type: ignore[no-untyped-def]
+        corpus_root = base_dir / "corpus" / "mojlaw"
+        corpus_root.mkdir(parents=True, exist_ok=True)
+        (corpus_root / "broken.md").write_text("probe\n", encoding="utf-8")
+        (corpus_root / "live.md").write_text(
+            "---\n"
+            "source_url: https://example.test/live\n"
+            "synthetic: false\n"
+            "fixture_fallback: false\n"
+            "---\n"
+            "# Live doc\n\n真資料。\n",
+            encoding="utf-8",
+        )
+        return []
+
+    monkeypatch.setattr(live_ingest, "_available_sources", lambda: {"mojlaw": FakeAdapter})
+    monkeypatch.setattr(live_ingest, "_load_ingest_function", lambda: fake_ingest)
+
+    results = live_ingest.run_live_ingest(source_keys=["mojlaw"], limit=2, base_dir=tmp_path)
+
+    assert results[0].status == "PASS"
+    assert results[0].count == 1
+    assert results[0].records[0]["source_url"] == "https://example.test/live"
 
 
 def test_main_rejects_unknown_source(tmp_path: Path, monkeypatch) -> None:
