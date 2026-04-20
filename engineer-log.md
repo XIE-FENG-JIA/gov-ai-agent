@@ -583,3 +583,113 @@ Epic 排序建議：
 三項 read-only（1/2/3）任一不過 → 3.25，無藉口。
 
 ---
+## 反思 [2026-04-20 08:45] — 技術主管第九輪深度回顧（v2.9）
+
+### 近期成果（v2.8 → 本輪）
+
+- **測試全跑**：`pytest tests/ -q` = **3544 passed / 0 failed / 1363 warnings / 679.86s**（⚠️ v2.8 = 243s → v2.9 = 680s，**2.8x 惡化**；可能為 chromadb IO/鎖競爭或 conftest session fixture 拖慢，下輪須追）
+- **Coverage baseline**：`coverage.json` totals = **91.22% covered**（11433/12533），遠超業界 70% 基準
+- **P0.A ✅ 閉環**：`docs/sources-research.md` 11 個 `## ` section（data.gov.tw / law.moj.gov.tw / EY RSS + 擴充 8 來源）（results.log #21, #27 兩輪 PASS）
+- **P0.B ✅ 閉環**：`program.md` 失控檔盤點段落 + 5 條 Epic 歸屬 bullet（results.log #22）
+- **P0.C ✅ 閉環**：`openspec/changes/01-real-sources/proposal.md` 230 字（≤500 限）（results.log #26）
+- **P1.2 ✅ 閉環**：sources-research 擴充至 10 來源（衛福部 / 財政資訊中心 / 食藥署 / 政府電子採購 / 立法院 / 北市 / 中市）
+- **v2.8 三條 read-only 硬指標 3/3 PASS**：auto-engineer 本輪執行意願回升，PUA 壓力見效
+
+### v2.8 硬指標驗收（本輪實測）
+
+| # | 指標 | 實測 | 狀態 |
+|---|------|------|------|
+| 1 | `grep -c "^## " docs/sources-research.md` ≥ 3 | **11** | ✅ |
+| 2 | `grep -c "失控檔盤點" program.md` ≥ 1 + 5 bullet | **1 + 5** | ✅ |
+| 3 | `wc -w openspec/changes/01-real-sources/proposal.md` ≤ 500 | **230** | ✅ |
+| 4 | `icacls .git \| grep -c DENY` == 0 | **DENY 活** | ❌ |
+| 5 | `git log -5 \| grep -c "auto-commit:"` == 0 | **6/15 近期 commit** | ❌ |
+
+**3/5 過，2/5 BLOCKED**。read-only 三項 100% 達成，避免 3.25 紅線。系統層 (#4, #5) 仍是死結。
+
+### 發現的問題（按嚴重度）
+
+**🛑 系統層（根因連 8+ 輪未解）**
+
+1. **`.git` DENY ACL 仍活**：`icacls .git` 命中 SID `S-1-5-21-541253457-...-692795393` `(OI)(CI)(IO)(DENY)(W,D,Rc,GW,DC)`；連 **8 輪**（v2.3→v2.9）無進展；disaster-recovery.md SOP 已寫好但 Admin 未執行
+2. **auto-commit: 前綴捲土重來**：v2.7 commit `85d20ac` 是唯一 conventional，之後連續 7 條 `auto-commit: auto-engineer checkpoint (...)` + 新增 `5f08772`；P0.E 配置治理**零行動**——配置檔編輯**不需 commit 不依賴 ACL**，純意願問題
+3. **AUTO-RESCUE 依賴 Admin 手動**：results.log #20/#23/#24/#25/#29 五次 AUTO-RESCUE，commit 由 Admin session 代辦；auto-engineer 自身 commit 能力 = 0；這是**系統自治降級**
+
+**🔴 架構健康（Epic 1-4 實質空殼）**
+
+4. **src/sources/ 目錄仍不存在**：`ls src/sources/` 報錯；Epic 1 T1.2 承諾 `BaseSourceAdapter` + 5 adapter 連 **9 輪**零進度；v2.8 警告 → v2.9 仍空口支票
+5. **God modules 依舊**：`src/cli/kb.py` 1614 行 / 33 個 class+def / `src/cli/generate.py` 1263 / `src/agents/editor.py` 1065 — 合計 3942 行三檔未拆；T8.1.a ACL-gated 延宕（但預拆分可做 working tree）
+6. **CLI 指令檔爆炸**：`src/cli/` 47 個 `*_cmd.py` 指令檔 + 主要 5 大檔，模組邊界模糊；T8.1 拆 kb.py 只是**冰山一角**
+7. **`src/sources/` 空 + `src/cli/` 爆炸 = 逆向架構**：業務核心（真實來源抓取）是零，而周邊 CLI 工具膨脹至 47 檔——顆粒度倒掛
+8. **5 檔 src/core/ 已盤點但仍 orphan**：`error_analyzer` / `logging_config` 兩檔標 `[orphan]`；尚未規劃對應 Epic（observability / doctor）
+
+**🟡 Spectra / 測試**
+
+9. **openspec/changes/** 仍僅 `01-real-sources/proposal.md` 一份；Epic 2-4 的 `02-open-notebook-fork` / `03-citation-tw-format` / `04-audit-citation` 三份 proposal 零產出（T7.1.b/c/d 連多輪未動）
+10. **1363 deprecation warnings**：Pydantic v2 相容層（v2.11→v3 路徑）；T8.2 連 5+ 輪未動
+11. **Test count 穩定但結構風險**：3544 test 綠，但 coverage 91.22% 主要來自 CLI 工具；business-core（sources / writer 改寫策略）實質未建 → 沒測試物件可測
+12. **頂層 10 份歷史 md**：`IMPROVEMENT_REPORT.md` / `PROJECT_SUMMARY.md` / `BUG_FIX_REPORT.md` 等仍滯根；T9.1 檔案級 mv **不依賴 ACL commit**，但連 4 輪未動
+
+**🟢 次要 / 安全**
+
+13. **Security baseline clean**：`(api_key|password|secret|token)` = 僅 1 hit (vendor 內 htmx.min.js 字串 token)；`subprocess/os.system/eval/exec` = 7 處皆 CLI 工具層用途正當；4 bare `except:`（writer/requirement/lint_cmd）應清理但非緊急
+14. **`.env` 存在但 OpenRouter smoke（P1.3）** 未驗：elephant-alpha 可用性未確認，整個 Epic 2 路線假設風險
+
+### 反覆卡住模式（連 5+ 輪）
+
+| 任務 | 延宕輪次 | 根因類型 | v2.9 處置 |
+|------|---------|---------|----------|
+| P0.D ACL 解鎖 | 8 (v2.3→v2.9) | 人工 Admin 依賴 | 維持 P0，不動；disaster-recovery.md SOP 可執行 |
+| P0.E auto-commit 治理 | 5+ | **純意願**（配置檔編輯 ACL-free） | **升至 P0 首位，本輪必落** |
+| T8.1.a kb.py 拆分 | 6+ | ACL-gated commit，但預拆 ACL-free | 本輪做 working-tree 預拆，commit 延後 |
+| T7.1.b/c/d proposal | 6+ | read-only，純意願 | **本輪至少落 1 份 `02-open-notebook-fork` 提案** |
+| T9.1 頂層 md 歸位 | 4+ | 檔案 mv ACL-free | 本輪可做 working-tree rename |
+| src/sources/ 目錄 | 9 輪 | Epic 1 真空 | **新增 P0.F：建目錄 + BaseSourceAdapter 骨架（working-tree write）** |
+
+### 建議的優先調整（v2.9 重排）
+
+**核心洞察**：v2.8 PUA 壓力成功驅動 read-only 三件事 100% 落地——證明「意願不是能力問題」。但 P0.E / T8.1.a 預拆 / T7.1.b 提案 / T9.1 mv / src/sources/ 骨架 全部是 **ACL-free working-tree write**，連 5+ 輪零執行。v2.9 須把這個**「能做但沒做」的第二層藉口**拆掉。
+
+新 P0 順序（v2.9）：
+1. **P0.E（升首）**：auto-commit 配置治理 — ACL-free，純配置檔編輯，連 5 輪零執行 → 本輪不落 = 3.25
+2. **P0.F（新增）**：src/sources/ 骨架（`__init__.py` + `base.py` `BaseSourceAdapter` stub + 1 個 `MojLawAdapter` 雛形）— ACL-free working-tree write，T1.2.a 分拆第一步
+3. **P0.D（原位）**：🛑 ACL 解鎖（仍 Admin 依賴，不動）
+4. **P0.G（新增）**：T7.1.b `02-open-notebook-fork` proposal.md — ACL-free read-only，預防 openspec/changes 成為「孤兒目錄」
+5. **P0.H（新增）**：頂層 md 歸位 `docs/archive/` — 檔案層 mv ACL-free，commit 延後
+
+**新規則（v2.9）**：
+- ACL-free 任務連 2 輪延宕 = **3.25**（沿用 v2.8）
+- **新增**：**「未 commit 不是沒做」——working-tree 落地即算 PASS**（ACL 不是拖延藉口的第二道防線）
+
+### 下一步行動（最重要 3 件）
+
+1. **P0.E 配置治理**：本輪定位「auto-commit:」來源（`.auto-engineer.*` / ralph-loop config / hook），停用 checkpoint 或改 `chore(checkpoint): <ts>` 模板；工作樹編輯即可驗收
+2. **P0.F src/sources/ 骨架**：`mkdir src/sources && touch __init__.py && 建 base.py`（`BaseSourceAdapter` abstract：`list()` / `fetch()` / `normalize()`），並建 `mojlaw.py` 雛形 stub（≤100 行，無實際 API call），寫 1 份 `tests/test_sources_base.py` 驗抽象類別可實例化
+3. **Admin 執行 ACL SOP**：`takeown /f .git /r /d y` → `icacls .git /reset /T /C` → `icacls .git /remove:d "*S-1-5-21-..."`（disaster-recovery.md §2.3）
+
+### 架構側關鍵決策（v2.9 對齊）
+
+> [PUA生效 🔥] **底層邏輯**：v2.8 把「read-only」當成藉口盾牌的底層邏輯**已被打破**——證明 auto-engineer 能做文件產出。v2.9 新藉口盾牌 = 「ACL-gated」：但配置治理、src/sources/ 骨架、proposal.md、md 歸位**全都 ACL-free**。
+>
+> 公司不養閒 agent。這輪若 P0.E / P0.F / P0.G 任一連 3 輪未落，觸發績效強三。
+
+**底層架構決策**：Epic 1 整體降級——從「5 adapter + 3 來源各 50 份」收縮為「1 adapter + 10 份 MojLaw 可驗證抓取」。三板斧原則：**先把 1 個場景跑通，再談規模**。
+
+### 復盤四步法
+
+- **回顧目標**：v2.8 承諾 read-only 三件（P0.A / P0.B / P0.C）任一不過 = 3.25
+- **評估結果**：**3/3 PASS**（results.log #21 / #22 / #26 鐵證）；Admin 代 commit 5 次封裝落版
+- **分析原因**：PUA 第 8 輪加入「連 2 輪延宕即 3.25」死線後，auto-engineer 優先序明確——read-only 任務執行率從 v2.7 的 1/3 升至 v2.8 的 3/3
+- **提煉 SOP**：**「壓力 + 零模糊驗收」是唯一有效抓手**。下輪 v2.9 將此模式複製至 ACL-free 但需意願的項目（P0.E / P0.F / P0.G / P0.H）
+
+### 硬指標（v2.9 下輪審查）
+
+1. `git log --oneline -10 | grep -c "auto-commit:"` == 0 OR 近 5 條有 `chore(checkpoint):` 模板（P0.E；ACL-free 工作樹側可驗）
+2. `ls src/sources/base.py && python -c "from src.sources.base import BaseSourceAdapter; print(BaseSourceAdapter.__abstractmethods__)"` 非空（P0.F）
+3. `icacls .git 2>&1 | grep -c DENY` == 0（P0.D；Admin）
+4. `ls openspec/changes/02-open-notebook-fork/proposal.md && wc -w < 檔` ≤ 500（P0.G）
+5. `ls docs/archive/IMPROVEMENT_REPORT.md` 或 `grep "[ ] IMPROVEMENT_REPORT" program.md` == 0（P0.H）
+
+**ACL-free 四項（1/2/4/5）任一不過 = 3.25**，v2.9 閉環驗收看執行不看規劃。
+
+---
