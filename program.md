@@ -1077,7 +1077,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 > T8.3 已升 P1.3（v2.4 閉環），T8.1 kb.py 部分已升 P1.1。
 
-- [ ] **T8.1.b** `src/cli/generate.py` 1263 行 → generate/{pipeline,export,cli}.py（T8.1.a kb.py 後）
+- [x] **T8.1.b** `src/cli/generate.py` 已拆為 `src/cli/generate/{__init__,pipeline,export,cli}.py`
 - [x] **T8.1.c** `src/agents/editor.py` 拆分已完成；現況為 `src/agents/editor/{__init__,flow,segment,refine,merge}.py`
 - [ ] **T8.2** Pydantic v2 相容修 1363 deprecation warning
   - 鎖定 chromadb 1.x 兼容層 / `src/api/models.py` / `src/core/models.py`
@@ -1166,6 +1166,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **P0.WRITER-SPLIT (2026-04-20)** `src/agents/writer.py` 已拆為 package：`src/agents/writer/{__init__,strategy,rewrite,cite,cleanup,ask_service}.py`；保留 `from src.agents.writer import WriterAgent` 與 package-level `OpenNotebookService`/`LLMProvider`/`KnowledgeBaseManager` patch 相容點；驗證 `wc -l src/agents/writer/*.py` 最大 **255** 行，`pytest tests/test_writer_agent.py tests/test_agents.py tests/test_citation_quality.py tests/test_edge_cases.py -q` = **176 passed**
 - [x] **P0.BB (v4.1)** `scripts/dedupe_results_log.py` + `tests/test_dedupe_results_log.py` 已落；預設按 BLOCKED-ACL 根因去重，`--strict-task-key` 保留字面四元組模式；`results.log.dedup` 實測 165 → 127 行（-23.03%）
 - [x] **P0.CP950 (v4.0)** Windows cp950 console help 回歸：`src/cli/cite_cmd.py` 移除 help/panel/static warning 中的 emoji 與不安全符號，`python -m src.cli.main --help` 在 `PYTHONIOENCODING=cp950` 下不再噴 `UnicodeEncodeError`；`tests/test_cite_cmd.py` 新增子程序回歸測試
+- [x] **T8.1.b (2026-04-21)** 依 HEAD 事實校準完成狀態：`src/cli/generate.py` 已不存在，現況為 `src/cli/generate/{__init__,pipeline,export,cli}.py`；驗證 `pytest tests/test_cli_commands.py tests/test_batch_perf.py tests/test_workflow_cmd.py tests/test_export_citation_metadata.py -q --no-header` = **794 passed**，全量 `pytest tests/ -q --no-header --ignore=tests/integration` = **3678 passed / 0 failed**
 - [x] **T7.4（v3.8）** Spectra coverage 補洞：`openspec/changes/{01-real-sources,02-open-notebook-fork}/tasks.md` 已回填逐 task `Requirements:` metadata；`spectra analyze 01-real-sources` 與 `spectra analyze 02-open-notebook-fork` 於 2026-04-20 17:06 實測皆 0 findings
 - [x] **T1.12-HARDEN (v3.4)** nightly live smoke 禁 silent fixture fallback；`tests/integration/test_sources_smoke.py` 把 fixture_dir 指向不存在路徑，upstream 掛 → integration FAIL 不再假綠
 - [x] **T1.6.a (v3.4)** 校正 `kb_data/examples/*.md` 合成基線為 155，`tests/test_mark_synthetic.py` 新增 guard
