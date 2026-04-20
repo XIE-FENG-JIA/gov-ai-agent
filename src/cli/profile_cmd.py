@@ -4,15 +4,28 @@ import json
 import os
 
 import typer
+from typer.models import OptionInfo
 from rich.console import Console
 from rich.table import Table
 
-from src.cli.utils import JSONStore, atomic_json_write
+from src.cli.utils import JSONStore, atomic_json_write, resolve_state_path, resolve_state_read_path
 
 app = typer.Typer()
 console = Console()
 _PROFILE_FILE = ".gov-ai-profile.json"
 _profile_store = JSONStore(_PROFILE_FILE, default={})
+
+
+def _resolve_profile_dir(profile_dir: str, *, for_write: bool) -> str:
+    if isinstance(profile_dir, OptionInfo):
+        profile_dir = profile_dir.default
+    if not for_write:
+        return resolve_state_read_path(profile_dir)
+    read_path = resolve_state_read_path(profile_dir)
+    write_path = resolve_state_path(profile_dir)
+    if read_path != write_path and os.path.isdir(read_path) and not os.path.exists(write_path):
+        return read_path
+    return write_path
 
 
 @app.command()
@@ -53,8 +66,9 @@ def profile_set(
     profile_dir: str = typer.Option(".profile", "--dir", help="設定檔目錄"),
 ) -> None:
     """設定或更新個人資料鍵值。"""
-    os.makedirs(profile_dir, exist_ok=True)
-    settings_path = os.path.join(profile_dir, "settings.json")
+    resolved_dir = _resolve_profile_dir(profile_dir, for_write=True)
+    os.makedirs(resolved_dir, exist_ok=True)
+    settings_path = os.path.join(resolved_dir, "settings.json")
     if os.path.isfile(settings_path):
         with open(settings_path, "r", encoding="utf-8") as f:
             data = json.load(f)

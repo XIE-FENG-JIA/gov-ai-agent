@@ -14,6 +14,8 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.prompt import Prompt, Confirm
 
+from src.cli.utils import resolve_state_read_path
+
 console = Console()
 
 # 12 種公文類型 — 依使用頻率排序
@@ -39,8 +41,9 @@ _PROFILE_FILE = ".gov-ai-profile.json"
 def _load_profile() -> dict:
     """載入個人設定檔（.gov-ai-profile.json），失敗時回傳空字典。"""
     try:
-        if os.path.isfile(_PROFILE_FILE):
-            with open(_PROFILE_FILE, "r", encoding="utf-8") as f:
+        profile_path = resolve_state_read_path(_PROFILE_FILE)
+        if os.path.isfile(profile_path):
+            with open(profile_path, "r", encoding="utf-8") as f:
                 return json.load(f)
     except (OSError, json.JSONDecodeError):
         pass

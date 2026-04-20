@@ -12,7 +12,7 @@ import yaml
 from rich.console import Console
 from rich.table import Table
 
-from src.cli.utils import atomic_json_write
+from src.cli.utils import atomic_json_write, resolve_state_path, resolve_state_read_path
 
 app = typer.Typer()
 console = Console()
@@ -20,10 +20,21 @@ console = Console()
 _WORKFLOW_DIR = ".gov-ai-workflows"
 
 
+def _resolve_workflow_dir(*, for_write: bool) -> str:
+    if not for_write:
+        return resolve_state_read_path(_WORKFLOW_DIR)
+    read_path = resolve_state_read_path(_WORKFLOW_DIR)
+    write_path = resolve_state_path(_WORKFLOW_DIR)
+    if read_path != write_path and os.path.isdir(read_path) and not os.path.exists(write_path):
+        return read_path
+    return write_path
+
+
 def _ensure_dir() -> str:
     """確保工作流程目錄存在並回傳路徑。"""
-    os.makedirs(_WORKFLOW_DIR, exist_ok=True)
-    return _WORKFLOW_DIR
+    workflow_dir = _resolve_workflow_dir(for_write=True)
+    os.makedirs(workflow_dir, exist_ok=True)
+    return workflow_dir
 
 
 _VALID_NAME_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
@@ -38,10 +49,10 @@ def _validate_workflow_name(name: str) -> None:
         )
 
 
-def _workflow_path(name: str) -> str:
+def _workflow_path(name: str, *, for_write: bool = False) -> str:
     """取得範本檔案路徑。"""
     _validate_workflow_name(name)
-    return os.path.join(_WORKFLOW_DIR, f"{name}.json")
+    return os.path.join(_resolve_workflow_dir(for_write=for_write), f"{name}.json")
 
 
 @app.command()
@@ -49,7 +60,7 @@ def create(
     name: str = typer.Argument(..., help="範本名稱"),
 ):
     """互動式建立工作流程範本。"""
-    path = _workflow_path(name)
+    path = _workflow_path(name, for_write=True)
     if os.path.exists(path):
         console.print(f"[red]錯誤：範本 '{name}' 已存在。[/red]")
         raise typer.Exit(1)
@@ -92,7 +103,7 @@ def list_workflows(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="顯示詳細資訊"),
 ):
     """列出所有已存工作流程範本。"""
-    wf_dir = _WORKFLOW_DIR
+    wf_dir = _resolve_workflow_dir(for_write=False)
     if not os.path.isdir(wf_dir):
         console.print("[yellow]尚無任何範本。[/yellow]")
         return
@@ -152,7 +163,7 @@ def show(
     name: str = typer.Argument(..., help="範本名稱"),
 ):
     """顯示指定範本的內容。"""
-    path = _workflow_path(name)
+    path = _workflow_path(name, for_write=False)
     if not os.path.exists(path):
         console.print(f"[red]錯誤：找不到範本 '{name}'。[/red]")
         raise typer.Exit(1)
@@ -168,7 +179,7 @@ def delete(
     name: str = typer.Argument(..., help="範本名稱"),
 ):
     """刪除指定的工作流程範本。"""
-    path = _workflow_path(name)
+    path = _workflow_path(name, for_write=True)
     if not os.path.exists(path):
         console.print(f"[red]錯誤：找不到範本 '{name}'。[/red]")
         raise typer.Exit(1)
@@ -191,7 +202,7 @@ def run(
 
     讀取範本中的設定，組合出對應的 generate 指令並執行。
     """
-    path = _workflow_path(name)
+    path = _workflow_path(name, for_write=False)
     if not os.path.exists(path):
         console.print(f"[red]錯誤：找不到範本 '{name}'。[/red]")
         raise typer.Exit(1)
@@ -385,7 +396,7 @@ def workflow_export(
 ):
     """匯出工作流程範本為 JSON 檔案。"""
     import shutil
-    path = _workflow_path(name)
+    path = _workflow_path(name, for_write=False)
     if not os.path.exists(path):
         console.print(f"[red]錯誤：找不到範本 '{name}'[/red]")
         raise typer.Exit(1)
