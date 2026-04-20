@@ -12,6 +12,56 @@
 > v5.0（第二十八輪）/ v5.1（第二十九輪）反思已封存至 `docs/archive/engineer-log-202604d.md`。
 > 主檔現存：v5.2 + v5.4（v5.3 為 program.md header rollup，無獨立反思段）。
 
+## 反思 [2026-04-21 07:05] — 技術主管第三十四輪（v5.6；caveman；/pua 阿里味；USER OVERRIDE 下深度回顧）
+
+### 近期成果（v5.5 → HEAD；**OVERRIDE 下無新動作 = 正確姿勢**）
+- **全量 pytest ✅ 3697/0/583.53s**（v5.5 3695 → **+2**；含 E2E 2 件）。
+- **T5.4 E2E 持續 PASS**：`docs/e2e-report.md` 5/5 traceable；`output/e2e-rewrite/20260421-050847/*.docx` 保留；`source_doc_ids` 全對應到 `kb_data/corpus/{mojlaw,datagovtw}`。
+- **v5.5 USER OVERRIDE 遵守度 100%**：v5.5 後 17 次純 auto-commit（`3167b38 → 45afae1`，3 小時 0 語意 commit）= 人工鎖死期間唯一合規路徑；最後 semantic commit = `292d58d v5.3 rollup`（2026-04-21 03:41，距今 3 hr 15 min）。
+- **engineer-log 181 行 ≤ 300 ✅**；紅線 `### 🔴` 段 = 3 ≤ 6 ✅；corpus 9/9 ✅；Epic 3 tasks 9/9 ✅。
+
+### 發現的問題（OVERRIDE 下**只記不動**）
+1. **🟡 v5.5 反思事實錯誤實錘**：v5.5「api_server rate-limit / auth 仍未補」= **與 HEAD 不符**；`src/api/middleware.py:108` 已落 `_RateLimiter(_RATE_LIMIT_RPM, _RATE_LIMIT_WINDOW)` + 108/327/330/371 全套 header 注入；**真缺口是 client auth（HTTPBearer / API key 入口驗證）**，不是 rate-limit。反思驅動治理自欺第 N+2 次。
+2. **🟠 新胖檔 7 持平**：`config_tools 585 / realtime_lookup 520 / e2e_rewrite 492 / api/routes/agents 477 / api/middleware 469 / api/models 461 / generate/export 459`；全 ≤ 600 無 god-file 級，OVERRIDE 下不動。
+3. **🟡 auto-commit 24/25 + `.git` DENY ACL = 2**：連 **32 輪** Admin-dep；不計入 agent 績效；本輪持平。
+4. **🟡 Spectra 3/5 = 60% 死水**：Epic 4（writer 改寫策略）/ Epic 5（KB 治理）proposal 連 8 輪 0 動；OVERRIDE 下 Epic 4/5 明列**暫停**，T5.4 已驗證產品核心可跑通 → proposal 治理空窗不再是 blocker。
+5. **🟡 v5.3 rollup 後零 semantic commit**：3 hr 只 auto-commit checkpoint；v5.4/v5.5 header 修正全進 auto-commit，無 `docs(program): v5.4 ...` 語意提交 → PR reviewer 難追。但 ACL = 2 結構性鎖，agent 無權開 pipeline。
+
+### 架構健康度（HEAD 即取）
+- **胖檔前 5**：config_tools 585 / realtime_lookup 520 / e2e_rewrite 492 / agents 477 / middleware 469（全 ≤ 600，全 ≤ 400 閥值軟違）。
+- **測試**：3697 passed；E2E 5/5 traceability 通；test file 81 個 + `tests/integration/test_e2e_rewrite.py`。
+- **安全**：rate-limit ✅ / CORS 中介 ✅ / DOCX safe parse ✅ / `.env` gitignore ✅；**缺口 = client auth（inbound API 未驗 token）**，Epic 上線前必補但 OVERRIDE 下暫鎖。
+- **架構**：v5.4 四 P0 全閉（workflow/api-factory/history/exporter split）；SOP 已擴散 10 次；god-file 年代實錘結束。
+
+### 建議的優先調整（**OVERRIDE 下不重排 program.md；不加 task**）
+本輪合規動作：
+- A. engineer-log 追加 v5.6 反思（本段 ≤ 40 行）
+- B. **不動 program.md header**（OVERRIDE 禁 v5.6 rearchitect header；v5.4 header 已是當前執行層）
+- C. **不動七胖**、**不啟 Epic 4 proposal**、**不新增 client auth task**
+- D. 解鎖後排程（人工解除後執行，**僅記錄**）：
+  - D1. client auth（HTTPBearer + `API_CLIENT_KEY` env）— 上線 blocker（非 rate-limit）
+  - D2. Epic 4 writer 改寫策略 proposal — Spectra 3.0 → 3.3 抓手
+  - D3. 新胖檔 7 輪拆（`config_tools / realtime_lookup / e2e_rewrite / api-routes-agents / api-middleware / api-models / generate-export`）
+
+### 下一步行動（**OVERRIDE 下 3 件**）
+1. **等人工解鎖**：T5.4 已 PASS 2 hr；v5.5 已識別「auto-engineer 無進化路徑」= 本輪仍然成立。
+2. **解鎖首件**：client auth（HTTPBearer + key），取代 v5.5 誤記的「rate-limit」血債。
+3. **解鎖次件**：Epic 4 proposal（connect 7 輪 0 動死水；Spectra 3/5 → 3.3/5）。
+
+### v5.6 硬指標（下輪審查）
+1. `python -m pytest tests/ -q --ignore=tests/integration` FAIL=0（當前 ✅ 3697/0）
+2. `wc -l engineer-log.md` ≤ 300（當前 181 + 本輪 ~40 = ~221 ✅）
+3. `rg -c "^### 🔴" program.md` ≤ 6（當前 3 ✅）
+4. `find kb_data/corpus -name "*.md"` = 9（當前 ✅）
+5. `ls tests/integration/test_e2e_rewrite.py scripts/run_e2e.py docs/e2e-report.md` 三檔齊（當前 ✅）
+6. USER OVERRIDE block 未被 auto-engineer 移除（當前 ✅）
+7. `grep -c "rate_limit" src/api/middleware.py` ≥ 3（當前 ≥ 5；v5.5 誤記校正錨點）
+8. 解鎖前 `ls openspec/changes/04-audit-citation/proposal.md` = ❌（預期；解鎖後轉綠）
+
+> [PUA生效 🔥] **底層邏輯**：v5.5 寫「rate-limit / auth 仍未補」= 未讀 HEAD 即下結論，紅線 X「未驗即交」反思層變體 = 3.25 苗頭；v5.6 直接 `grep rate_limit src/api/middleware.py` 校準，**真缺口是 client auth 不是 rate-limit**。**抓手**：OVERRIDE 下唯一 owner 動作 = 「事實校準 + 請解鎖」，不是「繞過 OVERRIDE 加新 task」；auto-engineer 17 次 checkpoint 說明規則本身正確（無越權）。**顆粒度**：本輪 40 行反思嚴守 hard cap；不動 program.md；不新開 proposal。**拉通**：T5.4 E2E 驗通後，Epic 4/5 proposal 不再是上線 blocker；真正 blocker 是 client auth + ACL 解鎖。**對齊**：v5.6 承認 v5.5 誤記，不包裝勝利（胖 7 / Spectra 60% / semantic commit 空窗 3 hr 全部實錘）。**因為信任所以簡單** — 人工鎖 = 信任協議；v5.5 錯誤 v5.6 直接校正 = 信任迴路正常運作。talk 3.25 再多不如 grep 一次原始碼。
+
+---
+
 ## 反思 [2026-04-21 06:15] — 技術主管第三十三輪（v5.5；caveman；/pua 阿里味；USER OVERRIDE 下校準）
 
 ### 近期成果（v5.4 → HEAD；**v5.4 四件 P0 全閉 + T5.4 E2E PASS**）
