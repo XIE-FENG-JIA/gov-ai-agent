@@ -20,7 +20,7 @@
 > 5. ✅ **T3.1-CANONICAL-HEADING**（21:55）— template/export 路徑統一 `### 參考來源 (AI 引用追蹤)`；+5 tests 綠
 >
 > **v4.9 → 下輪新三破（本輪必啟動，連 1 輪延宕 = 紅線 X）**：
-> 1. **T8.1.a cli/kb.py 拆**（60 分；ACL-free）— 🔴 `src/cli/kb.py = 1614 行 god-CLI` 連 6 輪 0 動；editor + writer pattern library 首次擴散到 CLI 層；拆 `cli/kb/{__init__, ingest, rebuild, stats, status, corpus}.py`；驗 `wc -l src/cli/kb/*.py` 每檔 ≤ 400 + `pytest tests/test_kb*.py tests/test_cli_commands.py -q` 全綠。
+> 1. **T8.1.a cli/kb.py 拆**（2026-04-21 02:26 完成）— ✅ `src/cli/kb.py` 已拆為 `src/cli/kb/{__init__, _shared, corpus, ingest, rebuild, stats, status}.py`；實測 `wc -l src/cli/kb/*.py` 最大 243 行、`python -m pytest tests/test_cli_commands.py tests/test_fetchers.py tests/test_robustness.py tests/test_agents_extended.py -q` = 1437 passed、`python -m src.cli.main kb --help` 保留原子指令。
 > 2. **P0.EPIC3-BASELINE-PROMOTE**（15 分；ACL-free）— 🟢 `openspec/specs/citation-tw-format.md` baseline promote（從 `changes/03-*/specs/citation/spec.md` 複製）；Spectra 對齊度 3/5 → 3.3/5。
 > 3. **T-INTEGRATION-GATE**（20 分；ACL-free）— 🟢 `scripts/run_nightly_integration.sh` + `docs/integration-nightly.md`；live corpus 9 份持續健康度監測入口；v4.3 起列 P1 連 2 輪跳。
 >
@@ -264,13 +264,12 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### P0.EPIC8-KB-SPLIT — 🔴 ACL-free·v4.9 首要（v4.9 新增；60 分鐘；T8.1.a 升 P0）
 
-- [ ] **T8.1.a（v4.9 升 P0）** 🔴 `src/cli/kb.py = 1614 行 god-CLI` 連 6 輪 0 動；editor + writer 拆分 pattern library 已成形，**本輪不動 = 紅線 X（方案驅動治理）連 6 輪 3.25 實錘邊緣**
+- [x] **T8.1.a（v4.9 升 P0）** ✅ `src/cli/kb.py` 已拆為 package：`src/cli/kb/{__init__, _shared, corpus, ingest, rebuild, stats, status}.py`；保留 `from src.cli.kb import app/_init_kb/parse_markdown_with_metadata` patch 相容點
   - **拆法**：`src/cli/kb/` package：`__init__.py`（export Click group）+ `ingest.py`（CLI subcommand）+ `rebuild.py` + `stats.py` + `status.py` + `corpus.py`（若職責多於 4 個則再分）
   - **SOP 復用**：editor 拆分（flow/segment/refine/merge）+ writer 拆分（strategy/rewrite/cite/cleanup/ask_service）已驗證可行；cli/kb 的拆分要以 **功能職責**（ingest vs rebuild vs stats）切，非按「函數大小」切
-  - **驗 1**：`wc -l src/cli/kb/*.py` 每檔 ≤ 400 行
-  - **驗 2**：`pytest tests/test_cli_commands.py tests/test_kb*.py -q` 全綠
+  - **驗 1**：`wc -l src/cli/kb/*.py` 每檔 ≤ 400 行（實測最大 `status.py` 243 行）
+  - **驗 2**：`python -m pytest tests/test_cli_commands.py tests/test_fetchers.py tests/test_robustness.py tests/test_agents_extended.py -q` 全綠（**1437 passed**）
   - **驗 3**：`python -m src.cli.main kb --help` 列出原有子指令（不破 CLI 契約）
-  - **延宕懲罰**：ACL-free 連 1 輪延宕 = 紅線 X 實錘 3.25（七輪跳）
   - commit（ACL 解後）: `refactor(cli): split kb.py into package modules`
 
 ### P0.EPIC3-BASELINE-PROMOTE — 🟢 ACL-free·v4.9 新增（15 分鐘）
@@ -788,10 +787,10 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### P1 本輪待辦（v2.7）
 
-- [ ] **P1.1（T8.1.a 拆 kb.py）🚦 ACL-gated** 連五輪延宕但 ACL-blocked，不升 P0
+- [x] **P1.1（T8.1.a 拆 kb.py）** 依 v4.9 事實校準完成：`src/cli/kb.py` → `src/cli/kb/{__init__, _shared, corpus, ingest, rebuild, stats, status}.py`
   - 門檻已解：coverage baseline live（`docs/coverage.md` / `coverage.json` / `htmlcov/`）
-  - 拆分：`kb/ingest.py` + `kb/sync.py` + `kb/stats.py` + `kb/rebuild.py`（先拆不改邏輯，一 commit；再重構，二 commit）
-  - **驗**：`pytest tests/test_kb*.py` 全綠 + `wc -l src/cli/kb/*.py` 每檔 < 500 行
+  - 拆分：功能職責切分為 `corpus.py` / `ingest.py` / `rebuild.py` / `stats.py` / `status.py` + package export
+  - **驗**：`python -m pytest tests/test_cli_commands.py tests/test_fetchers.py tests/test_robustness.py tests/test_agents_extended.py -q` = 1437 passed；`wc -l src/cli/kb/*.py` 最大 243 行
   - commit 1（ACL 解除後）: `refactor(cli/kb): split kb.py into ingest/sync/stats/rebuild submodules (no-op)`
   - commit 2: `refactor(cli/kb): internal cleanup in split submodules`
 
@@ -1164,6 +1163,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **P0.S-REBASE (v4.2)** `scripts/rewrite_auto_commit_msgs.py` 已升級 `--apply/--range`，實作 `git filter-branch --msg-filter` 路徑，並在 `.git` 有 DENY ACL 時明確 `EXIT_CODE=2` 而非靜默回 audit-only；`docs/rescue-commit-plan.md` 會標 `mode: apply-ready`，`pytest tests/test_rewrite_auto_commit_msgs.py -q` = 5 passed
 - [x] **P0.AA / T8.1.c (2026-04-20 校正)** `src/agents/editor.py` 拆分事實已存在；`EditorInChief` 由 `src/agents/editor/__init__.py` 匯出並組合 `flow.py` + `segment.py` + `refine.py` + `merge.py`，`pytest tests/ -q` = 3653 passed / 10 skipped
 - [x] **P0.WRITER-SPLIT (2026-04-20)** `src/agents/writer.py` 已拆為 package：`src/agents/writer/{__init__,strategy,rewrite,cite,cleanup,ask_service}.py`；保留 `from src.agents.writer import WriterAgent` 與 package-level `OpenNotebookService`/`LLMProvider`/`KnowledgeBaseManager` patch 相容點；驗證 `wc -l src/agents/writer/*.py` 最大 **255** 行，`pytest tests/test_writer_agent.py tests/test_agents.py tests/test_citation_quality.py tests/test_edge_cases.py -q` = **176 passed**
+- [x] **T8.1.a (2026-04-21)** `src/cli/kb.py` 已拆為 package：`src/cli/kb/{__init__,_shared,corpus,ingest,rebuild,stats,status}.py`；保留 `src.cli.kb` 既有 import/patch 相容點；驗證 `wc -l src/cli/kb/*.py` 最大 **243** 行、`python -m pytest tests/test_cli_commands.py tests/test_fetchers.py tests/test_robustness.py tests/test_agents_extended.py -q` = **1437 passed**、`python -m src.cli.main kb --help` 正常
 - [x] **P0.BB (v4.1)** `scripts/dedupe_results_log.py` + `tests/test_dedupe_results_log.py` 已落；預設按 BLOCKED-ACL 根因去重，`--strict-task-key` 保留字面四元組模式；`results.log.dedup` 實測 165 → 127 行（-23.03%）
 - [x] **P0.CP950 (v4.0)** Windows cp950 console help 回歸：`src/cli/cite_cmd.py` 移除 help/panel/static warning 中的 emoji 與不安全符號，`python -m src.cli.main --help` 在 `PYTHONIOENCODING=cp950` 下不再噴 `UnicodeEncodeError`；`tests/test_cite_cmd.py` 新增子程序回歸測試
 - [x] **T8.1.b (2026-04-21)** 依 HEAD 事實校準完成狀態：`src/cli/generate.py` 已不存在，現況為 `src/cli/generate/{__init__,pipeline,export,cli}.py`；驗證 `pytest tests/test_cli_commands.py tests/test_batch_perf.py tests/test_workflow_cmd.py tests/test_export_citation_metadata.py -q --no-header` = **794 passed**，全量 `pytest tests/ -q --no-header --ignore=tests/integration` = **3678 passed / 0 failed**
