@@ -1,5 +1,6 @@
 import logging
 import re
+from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -140,3 +141,44 @@ class Citation(BaseModel):
     source_url: str | None = Field(None, description="原始來源 URL")
     source_type: str = Field("", description="來源類型（公報/法規/開放資料）")
     record_id: str | None = Field(None, description="記錄識別碼")
+
+
+class PublicGovDoc(BaseModel):
+    """公開政府文件的標準化資料模型。"""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [{
+                "source_id": "A0030055",
+                "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030055",
+                "source_agency": "法務部全國法規資料庫",
+                "source_doc_no": "A0030055",
+                "source_date": "2026-01-15",
+                "doc_type": "法規",
+                "raw_snapshot_path": None,
+                "crawl_date": "2026-04-20",
+                "content_md": "# 行政程序法\n\n### 第 1 條\n為使行政行為遵循公正、公開與民主之程序。",
+                "synthetic": False,
+            }]
+        }
+    )
+
+    source_id: str = Field(..., min_length=1, description="來源系統內的唯一識別碼")
+    source_url: str = Field(..., min_length=1, description="原始來源 URL")
+    source_agency: str = Field(..., min_length=1, description="來源機關")
+    source_doc_no: str | None = Field(None, description="原始文號或法規代碼")
+    source_date: date | None = Field(None, description="來源文件日期")
+    doc_type: str = Field(..., min_length=1, description="文件類型")
+    raw_snapshot_path: str | None = Field(None, description="原始快照路徑")
+    crawl_date: date = Field(..., description="抓取日期")
+    content_md: str = Field(..., min_length=1, description="標準化 Markdown 內容")
+    synthetic: bool = Field(False, description="是否為合成資料")
+
+    @field_validator("source_id", "source_url", "source_agency", "doc_type", "content_md")
+    @classmethod
+    def validate_non_blank_fields(cls, v: str) -> str:
+        """核心字串欄位不可為空白。"""
+        v = v.strip()
+        if not v:
+            raise ValueError("欄位不可為空白")
+        return v

@@ -1,10 +1,11 @@
 import os
+from datetime import date
 
 import pytest
 from pydantic import ValidationError
 
 from src.core.config import ConfigManager
-from src.core.models import PublicDocRequirement
+from src.core.models import PublicDocRequirement, PublicGovDoc
 from src.core.review_models import QAReport, ReviewIssue, ReviewResult
 
 
@@ -57,6 +58,45 @@ def test_public_doc_requirement_serialization():
     assert data["doc_type"] == "簽"
     assert data["urgency"] == "普通"
     assert data["reason"] is None
+
+
+def test_public_gov_doc_serialization():
+    """Test PublicGovDoc model_dump works correctly."""
+    doc = PublicGovDoc(
+        source_id="A0030055",
+        source_url="https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030055",
+        source_agency="法務部全國法規資料庫",
+        source_doc_no="A0030055",
+        source_date=date(2026, 1, 15),
+        doc_type="法規",
+        raw_snapshot_path=None,
+        crawl_date=date(2026, 4, 20),
+        content_md="# 行政程序法",
+        synthetic=False,
+    )
+
+    data = doc.model_dump(mode="json")
+    assert data["source_id"] == "A0030055"
+    assert data["source_date"] == "2026-01-15"
+    assert data["crawl_date"] == "2026-04-20"
+    assert data["synthetic"] is False
+
+
+def test_public_gov_doc_requires_core_fields():
+    """Test PublicGovDoc rejects blank required fields."""
+    with pytest.raises(ValidationError):
+        PublicGovDoc(
+            source_id="",
+            source_url="https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030055",
+            source_agency="法務部全國法規資料庫",
+            source_doc_no="A0030055",
+            source_date=date(2026, 1, 15),
+            doc_type="法規",
+            raw_snapshot_path=None,
+            crawl_date=date(2026, 4, 20),
+            content_md="",
+            synthetic=False,
+        )
 
 
 # ==================== ConfigManager ====================

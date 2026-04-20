@@ -1,0 +1,15 @@
+{
+  "PCode": "A0030018",
+  "LawName": "公文程式條例",
+  "LawModifiedDate": "2026-01-10",
+  "LawArticles": [
+    {
+      "ArticleNo": "第 1 條",
+      "ArticleContent": "公文程式之類別如下：一、令。二、呈。三、咨。四、函。五、公告。六、其他公文。"
+    },
+    {
+      "ArticleNo": "第 2 條",
+      "ArticleContent": "公文得分為六種。"
+    }
+  ]
+}

@@ -12,14 +12,13 @@ class BaseSourceAdapter(ABC):
     """Common contract for external public-document source adapters."""
 
     @abstractmethod
-    def list(self, since_date: date | None = None) -> Iterable[str]:
-        """Return source document ids newer than the optional cutoff date."""
+    def list(self, since_date: date | None = None) -> Iterable[dict[str, Any]]:
+        """Return source document summaries newer than the optional cutoff date."""
 
     @abstractmethod
     def fetch(self, doc_id: str) -> dict[str, Any]:
         """Fetch one raw document payload from the upstream source."""
 
     @abstractmethod
-    def normalize(self, raw: dict[str, Any]) -> dict[str, Any]:
+    def normalize(self, raw: dict[str, Any]) -> Any:
         """Normalize an upstream payload into the internal document shape."""
-
