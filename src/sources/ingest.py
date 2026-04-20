@@ -1,0 +1,152 @@
+"""Minimal ingest pipeline for public government source adapters."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import inspect
+from dataclasses import dataclass
+from datetime import date
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from src.core.models import PublicGovDoc
+from src.sources.base import BaseSourceAdapter
+from src.sources.datagovtw import DataGovTwAdapter
+from src.sources.mojlaw import MojLawAdapter
+
+
+DEFAULT_BASE_DIR = Path("kb_data")
+
+
+@dataclass
+class IngestRecord:
+    """Paths produced for one normalized public document."""
+
+    source_id: str
+    raw_path: Path
+    corpus_path: Path
+
+
+def ingest(
+    adapter: BaseSourceAdapter,
+    since_date: date | None = None,
+    limit: int = 3,
+    *,
+    base_dir: Path = DEFAULT_BASE_DIR,
+) -> list[IngestRecord]:
+    """Fetch, normalize, and persist source documents to kb_data."""
+    adapter_name = _adapter_name(adapter)
+    raw_root = base_dir / "raw" / adapter_name
+    corpus_root = base_dir / "corpus" / adapter_name
+    corpus_root.mkdir(parents=True, exist_ok=True)
+
+    records: list[IngestRecord] = []
+    for item in _list_documents(adapter, since_date=since_date, limit=limit):
+        source_id = str(item.get("id", "")).strip()
+        if not source_id:
+            continue
+
+        corpus_path = corpus_root / f"{source_id}.md"
+        if corpus_path.exists():
+            continue
+
+        raw = adapter.fetch(source_id)
+        normalized = adapter.normalize(raw)
+
+        month_bucket = normalized.crawl_date.strftime("%Y%m")
+        raw_path = raw_root / month_bucket / f"{source_id}.json"
+        _write_raw_snapshot(raw_path, raw)
+
+        persisted_doc = normalized.model_copy(update={"raw_snapshot_path": str(raw_path)})
+        _write_corpus_markdown(corpus_path, persisted_doc)
+        records.append(IngestRecord(source_id=source_id, raw_path=raw_path, corpus_path=corpus_path))
+
+    return records
+
+
+def build_argument_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Ingest public government docs into kb_data.")
+    parser.add_argument("--source", choices=sorted(_adapter_registry()), required=True)
+    parser.add_argument("--since", help="ISO date filter, e.g. 2026-01-01")
+    parser.add_argument("--limit", type=int, default=3)
+    parser.add_argument("--base-dir", default=str(DEFAULT_BASE_DIR))
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_argument_parser()
+    args = parser.parse_args(argv)
+
+    adapter_cls = _adapter_registry()[args.source]
+    records = ingest(
+        adapter_cls(),
+        since_date=date.fromisoformat(args.since) if args.since else None,
+        limit=args.limit,
+        base_dir=Path(args.base_dir),
+    )
+
+    print(f"ingested={len(records)} source={args.source}")
+    for record in records:
+        print(record.corpus_path.as_posix())
+    return 0
+
+
+def _adapter_registry() -> dict[str, type[BaseSourceAdapter]]:
+    return {
+        "datagovtw": DataGovTwAdapter,
+        "mojlaw": MojLawAdapter,
+    }
+
+
+def _adapter_name(adapter: BaseSourceAdapter) -> str:
+    name = adapter.__class__.__name__
+    return name.removesuffix("Adapter").lower()
+
+
+def _list_documents(adapter: BaseSourceAdapter, *, since_date: date | None, limit: int) -> list[dict[str, Any]]:
+    signature = inspect.signature(adapter.list)
+    kwargs: dict[str, Any] = {}
+    if "since_date" in signature.parameters:
+        kwargs["since_date"] = since_date
+    if "limit" in signature.parameters:
+        kwargs["limit"] = limit
+    docs = list(adapter.list(**kwargs))
+    return docs[:limit]
+
+
+def _write_raw_snapshot(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+
+
+def _write_corpus_markdown(path: Path, doc: PublicGovDoc) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    metadata = {
+        "title": _extract_title(doc.content_md, fallback=doc.source_doc_no or doc.source_id),
+        "source_id": doc.source_id,
+        "source_url": doc.source_url,
+        "source_agency": doc.source_agency,
+        "source_doc_no": doc.source_doc_no,
+        "source_date": doc.source_date.isoformat() if doc.source_date else None,
+        "doc_type": doc.doc_type,
+        "raw_snapshot_path": doc.raw_snapshot_path,
+        "crawl_date": doc.crawl_date.isoformat(),
+        "synthetic": doc.synthetic,
+    }
+    frontmatter = yaml.dump(metadata, allow_unicode=True, default_flow_style=False, sort_keys=False).strip()
+    path.write_text(f"---\n{frontmatter}\n---\n{doc.content_md}\n", encoding="utf-8")
+
+
+def _extract_title(content_md: str, *, fallback: str) -> str:
+    for line in content_md.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("# "):
+            return stripped[2:].strip() or fallback
+    return fallback
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

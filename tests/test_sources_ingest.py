@@ -1,0 +1,92 @@
+from __future__ import annotations
+
+import json
+from datetime import date
+from pathlib import Path
+
+import yaml
+
+from src.core.models import PublicGovDoc
+from src.sources.base import BaseSourceAdapter
+from src.sources.ingest import ingest, main
+
+
+class FakeAdapter(BaseSourceAdapter):
+    def __init__(self) -> None:
+        self._payloads = {
+            "DOC-001": {"id": "DOC-001", "title": "測試法規一", "body": "第一份內容"},
+            "DOC-002": {"id": "DOC-002", "title": "測試法規二", "body": "第二份內容"},
+        }
+
+    def list(self, since_date: date | None = None, limit: int = 3):  # type: ignore[override]
+        docs = [
+            {"id": "DOC-001", "title": "測試法規一", "date": date(2026, 4, 20)},
+            {"id": "DOC-002", "title": "測試法規二", "date": date(2026, 4, 19)},
+        ]
+        if since_date is not None:
+            docs = [doc for doc in docs if doc["date"] >= since_date]
+        return docs[:limit]
+
+    def fetch(self, doc_id: str) -> dict[str, str]:
+        return self._payloads[doc_id]
+
+    def normalize(self, raw: dict[str, str]) -> PublicGovDoc:
+        return PublicGovDoc(
+            source_id=raw["id"],
+            source_url=f"https://example.gov/{raw['id']}",
+            source_agency="測試機關",
+            source_doc_no=raw["id"],
+            source_date=date(2026, 4, 20),
+            doc_type="法規",
+            raw_snapshot_path=None,
+            crawl_date=date(2026, 4, 20),
+            content_md=f"# {raw['title']}\n\n{raw['body']}",
+            synthetic=False,
+        )
+
+
+def test_ingest_writes_raw_and_corpus_files(tmp_path: Path) -> None:
+    records = ingest(FakeAdapter(), limit=2, base_dir=tmp_path)
+
+    assert len(records) == 2
+    raw_payload = json.loads(records[0].raw_path.read_text(encoding="utf-8"))
+    assert raw_payload["id"] == "DOC-001"
+
+    content = records[0].corpus_path.read_text(encoding="utf-8")
+    assert content.startswith("---\n")
+    _sep, raw_meta, body = content.split("---\n", 2)
+    metadata = yaml.safe_load(raw_meta)
+
+    assert metadata["title"] == "測試法規一"
+    assert metadata["source_id"] == "DOC-001"
+    assert metadata["raw_snapshot_path"].endswith("kb_data\\raw\\fake\\202604\\DOC-001.json") is False
+    assert metadata["raw_snapshot_path"].endswith("DOC-001.json")
+    assert metadata["synthetic"] is False
+    assert body.strip().startswith("# 測試法規一")
+
+
+def test_ingest_deduplicates_existing_source_id(tmp_path: Path) -> None:
+    corpus_dir = tmp_path / "corpus" / "fake"
+    corpus_dir.mkdir(parents=True)
+    (corpus_dir / "DOC-001.md").write_text("---\ntitle: existing\n---\nold", encoding="utf-8")
+
+    records = ingest(FakeAdapter(), limit=2, base_dir=tmp_path)
+
+    assert [record.source_id for record in records] == ["DOC-002"]
+    assert not (tmp_path / "raw" / "fake" / "202604" / "DOC-001.json").exists()
+
+
+def test_main_uses_registry_and_prints_written_paths(tmp_path: Path, monkeypatch, capsys) -> None:
+    from src.sources import ingest as ingest_module
+
+    class FakeCliAdapter(FakeAdapter):
+        pass
+
+    monkeypatch.setattr(ingest_module, "_adapter_registry", lambda: {"mojlaw": FakeCliAdapter})
+
+    exit_code = main(["--source", "mojlaw", "--limit", "1", "--base-dir", str(tmp_path)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "ingested=1 source=mojlaw" in captured.out
+    assert "DOC-001.md" in captured.out

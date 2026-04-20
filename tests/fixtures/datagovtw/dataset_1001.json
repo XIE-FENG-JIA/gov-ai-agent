@@ -1,0 +1,11 @@
+{
+  "nid": "1001",
+  "title": "公文電子交換服務統計",
+  "content": "提供中央與地方機關公文電子交換量統計資料。",
+  "agency_name": "國家發展委員會",
+  "category_name": "公共資訊",
+  "topic_name": "政府治理",
+  "updatefreq_desc": "每月",
+  "metadata_modified": "2026-04-18 09:30:00",
+  "tags": ["公文", "電子交換"]
+}

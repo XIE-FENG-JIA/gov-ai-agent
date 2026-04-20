@@ -1,0 +1,11 @@
+{
+  "nid": "1003",
+  "title": "地方政府公告欄資料集",
+  "content": "彙整地方政府公告欄公開資料與更新時間。",
+  "agency_name": "內政部",
+  "category_name": "地方治理",
+  "topic_name": "公告",
+  "updatefreq_desc": "每日",
+  "metadata_modified": "2026-04-12T08:00:00+08:00",
+  "tags": ["公告", "地方政府"]
+}
