@@ -11,6 +11,7 @@ from rich.console import Console
 
 from src.sources.ingest import (
     DEFAULT_BASE_DIR,
+    FixtureFallbackError,
     IngestRecord,
     SourceSnapshot,
     _adapter_registry,
@@ -29,6 +30,7 @@ def ingest_command(
     since: str | None = typer.Option(None, "--since", help="ISO 日期過濾，例如 2026-01-01"),
     limit: int = typer.Option(3, "--limit", min=1, help="最多匯入幾筆文件"),
     base_dir: Path = typer.Option(DEFAULT_BASE_DIR, "--base-dir", help="匯出根目錄"),
+    require_live: bool = typer.Option(False, "--require-live", help="禁止 fixture fallback，要求真實來源"),
 ) -> None:
     """Run the source adapter ingest pipeline from the main CLI."""
     registry = _adapter_registry()
@@ -41,12 +43,17 @@ def ingest_command(
     except ValueError as exc:
         raise typer.BadParameter("日期格式必須是 YYYY-MM-DD") from exc
 
-    records = run_ingest(
-        registry[source_key](),
-        since_date=since_date,
-        limit=limit,
-        base_dir=base_dir,
-    )
+    try:
+        records = run_ingest(
+            registry[source_key](),
+            since_date=since_date,
+            limit=limit,
+            base_dir=base_dir,
+            require_live=require_live,
+        )
+    except FixtureFallbackError as exc:
+        console.print(f"[red]失敗[/red] {exc}")
+        raise typer.Exit(code=2) from exc
     _render_ingest_result(source_key, records)
 
 

@@ -58,6 +58,22 @@ def test_sources_ingest_command_wires_main_cli(tmp_path: Path) -> None:
     assert mock_run_ingest.call_args.kwargs["base_dir"] == tmp_path
 
 
+def test_sources_ingest_command_passes_require_live(tmp_path: Path) -> None:
+    from src.cli.main import app
+
+    class FakeAdapter:
+        pass
+
+    with (
+        patch("src.cli.sources_cmd._adapter_registry", return_value={"mojlaw": FakeAdapter}),
+        patch("src.cli.sources_cmd.run_ingest", return_value=[]) as mock_run_ingest,
+    ):
+        result = runner.invoke(app, ["sources", "ingest", "--source", "mojlaw", "--require-live", "--base-dir", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert mock_run_ingest.call_args.kwargs["require_live"] is True
+
+
 def test_sources_ingest_rejects_bad_date() -> None:
     from src.cli.main import app
 
@@ -65,6 +81,24 @@ def test_sources_ingest_rejects_bad_date() -> None:
 
     assert result.exit_code != 0
     assert "YYYY-MM-DD" in (result.stderr or "")
+
+
+def test_sources_ingest_command_fails_when_live_source_is_required(tmp_path: Path) -> None:
+    from src.cli.main import app
+    from src.sources.ingest import FixtureFallbackError
+
+    class FakeAdapter:
+        pass
+
+    with (
+        patch("src.cli.sources_cmd._adapter_registry", return_value={"mojlaw": FakeAdapter}),
+        patch("src.cli.sources_cmd.run_ingest", side_effect=FixtureFallbackError("live ingest required for mojlaw")),
+    ):
+        result = runner.invoke(app, ["sources", "ingest", "--source", "mojlaw", "--require-live", "--base-dir", str(tmp_path)])
+
+    assert result.exit_code == 2
+    assert "失敗" in result.stdout
+    assert "live ingest required for mojlaw" in result.stdout
 
 
 def test_sources_status_command_shows_per_source_counts(tmp_path: Path) -> None:

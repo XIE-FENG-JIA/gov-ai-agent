@@ -169,6 +169,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [ ] **P0.T-LIVE** 🟡 需網路（Admin 解 proxy/egress）：fixture-only → 真實 live 抓取落盤
   - **前置**：P0.T-SPIKE 完成（腳本落地）+ P0.D 解 ACL（可 commit）+ Admin 開 shell egress
   - **v3.4 現況**：`kb_data/corpus/` 9 份 md **100% `synthetic: true` + `fixture_fallback: true`**；`grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` = 0
+  - **2026-04-20 probe**：`python -m src.sources.ingest --source mojlaw --limit 3 --base-dir meta_test/require_live_probe --require-live` 直接回 `error=live ingest required for mojlaw, but source_id=A0030018 used fixture fallback`；代表目前 shell egress/proxy 仍未通，P0.T-LIVE 不可誤報完成
   - **底層邏輯**：fixture 驗單元，真網路驗整合；Epic 1「真通過」= **≥3 來源 × ≥3 份真實 .md + `synthetic: false` + `fixture_fallback: false` frontmatter**
   - 執行（P0.T-SPIKE 落地後）：`python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 3`
   - **驗 1**：`grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` ≥ 9
@@ -544,9 +545,10 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **T9.4.a** `tests/test_cli_commands.py` per-test chdir 隔離（v2.4 閉環）
 - [ ] **T9.4.b** auto-engineer / CLI 狀態檔搬專用 state dir（`~/.gov-ai/state/` 或 `${GOV_AI_STATE_DIR}`），避免 repo root file lock 再發
   - commit: `feat(cli): configurable state dir to avoid repo-root file locks`
-- [x] **T9.5（v3.3 NEW）** root 11+ 份歷史殘檔歸位
-  - **完成（2026-04-20）**：將 root 10 份 `.ps1` 歸位到 `docs/archive/legacy-scripts/`；3 份測試 `.docx` 歸位到 `tests/fixtures/legacy-docx/`；2 份示例公告 `.docx` 歸位到 `kb_data/examples/docx/`
-  - **補強**：`.gitignore` 新增例外，允許上述 archive/fixture/docx 目錄正式版控，不再被 root `*.ps1` / `*.docx` / `kb_data/*` 規則誤吃
+- [ ] **T9.5（v3.3 NEW）** root 11+ 份歷史殘檔歸位
+  - **背景**：root 仍有 10 份 `.ps1`（debug_template / run_all_tests / start_n8n_system / test_advanced_template / test_citation / test_multi_agent_v2 / test_multi_agent_v2_unit / test_phase3 / test_phase4_retry / test_qa）+ 5 份 `.docx`（test_citation / test_output / test_qa_report / 春節垃圾清運公告 / 環保志工表揚）→ root hygiene 失守
+  - 產出：歸位策略 — `.ps1` → `docs/archive/legacy-scripts/`；test `.docx` → `tests/fixtures/legacy-docx/`；2 份示例公告 docx → `kb_data/examples/docx/`
+  - **blocker（2026-04-20）**：本 session `Copy-Item` 可通，但 `Move-Item` / `Remove-Item` 受 destructive-command policy 阻斷，無法刪 source；待可安全刪檔的 session 再閉環
   - **驗**：`Get-ChildItem -File *.ps1,*.docx` == 0
   - commit（ACL 解後）: `chore(repo): archive legacy ps1/docx from root to docs/archive + tests/fixtures`
 

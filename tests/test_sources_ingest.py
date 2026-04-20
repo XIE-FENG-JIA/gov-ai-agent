@@ -5,12 +5,13 @@ from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 import requests
 import yaml
 
 from src.core.models import PublicGovDoc
 from src.sources.base import BaseSourceAdapter
-from src.sources.ingest import build_argument_parser, collect_source_snapshots, ingest, main
+from src.sources.ingest import FixtureFallbackError, build_argument_parser, collect_source_snapshots, ingest, main
 
 
 class FakeAdapter(BaseSourceAdapter):
@@ -146,6 +147,29 @@ def test_main_uses_registry_and_prints_written_paths(tmp_path: Path, monkeypatch
     assert "DOC-001.md" in captured.out
 
 
+def test_main_passes_require_live_flag_to_ingest(tmp_path: Path, monkeypatch) -> None:
+    from src.sources import ingest as ingest_module
+
+    class FakeCliAdapter(FakeAdapter):
+        pass
+
+    observed: dict[str, object] = {}
+
+    def fake_ingest(adapter, **kwargs):  # type: ignore[no-untyped-def]
+        observed["adapter"] = adapter
+        observed.update(kwargs)
+        return []
+
+    monkeypatch.setattr(ingest_module, "_adapter_registry", lambda: {"mojlaw": FakeCliAdapter})
+    monkeypatch.setattr(ingest_module, "ingest", fake_ingest)
+
+    exit_code = main(["--source", "mojlaw", "--limit", "1", "--base-dir", str(tmp_path), "--require-live"])
+
+    assert exit_code == 0
+    assert isinstance(observed["adapter"], FakeCliAdapter)
+    assert observed["require_live"] is True
+
+
 def test_build_argument_parser_includes_rss_and_api_sources() -> None:
     parser = build_argument_parser()
 
@@ -170,6 +194,32 @@ def test_main_mojlaw_cli_falls_back_to_local_fixtures(tmp_path: Path, capsys) ->
     metadata = yaml.safe_load(written[0].read_text(encoding="utf-8").split("---\n", 2)[1])
     assert metadata["synthetic"] is True
     assert metadata["fixture_fallback"] is True
+
+
+def test_main_mojlaw_cli_require_live_fails_on_fixture_fallback(tmp_path: Path, capsys) -> None:
+    with patch(
+        "src.sources.mojlaw.requests.Session.get",
+        side_effect=requests.ConnectionError("offline for fixture fallback"),
+    ):
+        exit_code = main(["--source", "mojlaw", "--limit", "3", "--base-dir", str(tmp_path), "--require-live"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "error=live ingest required for mojlaw" in captured.out
+    assert list((tmp_path / "corpus" / "mojlaw").glob("*.md")) == []
+
+
+def test_ingest_require_live_rejects_fixture_fallback(tmp_path: Path) -> None:
+    class FixtureOnlyAdapter(FakeAdapter):
+        def normalize(self, raw: dict[str, str]) -> PublicGovDoc:
+            doc = super().normalize(raw)
+            return doc.model_copy(update={"synthetic": True, "fixture_fallback": True})
+
+    with pytest.raises(FixtureFallbackError, match="live ingest required"):
+        ingest(FixtureOnlyAdapter(), limit=1, base_dir=tmp_path, require_live=True)
+
+    assert not (tmp_path / "raw" / "fixtureonly").exists()
+    assert list((tmp_path / "corpus" / "fixtureonly").glob("*.md")) == []
 
 
 def test_collect_source_snapshots_reads_existing_storage_dirs(tmp_path: Path) -> None:

@@ -23,6 +23,10 @@ from src.sources.mojlaw import MojLawAdapter
 DEFAULT_BASE_DIR = Path("kb_data")
 
 
+class FixtureFallbackError(RuntimeError):
+    """Raised when a caller requires live upstream data but only fixtures are available."""
+
+
 @dataclass
 class IngestRecord:
     """Paths produced for one normalized public document."""
@@ -52,6 +56,7 @@ def ingest(
     limit: int = 3,
     *,
     base_dir: Path = DEFAULT_BASE_DIR,
+    require_live: bool = False,
 ) -> list[IngestRecord]:
     """Fetch, normalize, and persist source documents to kb_data."""
     adapter_name = _adapter_name(adapter)
@@ -74,6 +79,10 @@ def ingest(
         normalized = adapter.normalize(raw)
         if existing_metadata and normalized.synthetic:
             continue
+        if require_live and (normalized.synthetic or normalized.fixture_fallback):
+            raise FixtureFallbackError(
+                f"live ingest required for {adapter_name}, but source_id={source_id} used fixture fallback"
+            )
 
         month_bucket = normalized.crawl_date.strftime("%Y%m")
         raw_path = raw_root / month_bucket / f"{source_id}.json"
@@ -92,6 +101,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--since", help="ISO date filter, e.g. 2026-01-01")
     parser.add_argument("--limit", type=int, default=3)
     parser.add_argument("--base-dir", default=str(DEFAULT_BASE_DIR))
+    parser.add_argument("--require-live", action="store_true", help="fail if ingest falls back to local fixtures")
     return parser
 
 
@@ -100,12 +110,17 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     adapter_cls = _adapter_registry()[args.source]
-    records = ingest(
-        adapter_cls(),
-        since_date=date.fromisoformat(args.since) if args.since else None,
-        limit=args.limit,
-        base_dir=Path(args.base_dir),
-    )
+    try:
+        records = ingest(
+            adapter_cls(),
+            since_date=date.fromisoformat(args.since) if args.since else None,
+            limit=args.limit,
+            base_dir=Path(args.base_dir),
+            require_live=args.require_live,
+        )
+    except FixtureFallbackError as exc:
+        print(f"error={exc}")
+        return 2
 
     print(f"ingested={len(records)} source={args.source}")
     for record in records:
