@@ -693,3 +693,96 @@ Epic 排序建議：
 **ACL-free 四項（1/2/4/5）任一不過 = 3.25**，v2.9 閉環驗收看執行不看規劃。
 
 ---
+
+## 反思 [2026-04-20 09:30 — 技術主管第十一輪深度回顧]
+
+### 近期成果（v3.0 實作化下沉）
+
+- **P0.I 硬落地**：`MojLawAdapter` 全真實作（`src/sources/mojlaw.py` 175 行）— list/fetch/normalize 三動皆可跑；3 份 fixture `a0030018/a0030055/a0030133.json`；`PublicGovDoc` pydantic v2 model 落 `src/core/models.py`；`tests/test_mojlaw_adapter.py` 建，`pytest tests/test_mojlaw_adapter.py tests/test_sources_base.py tests/test_core.py -q` = **21 passed / 3.13s**（results.log #39 鐵證）
+- **骨架 → 實作紅線生效**：v3.0 設「骨架不是實作」紅線後，auto-engineer 單輪內完成 adapter 從 `NotImplementedError` 到三動可跑 + fixture 驗收，證明「PUA 顆粒度壓到具體函數簽章 + 硬驗收指令」=> 抓手生效
+- **Epic 1 首次真進度**：連 9+ 輪零抓取後，終於有 `MojLawAdapter().list(since_date)` 可回 3 筆；normalize → `PublicGovDoc` 實例化通過
+
+### 發現的問題（按嚴重度）
+
+**🛑 系統層（根因連 9+ 輪未解）**
+
+1. **`.git` DENY ACL 仍活**：`icacls .git | grep -c DENY` == **2**（OI/CI/IO 兩條）；disaster-recovery.md SOP 已寫 9 輪，Admin 執行 = 0；v3.0 第十一輪，P0.D 破紀錄延宕
+2. **P0.L 排查方向錯誤**：原設計假設 auto-commit 來自 ralph-loop 配置，但實測 `.claude/ralph-loop.local.md` 明文禁 `auto-commit:`（line 14），而近 10 commit 仍 100% 該前綴。根因其實是 **results.log #20/#23/#24/#25/#29/#31/#33/#36/#38 九條 AUTO-RESCUE 皆 Admin session 代 commit**，訊息模板出自 Admin 腳本，不在 repo 內
+3. **AUTO-RESCUE 已成依賴**：auto-engineer 零 commit 能力持續，系統自治降級 → 「read-only working tree + Admin rescue」變常態
+
+**🔴 架構健康（v3.0 新視角）**
+
+4. **根目錄 4 殘檔仍在**：`engineering-log.md` / `MULTI_AGENT_V2_IMPLEMENTATION.md` / `test_compliance_draft.md` / `output.md` 連 v2.9 P0.H 補漏後仍滯根；P0.J 本輪**零執行**（仍掛 `[ ]`）
+5. **PRD 亂碼複本**：`docs/archive/PRD\346\226\207\344\273\266.txt` 字面 bytes 檔名未處理（P0.J 子項）
+6. **01-real-sources specs/tasks 仍缺**：`openspec/changes/01-real-sources/` 只有 proposal.md；`spectra status` 會顯示 `✗ tasks blocked by: specs`；P0.K 本輪**零執行**
+7. **T1.2.b 其餘 4 adapter 全未動**：DataGovTw / ExecutiveYuanRss / MohwRss / FdaApi — P0.I 第一顆骨牌倒下後，第二顆該推了
+8. **T1.4 ingest pipeline 未接**：MojLaw 能跑單 adapter，但沒有 `src/sources/ingest.py` 把它接進 `kb_data/raw/` + `kb_data/corpus/` — Epic 1 只通一半
+
+**🟡 Spectra / 測試**
+
+9. **openspec/changes/02-open-notebook-fork/** 只有 proposal，specs/tasks 未補（T7.1.b 下游）
+10. **03-citation-tw-format / 04-audit-citation** 兩份 proposal 連多輪未動（Epic 3 / 4 的接口）
+11. **Test count**：專項 21/21 綠；全量未量（本輪 `pytest tests -q` 後台仍在跑，不阻塞本反思）；1363 deprecation warning 連 6+ 輪未動
+12. **`tests/test_sources_base.py` 與 `tests/test_core.py` 有 M 狀態** — 本輪 P0.I 擴充了既有測試檔，未獨立；保留 git 歷史相容
+
+**🟢 程式碼品質（v3.0 新檢視）**
+
+13. **`src/sources/mojlaw.py` 實作品質 OK**：`_throttle()` 嚴守 rate_limit ≥ 2s；UA 明示 `GovAI-Agent/1.0`；ZIP/JSON 雙解；日期多 key fallback；有 `_law_cache` 避免重複請求。品質合乎 `docs/architecture.md` 約束
+14. **次要問題**：`fetch()` 若 cache miss 會 `_load_catalog(force_refresh=True)` 全量重抓，單筆 fetch 退化為全 catalog 請求 — MojLaw API 目前無單筆 endpoint，無法優化；但應在 docstring 標註這個 trade-off
+15. **`list()` 硬寫 `== 3` break**：限 3 份是 v3.0 P0.I 收縮決策，但寫死在代碼而非參數化 → T1.2.c CLI wiring 時會卡，建議改 `list(since_date, limit=3)` 簽章
+16. **`normalize()` raw_snapshot_path=None**：T1.4 尚未接，暫可；但 Epic 1 驗收時需落 `kb_data/raw/mojlaw/{YYYYMM}/{doc_id}.html`
+
+### 反覆卡住模式（更新）
+
+| 任務 | 延宕輪次 | 根因 | v3.1 處置建議 |
+|------|---------|------|--------------|
+| P0.D ACL 解鎖 | 9 | 人工 Admin 依賴 | 維持 P0，不動 |
+| P0.L auto-commit 源頭 | 6+ | **排查方向錯**（已證不在 repo） | 改寫為「記錄真相 + 向 Admin session 提案模板替換」 |
+| P0.J 根目錄 md | 2+（v3.0 新設） | 純意願 ACL-free | **升首，連 2 輪延宕即 3.25** |
+| P0.K spectra specs/tasks | 1（v3.0 新設） | 純意願 ACL-free | 次位 |
+| T1.2.b 其餘 adapter | 10+ | Epic 1 真空，P0.I 已解 | 下輪升 P1 首位 |
+| T8.1.a kb.py 拆分 | 7+ | ACL-gated，但預拆 ACL-free | 維持 P1 |
+
+### 建議的優先調整（v3.1 重排）
+
+**核心洞察**：v3.0 硬指標 1/4 硬通過（P0.I）；P0.J/K/L 三項 ACL-free **本輪零執行** = 觸發「連 2 輪延宕 3.25」死線。v3.1 必須把 P0.J / P0.K 提首，P0.L 重新定義（不要用錯誤方向虛耗輪次）。
+
+**新 P0 順序（v3.1）**：
+
+1. **P0.J（升首）**：根目錄 4 殘檔 mv + PRD 亂碼處置 — 純 file-level, 連 2 輪延宕即 3.25
+2. **P0.K**：01-real-sources specs/sources/spec.md + tasks.md — ACL-free，spectra 必閉
+3. **P0.L（重寫）**：auto-commit 排查結論寫 `docs/auto-commit-source.md`：結論是「源自 AUTO-RESCUE Admin 腳本，非 repo 內 hook」+ 提出 Admin 側模板替換 SOP
+4. **T1.2.b（升 P0.M 新增）**：DataGovTwAdapter 實作 + 3 fixture — 複製 P0.I 成功模式
+5. **P0.D**：🛑 ACL（Admin）
+6. **T1.4（新升 P0.N）**：`src/sources/ingest.py` 最小版 — 把 MojLaw 一條龍接通 raw/corpus 落盤
+
+**新紅線（v3.1）**：
+- ACL-free 連 2 輪延宕 = 3.25（沿用）
+- **新增**：**「骨架不是實作」沿用，但加「實作不接 pipeline ≠ 通」** — Epic 1 真通過需 `gov-ai sources ingest --source mojlaw --limit 3` 能落 3 份 .md 至 `kb_data/corpus/mojlaw/`
+
+### 下一步行動（最重要 3 件）
+
+1. **P0.J 本輪結**：`mv engineering-log.md docs/archive/` + 3 份同；PRD bytes 檔名驗內容重複後刪，或改單一 ASCII 檔名
+2. **P0.K 本輪結**：抄 T1.2/T1.3 簽章寫 `specs/sources/spec.md`（BaseSourceAdapter 契約 + PublicGovDoc 欄位 + robots/rate 合規）+ `tasks.md` 10 條
+3. **P0.M（新·T1.2.b 第一顆）**：`DataGovTwAdapter` 實作，複製 P0.I 成功 SOP：(a) 3 fixture (b) list/fetch/normalize (c) 測試綠
+
+### 復盤四步法
+
+- **回顧目標**：v3.0 四項 ACL-free 硬指標（P0.I / P0.J / P0.K / P0.L）任一不過 = 3.25
+- **評估結果**：**1/4 PASS**（P0.I 硬綠 21 tests）；P0.J/K/L 本輪零執行 — 達到連 2 輪延宕就觸發績效強三
+- **分析原因**：P0.I 因「函數簽章明確 + `pytest tests/test_mojlaw_adapter.py -q` 綠」硬驗收推動；P0.J/K/L 驗收是「ls / wc -l」弱訊號，PUA 壓力下沉不到行動
+- **提煉 SOP**：**弱驗收指令是拖延溫床**。v3.1 把 P0.J/K/L 驗收改成 pytest / spectra status 硬檢，與 P0.I 同等級壓力
+
+### 硬指標（v3.1 下輪審查）
+
+1. `ls *.md | wc -l` ≤ 4 AND `git status --short | grep -c "??"` == 0（P0.J）
+2. `spectra status --change 01-real-sources 2>&1 | grep -c "✓"` ≥ 2（P0.K）
+3. `ls docs/auto-commit-source.md && grep -c "AUTO-RESCUE" docs/auto-commit-source.md` ≥ 1（P0.L 重定義）
+4. `python -c "from src.sources.datagovtw import DataGovTwAdapter; print(len(DataGovTwAdapter().list()))"` ≥ 3（P0.M 新）
+5. `icacls .git 2>&1 | grep -c DENY` == 0（P0.D；Admin）
+
+**ACL-free 四項（1/2/3/4）任一不過 = 3.25**。v3.1 核心：**延宕不等於藉口，驗收硬才是抓手**。
+
+> [PUA生效 🔥] **底層邏輯**：P0.I 跑通證明 auto-engineer 有能力把 stub 進化為可驗實作——**意願不是能力問題**。P0.J/K/L 是純 `mv` / 寫 md / grep 的事，**連一輪都不落就是 3.25 紅線**。顆粒度已壓到函數，抓手要從 ls 升級到 spectra + pytest。因為信任所以簡單：下輪四硬指標綠燈，否則績效強三。
+
+---
