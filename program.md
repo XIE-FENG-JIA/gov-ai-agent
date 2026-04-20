@@ -231,17 +231,14 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - commit（ACL 解除後）: `feat(scripts): audit-only plan for rewriting auto-commit history to conventional format`
   - **完成（2026-04-20）**：新增 `scripts/rewrite_auto_commit_msgs.py` 與 `tests/test_rewrite_auto_commit_msgs.py`；實跑 `python scripts/rewrite_auto_commit_msgs.py` 產 `docs/rescue-commit-plan.md` **44 行 / 33 筆 rewrite candidates**，覆蓋近 40 commits 的 `auto-commit:` 歷史，且不觸碰 `.git` 歷史
 
-### P0.Z — 🟢 ACL-free·Epic 2 真 import（v3.9 新增；5 分鐘可破）— 🔴 v3.9 首位
+### P0.Z — ✅ v3.9 現場閉環（2026-04-20 17:00）：vendor re-clone + import-ok
 
-- [ ] **P0.Z** ✅ 不依賴 ACL：`vendor/open-notebook` 半殘 clone 修復 / 重新 checkout
-  - **v3.9 背景**：P0.X smoke 實測 `status=vendor-incomplete`（`.git` 缺 `HEAD` / `config` / `objects` / `refs` → 連 checkout 都做不到，只有 `config.lock` / `description` / `hooks` / `info` 殘檔）；P1.4 標「clone 成功」為誤判——**半殘 clone 等同沒 clone**。Epic 2 真實可 import 前置
-  - 產出：
-    - `rm -rf vendor/open-notebook` → `git -C vendor clone --depth 1 https://github.com/lfnovo/open-notebook.git` 重新 clone；若網路 egress 仍擋 → 記 `docs/open-notebook-study.md §6: vendor clone blocked — needs Admin egress`
-    - clone 成功後：`python scripts/smoke_open_notebook.py` 應由 `vendor-incomplete` 切到 `import-ok` 或 `dep-missing: [...]`
-    - 若 Python 依賴缺，清單寫 `docs/open-notebook-study.md §6`（接 P1.3 litellm smoke）
-  - **驗 1**：`ls vendor/open-notebook/*.py vendor/open-notebook/pyproject.toml 2>&1 | wc -l` ≥ 1
-  - **驗 2**：`python scripts/smoke_open_notebook.py 2>&1 | grep -c "vendor-incomplete\|vendor-unready"` == 0
-  - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25（Admin egress 擋則記 blocker 非違規）
+- [x] **P0.Z** ✅ 不依賴 ACL：`vendor/open-notebook` 半殘 clone 已修復；`import open_notebook` 成功
+  - **執行**：`rm -rf vendor/open-notebook && git clone --depth 1 https://github.com/lfnovo/open-notebook.git vendor/open-notebook` 於 2026-04-20 17:00 執行成功（網路 egress 本輪**暢通**，推翻 P0.T-LIVE 的 egress-blocked 假設——需復查 `--require-live` 失敗真因是否另有因素）
+  - **驗 1**：`ls vendor/open-notebook/*.py vendor/open-notebook/pyproject.toml 2>&1 | wc -l` = **2** ≥ 1 ✅
+  - **驗 2**：`python scripts/smoke_open_notebook.py 2>&1` 輸出 `status=ok message=imported open_notebook successfully` — `vendor-incomplete` 已消失 ✅
+  - **尾巴**：`__version__` 仍 `?`（open-notebook 未導出），但 import 本身通；下一步 P1.3 litellm smoke 可啟動 ask_service wiring
+  - **v3.9 副產物**：推翻「Admin egress 擋」的連 5 輪假設 → **P0.T-LIVE 的 fixture fallback 根因可能不是 egress，而是 `--require-live` 邏輯或 upstream law.moj.gov.tw 檔路徑不穩**。下輪以此為新 hypothesis 重跑 probe
   - commit（ACL 解除後）: `chore(vendor): re-clone open-notebook to repair incomplete .git stub`
 
 ### P0.S-ADMIN — 🟢 ACL-free·Admin 治本 audit（v3.9 新增；15 分鐘可破）
@@ -259,7 +256,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### T9.8-P0 — 🟢 ACL-free·openspec baseline（v3.9 升 P0；20 分鐘可破）
 
-- [ ] **T9.8-P0** ✅ 不依賴 ACL：`openspec/specs/` baseline capability 建檔
+- [x] **T9.8-P0** ✅ 不依賴 ACL：`openspec/specs/` baseline capability 建檔
   - **v3.9 背景**：`ls openspec/specs/` 實測 empty；T7.4 Spectra coverage 補洞需 baseline specs 前置；Spectra 規格驅動的 single source of truth 斷裂
   - 產出：
     - `openspec/specs/sources.md`：從 `01-real-sources/specs/sources/spec.md` 抽 baseline capability；去除 change-specific 段，保留 `BaseSourceAdapter` 契約、`PublicGovDoc` 欄位、授權/合規要求
@@ -268,6 +265,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗 2**：`wc -l openspec/specs/sources.md` ≥ 30 AND `wc -l openspec/specs/open-notebook-integration.md` ≥ 30
   - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
   - commit（ACL 解除後）: `docs(spec): add sources + open-notebook-integration baseline capabilities`
+  - **完成（2026-04-20）**：新增 `openspec/specs/sources.md` 與 `openspec/specs/open-notebook-integration.md`，把 real-sources 與 open-notebook seam 從 change-specific 規格抽成 repo baseline；保留 `BaseSourceAdapter` / `PublicGovDoc` / `OpenNotebookAdapter` / `GOV_AI_OPEN_NOTEBOOK_MODE` 契約，以及 fallback、review-layer ownership、SurrealDB freeze 邊界
 
 ---
 
@@ -629,7 +627,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [ ] **T7.1.d** `04-audit-citation`（Epic 4）
 - [x] **T7.2** → 已升 P1.2（v2.4 閉環）
 - [ ] **T7.3** `engineer-log.md` 進版控 + 每輪反思 append 規範
-- [ ] **T7.4（v3.8 NEW）✅ ACL-free** Spectra coverage 補洞：兩個 change 的 spec requirement → tasks.md 對應
+- [x] **T7.4（v3.8 NEW）✅ ACL-free** Spectra coverage 補洞：兩個 change 的 spec requirement → tasks.md 對應
   - **背景**：`spectra analyze 01-real-sources` 回 5 個 `[WARNING] Requirement ... has no matching task`（`Source adapters use one shared contract` / `Normalized real-source documents preserve provenance` / `Real-source ingestion follows public-data compliance rules` / `Synthetic content stays outside real-source retrieval` / `The first approved source set is intentionally narrow`）+ 3 個 SUGGEST `Replace 'may' with SHALL` 於 `specs/sources/spec.md:66/80/93`；`spectra analyze 02-open-notebook-fork` 回另 5 個同類 WARNING（narrow import boundary / ask-service integration / first integration slice / repo owns fallback / five-agent review layering）
   - 產出：
     - `openspec/changes/01-real-sources/tasks.md`：每條 requirement 追對應 task ID（可 link 既有 T1.x 閉環或新增 verify task）；把 `may` 改 `SHALL`/`SHALL NOT`
@@ -639,6 +637,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗 3**：`spectra analyze 01-real-sources 2>&1 | grep -c "Vague language 'may'"` == 0
   - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
   - commit（ACL 解後）: `docs(spec): backfill requirement→task coverage for 01-real-sources and 02-open-notebook-fork`
+  - **完成（2026-04-20）**：`01-real-sources` 與 `02-open-notebook-fork` 的 tasks 已直接標註 requirement 名稱對應，`specs/sources/spec.md` 的 `may` 已全數改為 SHALL 語氣；`spectra analyze 01-real-sources` / `02-open-notebook-fork` 皆 `No issues found`
 
 ---
 
@@ -728,11 +727,13 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **P0.W (v3.8)** `src/integrations/open_notebook/` seam 骨架 + `src/cli/open_notebook_cmd.py` 已落地；`OpenNotebookAdapter` Protocol、`off/smoke/writer` 三模式工廠、vendor `.git` stub 偵測與 writer-mode loud fail 已就位；`pytest tests/test_integrations_open_notebook.py -q` = 7 passed，`GOV_AI_OPEN_NOTEBOOK_MODE=smoke python -m src.cli.main open-notebook smoke --question "hi" --doc "first evidence"` 非空
 - [x] **P0.X (v3.8)** vendor smoke import 已落地；`scripts/smoke_open_notebook.py` 會先 probe vendor checkout，再驗 flat/src layout import，缺依賴回報 `missing=<module>`；2026-04-20 16:47 實跑已把現況收斂成 `status=vendor-incomplete`（`.git` 僅殘留 `config.lock` / `description` / `hooks` / `info`），不再只說「只有 `.git`」，且 smoke path 不會噴 `ImportError: No module named 'open_notebook'`
 - [x] **P0.Y (v3.8)** audit-only 自救原型：`scripts/rewrite_auto_commit_msgs.py` + `tests/test_rewrite_auto_commit_msgs.py` + `docs/rescue-commit-plan.md` 已落地；實跑報告 44 行 / 33 筆 rewrite candidates，未改任何 git 歷史
+- [x] **T7.4（v3.8）** Spectra coverage 補洞：`spectra analyze 01-real-sources` 與 `spectra analyze 02-open-notebook-fork` 皆已 `No issues found`；兩個 change 的 requirement→task 對應與 SHALL 語氣回填完成
 - [x] **T1.12-HARDEN (v3.4)** nightly live smoke 禁 silent fixture fallback；`tests/integration/test_sources_smoke.py` 把 fixture_dir 指向不存在路徑，upstream 掛 → integration FAIL 不再假綠
 - [x] **T1.6.a (v3.4)** 校正 `kb_data/examples/*.md` 合成基線為 155，`tests/test_mark_synthetic.py` 新增 guard
 - [x] **T1.6.b (v3.4)** fixture corpus 升級護欄；ingest 辨識既有 `synthetic: true` / `fixture_fallback: true` 檔，僅 live re-ingest 時覆寫
 - [x] **P1.5 (v3.3)** `docs/architecture.md` v1 落地（273 行）涵蓋 CLI/API/ingest + 5 adapter + vendor 邊界 + SurrealDB freeze
 - [x] **P1.7 (v3.4)** `docs/llm-providers.md`（81 行）盤點 `src/core/llm.py` provider 工廠；AUTO-RESCUE `d92bace`
+- [x] **T7.4 (v3.8)** `openspec/changes/{01-real-sources,02-open-notebook-fork}/tasks.md` 已補 requirement→task mapping，`openspec/changes/01-real-sources/specs/sources/spec.md` 已把殘留 `may` 收斂為 `SHALL`；驗證 `spectra analyze 01-real-sources` / `spectra analyze 02-open-notebook-fork` 皆 0 findings
 - [x] **P1.10 (v3.8)** `docs/open-notebook-study.md`（repo-first study）整理 `ask_service`/evidence/provider/storage/fallback 邊界，並記錄 `vendor/open-notebook` 目前僅 `.git` stub 的實測現況
 - [x] **T2.2 (v3.6)** `docs/integration-plan.md` Fork + thin adapter seam 決策；`GOV_AI_OPEN_NOTEBOOK_MODE=off|smoke|writer` 契約；AUTO-RESCUE `d225281`
 - [x] **T9.4.b (v3.7)** `src/cli/utils.py` resolve_state_path + `GOV_AI_STATE_DIR` env；4 個 call-site 搬遷 + `tests/test_cli_state_dir.py` 6 passed；AUTO-RESCUE `d92bace`
@@ -773,7 +774,7 @@ Epic 7 負責建置。建置完成前，program.md 是單一事實來源。
 3. ❌ `icacls .git 2>&1 | grep -c DENY` == 0（目前 2；P0.D，Admin 依賴連 >16 輪）
 4. ✅ `ls src/integrations/open_notebook/__init__.py` 存在（P0.W；Epic 2 第一顆骨牌）
 5. ✅ `wc -l docs/open-notebook-study.md` ≥ 80（P1.10；T2.1 等價）
-6. ✅ `python scripts/smoke_open_notebook.py 2>&1` 不噴 `ImportError`（P0.X；graceful `vendor-incomplete`）→ **P0.Z 目標再升：切 `import-ok`/`dep-missing`**
+6. ✅ `python scripts/smoke_open_notebook.py 2>&1` = `status=ok message=imported open_notebook successfully`（P0.Z 現場閉環；vendor re-clone 成功 + import 通）
 7. ❌ `grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` ≥ 9 AND `grep -l "fixture_fallback: true" kb_data/corpus/**/*.md | wc -l` == 0（P0.T-LIVE；Admin 解 egress 後）
 
 **v4.0 目標**：**5/7 PASS**（新破指標 2 ≤ 12 — P0.S-ADMIN 定位源頭 + Admin 側換模板）；若仍 4/7 = 承諾漂移 v4（3.25 紅線 4）。

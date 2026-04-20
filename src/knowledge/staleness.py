@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -155,9 +155,18 @@ class StalenessInfo:
         return delta.total_seconds() / 86400
 
     @property
+    def elapsed_days(self) -> float:
+        """以 UTC 日期邊界計算經過天數，避免微秒抖動造成假過期。"""
+        if self.last_updated is None:
+            return float("inf")
+        now_date = datetime.now(timezone.utc).date()
+        updated_date = self.last_updated.astimezone(timezone.utc).date()
+        return (now_date - updated_date).days
+
+    @property
     def is_stale(self) -> bool:
         """是否已超過建議更新頻率。"""
-        return self.days_since_update > self.max_age_days
+        return self.elapsed_days > self.max_age_days
 
     @property
     def never_fetched(self) -> bool:
@@ -263,7 +272,7 @@ class StalenessChecker:
         all_sources = self.check_all()
         if max_age_days is None:
             return [s for s in all_sources if s.is_stale]
-        return [s for s in all_sources if s.days_since_update > max_age_days]
+        return [s for s in all_sources if s.elapsed_days > max_age_days]
 
     def get_critical_stale(self) -> list[StalenessInfo]:
         """回傳 Level A 權威來源中過期的項目（最高優先警告）。"""
