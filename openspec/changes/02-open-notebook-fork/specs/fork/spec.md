@@ -72,6 +72,9 @@ The first approved slice excludes:
 - **GIVEN** this change is under implementation
 - **WHEN** follow-up tasks are planned
 - **THEN** SurrealDB work remains blocked until the integration plan is reviewed
+- **AND** human review is required before SurrealDB migration or full writer
+  cutover proceeds
+- **AND** the storage migration stays frozen until that review is complete
 
 ### Requirement: The repo owns fallback behavior when the fork is absent or fails
 

@@ -247,8 +247,9 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - commit（ACL 解後）: `docs(integration): document setup and non-goals for fork adoption`
   - **完成（2026-04-20 20:55）**：`docs/open-notebook-study.md` 與 `docs/integration-plan.md` 已具備 env vars、local setup、legacy writer fallback、current non-goals；本輪補明確 operator notes 後，`rg -n "OPENROUTER_API_KEY|elephant-alpha|non-goals|legacy writer" docs/open-notebook-study.md docs/integration-plan.md` 命中通過
 
-- [ ] **T2.9** 🟢 ACL-free·SurrealDB freeze（10 分）：`docs/integration-plan.md` + `openspec/changes/02-open-notebook-fork/specs/fork/spec.md` 補「human review required before SurrealDB / full writer cutover」段
+- [x] **T2.9** 🟢 ACL-free·SurrealDB freeze（10 分）：`docs/integration-plan.md` + `openspec/changes/02-open-notebook-fork/specs/fork/spec.md` 補「human review required before SurrealDB / full writer cutover」段
   - **驗**：`rg -n "human review|required before SurrealDB|frozen" docs/integration-plan.md openspec/changes/02-open-notebook-fork/specs/fork/spec.md` 命中 ≥ 3
+  - **完成（2026-04-20 21:03）**：`spec.md` 已補 human-review gate 與 frozen wording；`docs/integration-plan.md` 原有 review gate 保持一致，Epic 2 `openspec` task 清單至此全勾完
   - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25
   - commit（ACL 解後）: `docs(integration): freeze storage migration until review`
 
@@ -502,7 +503,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **延宕懲罰**：ACL-free 連 2 輪延宕 = 3.25
   - commit（ACL 解除後）: `fix(scripts): live_ingest report enumerates existing kb_data/corpus real md`
 
-- [ ] **P0.EE** ✅ 不依賴 ACL / 不依賴 Epic 2：`openspec/changes/03-citation-tw-format/proposal.md`（Epic 3 觸發器）
+- [x] **P0.EE** ✅ 不依賴 ACL / 不依賴 Epic 2：`openspec/changes/03-citation-tw-format/proposal.md`（Epic 3 觸發器）
   - **v4.1 升格理由**：`openspec/changes/` 目前只有 01 / 02 / archive；Epic 3（T3.1-T3.4）規格全空，Spectra baseline 斷鏈；proposal 180+ 字即可啟動後續 specs + tasks
   - **產出**：
     - `openspec/changes/03-citation-tw-format/proposal.md`：對齊 `src/core/citation.py` + 台灣公文格式（`## 引用來源` 段）+ Custom Properties metadata（`source_doc_ids` / `citation_count` / `ai_generated` / `engine`）+ `gov-ai verify <docx>` 比對 kb 契約
@@ -510,6 +511,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗 2**：`spectra analyze 03-citation-tw-format` 不爆 `proposal missing`
   - **延宕懲罰**：ACL-free 連 2 輪延宕 = 3.25
   - commit（ACL 解除後）: `docs(spec): add 03-citation-tw-format proposal (Epic 3 trigger)`
+  - **完成（2026-04-20 21:10）**：補齊 `openspec/changes/03-citation-tw-format/{proposal.md,tasks.md,specs/citation/spec.md}`，把 `## 引用來源`、`source_doc_ids`、`citation_count`、`ai_generated`、`engine` 與未來 `gov-ai verify <docx>` 契約寫入 Epic 3；驗證 `proposal.md` 字數與關鍵詞命中，並讓 `spectra analyze 03-citation-tw-format` 至少不再卡 `proposal missing`
 
 ### P0.FF — 🟢 ACL-free·Pydantic warnings 止癢（v4.1 新增；10 分鐘）
 
@@ -1097,6 +1099,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **T7.4 (v3.8)** `openspec/changes/{01-real-sources,02-open-notebook-fork}/tasks.md` 已補逐 task requirement traceability metadata；驗證 `spectra analyze 01-real-sources` / `spectra analyze 02-open-notebook-fork` 於 2026-04-20 17:06 皆 0 findings
 - [x] **P1.10 (v3.8)** `docs/open-notebook-study.md`（repo-first study）整理 `ask_service`/evidence/provider/storage/fallback 邊界，並記錄 `vendor/open-notebook` 目前僅 `.git` stub 的實測現況
 - [x] **T2.2 (v3.6)** `docs/integration-plan.md` Fork + thin adapter seam 決策；`GOV_AI_OPEN_NOTEBOOK_MODE=off|smoke|writer` 契約；AUTO-RESCUE `d225281`
+- [x] **T2.9 (2026-04-20)** `openspec/changes/02-open-notebook-fork/specs/fork/spec.md` 補上 human-review gate：明定 human review required before SurrealDB migration or full writer cutover，且 storage migration stays frozen until review 完成；驗證 `rg -n "human review|required before SurrealDB|frozen" docs/integration-plan.md openspec/changes/02-open-notebook-fork/specs/fork/spec.md` 命中達標
 - [x] **T9.4.b (v3.7)** `src/cli/utils.py` resolve_state_path + `GOV_AI_STATE_DIR` env；4 個 call-site 搬遷 + `tests/test_cli_state_dir.py` 6 passed；AUTO-RESCUE `d92bace`
 - [x] **P0.CLI-IMPORT (v3.7)** `src/cli/main.py` 改 callback 內 lazy import 修測試 collection `ImportError`；pytest 3599 passed
 - [x] **P1.4 (v3.7)** `vendor/open-notebook/.git` 存在（某輪 clone 成功未 log；v3.7 正式勾選）

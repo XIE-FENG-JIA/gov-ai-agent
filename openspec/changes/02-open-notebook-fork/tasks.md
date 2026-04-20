@@ -64,12 +64,13 @@
   Commit: `docs(integration): document setup and non-goals for fork adoption`
   - **完成（2026-04-20 20:55）**：`docs/open-notebook-study.md` 與 `docs/integration-plan.md` 已明確列出 `OPENROUTER_API_KEY`、`OPENROUTER_MODEL=elephant-alpha`、local setup 順序、legacy writer fallback 契約與 current non-goals；並補強 `docs/integration-plan.md` 的 operator notes，驗證 `rg -n "OPENROUTER_API_KEY|elephant-alpha|non-goals|legacy writer" docs/open-notebook-study.md docs/integration-plan.md` 命中通過
 
-- [ ] **T2.9** Request human review before any SurrealDB migration or full writer cutover proceeds.  
+- [x] **T2.9** Request human review before any SurrealDB migration or full writer cutover proceeds.  
   Requirements:
   - The first integration slice is import and smoke only
   - Five-agent review layering stays repo-owned
   Validation: `rg -n "human review|required before SurrealDB|frozen" docs/integration-plan.md openspec/changes/02-open-notebook-fork/specs/fork/spec.md`  
   Commit: `docs(integration): freeze storage migration until review`
+  - **完成（2026-04-20 21:03）**：`openspec/changes/02-open-notebook-fork/specs/fork/spec.md` 補上「human review is required before SurrealDB migration or full writer cutover proceeds」與「storage migration stays frozen until that review is complete」，搭配既有 `docs/integration-plan.md` human-review gate，使驗證關鍵字完整命中
 
 - [x] **T2.10** Requirement coverage: The forked runtime stays behind a narrow import boundary is satisfied by `T2.1`, `T2.2`, and `T2.3`.  
   Validation: `spectra analyze 02-open-notebook-fork`
