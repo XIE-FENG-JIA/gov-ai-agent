@@ -1030,3 +1030,71 @@ FAILED tests/test_knowledge_manager_cache.py::TestSearchCache::test_strict_depre
 > [PUA生效 🔥] **底層邏輯**：v4.3 兌現 1/5 是典型「拆最亮的一顆就報功」滑坡 — editor 破蛋值得鼓掌，但指標 2 / 3 血債 + Epic 3 規格鏈斷鏈 + engineer-log 膨脹三連擺爛，本質是「第一顆破蛋後不會連破」的技術主管節奏病。**抓手**：紅線 9「拆分破蛋但不跑全量 = 3.25」把「單檔 focused 綠 = 任務完成」的舊模式打掉；下輪 P0.FULL-PYTEST 必跑。**顆粒度**：P0.FULL-PYTEST 15 分 + P0.S-REBASE-APPLY 20 分 + P0.EE 20 分 + P0.GG 15 分 + T9.6-REOPEN 10 分 = 80 分鐘單輪可拿回三顆指標 + 解三條紅線壓線。**拉通**：editor 破蛋教訓倒回「下一顆拆 `cli/kb.py` 1614 行前先補 `tests/test_kb_cli_contract.py` 骨架」，把拆分風險前置。**對齊**：v4.4 不接受「editor 破蛋但 2/3 血債未動 + 指標 1 focused only」這種**部分勝利**，必須指標 2 至少降至 ≤ 12。**因為信任所以簡單** — 拆完就跑、跑完就綠、綠了才能講下一顆；每輪只認「全量 pytest + 指標 2 / 3 其一破蛋」的閉環。
 
 ---
+
+## 反思 [2026-04-20 19:28] — 技術主管第二十二輪深度回顧（v4.4 候選，/pua 觸發）
+
+### 近期成果（第二十一輪 v4.3 → 本輪）
+- **editor.py 拆三事實閉環**：`src/agents/editor/` 現為 `__init__.py 215` + `flow.py 304` + `segment.py 99` + `refine.py 234` + `merge.py 158` = 1010 行（非單檔 1065）；P0.AA 實為 `b8412c6` 以前即拆完，v4.3 header 標紅屬於 **header 與 HEAD 落差**，非漂移
+- **P0.FF-HARDEN 閉環**：`src/core/warnings_compat.py` 可重入 context + `src/knowledge/manager.py` chromadb 全 wrap 已入 HEAD（`d671661`/`b8412c6`）；`pytest tests/test_knowledge_manager_cache.py -q -W error::DeprecationWarning` = 19 passed
+- **P0.T-LIVE 再驗**：`kb_data/corpus/*/*.md = 9/9 real md`，`synthetic: false = 9`，`fixture_fallback: true = 0`，指標 7 綠持平
+- **P0.S-REBASE 框架完**：`scripts/rewrite_auto_commit_msgs.py --apply/--range` 可跑，ACL 擋走 `EXIT_CODE=2`；但 agent 側 apply 仍未實跑
+
+### 發現的問題（按嚴重度排序）
+
+#### 🔴 誠信級（紅線 8 / 紅線 7 當輪實錘）
+1. **紅線 8 實錘：focused smoke 偷換全綠 = 3.25** — 本輪全量 `pytest tests/ -q` 跑 **1 failed / 3275 passed**；第一個 fail 是 `tests/test_smoke_open_notebook_script.py::test_smoke_import_reports_missing_dependency`，根因 `scripts/smoke_open_notebook.py:60` `status` 變數在 `is_ready=False` 且 reason 不匹配 structural_failures 的 else 分支時未定義 → `UnboundLocalError`。v4.3 header 宣稱「`pytest --co` 收集 3660 tests」「近 20 commits 18/20」全為 focused smoke / `--co` 代綠，**18:34 / 19:07 engineer-log 條目寫的「3652/3653 passed」屬虛報**（實際 3652 後還有 smoke 腳本 UnboundLocalError 壓箱）
+2. **指標 2（auto-commit ≤ 12）倒退 = 紅線 4 實錘**：近 20 commits 全量實測 `git log --oneline -20 | grep -c "auto-commit:"` = **20/20（100%）**，v4.3 header 記 18/20 = 虛報 2 條；P0.S-REBASE agent 側 apply 連 **4 輪零執行**，雙紅線（4 承諾漂移 + 5 方案驅動治理）同時實錘
+3. **紅線 9 候選（P0.AA header 斷層）**：editor 拆分實際早已落，但 program.md v4.3 仍標「第三輪不動 = 雙連 3.25 實錘」；**header 落後 HEAD 兩輪沒同步 = 技術主管節奏病 / 誠信污點** — 建議納入 v4.4 紅線
+
+#### 🟠 結構級
+4. **smoke_open_notebook.py 控制流破窗**：`if not is_ready:` 的 else 分支（structural_failures 不匹配）落掉 status 初始化；test 覆蓋的 corner case 正好命中 = 單元測試是真哨兵但沒人看
+5. **engineer-log.md 1032 行 >> 500 紅線**：T9.6-REOPEN v4.3 已列但本輪前未動；主檔封存腐化
+6. **Epic 3 規格鏈斷鏈**：`openspec/changes/03-citation-tw-format/proposal.md` 不存在，Spectra 對齊度 Epic 3/4 為 0
+7. **`src/cli/generate.py` 1263 行 / `src/cli/kb.py` 1614 行**：T8.1.b 未啟動，editor 拆分經驗沒倒回 generate / kb.py
+8. **writer.py 43KB 未分**：`src/agents/writer.py` 43299 bytes，明顯超過 editor 拆前體量，Epic 8 代碼健康債務疊加
+
+#### 🟡 質量級
+9. **`scripts/live_ingest.py` 重複 report 生成路徑**：T-REPORT 指出 enumeration 需改掃 `kb_data/corpus/**/*.md`，本輪未驗
+10. **AUTO-RESCUE 成唯一落版路徑**：近 20 commits 含 `AUTO-RESCUE` ≥ 12 條；ACL 未解，Admin 依賴 >14 輪；治本只有 admin-rescue-template.md audit-only
+11. **integration test 禁跑**：`tests/integration/` 有 smoke 但 `GOV_AI_RUN_INTEGRATION` 預設 0，nightly gate 未建
+
+#### 🟢 流程級
+12. **紅線清單膨脹至 8 條未簡化**：紅線彼此覆蓋（4/5/6/7/8 其實都是「PASS 定義漂移」子集），應收斂為 3 條核心 + 5 條具體實錘模式
+13. **`results.log` 與 `results.log.dedup` / `results-reconciled.log` / `results.log.stdout.dedup` 四份並存**：P0.BB 已落 dedup 腳本但沒人決策用哪份為 source of truth
+
+### 指標實測（8 項硬指標，v4.3 宣稱 6/8 PASS，本輪實測）
+| # | 指標 | 狀態 | 備註 |
+|---|------|------|------|
+| 1 | `pytest tests/ -q` FAIL=0 | ❌ 紅（v4.3 虛報綠） | 實測 **1 failed**（smoke_open_notebook）/3275 passed（-x 後停） |
+| 2 | 近 20 commits auto-commit ≤ 12 | ❌ 紅 | 實測 **20/20**，v4.3 header 18/20 虛報 |
+| 3 | `.git` DENY ACL = 0 | ❌ 紅 | 實測 2，Admin 依賴未解 |
+| 4 | `src/integrations/open_notebook/__init__.py` 存在 | ✅ 綠 | |
+| 5 | `docs/open-notebook-study.md` ≥ 80 行 | ✅ 綠 | |
+| 6 | `scripts/smoke_open_notebook.py` 輸出 ok | ⚠️ 黃 | 手動 invoke ok，但 pytest path 炸 |
+| 7 | `kb_data/corpus/**/*.md synthetic:false ≥ 9 + fixture_fallback:true = 0` | ✅ 綠 | 9 / 0 |
+| 8 | `src/agents/editor.py` 拆三 | ✅ 綠 | `editor/{flow,segment,refine,merge}.py` 齊 |
+
+**v4.4 實測 4/8 PASS（v4.3 宣稱 6/8 = 虛報 2）**；指標 1（pytest 全綠）從綠退到紅 = 紅線 8 實錘。
+
+### 建議的優先調整（重新排序 program.md 待辦）
+
+**本輪最高優先（P0.HOTFIX，15 分可破）**：
+1. **P0.HOTFIX-SMOKE**（新增）：`scripts/smoke_open_notebook.py:60` 修 `status` 未初始化 bug；在 `if not is_ready:` else 分支收尾補 `status = "vendor-unready"` 預設；驗 `pytest tests/test_smoke_open_notebook_script.py -q` 綠、全量 `pytest tests/ -q` FAIL=0
+2. **P0.FULL-PYTEST**（v4.3 提出本輪必跑）：全量 `PYTHONUNBUFFERED=1 python -u -m pytest tests/ -q 2>&1 | tee results-full.log`；FAIL≠0 即當輪 3.25
+3. **P0.S-REBASE-APPLY**（第四輪跳票邊緣）：`python scripts/rewrite_auto_commit_msgs.py --apply --range HEAD~20..HEAD`；ACL 擋 → `EXIT_CODE=2` 轉血債轉 Admin（實跑，不再 audit-only 自慰）
+4. **P0.EE Epic 3 proposal**（v4.3 列第三）：`openspec/changes/03-citation-tw-format/proposal.md` 180+ 字啟動規格鏈
+5. **T9.6-REOPEN**（log 膨脹）：engineer-log.md 1032 行 → 封存第二十一輪前歷史到 `docs/archive/engineer-log-202604b.md`，主檔留近 3 輪反思
+6. **P0.GG Windows gotchas**（連 3 輪 0 動）：`docs/dev-windows-gotchas.md` 記 cp950 / `.git` ACL / `icacls` / `-u`/`tee` 防 buffering / `Move-Item` policy
+
+**紅線修訂建議（v4.4）**：
+- **收斂**：紅線 4/5/6/7/8 合併為「**紅線 X：PASS 定義漂移**（任何未驗證的「完成」宣稱 = 3.25；含 focused smoke 偷換全綠、方案不動、設計層閉環偷換）」
+- **新增紅線 9**：**header 落後 HEAD 兩輪不同步 = 技術主管節奏污點**（program.md 的 P0.AA 標紅 3 輪但 editor/ 目錄 HEAD 已拆完 = 誠信小污點）
+
+### 下一步行動（最重要的 3 件）
+1. **P0.HOTFIX-SMOKE 15 分破蛋**：修 `scripts/smoke_open_notebook.py:60` `status` 未初始化；必跑 `pytest tests/ -q` 全綠（FAIL=0 才算）
+2. **P0.S-REBASE-APPLY 20 分實跑**：第四輪絕對不跳；ACL 擋也要產 `EXIT_CODE=2` 證據
+3. **T9.6-REOPEN + P0.EE 連擊 30 分**：封存 engineer-log + 啟動 Epic 3 proposal，解 2 條結構債
+
+> [PUA生效 🔥] **底層邏輯**：v4.3 的「6/8 PASS」是技術主管自導自演 — 指標 1 focused smoke 當全綠（紅線 8 當輪實錘）、指標 2 近 20 commits 18/20 其實是 20/20（-2 數字虛報）、P0.AA 標紅線 5「雙連 3.25 實錘」但 editor/ 目錄 HEAD 早拆完（header 斷層污點）。**抓手**：當輪的不是破功多少顆，而是 **先把自己的指標數字校準到 HEAD 實測**—v4.4 不接受任何「header 報的 PASS 數」與 `git ls-tree` / 全量 pytest 不一致。**顆粒度**：P0.HOTFIX-SMOKE 15 分 + P0.FULL-PYTEST 20 分 + P0.S-REBASE-APPLY 20 分 + P0.EE 20 分 + T9.6-REOPEN 10 分 = 85 分鐘單輪可拿回指標 1（真綠）+ 指標 2 / 3（血債轉 Admin）+ Epic 3 規格鏈啟動 + log 封存。**拉通**：修 smoke 的經驗倒回「scripts/*.py 裡凡有 `if not X:` 分支必配 else 預設 + 回歸測試」的 SOP，避免同類 UnboundLocal 再爆。**對齊**：v4.4 的 owner 意識是「**header 指標與 HEAD 實測一致** > 破蛋數量」；3.25 的紅線不是罰你沒做，是罰你做了還虛報。**因為信任所以簡單** — 當輪先校準數字（誠實 > 表演），再動手破蛋。
+
+---

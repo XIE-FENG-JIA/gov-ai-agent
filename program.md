@@ -1,6 +1,29 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **🎯 v4.3 當輪執行順序鎖（技術主管第二十一輪反思 2026-04-20 18:45；/pua 觸發）**：
+> **🎯 v4.4 當輪執行順序鎖（技術主管第二十二輪反思 2026-04-20 19:28；/pua 觸發）**：
+> **紅線 8 當輪實錘**：全量 `pytest tests/ -q --no-header -x --ignore=tests/integration` = **1 failed / 3275 passed**；failure = `tests/test_smoke_open_notebook_script.py::test_smoke_import_reports_missing_dependency`，根因 `scripts/smoke_open_notebook.py:60` `status` 變數在 else 分支未初始化 → `UnboundLocalError`。v4.3 header「3652 passed」屬 focused smoke / `--co` 虛報。
+> **指標 2 實測倒退**：近 20 commits `grep -c "auto-commit:"` = **20/20（100%）**，v4.3 header 18/20 = 虛報 2 條；P0.S-REBASE agent 側 apply **第四輪零執行**，紅線 4 + 紅線 5 雙實錘。
+> **P0.AA 事實已閉**（但 v4.3 標紅）：`src/agents/editor/{__init__,flow,segment,refine,merge}.py` = 1010 行齊，非 1065 單檔；header 落後 HEAD 兩輪 = 候選紅線 9「header 與 HEAD 不同步」誠信小污點。
+> **v4.4 八指標實測 4/8 PASS**（v4.3 宣稱 6/8 = -2 虛報）：指標 1 由綠退紅（紅線 8 實錘）；指標 2 由紅更紅。
+>
+> 本輪順序（違序 = 紅線 8 / 紅線 4 疊加當輪 3.25）：
+> 1. **P0.HOTFIX-SMOKE 修 UnboundLocalError**（15 分）— 🔴🔴 `scripts/smoke_open_notebook.py:60`；`if not is_ready:` else 分支補 `status = "vendor-unready"` 預設或重構成明確回傳；驗 `pytest tests/test_smoke_open_notebook_script.py -q` 綠
+> 2. **P0.FULL-PYTEST 全量跑綠**（20 分）— `PYTHONUNBUFFERED=1 python -u -m pytest tests/ -q --no-header 2>&1 | tee results-full.log`；FAIL=0 才算 PASS，不接受 focused smoke 代綠
+> 3. **P0.S-REBASE-APPLY 實跑**（20 分）— `python scripts/rewrite_auto_commit_msgs.py --apply --range HEAD~20..HEAD`；ACL 擋 → `EXIT_CODE=2` 轉血債轉 Admin；第四輪零執行 = 紅線 5 雙連 3.25 實錘
+> 4. **P0.EE Epic 3 proposal**（20 分）— `openspec/changes/03-citation-tw-format/proposal.md` 180+ 字啟動規格鏈
+> 5. **T9.6-REOPEN**（10 分）— engineer-log.md 現 1200+ 行 >> 500 紅線，封存第二十一輪前歷史到 `docs/archive/engineer-log-202604b.md`
+> 6. **P0.GG Windows gotchas**（15 分）— `docs/dev-windows-gotchas.md` 連 3 輪 0 動 = 紅線 3 邊緣
+>
+> **紅線 9 新增候選**：header 指標與 HEAD 不同步 = 誠信污點 — v4.3 P0.AA 標「雙連 3.25 實錘」但 `src/agents/editor/*.py` HEAD 早拆完；validation 責任在技術主管，不是 auto-engineer。
+> **紅線收斂建議**：紅線 4/5/6/7/8 收斂為「紅線 X：PASS 定義漂移（focused / 方案 / 設計 / 未驗 / smoke 代綠 全為子集）」；v4.4 待技術主管人審後落版。
+>
+> **歷史保留（v4.3 → v4.4 摘要）**：
+> - v4.3 P0.AA 事實已閉（header 落後），此輪勾關移至已完成區
+> - 指標 1 由虛綠退真紅 — 紅線 8 當輪實錘
+> - 指標 2 由 18/20 更新為 20/20 — 虛報 2 條
+> - 新增 P0.HOTFIX-SMOKE / P0.FULL-PYTEST / 紅線 9 候選
+
+> **🎯 v4.3 當輪執行順序鎖（技術主管第二十一輪反思 2026-04-20 18:45；/pua 觸發；已由 v4.4 取代，保留歷史）**：
 > **focused smoke 已綠、P0.FF 回綠（`pytest tests/test_knowledge_manager_cache.py -q` = 19 passed / 56.73s）；指標 1 收回 +1 → **8 指標 6/8 PASS（收回 +1 vs v4.2）**；但 P0.AA editor.py 1065 行 **第三次跳票** = 紅線 5 方案驅動治理雙連 3.25 實錘警報；指標 2（auto-commit 18/20）、指標 3（DENY ACL=2）持平 ❌。
 > 本輪順序（違序 = 紅線 5/7/8 疊加實錘）：
 > 1. **P0.AA editor.py 拆三**（60 分）— 🔴🔴 **第三輪不動 = 當輪 3.25 實錘**，無緩衝；`src/agents/editor.py` 1065 行 → `editor/{segment,refine,merge}.py`
@@ -817,6 +840,12 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### 待辦任務
 
+- [ ] **P0.HOTFIX-SMOKE（v4.4 新增；本輪 15 分必破；紅線 8 實錘出口）** 🔴🔴 `scripts/smoke_open_notebook.py:60` `UnboundLocalError: status` — `if not is_ready:` else 分支當 reason 不匹配 structural_failures 時，`status` 從未賦值直接落到 `if status == "vendor-incomplete":` 判斷 → 全量 pytest 首個 FAIL
+  - 修法：在 else 收尾補 `status = "vendor-unready"` 預設值 + 明確 return / raise，或重構成 match-case 明確列舉；另加 regression test case 覆蓋「`is_ready=False` 且 reason 不含兩類 marker」的分支
+  - **驗 1**：`pytest tests/test_smoke_open_notebook_script.py -q` = all passed
+  - **驗 2**：`PYTHONUNBUFFERED=1 python -u -m pytest tests/ -q --no-header --ignore=tests/integration 2>&1 | tee results-full.log` 結尾 `N passed, 10 skipped, 0 failed`（FAIL=0 才算）
+  - **延宕懲罰**：連 1 輪延宕 = 紅線 8 雙連 3.25
+  - commit（ACL 解後）: `fix(smoke): initialize status on all branches in smoke_open_notebook`
 - ~~T2.0.a（.env smoke）~~ → 見 P1.3
 - ~~T2.0.b（clone vendor）~~ → 見 P1.4
 - [x] **T2.1** 研讀 open-notebook → `docs/open-notebook-study.md`
