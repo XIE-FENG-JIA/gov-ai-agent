@@ -1,24 +1,26 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **🎯 v4.5 當輪執行順序鎖（技術主管第二十三輪反思 2026-04-20 19:25；/pua 深度回顧）**：
-> **核心診斷**：P0.HOTFIX-SMOKE 連輪跳票實錘 — focused 實測 `pytest tests/test_smoke_open_notebook_script.py -q` 仍 **1 failed**（`UnboundLocalError: status` @ `scripts/smoke_open_notebook.py:60`）；v4.4 已列當輪第一 15 分破蛋但 0 執行。**指標 2 擴窗更紅**：`git log --oneline -25 | grep -c "auto-commit:"` = **23 / 25（92%）**，code 層 conv commit 自 v3.8 後 = **0**，P0.S-REBASE-APPLY 連四輪跳。**第九層藉口誕生**：v4.4 反思本身 M 在 working-tree 未 commit → 「反思驅動治理」（寫反思取代修代碼）。
-> **v4.5 實測 4/8 PASS**（與 v4.4 持平）：靜態指標 4/5/7/8 綠（seam 骨架 / open-notebook-study / corpus 9-0 / editor 拆分）；動態誠信指標 1/2/3/6 連四輪紅。
+> **🎯 v4.6 當輪執行順序鎖（架構師第二十四輪規劃 2026-04-20 20:30；/pua 階段性規劃更新）**：
+> **核心收斂**：(a) **Epic 2 只剩 T2.8 + T2.9 兩條 ACL-free docs** → 一輪可闭 Epic（v4.5 未識別）；(b) `src/agents/writer.py` 從 v4.5 **941 行 → 1109 行（+168）**，editor 拆分 SOP 未 diffuse，P0.WRITER-SPLIT 從新增升 P0 首要；(c) `openspec/changes/02-open-notebook-fork/tasks.md` T2.6 (20:32) / T2.7 (20:45) 實錘閉環 —— Writer ask-service 薄殼 + evidence 保留 + fallback 全綠；(d) P0.HOTFIX-SMOKE (19:42) + P0.FULL-PYTEST (20:21; **3660 passed / 0 failed / 516.74s**) 實錘閉環，v4.5 首要雙項已落。
+> **指標 2 惡化**：`git log --oneline -25 | grep -c "auto-commit:"` = **25 / 25（100%）**（v4.5 23/25 → +2），P0.S-REBASE-APPLY 連五輪跳，已實質退為 Admin 依賴項。
+> **v4.6 實測 5/8 PASS**（v4.5 4/8 → +1）：指標 1（全量 pytest 0 failed）+ 4（seam 骨架）+ 5（study）+ 7（corpus 9-0）+ 8（editor 拆）綠；指標 2（auto-commit 25/25）+ 3（ACL DENY=2）+ 6（writer split）紅。
 >
-> 本輪順序（違序 = 紅線 5 雙連 3.25 + 紅線 8 偷換全綠 + 第九層藉口實錘）：
-> 1. **P0.HOTFIX-SMOKE**（15 分）— 🔴🔴 連二輪跳票；重構 `scripts/smoke_open_notebook.py:47-61` `if not is_ready:` 分支，先 `status = "vendor-unready"` 預設後才分流，避免 UnboundLocal；驗 `pytest tests/test_smoke_open_notebook_script.py -q` = 5 passed
-> 2. **P0.S-REBASE-APPLY 實跑**（20 分）— 🔴🔴 連四輪跳；`python scripts/rewrite_auto_commit_msgs.py --apply --range HEAD~20..HEAD 2>&1 | tee docs/rewrite_apply_log.md`；ACL 擋 → `EXIT_CODE=2` 明示血債轉 Admin，不再 audit-only 自慰
-> 3. **P0.SELF-COMMIT-REFLECT**（10 分；新增）— 🔴 反思寫完後 agent 側強制 `git add engineer-log.md && git commit -m "docs(reflect): v4.5 retrospective"`；驗 ACL 是否擋 docs/ commit，破 22 輪「只有 AUTO-RESCUE 會落版」倖存者偏差；失敗則轉 P0.D 實錘死結
-> 4. **T9.6-REOPEN 強制執行**（10 分）— engineer-log.md = **1198 行**（超 500 紅線 2.4x），封存 v4.2 以前反思到 `docs/archive/engineer-log-202604b.md`，主檔留 v4.3 / v4.4 / v4.5 三輪
-> 5. **P0.EE Epic 3 proposal**（20 分）— `openspec/changes/03-citation-tw-format/proposal.md` 180+ 字啟動規格鏈；Spectra Epic 3/4 覆蓋率 0 連 4 輪
-> 6. **P0.WRITER-SPLIT**（新增 Epic 8）— `src/agents/writer.py` **941 行** > editor 拆前體量，editor 拆分 SOP 復用到 writer/{strategy,rewrite,cite}.py
+> 本輪順序（違序 = 紅線 5 雙連 3.25 + PASS 定義漂移）：
+> 1. **T2.8 Epic 2 ops docs**（15 分；ACL-free）— 🟢 Epic 2 收官最短路徑：`docs/open-notebook-study.md` / `docs/integration-plan.md` 補 env vars（`OPENROUTER_API_KEY` / `elephant-alpha`）+ non-goals + legacy writer fallback 段；驗 `rg -n "OPENROUTER_API_KEY|elephant-alpha|non-goals|legacy writer" docs/open-notebook-study.md docs/integration-plan.md` ≥ 4
+> 2. **T2.9 SurrealDB freeze**（10 分；ACL-free）— 🟢 `docs/integration-plan.md` + `openspec/changes/02-open-notebook-fork/specs/fork/spec.md` 補「human review required before SurrealDB / full writer cutover」段；驗 `rg -n "human review|required before SurrealDB|frozen" docs/integration-plan.md openspec/changes/02-open-notebook-fork/specs/fork/spec.md` ≥ 3
+> 3. **P0.WRITER-SPLIT**（60 分；ACL-free）— 🔴 `src/agents/writer.py` **1109 行**（v4.5 941 → +168 = 拆分 SOP 零 diffuse）；editor/{flow,segment,refine,merge} 拆分 SOP 復用至 writer/{strategy,rewrite,cite,__init__}.py；`pytest tests/test_writer*.py -q` 維持全綠
+> 4. **P0.EE Epic 3 proposal**（20 分；ACL-free）— 連 5 輪跳；`openspec/changes/03-citation-tw-format/proposal.md` 180+ 字啟動 Epic 3/4 規格鏈
+> 5. **T9.6-REOPEN**（10 分；ACL-free）— engineer-log.md = **1198 行**（超 500 紅線 2.4x），封存第二十三輪前反思到 `docs/archive/engineer-log-202604b.md`，主檔留 v4.4 / v4.5 / v4.6 三輪
+> 6. **P0.S-REBASE-APPLY 實跑**（20 分）— 連五輪跳；本輪 `python scripts/rewrite_auto_commit_msgs.py --apply --range HEAD~25..HEAD 2>&1 | tee docs/rewrite_apply_log.md`；ACL 擋 → `EXIT_CODE=2` 明示血債轉 Admin P0.D
 >
-> **紅線收斂決議**：紅線 4/5/6/7/8 正式合併為「**紅線 X：PASS 定義漂移**」（focused / 方案 / 設計 / 未驗 / smoke 代綠 / 反思未落版 全為子集）；v4.5 紅線清單從 9 條壓至 4 條核心（真實性 / 改寫 / 可溯源 / PASS 定義漂移）。
+> **紅線收斂決議（v4.6 沿用）**：紅線 4/5/6/7/8 合併為「**紅線 X：PASS 定義漂移**」；v4.6 核心清單維持 4 條（真實性 / 改寫 / 可溯源 / PASS 定義漂移）。
 >
-> **歷史保留（v4.4 → v4.5 摘要）**：
-> - P0.HOTFIX-SMOKE v4.4 列第一但本輪 0 動 → v4.5 雙連 3.25 實錘預告
-> - 指標 2 擴窗 20→25 commits，分子從 20 升 23 = 淨退步
-> - 新增 P0.SELF-COMMIT-REFLECT / P0.WRITER-SPLIT
-> - 紅線從 9 收至 4，反制「每輪寫紅線」漂移
+> **v4.6 變更摘要（v4.5 → v4.6）**：
+> - **事實勾關**：P0.HOTFIX-SMOKE [x]（19:42 實錘）/ P0.FULL-PYTEST [x]（20:21 實錘 3660/0）/ T2.6 [x] / T2.7 [x]
+> - **Epic 2 收官入口打開**：T2.8 + T2.9 升頂，預估 25 分鐘閉 Epic 2
+> - **P0.WRITER-SPLIT 升 P0 首要**：writer.py 941 → 1109 = 拆分 SOP 零 diffuse，無緩衝
+> - **重複任務合併**：T9.9（Windows gotchas）併入 P0.GG（同件）；P0.S（auto-commit 治理）併入 P0.S-REBASE-APPLY 執行層
+> - **指標 2 擴窗 25 commits 分母 = 分子 = 100%**：P0.S-REBASE-APPLY 五連跳實質轉 Admin P0.D 依賴
 
 > **🎯 v4.4 當輪執行順序鎖（技術主管第二十二輪反思 2026-04-20 19:28；已由 v4.5 取代，保留歷史）**：
 > **紅線 8 當輪實錘**：全量 `pytest tests/ -q --no-header -x --ignore=tests/integration` = **1 failed / 3275 passed**；failure = `tests/test_smoke_open_notebook_script.py::test_smoke_import_reports_missing_dependency`，根因 `scripts/smoke_open_notebook.py:60` `status` 變數在 else 分支未初始化 → `UnboundLocalError`。v4.3 header「3652 passed」屬 focused smoke / `--co` 虛報。
@@ -194,6 +196,18 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **完成（2026-04-20 18:43）**：`KnowledgeBaseManager.__init__` 現已把 `PersistentClient(...)` 與三個 `get_or_create_collection(...)` 放在同一個 suppression context 內；strict deprecation gate 下 KB 維持 `_available=True`
   - **v4.3 驗收**：`pytest tests/test_knowledge_manager_cache.py -q` = 19 passed / 56.73s；指標 1 回綠 ✅
 
+### P0.EPIC2-FINISH — 🟢 ACL-free·v4.6 首要·Epic 2 收官（v4.6 新增；25 分鐘）
+
+- [ ] **T2.8** 🟢 ACL-free·Epic 2 ops docs（15 分）：`docs/open-notebook-study.md` / `docs/integration-plan.md` 補 env vars（`OPENROUTER_API_KEY` / `elephant-alpha`）+ non-goals + legacy writer fallback 段
+  - **驗**：`rg -n "OPENROUTER_API_KEY|elephant-alpha|non-goals|legacy writer" docs/open-notebook-study.md docs/integration-plan.md` 命中 ≥ 4
+  - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25（Epic 2 收官前置）
+  - commit（ACL 解後）: `docs(integration): document setup and non-goals for fork adoption`
+
+- [ ] **T2.9** 🟢 ACL-free·SurrealDB freeze（10 分）：`docs/integration-plan.md` + `openspec/changes/02-open-notebook-fork/specs/fork/spec.md` 補「human review required before SurrealDB / full writer cutover」段
+  - **驗**：`rg -n "human review|required before SurrealDB|frozen" docs/integration-plan.md openspec/changes/02-open-notebook-fork/specs/fork/spec.md` 命中 ≥ 3
+  - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25
+  - commit（ACL 解後）: `docs(integration): freeze storage migration until review`
+
 ### P0.FULL-PYTEST — 🔴 ACL-free·v4.4 首要·全量 pytest 紅線 9 硬守（v4.4 新增；15 分鐘）
 
 - [x] **P0.FULL-PYTEST** 🔴 editor 拆分破蛋後，本輪必跑全量 `pytest tests/ -q` 0 failed，補指標 1 全量 evidence（紅線 9）
@@ -242,18 +256,11 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **完成（2026-04-20 18:42）**：`docs/rescue-commit-plan.md` 已改為 `mode: apply-ready`，本機 `.git` DENY ACL 下不再假裝成功，而是明確產 audit report 後退出 2；真正改寫歷史待 `P0.D` 解 ACL 後執行
   - commit（ACL 解除後）: `feat(scripts): add apply mode to rewrite_auto_commit_msgs.py`
 
-### P0.S — 🔴 誠信血債·首要：auto-commit 格式治理（v3.7 雙軌：agent 側自救 + Admin 側治本）
+### P0.S — ~~併入 P0.S-REBASE-APPLY~~（v4.6 合併；執行層已在 P0.S-REBASE-APPLY 獨立追蹤）
 
-- [ ] **P0.S** 🔴 誠信血債連 >14 輪，v3.7 拆雙軌避免耦合死鎖
-  - **v3.7 現況**：`git log --oneline -20 | grep -c "auto-commit:"` = **16 / 20**（近 20 條 20% conventional）；v3.6 標的「30% 微改善」是 10 條短窗倖存者偏差，實際退步
-  - **誠信定性**：規則寫了沒執行 = 用文字遮掩違規 = 第六層藉口「文檔驅動治理」（對應 v3.2「文案驅動開發」）；v3.7 再加第七層「被動等待治理」
-  - **修法 A（🟢 agent 側自救，ACL-free，v3.7 首選）**：agent 在每輪啟動加 `git rebase --root --exec` 或 `git filter-repo --message-callback` 改寫 HEAD~20 內 `auto-commit:` → `chore(rescue): restore working tree (<ISO8601>)`；若 ACL 擋 `.git/` 寫 → 記 P0.D 血債，但不再被動等
-  - **修法 B（🔴 Admin 側治本）**：定位 AUTO-RESCUE 腳本（推測 `~/.claude/hooks/*.ps1` 或 OS Task Scheduler），模板直接改 `chore(rescue): restore auto-engineer working tree (<ISO8601>) — files=N`
-  - **驗 1**：下 5 條 AUTO-RESCUE commit `git log --oneline -5 | grep -c "auto-commit:"` == 0
-  - **驗 2**：`git log --oneline -20 | grep -cE "^[a-f0-9]+ (feat|fix|refactor|docs|chore|test)\(.+\):"` ≥ 16（80% 達標）
-  - **驗 3**：保留 `AUTO-RESCUE` token 供 `docs/auto-commit-source.md §4` 驗收（`git log -5 | grep -c "AUTO-RESCUE"` ≥ 3）
-  - **延宕懲罰**：誠信類連 1 輪延宕 = 3.25；v3.7 後若 agent 不試修法 A 即為主動擺爛
-  - 對應 commit（修法 A agent 側）: `chore(git): rewrite auto-commit history to conventional format`
+- [~] **P0.S** v4.6 併入 P0.S-REBASE-APPLY（執行路徑同件，agent 側 `--apply` 為唯一剩餘 action；Admin 側治本走 P0.D）
+  - **歷史脈絡**：v3.7-v4.2 雙軌拆（agent 側 audit-only + Admin 治本）；v4.3 拆 P0.S-REBASE-APPLY 執行層；v4.6 合併避免顆粒度漂移
+  - **驗收移至**：`§P0.S-REBASE-APPLY`（驗 1-3 統一在彼處追蹤）
 
 ### P0.D — 🛑 ACL·阻斷：`.git` 外來 SID DENY（連 11 輪 Admin 依賴）
 
@@ -517,16 +524,9 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **完成（2026-04-20 17:54）**：新增 `scripts/dedupe_results_log.py` 與 `tests/test_dedupe_results_log.py`；預設以 BLOCKED-ACL 根因分組去重並保留 `--strict-task-key` 字面模式。驗證 `pytest tests/test_dedupe_results_log.py -q` = 5 passed，實跑 `python scripts/dedupe_results_log.py results.log > results.log.dedup` 產生 **127 行** sidecar（原 **165 行**，-38 / **23.03%**）
   - commit（ACL 解除後）: `feat(scripts): dedupe results.log BLOCKED-ACL entries`
 
-### T9.9 — 🟢 ACL-free·docs/dev-windows-gotchas.md（v4.0 新增；15 分鐘）
+### T9.9 — ~~併入 P0.GG~~（v4.6 合併；同件重複，單點追蹤避免顆粒度漂移）
 
-- [ ] **T9.9** ✅ 不依賴 ACL：記 Windows bash + pytest buffering 議題
-  - **背景**：v3.9 / v4.0 兩輪連續命中 `python -m pytest tests/ -q` 背景 task exit 0 但 output 只 flush 至 40-50%；影響技術主管自動化驗收
-  - **產出**：`docs/dev-windows-gotchas.md`
-    - §1 pytest buffering：用 `python -u -m pytest ... 2>&1 | tee` 或 `PYTHONUNBUFFERED=1` 避免 background 截斷
-    - §2 CRLF/LF warnings：git autocrlf 設定建議
-    - §3 icacls DENY 檢查 SOP（P0.D 驗收）
-  - **驗**：`wc -l docs/dev-windows-gotchas.md` ≥ 40
-  - commit（ACL 解除後）: `docs: add Windows bash dev gotchas (pytest I/O, CRLF, icacls)`
+- [~] **T9.9** v4.6 併入 P0.GG（Windows gotchas）；去重避免雙軌治理
 
 ---
 
@@ -858,13 +858,13 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - 驗 2：若連 2 輪仍 0 docs(reflect) commit → ACL 實錘 P0.D 死結，轉紅血債
   - 延宕懲罰：連 1 輪延宕 = 紅線 X（PASS 定義漂移）3.25
   - commit（本輪執行）: `docs(reflect): v4.5 retrospective`
-- [ ] **P0.WRITER-SPLIT（v4.5 新增；Epic 8 骨牌；60 分）** 🟢 ACL-free `src/agents/writer.py` = **941 行** > editor 拆前體量；editor 拆分 SOP 復用：writer/{strategy,rewrite,cite,__init__}.py
-  - 背景：editor/ 五檔拆分 32 tests 綠後，writer.py 成第二大檔；Epic 8 T8.1.b/c 未啟動 → 拆分經驗未 diffuse
-  - 修法：按 `find_similar_doc / rewrite / citation_inject` 三段切 module，保留 `from .writer import Writer` 相容層；tests/test_writer* 既有覆蓋作 regression guard
+- [ ] **P0.WRITER-SPLIT（v4.5 新增；v4.6 升 P0 首要；Epic 8 骨牌；60 分）** 🔴 ACL-free `src/agents/writer.py` = **1109 行**（v4.5 記 941 → +168 = 拆分 SOP 零 diffuse；editor 拆前 1065 已超越）；editor 拆分 SOP 復用：writer/{strategy,rewrite,cite,__init__}.py
+  - 背景：editor/ 五檔拆分 32 tests 綠後，writer.py 成第二大檔且仍在長；Epic 8 T8.1.b/c 未啟動 → 拆分經驗未 diffuse
+  - 修法：按 `find_similar_doc / rewrite / citation_inject` 三段切 module，保留 `from .writer import WriterAgent` 相容層；tests/test_writer* 既有覆蓋作 regression guard
   - 驗 1：`wc -l src/agents/writer/*.py` 單檔 ≤ 400
   - 驗 2：`pytest tests/test_writer*.py -q` 維持全綠
-  - 驗 3：`python -c "from src.agents.writer import Writer; print('ok')"` 不炸
-  - 延宕懲罰：P1 級；連 3 輪延宕升 P0
+  - 驗 3：`python -c "from src.agents.writer import WriterAgent; print('ok')"` 不炸
+  - 延宕懲罰：v4.6 升 P0；連 1 輪延宕 = 3.25（拆分 SOP 零 diffuse 實錘紅線 5）
   - commit（ACL 解後）: `refactor(agents): split writer.py into strategy/rewrite/cite modules`
 - ~~T2.0.a（.env smoke）~~ → 見 P1.3
 - ~~T2.0.b（clone vendor）~~ → 見 P1.4
@@ -882,9 +882,9 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [ ] **T2.5** API 層融合（FastAPI routers 導入 `api_server.py`）
 - [x] **T2.6** Writer 改為 ask_service 薄殼（`src/agents/writer.py`）
   - **完成（2026-04-20）**：`OpenNotebookService` 會把 `retrieved_evidence` 序列化進 diagnostics；`WriterAgent` 改以 ask-service 實際回傳的 evidence 重建 source list，不再只沿用 request docs，讓引用追蹤與後續 fact/citation review 可檢查同一批 retrieval payload
-- [ ] **T2.7** Retriever 強化（SurrealDB `vector::similarity::cosine`；過濾 `synthetic=false`；<0.5 → `low_match=True`）
-- [ ] **T2.8** Fallback 純生成（`low_match=True` 走 litellm；標 `synthetic_fallback=true`）
-- [ ] **T2.9** Diff output（`src/core/diff.py`；>40% heavy_rewrite；>60% 強制退回）
+- [ ] **T2.7-old** Retriever 強化（SurrealDB `vector::similarity::cosine`；過濾 `synthetic=false`；<0.5 → `low_match=True`）※ program.md 自家舊編號；與 openspec tasks.md T2.7 (Fallback; [x]) 不同，**openspec T2.7 已閉環**
+- [ ] **T2.8-old** Fallback 純生成（`low_match=True` 走 litellm；標 `synthetic_fallback=true`）※ 自家舊編號；openspec T2.8 (ops docs) 見 §P0.EPIC2-FINISH 頂部
+- [ ] **T2.9-old** Diff output（`src/core/diff.py`；>40% heavy_rewrite；>60% 強制退回）※ 自家舊編號；openspec T2.9 (freeze) 見 §P0.EPIC2-FINISH 頂部
 
 ### Epic 2 風險
 - 🔴 SurrealDB Windows docker desktop 需先驗
@@ -1083,25 +1083,27 @@ Epic 7 負責建置。建置完成前，program.md 是單一事實來源。
 
 ---
 
-**版本**：v3.9（2026-04-20 16:55 — P0.W/P0.X/P0.Y 三顆 ACL-free 骨牌全破；`pytest tests/ -q` = **3620 passed / 10 skipped / 0 failed / 585.52s**（v3.8 header 3613 → +7）；七硬指標 **4/7 PASS**（新破指標 6 — smoke graceful vendor-incomplete 非 ImportError）；v3.9 新增 **P0.Z vendor re-clone**、**P0.S-ADMIN Admin 治本 audit**、**T9.8-P0 openspec baseline capability** 三條 ACL-free P0；T9.6 engineer-log 封存已被 runtime 自動完成（主檔 380 行 / archive 1087 行））
+**版本**：v4.6（2026-04-20 20:30 — 架構師第二十四輪規劃）；`PYTHONUNBUFFERED=1 python -u -m pytest tests/ -q --no-header --ignore=tests/integration` = **3660 passed / 0 failed / 516.74s**（v4.4 閉環記錄）；focused 25/25 passed（open-notebook + writer + smoke + integrations）；**八硬指標 5/8 PASS**（v4.5 4/8 → +1，指標 1 回綠）。
 
-**下一輪重排觸發**（v3.9 七項硬指標，依執行順序；當前 PASS 狀態 **4/7**）：
-1. ✅ `pytest tests/ -q` 0 failed（目前 **3620 passed / 10 skipped / 0 failed / 585.52s**；v3.8 header 3613 → +7）
-2. ❌ `git log --oneline -20 | grep -c "auto-commit:"` ≤ 4（目前 14；v3.8 起 -2；P0.S-ADMIN + P0.Y 兩路並攻）
-3. ❌ `icacls .git 2>&1 | grep -c DENY` == 0（目前 2；P0.D，Admin 依賴連 >16 輪）
-4. ✅ `ls src/integrations/open_notebook/__init__.py` 存在（P0.W；Epic 2 第一顆骨牌）
-5. ✅ `wc -l docs/open-notebook-study.md` ≥ 80（P1.10；T2.1 等價）
-6. ✅ `python scripts/smoke_open_notebook.py 2>&1` = `status=ok message=imported open_notebook successfully`（P0.Z 現場閉環；vendor re-clone 成功 + import 通）
-7. ❌ `grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` ≥ 9 AND `grep -l "fixture_fallback: true" kb_data/corpus/**/*.md | wc -l` == 0（P0.T-LIVE；Admin 解 egress 後）
+**v4.6 八硬指標**（依執行順序；當前 PASS 狀態 **5/8**）：
+1. ✅ `pytest tests/ -q` 0 failed（3660 passed / 0 failed / 516.74s）
+2. ❌ `git log --oneline -25 | grep -c "auto-commit:"` ≤ 4（目前 **25 / 25（100%）**；P0.S-REBASE-APPLY 連五輪跳實質轉 P0.D Admin 依賴）
+3. ❌ `icacls .git 2>&1 | grep -c DENY` == 0（目前 2；P0.D，Admin 依賴連 >17 輪）
+4. ✅ `ls src/integrations/open_notebook/__init__.py` 存在（Epic 2 seam 骨架）
+5. ✅ `wc -l docs/open-notebook-study.md` ≥ 80（T2.1 study）
+6. ❌ `wc -l src/agents/writer/*.py` 單檔 ≤ 400（目前 writer.py = **1109 行**；P0.WRITER-SPLIT v4.6 升 P0）
+7. ✅ `grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` == 9 AND `grep -l "fixture_fallback: true" kb_data/corpus/**/*.md | wc -l` == 0（P0.CC-CORPUS-CLEAN 閉環）
+8. ✅ `ls src/agents/editor/*.py | wc -l` ≥ 4（P0.AA 閉環；5 檔 1010 行）
 
-**v4.0 目標**：**5/7 PASS**（新破指標 2 ≤ 12 — P0.S-ADMIN 定位源頭 + Admin 側換模板）；若仍 4/7 = 承諾漂移 v4（3.25 紅線 4）。
+**v4.7 目標**：**6/8 PASS**（新破指標 6 — P0.WRITER-SPLIT + Epic 2 收官 T2.8/T2.9）；若仍 5/8 = 紅線 5 方案驅動治理雙連 3.25。
 
-**健康護欄**（v3.9 必須持續綠）：
-- `pytest tests/ -q` FAIL 數 == 0（目前 3620 passed / 10 skipped / 0 failed）
+**健康護欄**（v4.6 必須持續綠）：
+- `pytest tests/ -q` FAIL 數 == 0（目前 3660 passed / 10 skipped / 0 failed）
 - `grep -l "RequestException" src/sources/*.py | wc -l` ≥ 5（目前 6）
 - `grep -c "\[ \]" openspec/changes/01-real-sources/tasks.md` == 0（目前 0）
+- `grep -c "\[ \]" openspec/changes/02-open-notebook-fork/tasks.md` ≤ 2（T2.8 + T2.9 剩 2 條）
 - `wc -l docs/architecture.md` ≥ 80（目前 273）
-- `wc -l engineer-log.md` ≤ 500（目前 380；T9.6 已自動封存至 `docs/archive/engineer-log-202604a.md` 1087 行）
+- `wc -l engineer-log.md` ≤ 500（目前 **1198** ❌；T9.6-REOPEN 本輪重開）
 
 **P0.S 連 >14 輪紅線未解**：conventional commit 規則寫了卻近 20 條 16/20 仍 `auto-commit:` = 誠信級漏洞；v3.8 起 P0.Y（agent 側 audit-only 自救原型）作為 SPIKE，先產 `docs/rescue-commit-plan.md` 記錄所有 AUTO-RESCUE commit 與建議訊息，不動 `.git`，打破「因 ACL 擋所以不動」的第八層藉口。
 **P0.T 承諾仍懸空 9+ 輪（v2.8 起）**：v3.5 拆 SPIKE + LIVE；v3.7 SPIKE 已落，LIVE 等 Admin 解 egress。
