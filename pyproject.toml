@@ -59,6 +59,9 @@ select = ["E", "F", "W"]
 testpaths = ["tests"]
 python_files = "test_*.py"
 addopts = "-v"
+markers = [
+    "integration: live upstream smoke tests for public source adapters",
+]
 filterwarnings = [
     "ignore::DeprecationWarning:httpx._models",
 ]
