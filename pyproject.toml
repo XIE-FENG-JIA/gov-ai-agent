@@ -65,7 +65,7 @@ markers = [
 filterwarnings = [
     "ignore::DeprecationWarning:httpx._models",
     "ignore:open_text is deprecated\\. Use files\\(\\) instead\\.:DeprecationWarning:litellm\\.litellm_core_utils\\.get_model_cost_map",
-    "ignore:Accessing the 'model_fields' attribute on the instance is deprecated\\.:pydantic.warnings.PydanticDeprecatedSince211:chromadb\\.types",
+    "ignore:Accessing the 'model_fields' attribute on the instance is deprecated\\.:pydantic.warnings.PydanticDeprecatedSince211:pydantic\\._internal\\._utils",
 ]
 
 [tool.coverage.run]

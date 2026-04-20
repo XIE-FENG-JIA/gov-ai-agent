@@ -1,6 +1,7 @@
 """
 KnowledgeBaseManager 搜尋快取與 embedding 降級搜尋測試
 """
+import warnings
 import threading
 from unittest.mock import MagicMock, patch
 
@@ -110,6 +111,18 @@ class TestSearchCache:
         result = kb.search_hybrid("測試")
         assert result == []
         assert len(kb._search_cache) == 0
+
+    def test_strict_deprecation_mode_keeps_kb_available(self, tmp_path):
+        """第三方 warning 在 strict deprecation gate 下不應讓 KB 失效"""
+        llm = MagicMock(spec=LLMProvider)
+        llm.embed.return_value = [0.1] * 384
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            kb = KnowledgeBaseManager(str(tmp_path / "strict_warn_kb"), llm)
+
+        assert kb._available is True
+        assert kb.client is not None
 
 
 class TestEmbeddingCache:

@@ -6,6 +6,7 @@ import argparse
 import os
 import sys
 from dataclasses import dataclass
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -112,12 +113,18 @@ def run_live_ingest(
                 records = ingest_fn(adapter, limit=limit, base_dir=base_dir, require_live=require_live)
                 archived_count = 0
                 if prune_fixture_fallback:
+                    resolved_archive_label = archive_label or f"fixture_{date.today():%Y%m%d}"
                     archived_count = len(
                         archive_fixture_corpus(
                             base_dir=base_dir,
                             storage_names=storage_names,
-                            archive_label=archive_label,
+                            archive_label=resolved_archive_label,
                         )
+                    )
+                    _ensure_archived_fixture_targets(
+                        base_dir=base_dir,
+                        storage_names=storage_names,
+                        archive_label=resolved_archive_label,
                     )
                 rows = _read_source_records(base_dir=base_dir, storage_names=storage_names)
                 live_rows = [row for row in rows if not row["fixture_fallback"] and not row["archived_fixture"]]
@@ -287,6 +294,23 @@ def _read_source_records(*, base_dir: Path, storage_names: list[str]) -> list[di
                 continue
             rows.append(record)
     return rows
+
+
+def _ensure_archived_fixture_targets(*, base_dir: Path, storage_names: list[str], archive_label: str) -> None:
+    archive_root = base_dir / "archive" / archive_label
+    for storage_name in storage_names:
+        corpus_root = base_dir / "corpus" / storage_name
+        if not corpus_root.exists():
+            continue
+        for path in sorted(corpus_root.rglob("*.md")):
+            record = _read_record(path)
+            if not record["deprecated"] or not record["archived_fixture"]:
+                continue
+            target = archive_root / path.relative_to(base_dir)
+            if target.exists():
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
 
 
 def _first_sentence(body: str) -> str:

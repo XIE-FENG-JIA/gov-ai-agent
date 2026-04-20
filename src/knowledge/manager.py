@@ -11,7 +11,10 @@ import uuid
 from cachetools import TTLCache
 
 from src.core.llm import LLMProvider
-from src.core.warnings_compat import suppress_known_third_party_deprecations
+from src.core.warnings_compat import (
+    suppress_known_third_party_deprecations,
+    suppress_known_third_party_deprecations_temporarily,
+)
 
 suppress_known_third_party_deprecations()
 
@@ -92,29 +95,23 @@ class KnowledgeBaseManager:
             return
 
         try:
-            with warnings.catch_warnings():
-                warnings.filterwarnings(
-                    "ignore",
-                    message=r"Accessing the 'model_fields' attribute on the instance is deprecated\.",
-                    category=DeprecationWarning,
-                )
+            with suppress_known_third_party_deprecations_temporarily():
                 self.client = chromadb_module.PersistentClient(path=persist_path)
+                # Initialize collections
+                self.examples_collection = self.client.get_or_create_collection(
+                    name="public_doc_examples",
+                    metadata={"hnsw:space": "cosine"}
+                )
 
-            # Initialize collections
-            self.examples_collection = self.client.get_or_create_collection(
-                name="public_doc_examples",
-                metadata={"hnsw:space": "cosine"}
-            )
+                self.regulations_collection = self.client.get_or_create_collection(
+                    name="regulations",
+                    metadata={"hnsw:space": "cosine"}
+                )
 
-            self.regulations_collection = self.client.get_or_create_collection(
-                name="regulations",
-                metadata={"hnsw:space": "cosine"}
-            )
-
-            self.policies_collection = self.client.get_or_create_collection(
-                name="policies",
-                metadata={"hnsw:space": "cosine"}
-            )
+                self.policies_collection = self.client.get_or_create_collection(
+                    name="policies",
+                    metadata={"hnsw:space": "cosine"}
+                )
         except Exception as e:
             logger.error(
                 "知識庫初始化失敗（路徑: %s）: %s。系統將以無知識庫模式運作。",

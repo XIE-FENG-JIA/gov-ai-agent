@@ -1,10 +1,10 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **版本**：v4.1（2026-04-20 17:55 — 技術主管第十九輪補丁；pytest 3634 passed / 10 skipped / 0 failed / 519.77s；近 20 commits = **14 auto-commit / 6 conventional = 30% conv**（指標 2 零進展）；`kb_data/corpus/**/*.md` **18 份（9 real `synthetic: false` + 9 fixture 並存）**；**v4.1 實測 6/8 PASS 達標**：指標 7 從 0/9 → 9/9 破殼達標（P0.CC-CORPUS 同輪閉環 17:51 實跑）；紅線 6 首次壓測未觸 3.25（adapter fix 17:35 → execute 17:51 = 16 分鐘同輪閉環）；**剩 P0.AA editor.py 拆三 / P0.BB T9.7 log 去重 / P0.EE Epic 3 proposal / P0.FF Pydantic warnings / P0.GG Windows gotchas / P0.CC-CORPUS-CLEAN 18→9 清倉**）
+> **版本**：v4.1（2026-04-20 18:18 — 技術主管第十九輪收尾；pytest 3634 passed / 10 skipped / 0 failed / 519.77s；近 20 commits = **14 auto-commit / 6 conventional = 30% conv**（指標 2 零進展）；`kb_data/corpus/**/*.md` **9 份全 `synthetic: false` + `fixture_fallback: false`**，舊 9 份 fixture 已封存至 `kb_data/archive/fixture_20260420/`；**v4.1 實測 6/8 PASS 達標**：指標 7 維持 **9/9 real md**，`P0.CC-CORPUS-CLEAN` 完成後主 corpus 不再混 fixture；紅線 6 首次壓測未觸 3.25；**剩 P0.AA editor.py 拆三 / P0.BB T9.7 log 去重 / P0.EE Epic 3 proposal / P0.FF Pydantic warnings / P0.GG Windows gotchas**）
 > **v4.1 變更**（v4.0 → v4.1）：
 > - **紅線 6 新增**：設計驅動治理 = 3.25 —「修 adapter/spec/proposal 不跑 pipeline/test/commit」當輪就是漂移
-> - **勾關（事實已完）**：P0.CC [x]（除錯面）；**P0.CC-CORPUS [x] 17:51 實跑閉環（9/9 real md）**；另 P0.CP950 / P0.STALENESS-EDGE / P0.S-ADMIN / T9.8-P0 / T7.4 / P1.8 / T1.12 在已完成區
-> - **升 P0（本輪待破）**：P0.AA editor.py 拆三 / P0.BB T9.7 log 去重 / P0.EE Epic 3 proposal / P0.FF Pydantic warnings 止癢 / P0.GG Windows gotchas / **P0.CC-CORPUS-CLEAN**（report 口徑 + fixture archival）
+> - **勾關（事實已完）**：P0.CC [x]（除錯面）；**P0.CC-CORPUS [x] 17:51 實跑閉環（9/9 real md）**；**P0.CC-CORPUS-CLEAN [x] 18:18 完成 fixture archival + report 口徑修正**；另 P0.CP950 / P0.STALENESS-EDGE / P0.S-ADMIN / T9.8-P0 / T7.4 / P1.8 / T1.12 在已完成區
+> - **升 P0（本輪待破）**：P0.AA editor.py 拆三 / P0.BB T9.7 log 去重 / P0.EE Epic 3 proposal / P0.FF Pydantic warnings 止癢 / P0.GG Windows gotchas
 > - **降權**：P0.S-ADMIN 已完 audit，改為 P0.S-FOLLOWUP 等 Admin；T9.6 幻影任務清除
 > - **v4.1 八硬指標實測**：**6/8 PASS**（指標 7 從 ❌ 破殼達 ✅；指標 1 `3634 passed` 維持綠；指標 2 / 指標 3 仍 ❌）；指標 2 降至 ≤ 12 為 v4.2 首要抓手
 > **v3.8 變更**（v3.7 → v3.8）：
@@ -178,9 +178,9 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
     - `docs/live-ingest-report.md`：probe 記錄目前 `mojlaw` 仍回 `live ingest required ... fixture fallback`
   - commit（ACL 解除後）: `feat(scripts): add live ingest spike script + URL reachability inventory`
 
-#### P0.T-LIVE — 🟡 Admin-dep：實跑 live ingest 產生 3 源 × 3 份 `synthetic: false` corpus
+#### P0.T-LIVE — ✅ 已完成：實跑 live ingest 產生 3 源 × 3 份 `synthetic: false` corpus
 
-- [ ] **P0.T-LIVE** 🟡 需正式把 live ingest 寫回 `kb_data/`：fixture-only → 真實 live 抓取落盤
+- [x] **P0.T-LIVE** ✅ 已把 live ingest 寫回 `kb_data/`：fixture-only → 真實 live 抓取落盤
   - **前置**：P0.T-SPIKE 完成（腳本落地）+ P0.D 解 ACL（可 commit）；2026-04-20 已證實 requests 路徑可經 direct retry 繞過壞 proxy，阻塞點已從「egress 不通」收斂為「尚未正式寫回 `kb_data/` / 更新 live report」
   - **v3.4 現況**：`kb_data/corpus/` 9 份 md **100% `synthetic: true` + `fixture_fallback: true`**；`grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` = 0
   - **2026-04-20 probe（更新）**：根因不是「網站沒網路」而是 adapter 路徑三連缺口：壞 env proxy 讓 requests 先 `ProxyError` 後退 fixture、`executive_yuan_rss` 真 feed 帶 `UTF-8-SIG BOM` 但 `response.text` 被誤解碼、`mojlaw` 真 payload 無 `PCode` 需自 `LawURL` 抽 pcode。2026-04-20 已補 `request_with_proxy_bypass`、`executive_yuan_rss` BOM decode + URL-guid 正規化、`mojlaw` live payload pcode/date 對齊；fresh probes `python -m src.sources.ingest --source mojlaw --limit 3 --base-dir meta_test/p0t_live_probe_mojlaw_v4 --require-live`、`python -m src.sources.ingest --source datagovtw --limit 3 --base-dir meta_test/p0t_live_probe_datagovtw_v2 --require-live`、`python -m src.sources.ingest --source executive_yuan_rss --limit 3 --base-dir meta_test/p0t_live_probe_ey_v2 --require-live` 皆可 `ingested=3`，故 P0.T-LIVE 現只剩正式落 `kb_data/` 與報告更新
@@ -192,6 +192,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗 4**：`docs/live-ingest-report.md` 列 9+ 筆 live record
   - **延宕懲罰**：egress 解後仍不執行 = 3.25（Epic 1 真通過是 v2.8 起承諾的交付終點）
   - commit（ACL 解除後）: `feat(sources): first real live ingest — 3 sources × 3 live docs`
+  - **完成（2026-04-20 18:27）**：`python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 3 --require-live --prune-fixture-fallback --archive-label fixture_20260420` 已把 `kb_data/corpus/` 收斂為 9 份真實 live md（每源 3 份）；`real=9 fixture=0`，`docs/live-ingest-report.md` 三源皆 PASS。另補 `scripts/purge_fixture_corpus.py` 權限退化路徑：遇到 Windows 無 delete 權限時改成 archive copy + retired stub，避免 prune 被 `WinError 5` 卡死。
 
 ### P0.W — 🟢 ACL-free·Epic 2 seam 骨架（v3.8 升 P0；原 P1.9）
 
@@ -311,18 +312,24 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **紅線 6 壓測結果**：adapter fix（17:35）→ execute（17:51）= 16 分鐘同輪閉環，**未觸 3.25**
   - commit（ACL 解除後）: `feat(sources): first synthetic=false corpus via live ingest (mojlaw retry fix)`
 
-### P0.CC-CORPUS-CLEAN — 🟢 ACL-free·下輪接力（v4.1 衍生；15 分鐘）
+### P0.CC-CORPUS-CLEAN — 🟢 v4.1 完成·主 corpus 清倉 + report 口徑對齊（18:18）
 
-- [ ] **P0.CC-CORPUS-CLEAN** ✅ 不依賴 ACL：舊 fixture md 與新 real md 共存的期末清理 + report 口徑對齊
-  - **現況**：corpus 共 18 份（9 real + 9 fixture）；chunker index 尚未重建
+- [x] **P0.CC-CORPUS-CLEAN** ✅ 不依賴 ACL：舊 fixture md 與新 real md 共存的期末清理 + report 口徑對齊
+  - **完成**：主 `kb_data/corpus/` 現只剩 9 份 live md；舊 9 份 fixture md + raw 已封存至 `kb_data/archive/fixture_20260420/`
   - **產出**：
-    - (a) `scripts/purge_fixture_corpus.py`：給定白名單外的 `fixture_fallback: true` md 搬至 `kb_data/archive/fixture_20260420/`
-    - (b) `scripts/live_ingest.py`：`ingested` 計數器從「本輪 API 拉取」改口徑為「磁盤 `synthetic: false` 總計」
-  - **驗 1**：`rg -c "^fixture_fallback: true" kb_data/corpus/` ≤ 0 或明白列入白名單
-  - **驗 2**：chunker smoke 跑 `python -m src.chunker.index_cli --rebuild --base-dir kb_data` 無例外
+    - (a) `scripts/purge_fixture_corpus.py`：archive fixture-backed corpus/raw；碰到同名 archive 目標時自動改 `.dupN`
+    - (b) `scripts/live_ingest.py`：report 改看磁碟 live corpus，並支援 `--prune-fixture-fallback --archive-label`
+  - **驗 1 ✅**：`rg -c "^fixture_fallback: true" kb_data/corpus -g "*.md"` = **0**
+  - **驗 2 ✅**：`rg -c "^fixture_fallback: true" kb_data/archive/fixture_20260420 -g "*.md"` = **9**
+  - **驗 3 ✅**：`docs/live-ingest-report.md` 三源皆 `status: PASS`、`live_count: 3`、`fixture_remaining: 0`
   - commit（ACL 解除後）: `chore(corpus): archive fixture fallback md; fix live-ingest report count`
 
 ### P0.EE — 🟢 ACL-free·Epic 3 proposal 啟動（v4.1 新增；20 分鐘）
+
+- [ ] **P1.CC-INDEX-SMOKE** ✅ 不依賴 ACL：更正過時的 corpus rebuild 驗證命令
+  - **現況**：`P0.CC-CORPUS-CLEAN` 舊驗收指令 `python -m src.chunker.index_cli --rebuild --base-dir kb_data` 在目前 repo 會直接 `ModuleNotFoundError: No module named 'src.chunker'`
+  - **產出**：補上目前仍存在的 KB rebuild / sync smoke 命令，並同步更新 `program.md` / 相關 docs，避免假驗收
+  - **驗**：替代 smoke 命令可在本 repo 實跑，不出 `ModuleNotFoundError`
 
 - [ ] **P0.EE** ✅ 不依賴 ACL / 不依賴 Epic 2：`openspec/changes/03-citation-tw-format/proposal.md`（Epic 3 觸發器）
   - **v4.1 升格理由**：`openspec/changes/` 目前只有 01 / 02 / archive；Epic 3（T3.1-T3.4）規格全空，Spectra baseline 斷鏈；proposal 180+ 字即可啟動後續 specs + tasks
@@ -863,6 +870,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **P0.V-live-upgrade (v3.3)** fixture corpus live-upgrade guard：ingest 會跳過既有真資料，但允許既有 fixture corpus 在 live re-ingest 時升級為 `synthetic: false` 真資料；避免先前 fallback 產物永久卡住 P0.T / T1.6
 - [x] **P0.V-flaky (v3.5)** `test_ingest_keeps_fixture_backed_corpus_when_only_fixture_data_is_available` 本輪全量 3590 passed 0 failed 未重現（處置同 P0.S-stale；三軸 SOP 保留供未來）
 - [x] **P0.T-SPIKE (v3.7)** `scripts/live_ingest.py` + `docs/live-ingest-urls.md` + `tests/test_live_ingest_script.py` 已落地；`python scripts/live_ingest.py --help` 正常、`pytest tests/test_live_ingest_script.py -q` = 4 passed，並產出 `docs/live-ingest-report.md` 記錄目前 `mojlaw` require-live probe 仍被 fixture fallback 擋下
+- [x] **P0.T-LIVE (v4.1)** `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 3 --require-live --prune-fixture-fallback --archive-label fixture_20260420` 已把 `kb_data/corpus/` 收斂成 9 份真實 live md（3 源 × 3 份），驗證 `real=9 fixture=0`；另補 `scripts/purge_fixture_corpus.py` 的 Windows 無 delete 權限 fallback（archive copy + retired stub），避免 fixture prune 被 `WinError 5` 卡死
 - [x] **P0.W (v3.8)** `src/integrations/open_notebook/` seam 骨架 + `src/cli/open_notebook_cmd.py` 已落地；`OpenNotebookAdapter` Protocol、`off/smoke/writer` 三模式工廠、vendor `.git` stub 偵測與 writer-mode loud fail 已就位；`pytest tests/test_integrations_open_notebook.py -q` = 7 passed，`GOV_AI_OPEN_NOTEBOOK_MODE=smoke python -m src.cli.main open-notebook smoke --question "hi" --doc "first evidence"` 非空
 - [x] **P0.X (v3.8)** vendor smoke import 已落地；`scripts/smoke_open_notebook.py` 會先 probe vendor checkout，再驗 flat/src layout import，缺依賴回報 `missing=<module>`；2026-04-20 16:47 實跑已把現況收斂成 `status=vendor-incomplete`（`.git` 僅殘留 `config.lock` / `description` / `hooks` / `info`），不再只說「只有 `.git`」，且 smoke path 不會噴 `ImportError: No module named 'open_notebook'`
 - [x] **P0.Y (v3.8)** audit-only 自救原型：`scripts/rewrite_auto_commit_msgs.py` + `tests/test_rewrite_auto_commit_msgs.py` + `docs/rescue-commit-plan.md` 已落地；實跑報告 44 行 / 33 筆 rewrite candidates，未改任何 git 歷史
