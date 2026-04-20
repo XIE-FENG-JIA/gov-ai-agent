@@ -69,6 +69,16 @@ class IssueTracker:
     def unfixable_count(self) -> int:
         return len(self._unfixable)
 
+    @property
+    def unfixable_issues(self) -> set[str]:
+        """Backward-compatible view used by older convergence paths."""
+        return set(self._unfixable)
+
+    @property
+    def unfixable_issues(self) -> set[str]:
+        """Backward-compatible alias for older convergence code paths."""
+        return set(self._unfixable)
+
 
 class IterationState:
     """管理分層收斂迭代的狀態。"""

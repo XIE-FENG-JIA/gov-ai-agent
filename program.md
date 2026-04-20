@@ -168,6 +168,26 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **完成（2026-04-20 18:43）**：`KnowledgeBaseManager.__init__` 現已把 `PersistentClient(...)` 與三個 `get_or_create_collection(...)` 放在同一個 suppression context 內；strict deprecation gate 下 KB 維持 `_available=True`
   - **v4.3 驗收**：`pytest tests/test_knowledge_manager_cache.py -q` = 19 passed / 56.73s；指標 1 回綠 ✅
 
+### P0.FULL-PYTEST — 🔴 ACL-free·v4.4 首要·全量 pytest 紅線 9 硬守（v4.4 新增；15 分鐘）
+
+- [ ] **P0.FULL-PYTEST** 🔴 editor 拆分破蛋後，本輪必跑全量 `pytest tests/ -q` 0 failed，補指標 1 全量 evidence（紅線 9）
+  - **v4.4 背景**：P0.AA editor.py 拆 5 檔 1010 行已落，但 `/pua` 第二十二輪驗收僅 focused `pytest tests/test_editor.py -q = 32 passed` + `pytest -k "editor or knowledge_manager_cache"` 撞 15 檔 collection `NameError: Console`（跨檔 side-effect，非拆分本身）；指標 1 缺全量 evidence = 紅線 8 / 紅線 9 邊緣
+  - **執行**：`PYTHONUNBUFFERED=1 python -u -m pytest tests/ -q --tb=line 2>&1 | tee logs/pytest-full-v44.log`
+  - **驗 1**：`tail -3 logs/pytest-full-v44.log | grep -E "passed|failed"` 命中且 `failed` 計數 == 0
+  - **驗 2**：若有 fail → 列前 3 條 FAIL path 入 engineer-log 反思，下輪 HOTFIX
+  - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25（紅線 9 拆分破蛋但不跑全量）
+  - commit（ACL 解除後）: `chore(ci): capture v4.4 full pytest log after editor split`
+
+### P0.CONSOLE-IMPORT — 🔴 ACL-free·v4.4 新·collection NameError 根因定位（v4.4 新增；20 分鐘）
+
+- [ ] **P0.CONSOLE-IMPORT** 🔴 `pytest -k` 過濾下 15 檔 collection `NameError: name 'Console' is not defined` 根因定位
+  - **v4.4 背景**：第二十二輪 `pytest -k "editor or knowledge_manager_cache"` 收集 15 檔 collection ERROR，含 `test_agents.py` / `test_document.py` / `test_e2e.py` / `test_edge_cases.py` / `test_editor_coverage.py` / `test_exporter_extended.py` / `test_golden_suite.py` / `test_review_cmd.py` / `test_robustness.py` / `test_strict_format.py` / `test_template_cmd.py` / `test_web_preview.py` / `test_wizard_cmd.py` / `test_agents_extended.py` / `test_editor.py`（`test_editor.py` 單跑反而 32 passed）；`find tests -name conftest.py | xargs grep Console` 無命中
+  - **修法**：逐檔 `python -c "import tests.<name>"` repro；若綠 → 問題在 `-k` 過濾環境下的 late import；若紅 → 定位 src/ 某處 eager import Console 但條件式定義
+  - **驗 1**：`pytest -k "editor" --collect-only 2>&1 | grep -c "NameError"` == 0
+  - **驗 2**：`python -c "import tests.test_agents; print('OK')"` 無 NameError
+  - **延宕懲罰**：ACL-free 連 2 輪延宕 = 3.25
+  - commit（ACL 解除後）: `fix(tests): resolve Console NameError during pytest -k collection`
+
 ### P0.S-REBASE-APPLY — 🔴 ACL-free·v4.3 首要·agent 側本機 `--apply` 實跑（v4.3 新增；20 分鐘）
 
 - [ ] **P0.S-REBASE-APPLY** 🔴 `scripts/rewrite_auto_commit_msgs.py --apply` 框架 v4.2 已完，但 agent 側從未實跑；本輪必跑一次

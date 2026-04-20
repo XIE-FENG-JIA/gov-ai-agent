@@ -1,7 +1,23 @@
 from unittest.mock import MagicMock, patch
 
+import src.agents.editor as editor_module
 from src.agents.editor import EditorInChief
 from src.core.review_models import QAReport, ReviewIssue, ReviewResult
+
+
+def test_editor_package_split_exports_remain_compatible():
+    """拆分成 package 後，對外 API 仍維持相容。"""
+    from src.agents.editor.flow import EditorFlowMixin
+    from src.agents.editor.merge import EditorReportMixin
+    from src.agents.editor.refine import EditorRefineMixin
+    from src.agents.editor.segment import EditorSegmentMixin
+
+    assert editor_module.Editor is EditorInChief
+    assert editor_module.__file__.endswith("__init__.py")
+    assert issubclass(EditorInChief, EditorFlowMixin)
+    assert issubclass(EditorInChief, EditorRefineMixin)
+    assert issubclass(EditorInChief, EditorSegmentMixin)
+    assert issubclass(EditorInChief, EditorReportMixin)
 
 
 def test_editor_review_safe(mock_llm):
