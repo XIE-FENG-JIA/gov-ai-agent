@@ -161,7 +161,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### P0.H — ✅ ACL-free：頂層歷史 md 歸位（v2.9 新增；T9.1 升首）
 
-- [ ] **P0.H** ✅ 不依賴 ACL：檔案層 mv 10 份頂層歷史 md 到 `docs/archive/`
+- [x] **P0.H** ✅ 不依賴 ACL：檔案層 mv 10 份頂層歷史 md 到 `docs/archive/`
   - **v2.9 背景**：T9.1 連 4+ 輪未動；檔案 mv 本身 ACL-free（commit 才 gated）
   - 清單：`IMPROVEMENT_REPORT.md` / `PROJECT_SUMMARY.md` / `BUG_FIX_REPORT.md` / `N8N_INTEGRATION_GUIDE.md` / `MULTI_AGENT_V2_GUIDE.md` / `QUICKSTART.md` / `COLLABORATION_GUIDE.md` / `AI_CODING_RULES.md` / `PRD文件.txt` / `plan.md`
   - 保留根：`README.md` / `MISSION.md` / `Dockerfile` / `program.md` / `engineer-log.md` / `results.log`
@@ -377,10 +377,14 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ## Epic 9 — Repo 衛生
 
-- [ ] **T9.1** 頂層 10 份歷史 md 歸位 `docs/archive/` 或刪：
+- [x] **T9.1** 頂層 10 份歷史 md 歸位 `docs/archive/` 或刪：
   - `IMPROVEMENT_REPORT.md` / `PROJECT_SUMMARY.md` / `BUG_FIX_REPORT.md` / `N8N_INTEGRATION_GUIDE.md` / `MULTI_AGENT_V2_GUIDE.md` / `QUICKSTART.md` / `COLLABORATION_GUIDE.md` / `AI_CODING_RULES.md` / `PRD文件.txt` / `plan.md`
   - 保留根 `README.md` / `MISSION.md` / `Dockerfile` / `program.md` / `engineer-log.md` / `results.log`
   - commit: `docs(archive): move historical reports to docs/archive`
+- [ ] **T9.1.a** benchmark corpus 版控復位（ACL 解後）
+  - v2.9 現況：`benchmark/mvp30_corpus.json` 未進 index，但 root `.gitignore` 白名單會讓每輪卡在 `?? benchmark/`
+  - 本輪先把 `benchmark/` 全忽略，恢復工作樹 hygiene；`P0.D` 完成後需重開白名單並正式 commit corpus
+  - 驗：`git status --short` 不再因 `benchmark/` 單獨髒掉
 - [ ] **T9.2** tmp 再生源頭排查（定位 pytest 中產 `.json_*.tmp` / `.txt_*.tmp` 的測試；`src/cli/utils.py` atomic writer exception path；加 conftest session-end fixture）
 - [ ] **T9.3** `docs/commit-plan.md` 生命週期：本輪史命完成，移 `docs/archive/commit-plans/2026-04-20-v2.2-split.md`
 - [x] **T9.4.a** `tests/test_cli_commands.py` per-test chdir 隔離（v2.4 閉環）
