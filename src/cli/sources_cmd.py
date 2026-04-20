@@ -61,11 +61,12 @@ def status_command(
 
 @app.command("stats")
 def stats_command(
+    adapter: str | None = typer.Option(None, "--adapter", help="只看單一來源，例如 mojlaw"),
     base_dir: Path = typer.Option(DEFAULT_BASE_DIR, "--base-dir", help="匯入根目錄"),
 ) -> None:
     """Show aggregate ingest counts from local kb_data."""
     snapshots = collect_source_snapshots(base_dir=base_dir)
-    _render_stats_result(snapshots, base_dir=base_dir)
+    _render_stats_result(snapshots, base_dir=base_dir, adapter=adapter)
 
 
 def _render_ingest_result(source_key: str, records: list[IngestRecord]) -> None:
@@ -81,16 +82,32 @@ def _render_status_result(snapshots: list[SourceSnapshot]) -> None:
         if snapshot.latest_corpus_path and snapshot.latest_corpus_mtime is not None:
             latest_ts = datetime.fromtimestamp(snapshot.latest_corpus_mtime).strftime("%Y-%m-%d %H:%M")
             latest = f"{snapshot.latest_corpus_path.name} @ {latest_ts}"
+        last_crawl = "-"
+        if snapshot.last_crawl_mtime is not None:
+            last_crawl = datetime.fromtimestamp(snapshot.last_crawl_mtime).strftime("%Y-%m-%d %H:%M")
         console.print(
-            f"{snapshot.source_key}: corpus={snapshot.corpus_count} raw={snapshot.raw_count} latest={latest}"
+            f"{snapshot.source_key}: corpus={snapshot.corpus_count} raw={snapshot.raw_count} "
+            f"raw_bytes={snapshot.raw_bytes} last_crawl={last_crawl} latest={latest}"
         )
 
 
-def _render_stats_result(snapshots: list[SourceSnapshot], *, base_dir: Path) -> None:
+def _render_stats_result(snapshots: list[SourceSnapshot], *, base_dir: Path, adapter: str | None) -> None:
+    if adapter:
+        source_key = adapter.strip().lower()
+        snapshot = next((item for item in snapshots if item.source_key == source_key), None)
+        if snapshot is None:
+            raise typer.BadParameter(f"不支援的來源：{adapter}")
+        console.print("[bold cyan]公開來源統計[/bold cyan]")
+        console.print(f"base_dir={base_dir.as_posix()}")
+        console.print(f"adapter={snapshot.source_key} storage={snapshot.storage_name}")
+        console.print(f"corpus={snapshot.corpus_count} raw={snapshot.raw_count} raw_bytes={snapshot.raw_bytes}")
+        return
+
     total_corpus = sum(snapshot.corpus_count for snapshot in snapshots)
     total_raw = sum(snapshot.raw_count for snapshot in snapshots)
+    total_raw_bytes = sum(snapshot.raw_bytes for snapshot in snapshots)
     active_sources = sum(1 for snapshot in snapshots if snapshot.corpus_count or snapshot.raw_count)
     console.print("[bold cyan]公開來源統計[/bold cyan]")
     console.print(f"base_dir={base_dir.as_posix()}")
     console.print(f"sources={len(snapshots)} active={active_sources}")
-    console.print(f"corpus={total_corpus} raw={total_raw}")
+    console.print(f"corpus={total_corpus} raw={total_raw} raw_bytes={total_raw_bytes}")

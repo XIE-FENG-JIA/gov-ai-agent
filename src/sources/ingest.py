@@ -39,9 +39,11 @@ class SourceSnapshot:
     source_key: str
     storage_name: str
     raw_count: int
+    raw_bytes: int
     corpus_count: int
     latest_corpus_path: Path | None
     latest_corpus_mtime: float | None
+    last_crawl_mtime: float | None
 
 
 def ingest(
@@ -129,14 +131,17 @@ def collect_source_snapshots(*, base_dir: Path = DEFAULT_BASE_DIR) -> list[Sourc
         corpus_files = sorted(corpus_root.rglob("*.md")) if corpus_root.exists() else []
         latest_corpus_path = max(corpus_files, key=lambda path: path.stat().st_mtime, default=None)
         latest_corpus_mtime = latest_corpus_path.stat().st_mtime if latest_corpus_path else None
+        last_crawl_mtime = max((path.stat().st_mtime for path in raw_files), default=None)
         snapshots.append(
             SourceSnapshot(
                 source_key=source_key,
                 storage_name=storage_name,
                 raw_count=len(raw_files),
+                raw_bytes=sum(path.stat().st_size for path in raw_files),
                 corpus_count=len(corpus_files),
                 latest_corpus_path=latest_corpus_path,
                 latest_corpus_mtime=latest_corpus_mtime,
+                last_crawl_mtime=last_crawl_mtime,
             )
         )
     return snapshots

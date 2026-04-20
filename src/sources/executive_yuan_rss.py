@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 import xml.etree.ElementTree as ET
 from collections.abc import Iterable
 from datetime import date, datetime

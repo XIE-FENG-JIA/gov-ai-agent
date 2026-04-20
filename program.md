@@ -167,15 +167,15 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### P0.P — ✅ ACL-free·對稱：5 adapter 統一錯誤處理契約（v3.2 新增）
 
-- [ ] **P0.P** ✅ 不依賴 ACL：抽 `src/sources/_common.py` 集中 throttle / UA / `RequestException → fixture fallback`
+- [x] **P0.P** ✅ 已閉（2026-04-20）：`src/sources/_common.py` 擴成可接住 `RequestException + malformed payload` 的共用 fallback helper；5 adapter 全數改走同一條 fixture fallback 契約，並補 malformed JSON/XML 測試
   - **v3.2 背景**：v3.1 五 adapter 連爆但錯誤處理**不對稱** — `mojlaw.py` 有 fallback，`datagovtw.py` / `executive_yuan_rss.py` / `mohw_rss.py` / `fda_api.py` 四個 grep 不到同模式 fallback。Offline / rate-limit 時四個 adapter 會裸爆
   - 產出：
     - `src/sources/_common.py`：`fetch_with_fallback(session, url, *, fixture_dir)` decorator 或 helper；統一 UA / rate_limit (≥2s) / timeout / `RequestException → fixture fallback`
     - 4 個 adapter（datagovtw / executive_yuan_rss / mohw_rss / fda_api）改用 `_common` 幫手
     - 每個 adapter 各補 `test_<adapter>_offline_fallback.py` 案例（mock RequestException）
   - **驗**：`grep -l "RequestException" src/sources/*.py | wc -l` ≥ 5
-  - **驗**：`pytest tests/test_*_adapter.py -q` 全綠（5 adapter suite ≥ 30 passed）
-  - **驗**：`pytest tests/ -q` FAIL 數 == 0
+  - **驗**：`pytest tests/test_mojlaw_adapter.py tests/test_datagovtw_adapter.py tests/test_executive_yuan_rss_adapter.py tests/test_mohw_rss_adapter.py tests/test_fda_api_adapter.py tests/test_sources_base.py tests/test_sources_ingest.py -q` = **34 passed**
+  - **驗**：`pytest tests/ -q` = **3576 passed / 0 failed**
   - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
   - commit（ACL 解除後）: `refactor(sources): unify adapter error handling via _common fallback`
 
@@ -475,10 +475,11 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - Normalized 存 `kb_data/corpus/{adapter}/{doc_id}.md`（YAML frontmatter）
   - CLI: `gov-ai sources ingest --source all --since 2026-01-01`
 - [ ] **T1.6** 首次跑 T1.4，3 來源各 ≥50 份（≥150 baseline）
-- [ ] **T1.11（v3.3 NEW）** `gov-ai sources status / stats` CLI 子指令
-  - **背景**：`src/cli/sources_cmd.py` 48 行只接通 `ingest`；T1.6 baseline 後沒有 reporting 抓手；`kb_data/raw/{adapter}/` 計數需手 `ls`
+- [x] **T1.11（v3.3 NEW）** `gov-ai sources status / stats` CLI 子指令
+  - **完成**：`src/cli/sources_cmd.py` 已補 `status` / `stats` 指令；`src/sources/ingest.py` 新增 `SourceSnapshot` + `collect_source_snapshots()`，可彙整各 adapter 的 `corpus_count` / `raw_count` / `raw_bytes` / `last_crawl` / `latest`
   - 產出：`gov-ai sources status` → 列各 adapter ingested doc count + last_crawl + raw size；`gov-ai sources stats --adapter mojlaw` → 以 source 維度 breakdown
-  - **驗**：`pytest tests/test_sources_cli.py::test_status -q` 綠
+  - **驗**：`pytest tests/test_sources_cli.py tests/test_sources_ingest.py -q` = 11 passed
+  - **驗**：`python -m src.cli.main sources status --base-dir kb_data`、`python -m src.cli.main sources stats --base-dir kb_data` 均可輸出來源統計
   - commit: `feat(cli): add gov-ai sources status/stats subcommands`
 - [ ] **T1.12（v3.3 NEW）** integration smoke test 真網路守護
   - **背景**：5 adapter 都是 `unittest.mock.patch` 替網路；無「真網路煙霧」、「rate-limit ≥2s 守驗」、「robots.txt 解析」

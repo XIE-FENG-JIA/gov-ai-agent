@@ -10,7 +10,7 @@ import yaml
 
 from src.core.models import PublicGovDoc
 from src.sources.base import BaseSourceAdapter
-from src.sources.ingest import build_argument_parser, ingest, main
+from src.sources.ingest import build_argument_parser, collect_source_snapshots, ingest, main
 
 
 class FakeAdapter(BaseSourceAdapter):
@@ -114,3 +114,21 @@ def test_main_mojlaw_cli_falls_back_to_local_fixtures(tmp_path: Path, capsys) ->
     assert exit_code == 0
     assert "ingested=3 source=mojlaw" in captured.out
     assert len(list((tmp_path / "corpus" / "mojlaw").glob("*.md"))) == 3
+
+
+def test_collect_source_snapshots_reads_existing_storage_dirs(tmp_path: Path) -> None:
+    (tmp_path / "raw" / "mojlaw" / "202604").mkdir(parents=True)
+    (tmp_path / "corpus" / "mojlaw").mkdir(parents=True)
+    (tmp_path / "raw" / "mojlaw" / "202604" / "DOC-001.json").write_text("{}", encoding="utf-8")
+    latest = tmp_path / "corpus" / "mojlaw" / "DOC-002.md"
+    latest.write_text("# doc", encoding="utf-8")
+
+    snapshots = collect_source_snapshots(base_dir=tmp_path)
+
+    mojlaw = next(snapshot for snapshot in snapshots if snapshot.source_key == "mojlaw")
+    assert mojlaw.storage_name == "mojlaw"
+    assert mojlaw.raw_count == 1
+    assert mojlaw.raw_bytes == 2
+    assert mojlaw.corpus_count == 1
+    assert mojlaw.latest_corpus_path == latest
+    assert mojlaw.last_crawl_mtime is not None
