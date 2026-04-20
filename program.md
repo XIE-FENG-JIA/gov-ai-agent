@@ -1,13 +1,13 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **版本**：v3.5（2026-04-20 15:15 — `pytest tests/ -q` = **3590 passed / 10 skipped / 0 failed / 524s**；工作樹僅 `M program.md`；近 20 commits 仍 100% `auto-commit:`；**焦點：Epic 1 真通過 P0.T 拆 SPIKE+LIVE、Admin-dep P0.S/P0.D、治理缺口 P1.7 llm.py + P1.8 README**）
-> **v3.5 變更**（v3.4 → v3.5）：
-> - **關閉**（搬歷史）：P0.V-flaky（本輪全量 3590 passed / 0 failed，`test_ingest_keeps_fixture_backed_corpus...` 未重現）、P0.U（fallback provenance guard 已落；results.log 14:55）、P0.V-live-upgrade（ingest 升級護欄已落；results.log 15:03）、T1.12-HARDEN（live smoke 禁 silent fixture fallback；results.log 23:05）、T1.6.a / T1.6.b（155 guard + fixture 升級護欄）
-> - **P0.T 拆子任務**：原條目純等 Admin 解 egress → 拆 **P0.T-SPIKE**（agent-side：live ingest 腳本 + URL 可達性盤點 + 離線驗證）+ **P0.T-LIVE**（需網路：實跑 3 源 × 3 份落盤）
-> - **T1.6 收斂**：原「3 來源各 ≥50 份（≥150 baseline）」過激進 → 併入 P0.T，先以「3 來源 × ≥3 份 live」收斂；≥50 份基線延至 Epic 2 完成後
-> - **補 v3.4 承諾未落**：新增 **P1.7**（`src/core/llm.py` 治理 + `docs/llm-provider-governance.md`）+ **P1.8**（README Epic 1-2 路線對齊）
-> - **P0 活條目**：P0.S（Admin 連 20 輪）/ P0.D（Admin 連 12 輪）/ P0.T（agent 可做 SPIKE + Admin 依賴 LIVE）
-> - **v3.4 歷史**：fixture fallback provenance + live-upgrade guard + integration smoke harden
+> **版本**：v3.6（2026-04-20 15:30 — `pytest tests/ -q` baseline = **3590 passed / 10 skipped / 0 failed / 524s**（v3.5 實跑、v3.6 規劃側無碼變，下輪首動作須重跑確認）；工作樹 `M src/cli/main.py src/cli/utils.py`（AUTO-RESCUE d225281 吞掉 v3.5 尾波後又出新 M，P0.S 血債再現）；近 10 commits = **3 conventional / 7 `auto-commit:` = 30%**（從 v3.5 「20/20 auto-commit」微改善但遠低 80% 目標）；**焦點：Epic 1 真通過 P0.T-SPIKE（ACL-free 唯一活 P0）、Epic 2 seam 前置 P1.9 + P1.10（ACL-free agent 可做）、Admin 依賴 P0.S / P0.D / P0.T-LIVE**）
+> **v3.6 變更**（v3.5 → v3.6）：
+> - **新增 Epic 2 前置**（ACL-free，agent 可做；不等 vendor clone）：**P1.9**（`src/integrations/open_notebook/` seam 骨架 — `AdapterProtocol` + `GOV_AI_OPEN_NOTEBOOK_MODE=off|smoke|writer` 配置鍵 + smoke CLI stub，基於 `docs/integration-plan.md` 已選 Fork + thin seam）+ **P1.10**（T2.1 open-notebook 研讀 → `docs/open-notebook-study.md`，基於 repo 內 proposal/specs/integration-plan 推論，不依賴真 clone）
+> - **P1.7 / P1.8 合併**：原兩文件任務合為 **P1.7-DOC**（llm.py inventory + README 對齊 Epic 1-2 + architecture.md 補 v2 seam 描述，一波次做完避免碎片化 commit）
+> - **P0 歷史去重**：移除 P0.歷史 段重複的 P0.D 條目（主 P0.D 仍在 P0 活條目段），避免兩處 SOP 漂移
+> - **commit KPI 上線**：v3.6 起 results.log 每輪記錄「近 10 commits conventional 比例」作 P0.S 健檢指標（當前 30%，血債閉環門檻 ≥ 80%）
+> - **P0 活條目**：P0.S（Admin 連 21 輪，KPI 微動）/ P0.D（Admin 連 13 輪）/ P0.T-SPIKE（ACL-free 唯一可做 P0）/ P0.T-LIVE（Admin-dep 網路）
+> - **v3.5 歷史保留**：P0.V-flaky / P0.U / P0.V-live-upgrade / T1.12-HARDEN / T1.6.a / T1.6.b
 > Auto-engineer 每輪讀此檔，從「待辦」挑第一個未完成任務執行。完成後 `[x]` 勾選、log 追加到 `results.log`。
 
 ---
@@ -258,20 +258,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗**：`pytest tests/test_mojlaw_adapter.py tests/test_datagovtw_adapter.py -q` 綠（ingest 未破壞既有 adapter）
   - commit（ACL 解除後）: `feat(sources): add minimal ingest pipeline wiring MojLaw to kb_data`
 
-### P0.D — 🛑 解除 `.git` 外來 SID DENY ACL（v3.1；連 10 輪待 Admin）
-
-- [ ] **P0.D** 🛑 需人工 Admin：移除 `.git` 對 SID `S-1-5-21-541253457-2268935619-321007557-692795393` 的 DENY ACL
-  - **根因證據**：`icacls .git` 顯示該 SID 有 `(DENY)(W,D,Rc,DC)` + `(OI)(CI)(IO)(DENY)(W,D,Rc,GW,DC)`；v3.0 `icacls .git | grep -c DENY` == 2
-  - **為何 agent 自解失敗**：SID 非當前登入帳號，`Set-Acl` 遭 `Attempted to perform an unauthorized operation`；需 **Admin 提權**或 `takeown /f .git /r /d y`
-  - **建議 SOP**（admin PowerShell）：
-    ```powershell
-    takeown /f .git /r /d y
-    icacls .git /reset /T /C
-    icacls .git /remove:d "*S-1-5-21-541253457-2268935619-321007557-692795393" /T /C
-    ```
-  - **驗**：`icacls .git 2>&1 | grep -c DENY` == 0
-  - **BLOCKER 範圍**：此題未過 → 所有 ACL-free 工作樹落地項都要走 AUTO-RESCUE admin session 代 commit
-  - commit（解除後）：`chore(repo): remove foreign SID DENY ACL on .git`
+> **P0.D 去重**（v3.6）：原本此處的 P0.D 條目與 P0 活條目段完全重複 → 移除，以活條目段 SOP 為 single source of truth，避免兩處漂移。
 
 ### P0.歷史 — v3.0 閉環（working-tree PASS，commit 待 AUTO-RESCUE）
 
@@ -368,17 +355,48 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗**：`wc -l engineer-log.md` ≤ 200 AND `ls docs/archive/engineer-log-*.md | wc -l` ≥ 1
   - commit（ACL 解後）: `docs(engineer-log): rotate Apr 2026 entries to docs/archive/`
 
-- [ ] **P1.7（v3.4 NEW）✅ ACL-free** `src/core/llm.py` 定位 — Epic 2 前置
+- [x] **P1.7（v3.4 NEW）✅ ACL-free** `src/core/llm.py` 定位 — Epic 2 前置
   - **背景**：P0.B 盤點標「Epic 2；LiteLLM/OpenRouter/Ollama provider 工廠，直接支撐 T2.0.a / T2.6 / T2.8」但 Epic 2 文字未反映；啟動 T2.6 ask_service 薄殼時會撞到 provider 選擇 / embedding 工廠設計窗口
-  - 產出：`docs/llm-providers.md`（列目前 provider 抽象、支援模型矩陣、Epic 2 引用點）；Epic 2 增 T2.0.c 引用
+  - **完成**：新增 `docs/llm-providers.md`，盤點目前 provider 抽象、支援模型矩陣、工廠 merge 行為、主要 call sites 與 Epic 2 ask-service 接縫
   - **驗**：`ls docs/llm-providers.md` 存在 AND `grep -c "src/core/llm.py" docs/llm-providers.md` ≥ 1
   - commit（ACL 解後）: `docs(llm): inventory core/llm.py provider factory for Epic 2`
 
-- [ ] **P1.8（v3.4 NEW）✅ ACL-free** README 對齊 Epic 1-2 路線
-  - **背景**：`README.md` 5 KB 落後 2 個 sprint；Epic 1 五 adapter + ingest CLI + Epic 2 open-notebook fork 方向未反映
-  - 產出：README 新增「資料源」段（5 adapter 表 + CLI 範例）+ 「架構路線」段連結 `docs/architecture.md`
-  - **驗**：`grep -c "gov-ai sources" README.md` ≥ 2 AND `grep -c "docs/architecture.md" README.md` ≥ 1
-  - commit（ACL 解後）: `docs(readme): align with Epic 1 adapters and architecture v1`
+- [ ] **P1.8（v3.6 擴充）✅ ACL-free** README + architecture seam 對齊
+  - **背景**：(a) `README.md` 5 KB 落後 2 sprint，未反映 5 adapter + ingest CLI + Fork 路線；(b) `docs/architecture.md` v1 已落但缺 v3.5 T2.2 選定的 `src/integrations/open_notebook/` seam + `GOV_AI_OPEN_NOTEBOOK_MODE` 描述——P1.9 需此為 spec 錨點
+  - 產出（一 commit）：
+    - `README.md` §資料源：5 adapter 表 + `gov-ai sources ingest / status / stats` 範例 + 連結 `docs/architecture.md` + `docs/integration-plan.md`
+    - `docs/architecture.md` 追加 §Epic 2 seam：`src/integrations/open_notebook/` 邊界 + `GOV_AI_OPEN_NOTEBOOK_MODE=off|smoke|writer` + fallback 契約
+  - **驗 1**：`grep -c "gov-ai sources" README.md` ≥ 2 AND `grep -c "docs/architecture.md" README.md` ≥ 1
+  - **驗 2**：`grep -c "GOV_AI_OPEN_NOTEBOOK_MODE" docs/architecture.md` ≥ 1
+  - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
+  - commit（ACL 解後）: `docs: align README + architecture seam for Epic 1 adapters and Epic 2 integration`
+
+- [ ] **P1.9（v3.6 NEW）✅ ACL-free** `src/integrations/open_notebook/` seam 骨架（Epic 2 第一顆骨牌）
+  - **背景**：T2.2 `docs/integration-plan.md` 已選 Fork + thin adapter seam，但 `src/integrations/` 目錄不存在；下游 T2.5-T2.8（API / writer / retriever / fallback）全需此 seam 接入。P1.4 vendor clone 被 shell egress 擋住，但 **seam 骨架不需要真 vendor 存在**——可先落 protocol + stub + env gating，vendor 到位後只填實作
+  - 產出：
+    - `src/integrations/__init__.py`（空 package marker）
+    - `src/integrations/open_notebook/__init__.py`：`OpenNotebookAdapter` Protocol（`ask(question, docs) -> AskResult`、`index(docs)`）+ `get_adapter(mode) -> Adapter` 工廠
+    - `src/integrations/open_notebook/stub.py`：`OffAdapter`（`ask` raise `IntegrationDisabled`）+ `SmokeAdapter`（in-memory 模擬回覆 + 引用第一份 doc）；**禁實作 WriterAdapter**（等 vendor）
+    - `src/integrations/open_notebook/config.py`：讀 `GOV_AI_OPEN_NOTEBOOK_MODE` env（default `off`）
+    - `src/cli/open_notebook_cmd.py`：`gov-ai open-notebook smoke --question "..."` 驗 seam 通
+    - `tests/test_integrations_open_notebook.py`：驗 Protocol + 三模式工廠 + OffAdapter raise + SmokeAdapter 回非空 + writer 模式 vendor 缺失時 loud fail（非 silent fallback）
+  - **驗 1**：`pytest tests/test_integrations_open_notebook.py -q` 綠
+  - **驗 2**：`GOV_AI_OPEN_NOTEBOOK_MODE=smoke python -m src.cli.main open-notebook smoke --question "hi"` 輸出非空
+  - **驗 3**：writer 模式 vendor 缺失時 raise 明確錯誤（引 `docs/integration-plan.md` §mode 契約）
+  - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
+  - commit（ACL 解後）: `feat(integrations): add open-notebook seam skeleton with off/smoke adapters`
+
+- [ ] **P1.10（v3.6 NEW）✅ ACL-free** T2.1 open-notebook 研讀 → `docs/open-notebook-study.md`
+  - **背景**：T2.1「研讀 open-notebook」原 pre-request P1.4 clone vendor，但 shell egress 擋；v3.6 改為「repo 內推論」先做——基於 `openspec/changes/02-open-notebook-fork/proposal.md` + `specs/fork/spec.md` + `docs/integration-plan.md` 推 ask_service 介面 / evidence 格式 / SurrealDB 邊界。P1.4 解後再補「實測對照」節
+  - 產出 `docs/open-notebook-study.md`：
+    - §1 來源引用：proposal / spec / integration-plan
+    - §2 ask_service 介面推論：`ask(question, docs) -> {answer, evidence[]}`
+    - §3 vendor 依賴邊界：SurrealDB / litellm / langchain（預期）
+    - §4 疑點 TODO：P1.4 解後需實測確認
+    - §5 對 P1.9 seam 的規格要求（反向餵 P1.9）
+  - **驗**：`wc -l docs/open-notebook-study.md` ≥ 80 AND `grep -c "ask_service" docs/open-notebook-study.md` ≥ 3
+  - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
+  - commit（ACL 解後）: `docs(open-notebook): add T2.1 study based on repo proposals + integration-plan`
 
 ---
 
