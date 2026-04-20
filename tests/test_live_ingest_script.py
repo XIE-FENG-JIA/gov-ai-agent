@@ -40,8 +40,58 @@ def test_run_live_ingest_sets_force_live_and_collects_records(tmp_path: Path, mo
     assert "GOV_AI_FORCE_LIVE" not in live_ingest.os.environ
     assert results[0].status == "PASS"
     assert results[0].count == 1
+    assert results[0].ingested_count == 1
+    assert results[0].fixture_remaining == 0
     assert results[0].records[0]["synthetic"] is False
     assert results[0].records[0]["first_sentence"] == "公文程式條例 第一句"
+
+
+def test_run_live_ingest_can_prune_fixture_backed_corpus(tmp_path: Path, monkeypatch) -> None:
+    class FakeAdapter:
+        pass
+
+    def fake_ingest(adapter, *, limit, base_dir, require_live):  # type: ignore[no-untyped-def]
+        corpus_root = base_dir / "corpus" / "mojlaw"
+        corpus_root.mkdir(parents=True, exist_ok=True)
+        (corpus_root / "live.md").write_text(
+            "---\n"
+            "source_url: https://example.test/live\n"
+            "synthetic: false\n"
+            "fixture_fallback: false\n"
+            "---\n"
+            "# Live doc\n\n真資料。\n",
+            encoding="utf-8",
+        )
+        (corpus_root / "fixture.md").write_text(
+            "---\n"
+            "source_url: https://example.test/fixture\n"
+            "synthetic: true\n"
+            "fixture_fallback: true\n"
+            "---\n"
+            "# Fixture doc\n\n假資料。\n",
+            encoding="utf-8",
+        )
+        return []
+
+    monkeypatch.setattr(live_ingest, "_available_sources", lambda: {"mojlaw": FakeAdapter})
+    monkeypatch.setattr(live_ingest, "_load_ingest_function", lambda: fake_ingest)
+
+    results = live_ingest.run_live_ingest(
+        source_keys=["mojlaw"],
+        limit=2,
+        base_dir=tmp_path,
+        prune_fixture_fallback=True,
+        archive_label="fixture_20260420",
+    )
+
+    assert results[0].status == "PASS"
+    assert results[0].count == 1
+    assert results[0].ingested_count == 0
+    assert results[0].fixture_remaining == 0
+    assert results[0].archived_count == 1
+    assert not (tmp_path / "corpus" / "mojlaw" / "fixture.md").exists()
+    assert (tmp_path / "corpus" / "mojlaw" / "live.md").exists()
+    assert (tmp_path / "archive" / "fixture_20260420" / "corpus" / "mojlaw" / "fixture.md").exists()
 
 
 def test_write_report_renders_markdown_table(tmp_path: Path) -> None:
@@ -51,7 +101,7 @@ def test_write_report_renders_markdown_table(tmp_path: Path) -> None:
             source="mojlaw",
             status="PASS",
             count=1,
-            summary="ingested=1",
+            summary="ingested=1 live_total=1 fixture_remaining=0",
             records=[
                 {
                     "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030018",
@@ -60,6 +110,9 @@ def test_write_report_renders_markdown_table(tmp_path: Path) -> None:
                     "first_sentence": "公文程式條例 第一條",
                 }
             ],
+            ingested_count=1,
+            fixture_remaining=0,
+            archived_count=1,
         ),
         live_ingest.SourceRunResult(
             source="datagovtw",
@@ -67,6 +120,9 @@ def test_write_report_renders_markdown_table(tmp_path: Path) -> None:
             count=0,
             summary="live ingest required",
             records=[],
+            ingested_count=0,
+            fixture_remaining=0,
+            archived_count=0,
         ),
     ]
 
@@ -77,7 +133,9 @@ def test_write_report_renders_markdown_table(tmp_path: Path) -> None:
     assert "- force_live: 1" in content
     assert "| source_url | synthetic | fixture_fallback | first_sentence |" in content
     assert "live ingest required" in content
-    assert "- count: 1" in content
+    assert "- live_count: 1" in content
+    assert "- ingested_count: 1" in content
+    assert "- archived_count: 1" in content
 
 
 def test_main_rejects_unknown_source(tmp_path: Path, monkeypatch) -> None:
@@ -98,7 +156,8 @@ def test_main_accepts_underscored_source_alias(tmp_path: Path, monkeypatch) -> N
     monkeypatch.setattr(
         live_ingest,
         "run_live_ingest",
-        lambda *, source_keys, limit, base_dir, require_live=True: calls.append(source_keys) or [],
+        lambda *, source_keys, limit, base_dir, require_live=True, prune_fixture_fallback=False, archive_label=None:
+        calls.append(source_keys) or [],
     )
     monkeypatch.setattr(live_ingest, "write_report", lambda *args, **kwargs: None)
 
@@ -115,7 +174,13 @@ def test_main_accepts_explicit_require_live_flag(tmp_path: Path, monkeypatch) ->
     monkeypatch.setattr(
         live_ingest,
         "run_live_ingest",
-        lambda *, source_keys, limit, base_dir, require_live=True: observed.append(require_live) or [],
+        lambda *,
+        source_keys,
+        limit,
+        base_dir,
+        require_live=True,
+        prune_fixture_fallback=False,
+        archive_label=None: observed.append(require_live) or [],
     )
     monkeypatch.setattr(live_ingest, "write_report", lambda *args, **kwargs: None)
 

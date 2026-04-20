@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from scripts.purge_fixture_corpus import archive_fixture_corpus
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
@@ -33,6 +34,9 @@ class SourceRunResult:
     count: int
     summary: str
     records: list[dict[str, Any]]
+    ingested_count: int = 0
+    fixture_remaining: int = 0
+    archived_count: int = 0
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
@@ -51,6 +55,13 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default=True,
         help="Fail when adapters fall back to local fixtures (default: true).",
     )
+    parser.add_argument(
+        "--prune-fixture-fallback",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Archive existing fixture-backed corpus/raw files for sources that now have live docs.",
+    )
+    parser.add_argument("--archive-label", default=None, help="Optional archive folder label under kb_data/archive/")
     return parser
 
 
@@ -66,6 +77,8 @@ def main(argv: list[str] | None = None) -> int:
         limit=args.limit,
         base_dir=base_dir,
         require_live=args.require_live,
+        prune_fixture_fallback=args.prune_fixture_fallback,
+        archive_label=args.archive_label,
     )
     write_report(report_path, results=results, base_dir=base_dir, limit=args.limit, force_live=args.require_live)
     return 0 if all(result.status == "PASS" for result in results) else 1
@@ -77,6 +90,8 @@ def run_live_ingest(
     limit: int,
     base_dir: Path,
     require_live: bool = True,
+    prune_fixture_fallback: bool = False,
+    archive_label: str | None = None,
 ) -> list[SourceRunResult]:
     registry = _available_sources()
     ingest_fn = _load_ingest_function()
@@ -88,16 +103,34 @@ def run_live_ingest(
         for source_key in source_keys:
             adapter_cls = registry[source_key]
             adapter = adapter_cls()
+            storage_names = _storage_names(source_key=source_key, adapter=adapter)
             try:
                 records = ingest_fn(adapter, limit=limit, base_dir=base_dir, require_live=require_live)
-                rows = [_read_record(record.corpus_path) for record in records]
+                archived_count = 0
+                if prune_fixture_fallback:
+                    archived_count = len(
+                        archive_fixture_corpus(
+                            base_dir=base_dir,
+                            storage_names=storage_names,
+                            archive_label=archive_label,
+                        )
+                    )
+                rows = _read_source_records(base_dir=base_dir, storage_names=storage_names)
+                live_rows = [row for row in rows if not row["fixture_fallback"]]
+                fixture_remaining = sum(1 for row in rows if row["fixture_fallback"])
                 results.append(
                     SourceRunResult(
                         source=source_key,
                         status="PASS",
-                        count=len(rows),
-                        summary=f"ingested={len(rows)}",
-                        records=rows,
+                        count=len(live_rows),
+                        summary=(
+                            f"ingested={len(records)} live_total={len(live_rows)} "
+                            f"fixture_remaining={fixture_remaining} archived={archived_count}"
+                        ),
+                        records=live_rows,
+                        ingested_count=len(records),
+                        fixture_remaining=fixture_remaining,
+                        archived_count=archived_count,
                     )
                 )
             except Exception as exc:  # pragma: no cover - exercised in script tests via mocks
@@ -140,7 +173,10 @@ def write_report(
             [
                 f"## {result.source}",
                 f"- status: {result.status}",
-                f"- count: {result.count}",
+                f"- live_count: {result.count}",
+                f"- ingested_count: {result.ingested_count}",
+                f"- fixture_remaining: {result.fixture_remaining}",
+                f"- archived_count: {result.archived_count}",
                 f"- summary: {result.summary}",
             ]
         )
@@ -204,11 +240,36 @@ def _read_record(corpus_path: Path) -> dict[str, Any]:
     _, raw_meta, body = text.split("---\n", 2)
     metadata = yaml.safe_load(raw_meta) or {}
     return {
+        "path": corpus_path.as_posix(),
         "source_url": str(metadata.get("source_url", "")).replace("|", "%7C"),
         "synthetic": bool(metadata.get("synthetic")),
         "fixture_fallback": bool(metadata.get("fixture_fallback")),
         "first_sentence": _first_sentence(body),
     }
+
+
+def _storage_names(*, source_key: str, adapter: Any) -> list[str]:
+    candidates = [
+        adapter.__class__.__name__.removesuffix("Adapter").lower(),
+        source_key.lower().replace("_", ""),
+        source_key.lower(),
+    ]
+    return list(dict.fromkeys(name for name in candidates if name))
+
+
+def _read_source_records(*, base_dir: Path, storage_names: list[str]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    seen_paths: set[Path] = set()
+    for storage_name in storage_names:
+        corpus_root = base_dir / "corpus" / storage_name
+        if not corpus_root.exists():
+            continue
+        for path in sorted(corpus_root.rglob("*.md")):
+            if path in seen_paths:
+                continue
+            seen_paths.add(path)
+            rows.append(_read_record(path))
+    return rows
 
 
 def _first_sentence(body: str) -> str:

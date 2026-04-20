@@ -44,6 +44,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Overwrite the input file instead of writing a .dedup sidecar.",
     )
+    parser.add_argument(
+        "--strict-task-key",
+        action="store_true",
+        help="Use the strict (date, task, status, summary-hash) key instead of root-cause grouping.",
+    )
     return parser
 
 
@@ -87,17 +92,49 @@ def summary_hash(summary: str | None) -> str:
     return hashlib.sha1(normalized).hexdigest()
 
 
-def dedupe_lines(lines: Iterable[str], statuses: Sequence[str] = DEFAULT_STATUS_FILTER) -> tuple[list[str], int]:
+def canonical_summary(summary: str, status: str) -> str:
+    normalized = summary.strip().lower()
+    if status.upper() != "BLOCKED-ACL":
+        return normalized
+    if "index.lock: permission denied" in normalized:
+        return "blocked-acl:index-lock-denied"
+    if "deny acl" in normalized and "不嘗試 `git add/commit`" in normalized:
+        return "blocked-acl:acl-gated-no-commit"
+    if "deny acl" in normalized:
+        return "blocked-acl:deny-acl"
+    return normalized
+
+
+def build_group_key(entry: LogEntry, strict_task_key: bool) -> tuple[str, ...]:
+    assert entry.timestamp is not None
+    assert entry.status is not None
+    assert entry.summary is not None
+    key = (
+        entry.timestamp.strftime("%Y-%m-%d"),
+        entry.status.upper(),
+        summary_hash(canonical_summary(entry.summary, entry.status)),
+    )
+    if strict_task_key:
+        assert entry.task_id is not None
+        return (key[0], entry.task_id, key[1], key[2])
+    return key
+
+
+def dedupe_lines(
+    lines: Iterable[str],
+    statuses: Sequence[str] = DEFAULT_STATUS_FILTER,
+    *,
+    strict_task_key: bool = False,
+) -> tuple[list[str], int]:
     parsed_entries = [parse_entry(line) for line in lines]
     active_statuses = {status.upper() for status in statuses}
-    groups: dict[tuple[str, str, str, str], DedupGroup] = {}
+    groups: dict[tuple[str, ...], DedupGroup] = {}
     output: list[str] = []
     removed = 0
 
     for entry in parsed_entries:
         if (
             entry.timestamp is None
-            or entry.task_id is None
             or entry.status is None
             or entry.summary is None
             or entry.status.upper() not in active_statuses
@@ -105,12 +142,7 @@ def dedupe_lines(lines: Iterable[str], statuses: Sequence[str] = DEFAULT_STATUS_
             output.append(entry.raw)
             continue
 
-        key = (
-            entry.timestamp.strftime("%Y-%m-%d"),
-            entry.task_id,
-            entry.status.upper(),
-            summary_hash(entry.summary),
-        )
+        key = build_group_key(entry, strict_task_key=strict_task_key)
         existing = groups.get(key)
         if existing is None:
             time_token = entry.timestamp.strftime("%H:%M:%S")
@@ -131,28 +163,27 @@ def dedupe_lines(lines: Iterable[str], statuses: Sequence[str] = DEFAULT_STATUS_
             last_time=entry.timestamp.strftime("%H:%M:%S"),
         )
 
-    return apply_suffixes(output, groups), removed
+    return apply_suffixes(output, groups, strict_task_key=strict_task_key), removed
 
 
-def apply_suffixes(lines: list[str], groups: dict[tuple[str, str, str, str], DedupGroup]) -> list[str]:
+def apply_suffixes(
+    lines: list[str],
+    groups: dict[tuple[str, ...], DedupGroup],
+    *,
+    strict_task_key: bool,
+) -> list[str]:
     rewritten: list[str] = []
     for line in lines:
         entry = parse_entry(line)
         if (
             entry.timestamp is None
-            or entry.task_id is None
             or entry.status is None
             or entry.summary is None
         ):
             rewritten.append(line)
             continue
 
-        key = (
-            entry.timestamp.strftime("%Y-%m-%d"),
-            entry.task_id,
-            entry.status.upper(),
-            summary_hash(entry.summary),
-        )
+        key = build_group_key(entry, strict_task_key=strict_task_key)
         group = groups.get(key)
         if group is None or group.count == 1:
             rewritten.append(line)
@@ -180,7 +211,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     statuses = tuple(args.status or DEFAULT_STATUS_FILTER)
 
     source_text = args.path.read_text(encoding="utf-8")
-    deduped_lines, removed = dedupe_lines(source_text.splitlines(), statuses=statuses)
+    deduped_lines, removed = dedupe_lines(
+        source_text.splitlines(),
+        statuses=statuses,
+        strict_task_key=args.strict_task_key,
+    )
     rendered = render_output(deduped_lines)
 
     if args.in_place:
