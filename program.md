@@ -1,6 +1,45 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **🎯 v4.9 當輪執行順序鎖（技術主管第二十七輪深度回顧 2026-04-21 01:58；/pua 觸發；alibaba 味；四破齊出驗收）**：
+> **🎯 v5.0 當輪執行順序鎖（技術主管第二十八輪深度回顧 2026-04-21 02:20；/pua 觸發；alibaba 味；HEAD 校準 + 三破候補）**：
+> **HEAD 實測指標**（ls + wc + grep + pytest 即取）：
+> - ✅ 指標 1（hot pytest 綠）：本輪 9 檔 hot path **842 passed / 0 failed / 63.71s**；全量 v4.9 記 3672/0（待下輪補全量）
+> - ❌ 指標 2（近 25 commits auto-commit ≤ 12）：**23/25** 持平紅（>28 輪 Admin-dep 結構性，不計 agent 績效）
+> - ❌ 指標 3（.git DENY ACL = 0）：**2** 持平（Admin-dep 結構性）
+> - ✅ 指標 4（open_notebook seam）：4 檔齊
+> - ✅ 指標 5（study.md ≥ 80 行）：持平綠
+> - ✅ 指標 6（Epic 3 tasks `[x]` = 9/9）：維持綠
+> - ✅ 指標 7（corpus 9 real / 0 fallback）：連九輪綠
+> - 🟡 指標 8（writer/editor/kb/generate 單檔 ≤ 400）：editor max 304 / writer max 250 / kb max 282 ✅；**generate/pipeline.py 642 ❌**（god-CLI 拆完但 pipeline 仍偏胖）
+>
+> **v5.0 實測 6/8 PASS + 1/8 半綠**（v4.9 6/8 持平；指標 8 新增 pipeline 642 邊緣紅）。
+>
+> **本輪 HEAD 校準（v4.9 header 列但未勾，本輪補勾）**：
+> 1. ✅ **T8.1.a cli/kb 拆**（HEAD 已落 7 檔 max 282）
+> 2. ✅ **T8.1.b cli/generate 拆骨幹**（HEAD 已落 4 檔；pipeline 642 追尾 T8.1.b-REFINE）
+> 3. ✅ **T8.1.c editor 拆**（v4.5 落地後持平 max 304）
+>
+> **v5.0 三破（本輪 ACL-free；連 1 輪延宕 = 紅線 X 實錘）**：
+> 1. ✅ **P0.EPIC3-BASELINE-PROMOTE**（2026-04-21 02:35）— `openspec/specs/citation-tw-format.md` 已 promote；保留 canonical `## 引用來源`、citation metadata keys、DOCX verification metadata 與 repo-evidence verify 契約。
+> 2. **P0.REDLINE-COMPRESS**（10 分）— 🟢 v4.5 提議連 **6 輪 0 動** = 紅線 X 自指涉；合併紅線 4/5/6/7/8/9 → 紅線 X；`rg -c "^### 🔴" program.md` ≤ 6。
+> 3. **T8.1.b-PIPELINE-REFINE**（30 分）— 🔴 `src/cli/generate/pipeline.py = 642 行` 拆 `pipeline/{compose,render,persist}.py`；SOP 第四次擴散（editor→writer→kb→pipeline）。
+>
+> **v5.0 二守（P1，連 2 輪延宕 = 3.25）**：
+> 4. **P0.INTEGRATION-GATE**（20 分）— `scripts/run_nightly_integration.sh` + `docs/integration-nightly.md`；v4.3 起列連 >5 輪 0 動。
+> 5. **P0.ARCH-SPLIT-SOP**（15 分）— `docs/arch-split-sop.md` 文件化 editor/writer/kb/generate 四大拆分 SOP；避免 `pipeline.py 642` / `api_server.py 529` / `agents/template.py 548` 下輪重發明輪子。
+>
+> **v5.0 新盤點（P1 結構債新冠）**：
+> - `src/cli/generate/pipeline.py 642`（首胖） / `src/agents/template.py 548` / `api_server.py 529` / `src/cli/template_cmd.py 537`；editor/writer/kb 拆分 library 成形後三檔為新 cluster。
+>
+> **v4.9 → v5.0 變更摘要**：
+> - **事實校準（HEAD > header）**：T8.1.a / T8.1.b / T8.1.c 全 [x] 已落但 v4.9 header 列為「新三破首要 60 分」—紅線 X 子條款「header 與 HEAD lag」反向實錘（做了不敢勾）
+> - **新紅線 X 子條款**：header 過度保守 = lag > HEAD；agent 應該勾完再開下一任務
+> - **新結構債 cluster**：pipeline.py 642 / agents/template.py 548 / api_server.py 529 / cli/template_cmd.py 537 四檔合 2256 行
+> - **Spectra 對齊度**：**3/5 = 60%**；citation baseline capability 已補齊
+> - **下一步收斂**：v5.0 下一步清單從 v4.9 的 4-5 件收回 3 件核心；避免「下一步行動累加不收斂」
+>
+> **紅線狀態（v5.0 本輪必收斂）**：v4.5 提議「核心 3 + 實戰 X」連 6 輪未執行；v5.0 P0.REDLINE-COMPRESS 10 分即破；下輪若再跳 = 紅線 X 七連。
+
+> **🎯 v4.9 當輪執行順序鎖（技術主管第二十七輪深度回顧 2026-04-21 01:58；/pua 觸發；alibaba 味；四破齊出驗收；已由 v5.0 取代，保留歷史）**：
 > **HEAD 實測指標**（ls + wc + grep + pytest 即取）：
 > - ✅ 指標 1（pytest 全綠）：hot 11 檔 **933 passed / 59s**；21:55 T3.1-CANONICAL-HEADING 全量 **3672 / 0**（+12 vs v4.8 3660）
 > - ❌ 指標 2（近 25 commits auto-commit ≤ 12）：**23/25** 持平紅（v4.8 header 與實測 1:1 對齊 ✓；HEAD 連 5 h 全 AUTO-RESCUE = Admin 結構性紅）
@@ -262,6 +301,20 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 > **v4.2 歷史保留（新增紅線 7）**：「**未驗即交 = 3.25**」— 實裝新 API / context manager / wrapper 不跑對應 test 目錄就把 diff 留工作樹過輪 = 當輪 3.25（非連輪）；案例 = P0.FF 改 src 未跑 `pytest tests/test_knowledge_manager_cache.py`。
 > **v3.5 歷史保留**：v3.4 flaky + v3.1-3.3 Epic 1 骨架 + 倖存者偏差紅線；v4.0-4.1 設計驅動治理紅線 6。
 
+> **v5.1 狀態（2026-04-21 02:30 技術主管第二十九輪深度回顧）**：全量 pytest = **3678 passed / 0 failed / 234.69s**（+6 vs v4.9）；hot path 902/0；auto-commit 23/25 紅（Admin-dep）；`.git` DENY ACL = 2 紅（>29 輪）；Epic 2/3 tasks 15/15 + 9/9 ✅；corpus 9/9 ✅；`engineer-log.md = 584 行 > 500 紅線 ❌`（v4.9 T9.6-REOPEN 一輪復發）；`openspec/specs/citation-tw-format.md` **✅ 已存在**（v5.0 反思後 AUTO-RESCUE 落，program.md line 1248 已勾）；`src/cli/generate/pipeline.py = 642 行` 仍未拆（v5.0 必破唯一未竟）；`rg -c "^### 🔴" program.md` = **6 ✅**（v5.0 誤報 >6，實測邊界已達）。**八指標 6/8 PASS（v5.0 6/8 → 持平；指標組合變化：engineer-log 新紅 vs baseline promote 回綠 vs redline 回綠）**。
+> **v5.1 升級 P0 優先序**：(1) **P0.LOGARCHIVE-V2**（5 分）封存 engineer-log 回 ≤ 300；(2) **P0.PIPELINE-REFINE**（30 分）SOP 第四次擴散；(3) **P0.ARCH-SPLIT-SOP**（15 分）拆分 SOP 文件化；(4) P0.INTEGRATION-GATE / T-FAILURE-MATRIX；(5) P2：verify schema / litellm noise / results.log 收斂。**本輪嚴禁新增 P0 條目**（只兌現 v5.0 欠債 + 本輪新發現一件）。
+> **v5.1 新發現（紅線 X 子條款）**：「**反思日誌本身破紅線**」— v5.0 反思單輪寫入 +133 行，engineer-log 451 → 584 > 500；對策：單輪反思 ≤ 80 行，超出下輪 T9.6-REOPEN 同步封存。
+
+### P0.LOGARCHIVE-V2 — 🔴 ACL-free·v5.1 新增（5 分；engineer-log 破 500 紅線一輪復發）
+
+- [ ] **T9.6-REOPEN-v2** 🔴 v4.9 T9.6-REOPEN 從 1198 → 316 行後，v5.0 反思加 +133 行→ 584 行 > 500 紅線；單輪反思未設上限觸發第二次封存
+  - **執行**：`engineer-log.md` 保留標題 + v4.9（line 318-）以後段落，把 line 9-317（v4.5-v4.8 反思共四輪）移到 `docs/archive/engineer-log-202604c.md`；主檔 header 補第三封存 marker
+  - **驗 1**：`wc -l engineer-log.md` ≤ 300
+  - **驗 2**：`ls docs/archive/engineer-log-202604c.md && wc -l` ≥ 200
+  - **驗 3**：新增「單輪反思 ≤ 80 行」註記於主檔 header
+  - **延宕懲罰**：ACL-free 連 1 輪延宕 = 紅線 X（反思日誌自己破自己的紅線 = 紅線 X 自指涉三連）
+  - commit（ACL 解後）: `chore(log): archive v4.5-v4.8 reflections (v5.1 second rescue)`
+
 ### P0.EPIC8-KB-SPLIT — 🔴 ACL-free·v4.9 首要（v4.9 新增；60 分鐘；T8.1.a 升 P0）
 
 - [x] **T8.1.a（v4.9 升 P0）** ✅ `src/cli/kb.py` 已拆為 package：`src/cli/kb/{__init__, _shared, corpus, ingest, rebuild, stats, status}.py`；保留 `from src.cli.kb import app/_init_kb/parse_markdown_with_metadata` patch 相容點
@@ -272,14 +325,39 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗 3**：`python -m src.cli.main kb --help` 列出原有子指令（不破 CLI 契約）
   - commit（ACL 解後）: `refactor(cli): split kb.py into package modules`
 
-### P0.EPIC3-BASELINE-PROMOTE — 🟢 ACL-free·v4.9 新增（15 分鐘）
+### P0.PIPELINE-REFINE — 🔴 ACL-free·v5.0 新增（30 分鐘；god-CLI 拆分 SOP 第四次擴散）
 
-- [ ] **P0.EPIC3-BASELINE-PROMOTE** 🟢 Epic 3 tasks 已 9/9 全綠但 baseline capability 未 promote；`openspec/specs/citation-tw-format.md` 不存在 = Spectra 對齊度 3/5 → 3.3/5 未收尾
-  - **執行**：從 `openspec/changes/03-citation-tw-format/specs/citation/spec.md` 複製為 `openspec/specs/citation-tw-format.md`；調整 header 段為 baseline 形式（移除 change-scoped wording，保留 requirement 清單）
-  - **驗 1**：`ls openspec/specs/citation-tw-format.md` 存在
-  - **驗 2**：`wc -w openspec/specs/citation-tw-format.md` ≥ 200
-  - **驗 3**：`rg -n "source_doc_ids|citation_count|ai_generated|engine|## 引用來源" openspec/specs/citation-tw-format.md` 命中 ≥ 5
-  - commit（ACL 解後）: `docs(spec): promote citation-tw-format baseline capability`
+- [ ] **T8.1.b-PIPELINE-REFINE** 🔴 `src/cli/generate/pipeline.py = 642 行`；cli/generate 拆四檔骨幹後 pipeline 仍為新首胖；指標 8 邊緣紅
+  - **執行**：`src/cli/generate/pipeline.py` → `src/cli/generate/pipeline/{__init__, compose, render, persist}.py`；入口 `__init__` 保留 `run_pipeline` 契約給 `cli.py` import；SOP 復用 editor/writer/kb pattern（入口 + 子職責模組 × 3）
+  - **驗 1**：`wc -l src/cli/generate/pipeline/*.py` 每檔 ≤ 250 行
+  - **驗 2**：`python -m pytest tests/test_cli_commands.py tests/test_export_citation_metadata.py tests/test_batch_perf.py -q` 全綠
+  - **驗 3**：`python -m src.cli.main generate --help` 契約未變
+  - **延宕懲罰**：ACL-free 連 1 輪延宕 = 紅線 X（god-CLI 拆完不收尾 = 方案驅動治理子條款）
+  - commit（ACL 解後）: `refactor(cli): split generate/pipeline.py into package modules`
+
+### P0.REDLINE-COMPRESS-V5 — 🟢 ACL-free·v5.0 強制（10 分鐘；v4.5 連 6 輪欠；本輪不破 = 七連）
+
+- [ ] **P0.REDLINE-COMPRESS** 🟢 v4.5 提議連六輪未執行；紅線通膨使施壓效力遞減；本輪強制壓回
+  - **執行**：編輯 `program.md § 核心原則` / `§ 禁止行為` 段，合併 **紅線 4（承諾漂移）/ 5（方案驅動）/ 6（設計驅動）/ 7（未驗即交）/ 8（focused smoke 偷全綠）/ 9（header 與 HEAD 落差）** → 單一 **紅線 X：PASS 定義漂移**
+  - **新結構**：
+    - `### 🔴 三條核心紅線`：1 真實性 / 2 改寫而非生成 / 3 可溯源
+    - `### 🔴 實戰紅線 X（PASS 定義漂移）`：六子條款（承諾漂移 / 方案驅動 / 設計驅動 / 未驗即交 / focused smoke / header lag）；一次含即 3.25
+  - **驗 1**：`rg -c "^### 🔴" program.md` ≤ 6（當前 > 6）
+  - **驗 2**：`rg -n "紅線 4|紅線 5|紅線 6|紅線 7|紅線 8|紅線 9" program.md` 僅出現於歷史保留段，不出現於頂部核心原則
+  - **延宕懲罰**：連 1 輪延宕 = 紅線 X 自指涉七連，無藉口
+  - commit（ACL 解後）: `docs(program): compress 9 redlines into 3+1 core (v5.0)`
+
+### P0.ARCH-DEBT-NEW-CLUSTER — 🟡 P1·v5.0 新盤點（下輪起輪值拆）
+
+- [ ] **T-TEMPLATE-SPLIT**（v5.0 新增 P1）— `src/agents/template.py 548` + `src/cli/template_cmd.py 537` = 1085 行 template cluster
+  - **拆法建議**：`src/agents/template/{__init__, render, variants, validate}.py`；CLI 側不動
+  - **延宕懲罰**：連 2 輪 0 動 = 3.25
+- [ ] **T-API-ROUTERS**（v5.0 新增 P1）— `api_server.py 529` FastAPI 單檔
+  - **拆法建議**：`src/api/routers/{generate, verify, health, kb}.py` + `api_server.py` 僅留 app factory
+  - **延宕懲罰**：未上線不急；連 3 輪 0 動 3.25
+- [ ] **P0.VERIFY-DOCX-SCHEMA**（v5.0 新增 P1；安全層）— `src/cli/verify_cmd.py` / `src/document/citation_metadata.py` 補 malicious DOCX `citation_sources_json` parse guard（JSON decode try/except + whitelist keys）
+  - **驗**：`pytest tests/test_export_citation_metadata.py -q` 新增 3 條 malicious payload test
+- [ ] **P0.LITELLM-ASYNC-NOISE**（v5.0 新增 P1）— `conftest.py` 加 logger filter 壓 litellm `ValueError: I/O operation on closed file`；解本輪 `--tb=no` 詐胡
 
 ### P0.INTEGRATION-GATE — 🟢 ACL-free·v4.9 升 P0（20 分鐘；原 T-INTEGRATION-GATE）
 
@@ -1167,6 +1245,8 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **P0.BB (v4.1)** `scripts/dedupe_results_log.py` + `tests/test_dedupe_results_log.py` 已落；預設按 BLOCKED-ACL 根因去重，`--strict-task-key` 保留字面四元組模式；`results.log.dedup` 實測 165 → 127 行（-23.03%）
 - [x] **P0.CP950 (v4.0)** Windows cp950 console help 回歸：`src/cli/cite_cmd.py` 移除 help/panel/static warning 中的 emoji 與不安全符號，`python -m src.cli.main --help` 在 `PYTHONIOENCODING=cp950` 下不再噴 `UnicodeEncodeError`；`tests/test_cite_cmd.py` 新增子程序回歸測試
 - [x] **T8.1.b (2026-04-21)** 依 HEAD 事實校準完成狀態：`src/cli/generate.py` 已不存在，現況為 `src/cli/generate/{__init__,pipeline,export,cli}.py`；驗證 `pytest tests/test_cli_commands.py tests/test_batch_perf.py tests/test_workflow_cmd.py tests/test_export_citation_metadata.py -q --no-header` = **794 passed**，全量 `pytest tests/ -q --no-header --ignore=tests/integration` = **3678 passed / 0 failed**
+- [x] **P0.EPIC3-BASELINE-PROMOTE (2026-04-21)** `openspec/specs/citation-tw-format.md` baseline capability 已從 `changes/03-citation-tw-format/specs/citation/spec.md` promote；保留 canonical `## 引用來源`、`source_doc_ids` / `citation_count` / `ai_generated` / `engine`、DOCX verification metadata 與 repo-evidence verify 契約
+  - **完成（2026-04-21 02:35）**：新增 baseline spec `openspec/specs/citation-tw-format.md`；驗證 `rg -n "source_doc_ids|citation_count|ai_generated|engine|## 引用來源" openspec/specs/citation-tw-format.md` 命中達標，word count > 200
 - [x] **T7.4（v3.8）** Spectra coverage 補洞：`openspec/changes/{01-real-sources,02-open-notebook-fork}/tasks.md` 已回填逐 task `Requirements:` metadata；`spectra analyze 01-real-sources` 與 `spectra analyze 02-open-notebook-fork` 於 2026-04-20 17:06 實測皆 0 findings
 - [x] **T1.12-HARDEN (v3.4)** nightly live smoke 禁 silent fixture fallback；`tests/integration/test_sources_smoke.py` 把 fixture_dir 指向不存在路徑，upstream 掛 → integration FAIL 不再假綠
 - [x] **T1.6.a (v3.4)** 校正 `kb_data/examples/*.md` 合成基線為 155，`tests/test_mark_synthetic.py` 新增 guard
