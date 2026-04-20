@@ -396,11 +396,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗**：`wc -l docs/architecture.md` ≥ 80 AND `grep -c "## " docs/architecture.md` ≥ 5
   - commit（ACL 解後）: `docs(architecture): add v1 architecture overview covering Epic 1-3`
 
-- [ ] **P1.6（v3.3 NEW）🚦 ACL-gated** engineer-log.md 月度歸檔
-  - **背景**：當前 1158 行 / ~85KB，Read 工具 25k token 限制需 offset/limit 分次讀；歷史條目 (2026-04-20 03:15 起) 應每月歸檔
-  - 產出：`docs/archive/engineer-log-202604.md`（4 月起所有反思 + 細項條目），主檔僅留「最近 7 天」與當前反思
-  - **驗**：`wc -l engineer-log.md` ≤ 200 AND `ls docs/archive/engineer-log-*.md | wc -l` ≥ 1
-  - commit（ACL 解後）: `docs(engineer-log): rotate Apr 2026 entries to docs/archive/`
+- [~] **P1.6（v3.3 NEW）→ v3.8 併入 T9.6** engineer-log.md 月度歸檔與 T9.6 同件，避免雙軌顆粒度漂移；執行以 T9.6 為單一事實來源（當前 1300 行 / 閾值 ≤ 500）
 
 - [x] **P1.7（v3.4 NEW）✅ ACL-free** `src/core/llm.py` 定位 — Epic 2 前置
   - **背景**：P0.B 盤點標「Epic 2；LiteLLM/OpenRouter/Ollama provider 工廠，直接支撐 T2.0.a / T2.6 / T2.8」但 Epic 2 文字未反映；啟動 T2.6 ask_service 薄殼時會撞到 provider 選擇 / embedding 工廠設計窗口
@@ -590,6 +586,16 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [ ] **T7.1.d** `04-audit-citation`（Epic 4）
 - [x] **T7.2** → 已升 P1.2（v2.4 閉環）
 - [ ] **T7.3** `engineer-log.md` 進版控 + 每輪反思 append 規範
+- [ ] **T7.4（v3.8 NEW）✅ ACL-free** Spectra coverage 補洞：兩個 change 的 spec requirement → tasks.md 對應
+  - **背景**：`spectra analyze 01-real-sources` 回 5 個 `[WARNING] Requirement ... has no matching task`（`Source adapters use one shared contract` / `Normalized real-source documents preserve provenance` / `Real-source ingestion follows public-data compliance rules` / `Synthetic content stays outside real-source retrieval` / `The first approved source set is intentionally narrow`）+ 3 個 SUGGEST `Replace 'may' with SHALL` 於 `specs/sources/spec.md:66/80/93`；`spectra analyze 02-open-notebook-fork` 回另 5 個同類 WARNING（narrow import boundary / ask-service integration / first integration slice / repo owns fallback / five-agent review layering）
+  - 產出：
+    - `openspec/changes/01-real-sources/tasks.md`：每條 requirement 追對應 task ID（可 link 既有 T1.x 閉環或新增 verify task）；把 `may` 改 `SHALL`/`SHALL NOT`
+    - `openspec/changes/02-open-notebook-fork/tasks.md`：同法，對應到 P0.W（seam 骨架） / P0.X（vendor smoke） / T2.5-T2.8
+  - **驗 1**：`spectra analyze 01-real-sources 2>&1 | grep -c "has no matching task"` == 0
+  - **驗 2**：`spectra analyze 02-open-notebook-fork 2>&1 | grep -c "has no matching task"` == 0
+  - **驗 3**：`spectra analyze 01-real-sources 2>&1 | grep -c "Vague language 'may'"` == 0
+  - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
+  - commit（ACL 解後）: `docs(spec): backfill requirement→task coverage for 01-real-sources and 02-open-notebook-fork`
 
 ---
 
@@ -747,3 +753,4 @@ Epic 7 負責建置。建置完成前，program.md 是單一事實來源。
 > 4. **新增紅線 5**：方案驅動治理，鎖死 P0.S 修法 A/B 兩輪零執行的耍賴空間
 > 5. **T9.6 升首位**：engineer-log.md 1300 行，v3.8 設本輪必落 ACL-free 項
 > 6. **T9.5 SESSION-BLOCKED**：Move-Item / Remove-Item 被 destructive policy 擋，非可解，改註記不計延宕
+> 7. **新增 T7.4（Spectra coverage）**：`spectra analyze` 揭 01-real-sources 5 筆 + 02-open-notebook-fork 5 筆 requirement 無對應 task（另 3 筆 `may` 模糊）→ ACL-free，一輪可落；P1.6 併入 T9.6 去顆粒度重複
