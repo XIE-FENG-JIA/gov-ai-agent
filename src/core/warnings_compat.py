@@ -3,6 +3,11 @@ from __future__ import annotations
 from contextlib import contextmanager
 import warnings
 
+try:
+    from pydantic.warnings import PydanticDeprecatedSince211
+except Exception:  # pragma: no cover - compatibility with older pydantic
+    PydanticDeprecatedSince211 = DeprecationWarning
+
 
 def _apply_known_third_party_warning_filters() -> None:
     """Install narrow filters for noisy third-party deprecations.
@@ -19,8 +24,8 @@ def _apply_known_third_party_warning_filters() -> None:
     warnings.filterwarnings(
         "ignore",
         message=r"Accessing the 'model_fields' attribute on the instance is deprecated\.",
-        category=DeprecationWarning,
-        module=r"pydantic\._internal\._utils",
+        category=PydanticDeprecatedSince211,
+        module=r"(chromadb\.types|pydantic\._internal\._utils)",
     )
 
 
@@ -33,5 +38,6 @@ def suppress_known_third_party_deprecations() -> None:
 def suppress_known_third_party_deprecations_temporarily():
     """Re-apply known warning filters inside a local warnings context."""
     with warnings.catch_warnings():
+        warnings.simplefilter("ignore", PydanticDeprecatedSince211)
         _apply_known_third_party_warning_filters()
         yield

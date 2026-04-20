@@ -190,12 +190,13 @@ class KnowledgeBaseManager:
             target_collection = self.examples_collection
 
         try:
-            target_collection.add(
-                documents=[content],
-                embeddings=[embedding],
-                metadatas=[metadata],
-                ids=[doc_id]
-            )
+            with suppress_known_third_party_deprecations_temporarily():
+                target_collection.add(
+                    documents=[content],
+                    embeddings=[embedding],
+                    metadatas=[metadata],
+                    ids=[doc_id]
+                )
         except Exception as e:
             logger.error("文件寫入知識庫失敗: %s", e)
             return None
@@ -224,7 +225,8 @@ class KnowledgeBaseManager:
         else:
             target_collection = self.examples_collection
         try:
-            result = target_collection.get(ids=[doc_id], include=[])
+            with suppress_known_third_party_deprecations_temporarily():
+                result = target_collection.get(ids=[doc_id], include=[])
             return len(result.get("ids", [])) > 0
         except Exception:
             return False
@@ -270,12 +272,13 @@ class KnowledgeBaseManager:
             target_collection = self.examples_collection
 
         try:
-            target_collection.upsert(
-                documents=[content],
-                embeddings=[embedding],
-                metadatas=[metadata],
-                ids=[doc_id],
-            )
+            with suppress_known_third_party_deprecations_temporarily():
+                target_collection.upsert(
+                    documents=[content],
+                    embeddings=[embedding],
+                    metadatas=[metadata],
+                    ids=[doc_id],
+                )
         except Exception as e:
             logger.error("文件 upsert 知識庫失敗: %s", e)
             return None
@@ -885,15 +888,16 @@ class KnowledgeBaseManager:
             except Exception as e:
                 logger.debug("集合 %s 不存在，跳過刪除: %s", name, e)
         # 重建集合（使用臨時變數，全部成功才原子替換）
-        new_examples = self.client.get_or_create_collection(
-            name="public_doc_examples", metadata={"hnsw:space": "cosine"}
-        )
-        new_regulations = self.client.get_or_create_collection(
-            name="regulations", metadata={"hnsw:space": "cosine"}
-        )
-        new_policies = self.client.get_or_create_collection(
-            name="policies", metadata={"hnsw:space": "cosine"}
-        )
+        with suppress_known_third_party_deprecations_temporarily():
+            new_examples = self.client.get_or_create_collection(
+                name="public_doc_examples", metadata={"hnsw:space": "cosine"}
+            )
+            new_regulations = self.client.get_or_create_collection(
+                name="regulations", metadata={"hnsw:space": "cosine"}
+            )
+            new_policies = self.client.get_or_create_collection(
+                name="policies", metadata={"hnsw:space": "cosine"}
+            )
         # 全部成功才替換
         self.examples_collection = new_examples
         self.regulations_collection = new_regulations

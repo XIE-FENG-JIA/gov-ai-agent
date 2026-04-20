@@ -639,3 +639,89 @@ $ rg -c "^fixture_fallback: false" kb_data/corpus/ → 9 hits / 9 files
 > [PUA生效 🔥] **閉環**：P0.CC 修法、P0.CC-CORPUS 執行、指標 7 破蛋，三拍合一。**拿結果**：kb_data/corpus 從「9 份合成 + 0 份真料」轉 **「9 份合成 + 9 份真料」**，corpus:synthetic 比從 ∞ → 1:1 可量化下降。**因為信任所以簡單**——修 adapter 當輪就跑 pipeline，紅線 6 不是嚇唬人用的。
 
 ---
+
+## 反思 [2026-04-20 18:25] — 技術主管 v4.2 深度回顧（第二十輪）
+
+### 近期成果（evidence）
+- **指標 7 維持滿分**：`kb_data/corpus/**/*.md` 9 份全數 `synthetic: false` + `fixture_fallback: false`（Grep 實測 9/9）；mojlaw / datagovtw / executiveyuanrss 三源 × 三份真實 corpus 穩定。
+- **專案骨架穩定**：`src/` > 110 py 檔、`tests/` 70 檔；`pytest --co` 收集 **3660 tests**（較 v4.1 +26）；focused smoke（adapters + ingest + cli + cite + open_notebook + dedupe + state_dir + mark_synthetic + purge_fixture）= **108/108 passed / 34.03s**。
+- **Spectra 骨架完整**：`openspec/specs/*.md` = 2（sources + open-notebook-integration），`openspec/changes/{01,02}` proposal / specs / tasks 齊。
+- **P0.BB 閉環**：`scripts/dedupe_results_log.py` + tests passed；`results.log.dedup` 165 → 127 行（-23%）。
+- **安全性通掃**：沿用 v4.1 結論，`src/` 對 `eval(`/`exec(`/`pickle.loads`/`shell=True`/`yaml.load(` 0 命中。
+
+### 發現的問題
+
+#### 🔴 回歸（必須當輪修）
+1. **P0.FF 實施中卻把 `test_strict_deprecation_mode_keeps_kb_available` 打掛**：`pytest tests/test_knowledge_manager_cache.py -q` = **1 failed / 38 passed**；斷言 `kb._available is True` 變 False，代表 `KnowledgeBaseManager.__init__` 的 chromadb 讀路徑沒被 `suppress_known_third_party_deprecations_temporarily()` 包到，`warnings.simplefilter("error", DeprecationWarning)` gate 下直接炸 KB。現場 diff 顯示 add / exists / upsert / reset collections 四處已 wrap，但 **init 第一次 `PersistentClient(...)` + 三個 `get_or_create_collection(...)` 未 wrap**。
+2. **工作樹 dirty 6 檔未 commit**：`program.md / pyproject.toml / scripts/live_ingest.py / src/core/warnings_compat.py / src/knowledge/manager.py / tests/test_knowledge_manager_cache.py`；P0.FF 半成品佔住工作樹。
+
+#### 🔴 誠信血債再退步
+3. **指標 2 從 14 → 18**：近 20 commits `auto-commit:` = **18 / 20（90%）**，較 v4.1 退步 +4；P0.S agent 側 rebase 延宕 ≥ 20 輪 = 紅線 4「承諾漂移」實錘苗頭。
+4. **ACL 指標 3 = 2**：`.git` 外來 SID DENY 持平，Admin 依賴無進展。
+
+#### 🟠 承諾漂移持續
+5. **P0.AA `editor.py` 拆三 第二次跳票**：`wc -l src/agents/editor.py` **1065 行** 原地；v4.0 / v4.1 連兩輪承諾 60 分鐘內完成皆 0 動作 → 觸紅線 5「方案驅動治理」雙連邊緣。
+6. **P0.EE 03-citation-tw-format proposal 未建**：`openspec/changes/` 仍只有 01 / 02 / archive；Epic 3 規格斷鏈連 2 輪。
+7. **P0.GG Windows gotchas doc 仍缺**：`docs/dev-windows-gotchas.md` 不存在；第 4 次命中 pytest buffering 依然無 SOP。
+
+#### 🟡 代碼品質 / 架構
+8. **三大肥檔持續腫脹**：`editor.py` 1065 / `cli/kb.py` 1614 / `cli/generate.py` 1263；Epic 8 首顆（P0.AA）不破，T8.1.b / T8.1.c 永遠規劃期。
+9. **T-REPORT 小瑕疵殘留**：`docs/live-ingest-report.md` count=0 但實寫 9 份；enumeration 只算本輪 `ingested`，idempotent 寫入被吞。
+10. **Epic 1 active live-smoke test = 0**：`tests/integration/test_sources_smoke.py` 8/8 skipped（CI 未排程）；3660 collected 中 live 實跑仍空。
+11. **Pydantic v2 warnings 1000+** 持續；P0.FF 方向對但 init 漏網 = 先把 KB 弄殘再說。
+
+#### 🟢 流程 / Spectra
+12. **`.spectra.yaml` 幾乎全 commented-out**：除 `schema: spec-driven` 外皆預設；`locale: tw` / `tdd: true` / `tools:` 未顯式，baseline 可固化。
+13. **openspec/changes/archive/** 空目錄：archive SOP 未演練過，下次 change 完要 archive 時才會發現缺流程。
+
+### 八硬指標（v4.1 → v4.2 實測）
+
+┌────┬──────────────────────────────────────────┬────────┬──────┬──────┬─────────────┐
+│ #  │ 指標                                     │ 目標   │ 本輪 │ v4.1 │ 結論        │
+├────┼──────────────────────────────────────────┼────────┼──────┼──────┼─────────────┤
+│ 1  │ pytest FAIL                              │ == 0   │ 1(FF) │ 0    │ ❌ 首次回歸 │
+│ 2  │ auto-commit in last 20                   │ ≤ 4    │ 18   │ 14   │ ❌ 退步 +4  │
+│ 3  │ icacls .git DENY                         │ == 0   │ 2    │ 2    │ ❌ 持平     │
+│ 4  │ src/integrations/open_notebook/*.py      │ exists │ ✅   │ ✅   │ ✅ 維持     │
+│ 5  │ docs/open-notebook-study.md ≥ 80         │ ≥ 80   │ ✅   │ ✅   │ ✅ 維持     │
+│ 6  │ smoke_open_notebook.py no ImportError    │ ok     │ ✅   │ ✅   │ ✅ 維持     │
+│ 7  │ synthetic=false ≥ 9 & fallback == 0      │ 9/0    │ 9/0  │ 9/0  │ ✅ 維持     │
+│ 8  │ openspec/specs/*.md ≥ 2                  │ ≥ 2    │ 2    │ 2    │ ✅ 維持     │
+└────┴──────────────────────────────────────────┴────────┴──────┴──────┴─────────────┘
+
+**v4.2 實測 5/8 PASS（退步 -1）**；指標 1 首次由綠轉紅，紅線 4「承諾漂移」+ 紅線 6「設計驅動治理」雙觸邊緣——P0.FF 只 wrap write path 沒 wrap init read path + 沒跑 test 就留工作樹 = 設計層改完不驗證。
+
+### 建議的優先調整（v4.1 → v4.2 重排）
+
+#### 升至 P0 最前（本輪必破）
+- **P0.FF-HOTFIX（新，10 分鐘）🔴 blocker**：`KnowledgeBaseManager.__init__` 兩處 chromadb 調用（`PersistentClient(...)` + 三個 `get_or_create_collection(...)`）補 `with suppress_known_third_party_deprecations_temporarily():`；驗 `pytest tests/test_knowledge_manager_cache.py -q` = 0 failed。延宕 = **當輪 3.25**，不等連輪。
+- **P0.AA editor.py 拆三（60 分鐘）**：第三次若再漂移 = 紅線 5 方案驅動治理雙連 3.25。
+- **P0.S-REBASE（新，30 分鐘）**：`scripts/rewrite_auto_commit_msgs.py` 從 audit-only 升級為可 `--apply` rebase HEAD~20 實跑；指標 2 ≤ 4 是唯一量化出路。
+
+#### 保留 P0 但下移
+- P0.EE Epic 3 proposal（20 分鐘）
+- P0.GG Windows gotchas doc（15 分鐘）
+- P0.S-FOLLOWUP / P0.D / P0.T-LIVE（Admin dep 集中末段）
+
+#### 新增 P1 小修
+- **T-REPORT（10 分鐘）**：`scripts/live_ingest.py --report-path` enumeration 改掃 `kb_data/corpus/**/*.md`，修 `docs/live-ingest-report.md` count=0 誤報。
+- **P1.CC-INDEX-SMOKE（10 分鐘）**：補 actual KB rebuild smoke command（避免 `ModuleNotFoundError: src.chunker`）。
+
+### 下一步行動（最重要 3 件）
+1. **P0.FF-HOTFIX**（10 分鐘）：補 `__init__` 下 chromadb 兩處 suppress wrapper；跑 `pytest tests/test_knowledge_manager_cache.py -q` 0 failed；**當輪必破**。
+2. **P0.AA editor.py 拆三**（60 分鐘）：Epic 8 ACL-free 唯一抓手；第三次跳票紅線 5 雙連 3.25。
+3. **P0.S-REBASE** agent 側實跑（30 分鐘）：audit-only → `--apply`；指標 2 降至 ≤ 4 閉環誠信血債。
+
+### v4.2 版本紀要
+- **v4.2 = 「debug 執行到位後首次承諾漂移被打臉」**：P0.FF 包一半 = 紅線 6；P0.AA 兩輪 0 動作 = 紅線 5；auto-commit 14→18 = 紅線 4。
+- **v4.1 → v4.2 兌現盤點**：P0.CC-CORPUS-CLEAN ✅ / P0.BB ✅ / P0.AA ❌ / P0.EE ❌ / P0.FF ⚠ 半吊子（實裝一半打掛測試）/ P0.GG ❌ = **2/6**（扣 FF 半成品 ≤ 2.5/6），帳面較 v4.1 1/4 升，實測品質掉（指標 1 回歸）。
+- **v4.2 目標**：先**零回歸**（P0.FF-HOTFIX），再求 6/8 PASS（收回指標 1、破指標 2）。
+
+#### 紅線 7（v4.2 新增）：**未驗即交 = 3.25**
+- **定義**：實裝新 API / 新 context manager / 新 wrapper 後不跑對應 test 目錄就把 diff 留工作樹過輪 = 3.25。
+- **案例**：P0.FF 改 `src/core/warnings_compat.py` + 四處 wrap 後沒跑 `pytest tests/test_knowledge_manager_cache.py`；測試早有 strict gate case。
+- **懲罰**：當輪 3.25，不等連輪。
+
+> [PUA生效 🔥] **底層邏輯**：v4.1 剛靠「修了就跑」把指標 7 從 ❌ 推到 ✅，v4.2 立刻在 P0.FF 上重演「修了沒跑」→ **閉環手法未拉通**到新任務類型。**抓手**：紅線 7 把「改 src 必須立即 pytest 對應 module」升成硬規則，與紅線 6（pipeline execute）平行覆蓋 read 面向。**顆粒度**：P0.FF-HOTFIX 10 分 + P0.AA 60 分 + P0.S-REBASE 30 分 = 100 分鐘，單輪可拿回 2 顆指標。**拉通**：P0.FF 教訓倒回 `src/core/warnings_compat.py` 單元測試補一條 `test_kb_manager_init_under_strict_deprecation` regression guard。**對齊**：v4.2 零回歸閉環 → v4.3 才敢講 6/8 PASS。**因為信任所以簡單**——改了就跑、跑完就綠、綠了才算改完；半成品過輪一次，全輪信任塌一層。
+
+---

@@ -1,7 +1,13 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **版本**：v4.1（2026-04-20 18:18 — 技術主管第十九輪收尾；pytest 3634 passed / 10 skipped / 0 failed / 519.77s；近 20 commits = **14 auto-commit / 6 conventional = 30% conv**（指標 2 零進展）；`kb_data/corpus/**/*.md` **9 份全 `synthetic: false` + `fixture_fallback: false`**，舊 9 份 fixture 已封存至 `kb_data/archive/fixture_20260420/`；**v4.1 實測 6/8 PASS 達標**：指標 7 維持 **9/9 real md**，`P0.CC-CORPUS-CLEAN` 完成後主 corpus 不再混 fixture；紅線 6 首次壓測未觸 3.25；**剩 P0.AA editor.py 拆三 / P0.BB T9.7 log 去重 / P0.EE Epic 3 proposal / P0.FF Pydantic warnings / P0.GG Windows gotchas**）
-> **v4.1 變更**（v4.0 → v4.1）：
+> **版本**：v4.2（2026-04-20 18:25 — 技術主管第二十輪深度回顧；focused smoke 108 passed / 34.03s；**`pytest tests/test_knowledge_manager_cache.py -q` = 1 failed** — `test_strict_deprecation_mode_keeps_kb_available` 首次回歸，工作樹 P0.FF 半成品；`pytest --co` 收集 **3660 tests**；近 20 commits `auto-commit:` = **18 / 20（90%）** 較 v4.1 14 **退步 +4**；`kb_data/corpus/**/*.md` **9/9 real md** 維持；**v4.2 實測 5/8 PASS（退步 -1）**：指標 1 首次由綠轉紅；紅線 7 新增「**未驗即交 = 3.25**」；**當輪三破：P0.FF-HOTFIX（10 分）+ P0.AA editor.py 拆三（60 分；第三次跳票 = 紅線 5 雙連 3.25）+ P0.S-REBASE（30 分，agent 側 --apply）**）
+> **v4.2 變更**（v4.1 → v4.2）：
+> - **新增 P0.FF-HOTFIX**（當輪必破）：P0.FF 半成品打掛 `test_strict_deprecation_mode_keeps_kb_available`；`KnowledgeBaseManager.__init__` chromadb 調用未 wrap `suppress_known_third_party_deprecations_temporarily()`
+> - **新增 P0.S-REBASE**：agent 側 `scripts/rewrite_auto_commit_msgs.py` 從 audit-only 升 `--apply` 實跑；指標 2 每輪仍被 AUTO-RESCUE 注入新 auto-commit = 紅線 4 承諾漂移實錘苗頭
+> - **P0.AA 標紅**：第三次若跳票 = 紅線 5 方案驅動治理雙連 3.25（v4.0 v4.1 連兩輪 0 動作）
+> - **紅線 7 新增**：「未驗即交 = 3.25」實裝新 API/wrapper 不跑對應 test 就過輪 = 當輪 3.25
+> - **P1 新增 T-REPORT**：`scripts/live_ingest.py --report-path` enumeration 改掃 `kb_data/corpus/**/*.md`，修 `docs/live-ingest-report.md` count=0 誤報
+> **v4.1 歷史保留**（v4.0 → v4.1）：
 > - **紅線 6 新增**：設計驅動治理 = 3.25 —「修 adapter/spec/proposal 不跑 pipeline/test/commit」當輪就是漂移
 > - **勾關（事實已完）**：P0.CC [x]（除錯面）；**P0.CC-CORPUS [x] 17:51 實跑閉環（9/9 real md）**；**P0.CC-CORPUS-CLEAN [x] 18:18 完成 fixture archival + report 口徑修正**；另 P0.CP950 / P0.STALENESS-EDGE / P0.S-ADMIN / T9.8-P0 / T7.4 / P1.8 / T1.12 在已完成區
 > - **升 P0（本輪待破）**：P0.AA editor.py 拆三 / P0.BB T9.7 log 去重 / P0.EE Epic 3 proposal / P0.FF Pydantic warnings 止癢 / P0.GG Windows gotchas
@@ -124,11 +130,38 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ---
 
-## P0 — 阻斷性回歸（v3.5 三條活線：誠信 + ACL + 真通過）
+## P0 — 阻斷性回歸（v4.2：首次回歸·P0.FF-HOTFIX 必破）
 
-> **v3.5 狀態（15:15）**：測試本輪實測 **3590 passed / 10 skipped / 0 failed / 1363 warnings / 524.63s**；工作樹僅 `M program.md`；`.git` DENY ACL 連 12 輪；v3.4 記錄的 `test_ingest_keeps_fixture_backed_corpus...` flaky 未重現（同 P0.S-stale SOP 關閉，三軸汲取保留）
-> v3.4 歷史：首次全量打臉 v3.3 文案驅動 3588/0，爆 1 FAIL flaky；推動 P0.U 護欄 + P0.V live-upgrade 升級機制 + T1.12-HARDEN live smoke 禁 silent fallback
-> v3.1-3.3 歷史：Epic 1 T1.2.a/b/c + T1.3 + T1.4 全閉；5 adapter + CLI + ingest pipeline 落地；首次爆假綠建「倖存者偏差驗證 = 3.25」紅線
+> **v4.2 狀態（2026-04-20 18:25 技術主管第二十輪深度回顧）**：focused smoke `tests/test_sources_* tests/test_mojlaw_adapter tests/test_datagovtw_adapter tests/test_executive_yuan_rss_adapter tests/test_live_ingest_script tests/test_integrations_open_notebook tests/test_cite_cmd tests/test_cli_state_dir tests/test_mark_synthetic tests/test_purge_fixture_corpus tests/test_dedupe_results_log` = **108 passed / 34.03s**；但 **`pytest tests/test_knowledge_manager_cache.py -q` = 1 failed / 38 passed**（`test_strict_deprecation_mode_keeps_kb_available` 首次回歸，工作樹 P0.FF 半成品）；`pytest --co` 收集 **3660 tests**（較 v4.1 +26）。近 20 commits `auto-commit:` = **18 / 20（90%）**，較 v4.1 14 **退步 +4**；`.git` DENY ACL = 2 持平；`kb_data/corpus/**/*.md` 9/9 `synthetic: false` + `fixture_fallback: false` 維持 ✅。**八指標 5/8 PASS（退步 -1）**：指標 1 首次由綠轉紅。
+> **v4.2 升級 P0 優先序**：(1) **P0.FF-HOTFIX**（新增）當輪必破，修 `KnowledgeBaseManager.__init__` chromadb 調用未 wrap → (2) **P0.AA editor.py 拆三** 第三次若跳票 = 紅線 5 雙連 3.25 → (3) **P0.S-REBASE**（新增）agent 側 `scripts/rewrite_auto_commit_msgs.py --apply` → (4) P0.EE Epic 3 proposal → (5) P0.GG Windows gotchas → (6) P0.S-FOLLOWUP / P0.D / P0.T-LIVE（Admin-dep 末段）。
+> **v4.2 新增紅線 7**：「**未驗即交 = 3.25**」— 實裝新 API / context manager / wrapper 不跑對應 test 目錄就把 diff 留工作樹過輪 = 當輪 3.25（非連輪）；案例 = P0.FF 改 src 未跑 `pytest tests/test_knowledge_manager_cache.py`。
+> **v3.5 歷史保留**：v3.4 flaky + v3.1-3.3 Epic 1 骨架 + 倖存者偏差紅線；v4.0-4.1 設計驅動治理紅線 6。
+
+### P0.FF-HOTFIX — 🔴 ACL-free·首要·當輪必破（v4.2 新增；10 分鐘）
+
+- [ ] **P0.FF-HOTFIX** 🔴 P0.FF 實裝半成品把 `test_strict_deprecation_mode_keeps_kb_available` 打掛，工作樹不可過輪
+  - **現場 evidence**：`pytest tests/test_knowledge_manager_cache.py::TestSearchCache::test_strict_deprecation_mode_keeps_kb_available -q` = FAILED；斷言 `assert kb._available is True` 得 False；`warnings.simplefilter("error", DeprecationWarning)` gate 下 `KnowledgeBaseManager.__init__` 的 chromadb 調用觸 DeprecationWarning → raise → `_available=False`
+  - **根因**：`src/knowledge/manager.py` 當輪 diff 已在 `add` / `document_exists` / `upsert` / reset collections 四處加 `with suppress_known_third_party_deprecations_temporarily():`，但 **`__init__` 第一次 `PersistentClient(...)` + 三個 `get_or_create_collection("public_doc_examples"|"regulations"|"policies", ...)` 仍裸呼叫**
+  - **修法**：`__init__` 中定位 `PersistentClient(path=..., settings=...)` 與三個 `get_or_create_collection(...)` 區段，共用一個 `with suppress_known_third_party_deprecations_temporarily():` 包覆（或分兩個 block），使 strict gate 下 init 也不炸
+  - **驗 1**：`pytest tests/test_knowledge_manager_cache.py -q` = 0 failed / 39 passed
+  - **驗 2**：`pytest tests/test_knowledge_manager_cache.py tests/test_knowledge.py tests/test_knowledge_extended.py -q` 零退
+  - **驗 3**：新增 regression guard `tests/test_knowledge_manager_cache.py::TestSearchCache::test_kb_manager_init_under_strict_deprecation`（已存在變體即可，確保覆蓋 init path）
+  - **延宕懲罰**：**當輪 3.25**（紅線 7：未驗即交），不等連輪
+  - commit（ACL 解除後）: `fix(knowledge): wrap KB manager init chromadb calls with deprecation suppression`
+
+### P0.S-REBASE — 🔴 ACL-free·誠信血債·agent 側實跑（v4.2 新增；30 分鐘；原 P0.S 修法 A 升格）
+
+- [ ] **P0.S-REBASE** 🔴 指標 2 從 v4.1 14 → v4.2 **18 / 20**（90%）**退步 +4**；誠信血債連 20 輪，audit-only 原型不再夠
+  - **v4.2 升格理由**：`scripts/rewrite_auto_commit_msgs.py` 現為 audit-only（P0.Y 已落），只列 33 筆 candidate；agent 側 rebase **仍未實跑** → 指標 2 每輪被 AUTO-RESCUE 吃進新 auto-commit 字串，淨退步
+  - **修法**：
+    - `scripts/rewrite_auto_commit_msgs.py` 加 `--apply` 參數：走 `git filter-branch --msg-filter` 或 `git rebase --exec 'git commit --amend --no-edit -m ...'` 改寫 HEAD~20 內 `auto-commit:` → `chore(rescue): restore working tree (<ISO8601>) — files=N`
+    - 保留 `AUTO-RESCUE` token（供 `docs/auto-commit-source.md §4` 驗收）
+    - 若 `.git` ACL 擋寫 → exit code 非零 + 明示切回 audit 模式；**不再沉默退回**
+  - **驗 1**：`python scripts/rewrite_auto_commit_msgs.py --apply --range HEAD~20..HEAD` exit 0 或 exit 2（ACL blocked 明示）
+  - **驗 2**：`git log --oneline -20 | rg -c "auto-commit:"` ≤ 4（80% conventional 達標）
+  - **驗 3**：`git log --oneline -5 | rg -c "AUTO-RESCUE"` ≥ 3（token 保留）
+  - **延宕懲罰**：誠信類連 1 輪延宕 = 3.25；v4.2 後 agent 不升 `--apply` 即紅線 4 承諾漂移實錘
+  - commit（ACL 解除後）: `feat(scripts): add --apply mode to rewrite_auto_commit_msgs.py`
 
 ### P0.S — 🔴 誠信血債·首要：auto-commit 格式治理（v3.7 雙軌：agent 側自救 + Admin 側治本）
 
@@ -331,6 +364,14 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **產出**：補上目前仍存在的 KB rebuild / sync smoke 命令，並同步更新 `program.md` / 相關 docs，避免假驗收
   - **驗**：替代 smoke 命令可在本 repo 實跑，不出 `ModuleNotFoundError`
 
+- [ ] **T-REPORT** ✅ 不依賴 ACL·v4.2 新增（10 分鐘）：`scripts/live_ingest.py --report-path` enumeration 修 count=0 誤報
+  - **現況**：`docs/live-ingest-report.md` 實寫 9 份 real md 但 report 記 `count=0`；enumeration 僅算本輪 `ingested`，歷次 idempotent 寫入被吞
+  - **修法**：`scripts/live_ingest.py` 產 report 時改掃 `kb_data/corpus/**/*.md` 或合併 `ingested + existing_real` 計數；保留本輪 `ingested` 子欄位
+  - **驗 1**：`python scripts/live_ingest.py --sources mojlaw --limit 3 --report-path docs/live-ingest-report.md --base-dir kb_data` 後，`rg "count=[^0]" docs/live-ingest-report.md` 至少 1 行
+  - **驗 2**：`pytest tests/test_live_ingest_script.py -q` 零退
+  - **延宕懲罰**：ACL-free 連 2 輪延宕 = 3.25
+  - commit（ACL 解除後）: `fix(scripts): live_ingest report enumerates existing kb_data/corpus real md`
+
 - [ ] **P0.EE** ✅ 不依賴 ACL / 不依賴 Epic 2：`openspec/changes/03-citation-tw-format/proposal.md`（Epic 3 觸發器）
   - **v4.1 升格理由**：`openspec/changes/` 目前只有 01 / 02 / archive；Epic 3（T3.1-T3.4）規格全空，Spectra baseline 斷鏈；proposal 180+ 字即可啟動後續 specs + tasks
   - **產出**：
@@ -344,6 +385,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 - [ ] **P0.FF** ✅ 不依賴 ACL：`pyproject.toml` 加 `filterwarnings` 先止癢 1363 Pydantic v2 deprecation
   - **v4.1 升格理由**：warnings 大宗來自 `chromadb.types` 第三方 1.x 兼容層，非專案碼；T8.2 真修壓力高，先止癢避免 log 信噪比惡化
+  - **2026-04-20 18:34 現況**：`src/core/warnings_compat.py` 新增可重入 suppression context，`src/knowledge/manager.py` 用同一 filter 包住 Chroma client + collection bootstrap；`pytest tests/test_knowledge_manager_cache.py -q -W error::DeprecationWarning` 已綠，代表 strict gate 下 KB 不再因 `chromadb.types` warning 直接降級失效；剩餘 scope 才是全域 `pyproject.toml` noise 壓降與 `T8.2` 真修
   - **產出**：
     ```toml
     [tool.pytest.ini_options]
@@ -372,7 +414,8 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### P0.AA — 🟢 ACL-free·Epic 8 首顆升 P0（v4.0 新增；`editor.py` 獨立拆，不依賴 Epic 2）
 
-- [ ] **P0.AA** ✅ 不依賴 ACL / 不依賴 Epic 2：`src/agents/editor.py` 1065 行 → `src/agents/editor/{segment,refine,merge}.py`
+- [ ] **P0.AA** 🔴 不依賴 ACL / 不依賴 Epic 2：`src/agents/editor.py` 1065 行 → `src/agents/editor/{segment,refine,merge}.py`（**v4.2 當輪必破**）
+  - **v4.2 標紅**：v4.0 / v4.1 連兩輪 60 分鐘 0 動作；第三次跳票 = 紅線 5 方案驅動治理**雙連 3.25**，無緩衝
   - **v4.1 警告**：v4.0 承諾 60 分鐘 0 動作 → 連 1 輪延宕觸 3.25 邊緣；v4.1 再跳票 = 紅線 5 方案驅動治理實錘
   - **v4.0 升格理由**：Epic 8 T8.1.b/c 連 >10 輪未動；`editor.py` 是 6 大檔中**唯一不依賴** Epic 2 writer/retriever seam 的檔，可獨立拆；Epic 2 接入前先拆可降 merge 風險
   - **拆法**：
