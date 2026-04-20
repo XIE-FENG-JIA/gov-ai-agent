@@ -8,7 +8,7 @@ import yaml
 
 from src.core.models import PublicGovDoc
 from src.sources.base import BaseSourceAdapter
-from src.sources.ingest import ingest, main
+from src.sources.ingest import build_argument_parser, ingest, main
 
 
 class FakeAdapter(BaseSourceAdapter):
@@ -90,6 +90,15 @@ def test_main_uses_registry_and_prints_written_paths(tmp_path: Path, monkeypatch
     assert exit_code == 0
     assert "ingested=1 source=mojlaw" in captured.out
     assert "DOC-001.md" in captured.out
+
+
+def test_build_argument_parser_includes_rss_and_api_sources() -> None:
+    parser = build_argument_parser()
+
+    source_action = next(action for action in parser._actions if action.dest == "source")
+
+    assert "fda" in source_action.choices
+    assert "mohw" in source_action.choices
 
 
 def test_main_mojlaw_cli_falls_back_to_local_fixtures(tmp_path: Path, capsys) -> None:

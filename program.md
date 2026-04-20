@@ -319,10 +319,11 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **T1.2.a-骨架** `src/sources/` ABC + MojLaw stub（v2.9 P0.F 閉環；commit `1d1457f`）
 - [x] **T1.2.a-實作** MojLawAdapter 真實 list/fetch/normalize（v3.0 P0.I 閉環；results.log #39；21 tests 綠）
 - [x] **T1.2.b-DataGovTw** `DataGovTwAdapter`（v3.1 P0.M 閉環；`pytest tests/test_datagovtw_adapter.py -q` 綠）
-- [ ] **T1.2.b-rest** 其餘 3 adapter：`ExecutiveYuanRssAdapter` / `MohwRssAdapter` / `FdaApiAdapter`（P0.M 跑通後）
+- [x] **T1.2.b-MOHW** `MohwRssAdapter`（2026-04-20 本輪閉環；`pytest tests/test_mohw_rss_adapter.py tests/test_sources_base.py tests/test_sources_ingest.py -q` 綠）
+- [x] **T1.2.b-rest** 其餘 2 adapter：`ExecutiveYuanRssAdapter` / `FdaApiAdapter`（2026-04-20 source adapter suite 25 passed）
   - [x] `ExecutiveYuanRssAdapter`：RSS `list/fetch/normalize` + fixture/test（2026-04-20）
-  - [ ] `MohwRssAdapter`
-  - [ ] `FdaApiAdapter`
+  - [x] `MohwRssAdapter`：RSS `list/fetch/normalize` + fixture/test（2026-04-20）
+  - [x] `FdaApiAdapter`：JSON/HTML 混合公告 payload `list/fetch/normalize` + fixture/test（2026-04-20）
 - [ ] **T1.2.c** CLI wiring：`gov-ai sources ingest --source mojlaw` 整合 T1.4 ingest（**併入 P0.N**）
 - [x] **T1.3** `PublicGovDoc` pydantic v2 model（`src/core/models.py`；v3.0 P0.I 閉環；`tests/test_core.py` 擴充）
 - [x] **T1.4** 增量 ingest pipeline `src/sources/ingest.py`（**升 P0.N**；v3.1 P0.N 閉環）

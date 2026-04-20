@@ -15,6 +15,8 @@ from src.core.models import PublicGovDoc
 from src.sources.base import BaseSourceAdapter
 from src.sources.datagovtw import DataGovTwAdapter
 from src.sources.executive_yuan_rss import ExecutiveYuanRssAdapter
+from src.sources.fda_api import FdaApiAdapter
+from src.sources.mohw_rss import MohwRssAdapter
 from src.sources.mojlaw import MojLawAdapter
 
 
@@ -98,6 +100,8 @@ def _adapter_registry() -> dict[str, type[BaseSourceAdapter]]:
     return {
         "datagovtw": DataGovTwAdapter,
         "executiveyuanrss": ExecutiveYuanRssAdapter,
+        "fda": FdaApiAdapter,
+        "mohw": MohwRssAdapter,
         "mojlaw": MojLawAdapter,
     }
 

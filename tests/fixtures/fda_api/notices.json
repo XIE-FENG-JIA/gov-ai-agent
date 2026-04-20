@@ -1,0 +1,36 @@
+{
+  "result": {
+    "items": [
+      {
+        "Id": "FDA-001",
+        "Title": "食品標示新制公告",
+        "Link": "/tc/newsContent.aspx?cid=3&id=80001",
+        "PublishDate": "2026-04-20",
+        "Summary": "<p>公布食品標示新制，要求通路於六月前完成盤點。</p>",
+        "Category": "公告",
+        "DocNo": "FDA食字第80001號",
+        "Agency": "衛生福利部食品藥物管理署"
+      },
+      {
+        "Id": "FDA-002",
+        "Title": "醫療器材回收資訊更新",
+        "Link": "/tc/newsContent.aspx?cid=3&id=80002",
+        "PublishDate": "2026-04-18",
+        "Summary": "<p>更新醫療器材批號回收名單，請醫療院所即刻盤點。</p>",
+        "Category": "公告",
+        "DocNo": "FDA器字第80002號",
+        "Agency": "衛生福利部食品藥物管理署"
+      },
+      {
+        "Id": "FDA-003",
+        "Title": "輸入食品查驗措施調整",
+        "Link": "/tc/newsContent.aspx?cid=3&id=80003",
+        "PublishDate": "2026-04-14",
+        "Summary": "<p>調整高風險輸入食品查驗措施，新增抽驗品項。</p>",
+        "Category": "公告",
+        "DocNo": "FDA輸字第80003號",
+        "Agency": "衛生福利部食品藥物管理署"
+      }
+    ]
+  }
+}

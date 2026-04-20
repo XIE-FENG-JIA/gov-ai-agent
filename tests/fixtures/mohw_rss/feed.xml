@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+  <channel>
+    <title>衛福部 RSS</title>
+    <link>https://www.mohw.gov.tw/</link>
+    <description>衛生福利部最新公告</description>
+    <item>
+      <title>衛福部公告長照服務新制</title>
+      <link>https://www.mohw.gov.tw/cp-16-80001-1.html</link>
+      <description><![CDATA[<p>公告長照 3.0 新制自 2026 年 5 月起上路。</p>]]></description>
+      <pubDate>Mon, 20 Apr 2026 08:00:00 +0800</pubDate>
+      <guid>mohw-news-001</guid>
+    </item>
+    <item>
+      <title>食安聯防專案啟動</title>
+      <link>https://www.mohw.gov.tw/cp-16-80002-1.html</link>
+      <description><![CDATA[<p>跨部會啟動食安聯防專案與稽查機制。</p>]]></description>
+      <pubDate>Fri, 17 Apr 2026 09:30:00 +0800</pubDate>
+      <guid>mohw-news-002</guid>
+    </item>
+    <item>
+      <title>醫療資訊交換格式更新</title>
+      <link>https://www.mohw.gov.tw/cp-16-80003-1.html</link>
+      <description><![CDATA[<p>新版交換格式與欄位說明即日起公告。</p>]]></description>
+      <pubDate>Tue, 14 Apr 2026 11:15:00 +0800</pubDate>
+      <guid>mohw-news-003</guid>
+    </item>
+  </channel>
+</rss>
