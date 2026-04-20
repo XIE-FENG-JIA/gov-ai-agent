@@ -29,10 +29,10 @@
   Validation: `pytest tests/test_open_notebook_service.py -q`  
   Commit: `feat(integration): add open-notebook service adapter`
 
-- [ ] **T2.4** Add a smoke CLI or script path that exercises one minimal ask-style request without replacing production writer flow.  
+- [x] **T2.4** Add a smoke CLI or script path that exercises one minimal ask-style request without replacing production writer flow.  
   Requirements:
   - The first integration slice is import and smoke only
-  Validation: `pytest tests/test_open_notebook_smoke.py -q`  
+  Validation: `pytest tests/test_integrations_open_notebook.py -q -k "help_lists_smoke_command or smoke_command"`  
   Commit: `feat(cli): add open-notebook smoke path`
 
 - [ ] **T2.5** Wire `src/agents/writer.py` to call the new service adapter behind a feature flag or explicit runtime toggle.  
