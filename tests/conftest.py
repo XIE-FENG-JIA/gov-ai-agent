@@ -1,4 +1,5 @@
 import copy
+import logging
 import pytest
 import sys
 from pathlib import Path
@@ -8,6 +9,7 @@ from unittest.mock import MagicMock
 sys.path.append(str(Path(__file__).parent.parent))
 
 from src.cli.utils import cleanup_orphan_tmps
+from src.core.logging_config import install_litellm_async_cleanup_filter
 from src.core.llm import LLMProvider
 from src.core.models import PublicDocRequirement
 from src.core.review_models import ReviewResult, ReviewIssue
@@ -23,6 +25,13 @@ _BASE_API_CONFIG: dict = {
     "knowledge_base": {"path": "./test_kb"},
     "api": {"auth_enabled": False},
 }
+
+
+@pytest.fixture(scope="session", autouse=True)
+def suppress_litellm_async_cleanup_noise():
+    """避免 litellm 在測試 teardown 階段透過 asyncio 噴 closed-file logging error。"""
+    install_litellm_async_cleanup_filter()
+    logging.getLogger("asyncio").setLevel(logging.WARNING)
 
 
 @pytest.fixture(scope="session", autouse=True)

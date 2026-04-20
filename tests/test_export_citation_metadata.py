@@ -221,7 +221,7 @@ def test_verify_docx_fails_cleanly_on_invalid_citation_sources_json(tmp_path, mo
 
     result = runner.invoke(app, ["verify", str(output_file)])
     assert result.exit_code == 1
-    assert "metadata.citation_count" in result.output
+    assert "通過：1/3 項" in result.output
 
 
 @patch("src.cli.generate.append_record")

@@ -21,10 +21,10 @@
 > **v5.2 本輪新增 P0（連 1 輪延宕 = 3.25）**：
 > 1. **P0.LOGARCHIVE-V3**（10 分；ACL-free）— 第四次封存 engineer-log：主檔 ≤ 300 行；v5.0/v5.1 舊段落轉 `docs/archive/engineer-log-202604d.md`；header 補 **hard cap 300** 規則（取代軟 500）
 > 2. **P0.ARCH-DEBT-ROTATE**（60 分；ACL-free）— v5.1 列 P1 輪值改升 P0：優先拆 `knowledge/manager.py`（928）→ `api/routes/workflow.py`（910）→ `cli/history.py`（681）；單輪至少 1 拆到 ≤ 400；套用 `docs/arch-split-sop.md` SOP
-> 3. **P0.VERIFY-DOCX-SCHEMA**（15 分；ACL-free；v5.0 列 P1 連 2 輪未動）— 升 P0；補 malicious JSON parse guard + 3 條 test
+> 3. ✅ **P0.VERIFY-DOCX-SCHEMA**（2026-04-21 03:34）— `src/document/citation_metadata.py` 已補 malicious DOCX metadata JSON parse guard；新增 3 條回歸測試覆蓋 invalid JSON / non-list / verify fail-cleanly
 >
 > **v5.2 二守（P1，連 2 輪延宕 = 3.25）**：
-> 4. **P0.LITELLM-ASYNC-NOISE**（10 分）— `conftest.py` logger filter 壓 litellm noisy stderr
+> 4. ✅ **P0.LITELLM-ASYNC-NOISE**（2026-04-21 03:41）— `src/core/logging_config.py` + `tests/conftest.py` 補 litellm/asyncio teardown noise filter；pytest 結尾不再噴 closed-file logging error
 > 5. **T-CORPUS-GUARD**（15 分；v4.3 起列連 >5 輪未動）— `tests/test_corpus_provenance_guard.py` regression；下輪不動 = 紅線 X
 >
 > **v5.1 → v5.2 變更摘要**：
@@ -63,7 +63,7 @@
 > **v5.1 下一步（P1）**：
 > 4. **T-API-ROUTERS** — 下一輪結構債聚焦 `src/api/routes/workflow.py`；template cluster 已於 2026-04-21 03:21 拆為 package 相容層。
 > 5. **T-KNOWLEDGE-MANAGER-SPLIT / T-EXPORTER-SPLIT** — 第二梯聚焦 `src/knowledge/manager.py`、`src/document/exporter.py` 與 `src/cli/history.py`。
-> 6. **P0.VERIFY-DOCX-SCHEMA / P0.LITELLM-ASYNC-NOISE** — 補 malicious DOCX metadata parse guard 與 litellm noisy stderr 壓制。
+> 6. `P0.VERIFY-DOCX-SCHEMA` / `P0.LITELLM-ASYNC-NOISE` 已於 2026-04-21 03:34 / 03:41 完成；下一個 P0 只剩 `LOGARCHIVE-V3` / `ARCH-DEBT-ROTATE`。
 >
 > **v5.1 新盤點（P1 結構債）**：
 > - `src/knowledge/manager.py 811` / `src/api/routes/workflow.py 799` / `src/cli/history.py 555` / `src/document/exporter.py 554` / `src/agents/template.py 465` / `src/cli/template_cmd.py 429`
@@ -406,13 +406,14 @@
 - [ ] **T-API-ROUTERS**（v5.0 列 P1；v5.2 drift 持平 529）— `api_server.py 529` FastAPI 單檔
   - **拆法建議**：`src/api/routers/{generate, verify, health, kb}.py` + `api_server.py` 僅留 app factory
   - **延宕懲罰**：未上線不急；連 3 輪 0 動 3.25
-- [ ] **P0.VERIFY-DOCX-SCHEMA**（v5.0 P1·v5.2 升 P0；安全層）🔴 `src/cli/verify_cmd.py` / `src/document/citation_metadata.py` 補 malicious DOCX `citation_sources_json` parse guard
-  - **修法**：JSON decode try/except 包裹 + whitelist keys（`source_doc_ids / citation_count / ai_generated / engine / citation_sources_json`）+ 型別檢查
-  - **驗**：`pytest tests/test_export_citation_metadata.py -q` 新增 3 條 malicious payload test（空 JSON / non-dict / injection key）
-  - **延宕懲罰**：v5.2 起連 1 輪延宕 = 紅線 X 3.25
-- [ ] **P0.LITELLM-ASYNC-NOISE**（v5.0 P1·v5.2 保留 P1）— `conftest.py` 加 logger filter 壓 litellm `ValueError: I/O operation on closed file`
-  - **修法**：`conftest.py` 頂層 `logging.getLogger("litellm").addFilter(lambda r: "I/O operation on closed file" not in r.getMessage())`
-  - **驗**：全量 pytest stderr 不再出現該 warning
+- [x] **P0.VERIFY-DOCX-SCHEMA**（2026-04-21 03:34；v5.0 P1·v5.2 升 P0）— `src/document/citation_metadata.py` 對 DOCX custom properties 補 safe JSON list parse 與型別過濾；invalid / non-list payload 不再炸 `verify`
+  - **完成**：`source_doc_ids` 僅接受 list 項並轉字串，`citation_sources_json` 僅接受 dict list；bad ZIP / bad XML / bad JSON 一律 graceful fallback
+  - **驗 1**：`python -m pytest tests/test_export_citation_metadata.py -q --no-header` = **5 passed**
+  - **驗 2**：`python -m pytest tests/test_export_citation_metadata.py tests/test_document.py tests/test_cli_commands.py -q --no-header -k "citation_metadata or verify_docx"` = **9 passed**
+- [x] **P0.LITELLM-ASYNC-NOISE**（2026-04-21 03:41；v5.0 P1·v5.2 保留 P1）— `src/core/logging_config.py` 新增 shared litellm/asyncio teardown-noise filter，`tests/conftest.py` session fixture 啟用，pytest 結尾不再噴 `ValueError: I/O operation on closed file`
+  - **完成**：filter 只吞 `Using proactor:` / closed-file teardown noise，不影響一般 warning；`setup_logging()` 也同步安裝，CLI/API 同受益
+  - **驗 1**：`python -m pytest tests/test_robustness.py -q --no-header -k "litellm_async_cleanup_filter or setup_logging_suppresses_noisy_loggers"` = **2 passed**
+  - **驗 2**：`python -m pytest tests/test_export_citation_metadata.py tests/test_document.py tests/test_cli_commands.py -q --no-header` = **759 passed**，stderr 無 closed-file logging error
   - **延宕懲罰**：連 2 輪 0 動 = 3.25
 
 ### P0.INTEGRATION-GATE — 🟢 ACL-free·v4.9 升 P0（20 分鐘；原 T-INTEGRATION-GATE）

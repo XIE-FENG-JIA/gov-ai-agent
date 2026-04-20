@@ -12,7 +12,31 @@ LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 LOG_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
 # 預設需要抑制的第三方庫（避免冗長日誌淹沒業務訊息）
-_NOISY_LOGGERS = ("chromadb", "httpcore", "httpx", "urllib3", "LiteLLM")
+_NOISY_LOGGERS = ("chromadb", "httpcore", "httpx", "urllib3", "litellm", "LiteLLM", "asyncio")
+_LITELLM_CLEANUP_NOISE_MARKERS = (
+    "I/O operation on closed file",
+    "Using proactor:",
+)
+
+
+class _LiteLLMAsyncCleanupFilter(logging.Filter):
+    """Suppress teardown noise triggered by litellm async cleanup on Windows."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        return not any(marker in message for marker in _LITELLM_CLEANUP_NOISE_MARKERS)
+
+
+def install_litellm_async_cleanup_filter() -> None:
+    """Install one shared filter for noisy litellm/asyncio teardown logs."""
+    if getattr(install_litellm_async_cleanup_filter, "_installed", False):
+        return
+
+    shared_filter = _LiteLLMAsyncCleanupFilter()
+    for logger_name in ("litellm", "LiteLLM", "asyncio"):
+        logging.getLogger(logger_name).addFilter(shared_filter)
+
+    install_litellm_async_cleanup_filter._installed = True
 
 
 def setup_logging(
@@ -39,6 +63,7 @@ def setup_logging(
         datefmt=LOG_DATEFMT,
         force=force,
     )
+    install_litellm_async_cleanup_filter()
 
     if suppress_noisy:
         for name in _NOISY_LOGGERS:

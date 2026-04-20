@@ -2587,6 +2587,45 @@ class TestProductionReadinessIteration1:
         for noisy in ("chromadb", "httpcore", "httpx", "urllib3"):
             assert logging.getLogger(noisy).level >= logging.WARNING
 
+    def test_install_litellm_async_cleanup_filter_suppresses_asyncio_noise(self):
+        """litellm teardown 觸發的 asyncio debug noise 應被 filter 掉。"""
+        import logging
+        from src.core.logging_config import install_litellm_async_cleanup_filter
+
+        logger = logging.getLogger("asyncio")
+        original_handlers = logger.handlers[:]
+        original_filters = logger.filters[:]
+        original_level = logger.level
+        original_propagate = logger.propagate
+
+        class _Collector(logging.Handler):
+            def __init__(self):
+                super().__init__()
+                self.messages: list[str] = []
+
+            def emit(self, record):
+                self.messages.append(record.getMessage())
+
+        collector = _Collector()
+        logger.handlers = [collector]
+        logger.filters = []
+        logger.setLevel(logging.DEBUG)
+        logger.propagate = False
+
+        try:
+            install_litellm_async_cleanup_filter._installed = False
+            install_litellm_async_cleanup_filter()
+            logger.debug("Using proactor: IocpProactor")
+            logger.warning("keep-this-warning")
+        finally:
+            logger.handlers = original_handlers
+            logger.filters = original_filters
+            logger.setLevel(original_level)
+            logger.propagate = original_propagate
+            install_litellm_async_cleanup_filter._installed = False
+
+        assert collector.messages == ["keep-this-warning"]
+
     # --- Fix 2: Preflight 環境檢查 ---
 
     def test_preflight_check_warns_missing_api_key(self, caplog):
