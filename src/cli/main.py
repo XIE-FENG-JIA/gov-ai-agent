@@ -154,6 +154,11 @@ def main(
 
         gov-ai doctor              快速診斷問題
     """
+    # Delay state-dir setup import until callback execution so CLI module
+    # collection does not depend on src.cli.utils import order.
+    from src.cli.utils import configure_state_dir
+
+    configure_state_dir()
     level = logging.DEBUG if verbose else None  # None → 讀取 LOG_LEVEL 環境變數（預設 INFO）
     setup_logging(level=level)
 

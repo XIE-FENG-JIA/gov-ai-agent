@@ -20,6 +20,75 @@ logger = logging.getLogger(__name__)
 console = Console()
 _ATOMIC_TMP_PREFIXES = (".json_", ".txt_", ".yaml_")
 _ATOMIC_TMP_MAX_AGE_SECONDS = 3600
+_STATE_DIR_ENV = "GOV_AI_STATE_DIR"
+_STATE_DIR_OVERRIDE: str | None = None
+
+
+def _normalize_state_path(path: str) -> str:
+    return os.path.abspath(os.path.expanduser(path))
+
+
+def default_state_dir() -> str:
+    """回傳 CLI 預設的使用者層級 state dir。"""
+    return _normalize_state_path(os.path.join("~", ".gov-ai", "state"))
+
+
+def set_state_dir(path: str | None) -> None:
+    """設定執行期 state dir；傳入 ``None`` 時回到 cwd 模式。"""
+    global _STATE_DIR_OVERRIDE
+    _STATE_DIR_OVERRIDE = _normalize_state_path(path) if path else None
+
+
+def get_state_dir() -> str | None:
+    """取得目前啟用的 state dir。"""
+    return _STATE_DIR_OVERRIDE
+
+
+def _looks_like_repo_root(cwd: str) -> bool:
+    return os.path.isdir(os.path.join(cwd, ".git")) and os.path.isfile(os.path.join(cwd, "program.md"))
+
+
+def detect_state_dir(cwd: str | None = None) -> str | None:
+    """偵測是否應啟用專用 state dir。"""
+    raw = os.environ.get(_STATE_DIR_ENV, "").strip()
+    if raw:
+        return _normalize_state_path(raw)
+    current = os.path.abspath(cwd or os.getcwd())
+    if _looks_like_repo_root(current):
+        return default_state_dir()
+    return None
+
+
+def configure_state_dir(cwd: str | None = None) -> str | None:
+    """依環境與工作目錄設定 state dir，並回傳結果。"""
+    state_dir = detect_state_dir(cwd)
+    set_state_dir(state_dir)
+    return state_dir
+
+
+def resolve_state_path(relative_path: str, *, cwd: str | None = None, state_dir: str | None = None) -> str:
+    """回傳 state 檔案的寫入路徑。"""
+    if os.path.isabs(relative_path):
+        return relative_path
+    base_dir = state_dir if state_dir is not None else get_state_dir()
+    if base_dir:
+        return os.path.join(base_dir, relative_path)
+    current = os.path.abspath(cwd or os.getcwd())
+    return os.path.join(current, relative_path)
+
+
+def resolve_state_read_path(relative_path: str, *, cwd: str | None = None, state_dir: str | None = None) -> str:
+    """回傳 state 檔案的讀取路徑；若新路徑尚不存在，回退到 cwd 舊位置。"""
+    primary = resolve_state_path(relative_path, cwd=cwd, state_dir=state_dir)
+    if os.path.isfile(primary) or os.path.isdir(primary):
+        return primary
+    if os.path.isabs(relative_path):
+        return primary
+    current = os.path.abspath(cwd or os.getcwd())
+    legacy = os.path.join(current, relative_path)
+    if os.path.isfile(legacy) or os.path.isdir(legacy):
+        return legacy
+    return primary
 
 
 def cleanup_orphan_tmps(
@@ -194,17 +263,21 @@ class JSONStore:
 
     @property
     def path(self) -> str:
-        return os.path.join(os.getcwd(), self._filename)
+        return resolve_state_path(self._filename)
+
+    @property
+    def read_path(self) -> str:
+        return resolve_state_read_path(self._filename)
 
     def exists(self) -> bool:
-        return os.path.isfile(self.path)
+        return os.path.isfile(self.read_path)
 
     def load(self) -> Any:
         """讀取 JSON 檔案，失敗時回傳預設值的拷貝。"""
         if not self.exists():
             return _copy_default(self._default)
         try:
-            with open(self.path, "r", encoding="utf-8") as f:
+            with open(self.read_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except (json.JSONDecodeError, OSError):
             return _copy_default(self._default)

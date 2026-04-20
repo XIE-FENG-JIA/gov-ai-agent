@@ -15,7 +15,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from src.cli.utils import JSONStore, atomic_json_write
+from src.cli.utils import JSONStore, atomic_json_write, resolve_state_path, resolve_state_read_path
 
 app = typer.Typer()
 console = Console()
@@ -362,8 +362,28 @@ def history_filter(
 _TAGS_FILE = os.path.join(".history", "tags.json")
 
 
-def _get_tags_path() -> str:
-    return os.path.join(os.getcwd(), _TAGS_FILE)
+def _get_state_file_path(relative_path: str, *, for_write: bool) -> str:
+    if not for_write:
+        return resolve_state_read_path(relative_path)
+    read_path = resolve_state_read_path(relative_path)
+    write_path = resolve_state_path(relative_path)
+    if read_path != write_path and os.path.isfile(read_path) and not os.path.exists(write_path):
+        return read_path
+    return write_path
+
+
+def _get_history_dir_path(*, for_write: bool) -> str:
+    if not for_write:
+        return resolve_state_read_path(".history")
+    read_path = resolve_state_read_path(".history")
+    write_path = resolve_state_path(".history")
+    if read_path != write_path and os.path.isdir(read_path) and not os.path.exists(write_path):
+        return read_path
+    return write_path
+
+
+def _get_tags_path(*, for_write: bool = False) -> str:
+    return _get_state_file_path(_TAGS_FILE, for_write=for_write)
 
 
 def _load_tags() -> dict[str, list[str]]:
@@ -378,7 +398,7 @@ def _load_tags() -> dict[str, list[str]]:
 
 
 def _save_tags(tags: dict[str, list[str]]) -> None:
-    atomic_json_write(_get_tags_path(), tags)
+    atomic_json_write(_get_tags_path(for_write=True), tags)
 
 
 @app.command(name="tag-add")
@@ -447,7 +467,7 @@ def duplicate(
     threshold: float = typer.Option(0.8, "--threshold", "-t", help="相似度門檻（0.0-1.0）"),
 ) -> None:
     """偵測可能重複的歷史記錄。"""
-    history_dir = os.path.join(os.getcwd(), ".history")
+    history_dir = _get_history_dir_path(for_write=False)
     if not os.path.isdir(history_dir):
         console.print("[yellow]找不到歷史記錄。[/yellow]")
         return
@@ -500,7 +520,7 @@ def rename(
     new_name: str = typer.Argument(..., help="新的備註/主旨"),
 ) -> None:
     """重新命名指定記錄的主旨。"""
-    history_dir = os.path.join(os.getcwd(), ".history")
+    history_dir = _get_history_dir_path(for_write=True)
     if not os.path.isdir(history_dir):
         console.print("[red]找不到歷史記錄目錄。[/red]")
         raise typer.Exit(1)
@@ -527,8 +547,8 @@ def rename(
 _PINS_FILE = os.path.join(".history", "pins.json")
 
 
-def _get_pins_path() -> str:
-    return os.path.join(os.getcwd(), _PINS_FILE)
+def _get_pins_path(*, for_write: bool = False) -> str:
+    return _get_state_file_path(_PINS_FILE, for_write=for_write)
 
 
 def _load_pins() -> list[str]:
@@ -543,7 +563,7 @@ def _load_pins() -> list[str]:
 
 
 def _save_pins(pins: list[str]) -> None:
-    atomic_json_write(_get_pins_path(), pins)
+    atomic_json_write(_get_pins_path(for_write=True), pins)
 
 
 @app.command(name="pin")
@@ -583,7 +603,7 @@ def history_archive(
     yes: bool = typer.Option(False, "--yes", "-y", help="跳過確認"),
 ) -> None:
     """封存超過指定天數的歷史記錄。"""
-    history_dir = os.path.join(os.getcwd(), ".history")
+    history_dir = _get_history_dir_path(for_write=True)
     if not os.path.isdir(history_dir):
         console.print("[yellow]找不到歷史記錄[/yellow]")
         return
@@ -627,7 +647,7 @@ def history_compare(
     id_b: str = typer.Argument(..., help="第二筆記錄 ID"),
 ) -> None:
     """比較兩筆歷史記錄的差異。"""
-    history_dir = os.path.join(os.getcwd(), ".history")
+    history_dir = _get_history_dir_path(for_write=False)
     if not os.path.isdir(history_dir):
         console.print("[red]找不到歷史記錄目錄。[/red]")
         raise typer.Exit(1)

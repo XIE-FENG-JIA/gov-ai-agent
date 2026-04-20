@@ -22,10 +22,13 @@ from fastapi.templating import Jinja2Templates
 from src.core.constants import MAX_USER_INPUT_LENGTH
 from src.core.models import VALID_DOC_TYPES
 from src.api.dependencies import get_config
+from src.cli.utils import detect_state_dir, resolve_state_read_path
 
 logger = logging.getLogger(__name__)
 
 _DIR = Path(__file__).resolve().parent
+_PROJECT_ROOT = _DIR.parent.parent
+_WEB_UI_STATE_DIR = detect_state_dir(str(_PROJECT_ROOT))
 
 web_app = FastAPI(docs_url=None, redoc_url=None)
 
@@ -253,7 +256,13 @@ async def history_page(request: Request):
 
     records = []
     error = None
-    history_path = Path(__file__).resolve().parent.parent.parent / ".gov-ai-history.json"
+    history_path = Path(
+        resolve_state_read_path(
+            ".gov-ai-history.json",
+            cwd=str(_PROJECT_ROOT),
+            state_dir=_WEB_UI_STATE_DIR,
+        ),
+    )
 
     try:
         if history_path.exists():

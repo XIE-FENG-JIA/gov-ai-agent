@@ -2268,6 +2268,15 @@ class TestMeetingEarlyExit:
 class TestCLILogging:
     """CLI logging 配置的測試"""
 
+    @patch("src.cli.utils.configure_state_dir")
+    def test_main_callback_configures_state_dir(self, mock_configure_state_dir):
+        """main callback 應先設定 state dir 再配置 logging。"""
+        from src.cli.main import main as main_callback
+
+        main_callback(version=None, verbose=False)
+
+        mock_configure_state_dir.assert_called_once_with()
+
     def test_default_logging_level(self):
         """測試預設日誌等級為 INFO（由 LOG_LEVEL 環境變數控制，預設 INFO）"""
         from src.cli.main import main as main_callback
