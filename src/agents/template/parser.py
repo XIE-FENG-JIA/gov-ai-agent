@@ -1,5 +1,3 @@
-from src.agents.template.helpers import clean_markdown_artifacts
-
 _SECTION_KEYS = (
     "subject", "explanation", "basis", "provisions", "attachments", "references",
     "meeting_time", "meeting_location", "agenda",

@@ -61,7 +61,7 @@
 > 4. ✅ **P0.ARCH-SPLIT-SOP**（2026-04-21 03:04）— 新增 `docs/arch-split-sop.md`，固化 editor / writer / kb / generate 四種拆分 SOP、trigger rules、compat facade 規範與驗證矩陣，避免大檔債再長回來。
 >
 > **v5.1 下一步（P1）**：
-> 4. **T-TEMPLATE-SPLIT / T-API-ROUTERS** — 下一輪結構債聚焦 `src/agents/template.py`、`src/cli/template_cmd.py`、`src/api/routes/workflow.py`。
+> 4. **T-API-ROUTERS** — 下一輪結構債聚焦 `src/api/routes/workflow.py`；template cluster 已於 2026-04-21 03:21 拆為 package 相容層。
 > 5. **T-KNOWLEDGE-MANAGER-SPLIT / T-EXPORTER-SPLIT** — 第二梯聚焦 `src/knowledge/manager.py`、`src/document/exporter.py` 與 `src/cli/history.py`。
 > 6. **P0.VERIFY-DOCX-SCHEMA / P0.LITELLM-ASYNC-NOISE** — 補 malicious DOCX metadata parse guard 與 litellm noisy stderr 壓制。
 >
@@ -398,9 +398,11 @@
 
 ### P0.ARCH-DEBT-NEW-CLUSTER — 🟡 P1·v5.2 drift 校準（主拆分陣地已升 P0.ARCH-DEBT-ROTATE；此段留次要）
 
-- [ ] **T-TEMPLATE-SPLIT**（v5.0 列 P1；v5.2 drift 持平 548）— `src/agents/template.py 548` + `src/cli/template_cmd.py 537` = 1085 行 template cluster
-  - **拆法建議**：`src/agents/template/{__init__, render, variants, validate}.py`；CLI 側不動
-  - **延宕懲罰**：連 2 輪 0 動 = 3.25
+- [x] **T-TEMPLATE-SPLIT**（v5.0 列 P1；2026-04-21 03:21 完成）— `src/agents/template.py` / `src/cli/template_cmd.py` 已拆為 package：`src/agents/template/{__init__,helpers,parser,engine}.py` + `src/cli/template_cmd/{__init__,catalog}.py`
+  - **相容層**：保留 `from src.agents.template import TemplateEngine...`、`from src.cli.template_cmd import template...` 與 `src.cli.template_cmd.subprocess.run` patch 路徑
+  - **驗 1**：`python -m pytest tests/test_template_cmd.py tests/test_agents.py tests/test_agents_extended.py tests/test_e2e.py tests/test_golden_suite.py tests/test_robustness.py -q --no-header` = **997 passed**
+  - **驗 2**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3682 passed / 0 failed**
+  - **行數**：`src/agents/template/engine.py 247`、`helpers.py 132`、`parser.py 74`、`src/cli/template_cmd/__init__.py 169`、`catalog.py 350`
 - [ ] **T-API-ROUTERS**（v5.0 列 P1；v5.2 drift 持平 529）— `api_server.py 529` FastAPI 單檔
   - **拆法建議**：`src/api/routers/{generate, verify, health, kb}.py` + `api_server.py` 僅留 app factory
   - **延宕懲罰**：未上線不急；連 3 輪 0 動 3.25

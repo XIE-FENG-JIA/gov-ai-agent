@@ -21,6 +21,16 @@ DOC_PROPS_VT_NS = "http://schemas.openxmlformats.org/officeDocument/2006/docProp
 CUSTOM_PROPERTIES_XML_PATH = "docProps/custom.xml"
 
 
+def _safe_json_list(raw_value: str) -> list[object]:
+    if not raw_value:
+        return []
+    try:
+        parsed = json.loads(raw_value)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
 def extract_reference_entries(draft_text: str) -> list[dict[str, str | int]]:
     entries: list[dict[str, str | int]] = []
     for raw_line in draft_text.splitlines():
@@ -107,12 +117,19 @@ def build_citation_export_metadata(
 
 
 def read_docx_citation_metadata(path: str) -> dict[str, object]:
-    with zipfile.ZipFile(path, "r") as archive:
-        if CUSTOM_PROPERTIES_XML_PATH not in archive.namelist():
-            return {}
-        custom_xml = archive.read(CUSTOM_PROPERTIES_XML_PATH)
+    try:
+        with zipfile.ZipFile(path, "r") as archive:
+            if CUSTOM_PROPERTIES_XML_PATH not in archive.namelist():
+                return {}
+            custom_xml = archive.read(CUSTOM_PROPERTIES_XML_PATH)
+    except (OSError, zipfile.BadZipFile, KeyError):
+        return {}
 
-    root = ET.fromstring(custom_xml)
+    try:
+        root = ET.fromstring(custom_xml)
+    except ET.ParseError:
+        return {}
+
     raw_values: dict[str, str] = {}
     for prop in root.findall(f"{{{CUSTOM_PROPERTIES_NS}}}property"):
         name = prop.get("name", "")
@@ -131,9 +148,11 @@ def read_docx_citation_metadata(path: str) -> dict[str, object]:
         return {}
 
     return {
-        "source_doc_ids": json.loads(raw_values.get("source_doc_ids", "[]")),
+        "source_doc_ids": [str(item) for item in _safe_json_list(raw_values.get("source_doc_ids", "[]")) if str(item)],
         "citation_count": int(raw_values.get("citation_count", "0") or 0),
         "ai_generated": raw_values.get("ai_generated", "").lower() == "true",
         "engine": raw_values.get("engine", ""),
-        "citation_sources_json": json.loads(raw_values.get("citation_sources_json", "[]")),
+        "citation_sources_json": [
+            item for item in _safe_json_list(raw_values.get("citation_sources_json", "[]")) if isinstance(item, dict)
+        ],
     }

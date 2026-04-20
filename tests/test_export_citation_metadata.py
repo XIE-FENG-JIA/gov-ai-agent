@@ -31,6 +31,30 @@ def _read_custom_properties(path: Path) -> dict[str, str]:
     return values
 
 
+def _rewrite_custom_property(path: Path, property_name: str, property_value: str) -> None:
+    with zipfile.ZipFile(path, "r") as archive:
+        file_map = {name: archive.read(name) for name in archive.namelist()}
+
+    root = ET.fromstring(file_map["docProps/custom.xml"])
+    for prop in root.findall(f"{{{CUSTOM_PROPERTIES_NS}}}property"):
+        if prop.get("name") != property_name:
+            continue
+        for child in list(prop):
+            if child.tag in {
+                f"{{{DOC_PROPS_VT_NS}}}lpwstr",
+                f"{{{DOC_PROPS_VT_NS}}}i4",
+                f"{{{DOC_PROPS_VT_NS}}}bool",
+            }:
+                child.text = property_value
+                break
+        break
+    file_map["docProps/custom.xml"] = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+
+    with zipfile.ZipFile(path, "w") as archive:
+        for name, content in file_map.items():
+            archive.writestr(name, content)
+
+
 def test_docx_export_writes_citation_custom_properties(tmp_path):
     exporter = DocxExporter()
     output_file = tmp_path / "citation.docx"
@@ -87,6 +111,117 @@ def test_docx_export_writes_citation_custom_properties(tmp_path):
     assert metadata["citation_count"] == 1
     assert metadata["ai_generated"] is True
     assert metadata["engine"] == "openrouter/elephant-alpha"
+
+
+def test_read_docx_citation_metadata_ignores_invalid_source_doc_ids_json(tmp_path):
+    exporter = DocxExporter()
+    output_file = tmp_path / "citation-invalid-source-doc-ids.docx"
+    exporter.export(
+        "# 函\n\n### 主旨\n測試\n",
+        str(output_file),
+        citation_metadata={
+            "reviewed_sources": [],
+            "engine": "openrouter/elephant-alpha",
+            "ai_generated": True,
+        },
+    )
+    _rewrite_custom_property(output_file, "source_doc_ids", '{"bad": "json-shape"}')
+
+    metadata = read_docx_citation_metadata(str(output_file))
+    assert metadata["source_doc_ids"] == []
+
+
+def test_read_docx_citation_metadata_ignores_invalid_citation_sources_json(tmp_path):
+    exporter = DocxExporter()
+    output_file = tmp_path / "citation-invalid-sources.docx"
+    draft = """# 函
+
+### 主旨
+引用測試
+
+### 說明
+依據《公文程式條例》辦理[^1]。
+
+### 參考來源 (AI 引用追蹤)
+[^1]: [Level A] 公文程式條例 | URL: https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030055 | Hash: a1b2c3d4e5f67890
+"""
+    exporter.export(
+        draft,
+        str(output_file),
+        citation_metadata={
+            "reviewed_sources": [
+                {
+                    "index": 1,
+                    "title": "公文程式條例",
+                    "source_level": "A",
+                    "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030055",
+                    "record_id": "A0030055",
+                    "content_hash": "a1b2c3d4e5f67890",
+                }
+            ],
+            "engine": "openrouter/elephant-alpha",
+            "ai_generated": True,
+        },
+    )
+    _rewrite_custom_property(output_file, "citation_sources_json", "not-json")
+
+    metadata = read_docx_citation_metadata(str(output_file))
+    assert metadata["citation_sources_json"] == []
+
+
+def test_verify_docx_fails_cleanly_on_invalid_citation_sources_json(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    from src.cli.main import app
+
+    corpus_dir = tmp_path / "kb_data" / "corpus"
+    corpus_dir.mkdir(parents=True)
+    (corpus_dir / "law.md").write_text(
+        "---\n"
+        "title: 公文程式條例\n"
+        "source_id: A0030055\n"
+        "source_url: https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030055\n"
+        "synthetic: false\n"
+        "---\n"
+        "內容\n",
+        encoding="utf-8",
+    )
+
+    exporter = DocxExporter()
+    output_file = tmp_path / "citation-invalid-verify.docx"
+    draft = """# 函
+
+### 主旨
+引用測試
+
+### 說明
+依據《公文程式條例》辦理[^1]。
+
+### 參考來源 (AI 引用追蹤)
+[^1]: [Level A] 公文程式條例 | URL: https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030055 | Hash: a1b2c3d4e5f67890
+"""
+    exporter.export(
+        draft,
+        str(output_file),
+        citation_metadata={
+            "reviewed_sources": [
+                {
+                    "index": 1,
+                    "title": "公文程式條例",
+                    "source_level": "A",
+                    "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030055",
+                    "record_id": "A0030055",
+                    "content_hash": "a1b2c3d4e5f67890",
+                }
+            ],
+            "engine": "openrouter/elephant-alpha",
+            "ai_generated": True,
+        },
+    )
+    _rewrite_custom_property(output_file, "citation_sources_json", '{"oops": true}')
+
+    result = runner.invoke(app, ["verify", str(output_file)])
+    assert result.exit_code == 1
+    assert "metadata.citation_count" in result.output
 
 
 @patch("src.cli.generate.append_record")
