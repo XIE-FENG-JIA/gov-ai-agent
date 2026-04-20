@@ -66,11 +66,14 @@ def ingest(
             continue
 
         corpus_path = corpus_root / f"{source_id}.md"
-        if corpus_path.exists():
+        existing_metadata = _read_corpus_metadata(corpus_path) if corpus_path.exists() else None
+        if existing_metadata and not _should_upgrade_existing(existing_metadata):
             continue
 
         raw = adapter.fetch(source_id)
         normalized = adapter.normalize(raw)
+        if existing_metadata and normalized.synthetic:
+            continue
 
         month_bucket = normalized.crawl_date.strftime("%Y%m")
         raw_path = raw_root / month_bucket / f"{source_id}.json"
@@ -187,6 +190,21 @@ def _extract_title(content_md: str, *, fallback: str) -> str:
         if stripped.startswith("# "):
             return stripped[2:].strip() or fallback
     return fallback
+
+
+def _read_corpus_metadata(path: Path) -> dict[str, Any] | None:
+    text = path.read_text(encoding="utf-8")
+    if not text.startswith("---\n"):
+        return None
+    parts = text.split("---\n", 2)
+    if len(parts) < 3:
+        return None
+    metadata = yaml.safe_load(parts[1])
+    return metadata if isinstance(metadata, dict) else None
+
+
+def _should_upgrade_existing(metadata: dict[str, Any]) -> bool:
+    return bool(metadata.get("synthetic") or metadata.get("fixture_fallback"))
 
 
 if __name__ == "__main__":

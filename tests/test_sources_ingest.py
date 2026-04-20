@@ -79,6 +79,57 @@ def test_ingest_deduplicates_existing_source_id(tmp_path: Path) -> None:
     assert not (tmp_path / "raw" / "fake" / "202604" / "DOC-001.json").exists()
 
 
+def test_ingest_upgrades_fixture_backed_corpus_when_live_doc_becomes_available(tmp_path: Path) -> None:
+    corpus_dir = tmp_path / "corpus" / "fake"
+    corpus_dir.mkdir(parents=True)
+    (corpus_dir / "DOC-001.md").write_text(
+        "---\n"
+        "title: 測試法規一\n"
+        "synthetic: true\n"
+        "fixture_fallback: true\n"
+        "---\n"
+        "# 舊 fixture 版本\n",
+        encoding="utf-8",
+    )
+
+    records = ingest(FakeAdapter(), limit=1, base_dir=tmp_path)
+
+    assert [record.source_id for record in records] == ["DOC-001"]
+    content = (corpus_dir / "DOC-001.md").read_text(encoding="utf-8")
+    metadata = yaml.safe_load(content.split("---\n", 2)[1])
+    assert metadata["synthetic"] is False
+    assert metadata["fixture_fallback"] is False
+    assert "# 測試法規一" in content
+    assert "第一份內容" in content
+    assert (tmp_path / "raw" / "fake" / "202604" / "DOC-001.json").exists()
+
+
+def test_ingest_keeps_fixture_backed_corpus_when_only_fixture_data_is_available(tmp_path: Path) -> None:
+    corpus_dir = tmp_path / "corpus" / "fixtureonly"
+    corpus_dir.mkdir(parents=True)
+    original = (
+        "---\n"
+        "title: 測試法規一\n"
+        "synthetic: true\n"
+        "fixture_fallback: true\n"
+        "---\n"
+        "# 舊 fixture 版本\n"
+    )
+    target = corpus_dir / "DOC-001.md"
+    target.write_text(original, encoding="utf-8")
+
+    class FixtureOnlyAdapter(FakeAdapter):
+        def normalize(self, raw: dict[str, str]) -> PublicGovDoc:
+            doc = super().normalize(raw)
+            return doc.model_copy(update={"synthetic": True, "fixture_fallback": True})
+
+    records = ingest(FixtureOnlyAdapter(), limit=1, base_dir=tmp_path)
+
+    assert records == []
+    assert target.read_text(encoding="utf-8") == original
+    assert not (tmp_path / "raw" / "fixtureonly" / "202604" / "DOC-001.json").exists()
+
+
 def test_main_uses_registry_and_prints_written_paths(tmp_path: Path, monkeypatch, capsys) -> None:
     from src.sources import ingest as ingest_module
 

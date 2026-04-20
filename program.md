@@ -217,13 +217,15 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 - [ ] **P0.T** 🟢 不依賴 ACL（需網路）：5 adapter fixture-only → **真實 `kb_data/corpus/` 落盤**
   - **v3.2 背景**：v3.1 五 adapter 全實作 + 10/10 spectra tasks 閉，但 Epic 1 **零真實抓取**（T1.6 從 v2.8 起 6+ 輪懸空）；`kb_data/corpus/mojlaw/` 等目錄不存在或空
-  - **底層邏輯**：fixture 驗單元，真網路驗整合；Epic 1 「真通過」定義 = **至少 3 來源 × 3 份真實 .md 落地 + `synthetic: false` frontmatter**
+  - **v3.3 補護欄**：fixture fallback 落盤不得再冒充真資料；`fixture_fallback: true` 一律不算 T1.6 / P0.T baseline
+  - **底層邏輯**：fixture 驗單元，真網路驗整合；Epic 1 「真通過」定義 = **至少 3 來源 × 3 份真實 .md 落地 + `synthetic: false` + `fixture_fallback: false` frontmatter**
   - 執行：
     - `python -m src.sources.ingest --source mojlaw --limit 3 --base-dir kb_data`
     - `python -m src.sources.ingest --source datagovtw --limit 3 --base-dir kb_data`
     - `python -m src.sources.ingest --source executiveyuanrss --limit 3 --base-dir kb_data`
   - **驗**：`find kb_data/corpus -name '*.md' -newer program.md | wc -l` ≥ 9
   - **驗**：`grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` ≥ 9
+  - **驗**：`grep -l "fixture_fallback: true" kb_data/corpus/**/*.md | wc -l` == 0
   - **驗**：每份 md 有 `source_url` 且 URL 非空
   - **前置依賴**：P0.O（MojLaw fallback 修好）+ P0.P（4 adapter 錯誤處理對稱）
   - **延宕懲罰**：P0.O/P 完後仍不執行 = 3.25（Epic 1 真通過是 v2.8 起承諾的交付終點）
@@ -417,9 +419,9 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 - ~~P1.5（原 src/core 盤點）~~ → v2.7 升 P0.4
 
-- [ ] **P1.5（v3.3 NEW）🚦 ACL-gated** `docs/architecture.md` 第一版
+- [x] **P1.5（v3.3 NEW）🚦 ACL-gated** `docs/architecture.md` 第一版
   - **背景**：`program.md:102` 寫「架構變動先更新 docs/architecture.md」但檔案不存在；對外 onboarding 與 Epic 1/2/3 設計鴻溝沒有 single source of truth
-  - 產出：`docs/architecture.md` 含 (1) 三層分層（sources / kb / agents）+ 資料流圖、(2) 5 adapter 表 + ingest pipeline 落盤路徑、(3) Epic 2 fork 邊界（vendor/open-notebook 隔離）、(4) ChromaDB → SurrealDB 遷移凍結說明
+  - **完成**：新增 `docs/architecture.md`，落地系統入口（CLI / API / Web UI / ingest）、三層核心（sources / kb / agents）、LangGraph review loop、5 adapter 表、`kb_data/raw` / `kb_data/corpus` 落盤契約、`vendor/open-notebook` 邊界與 SurrealDB freeze 說明
   - **驗**：`wc -l docs/architecture.md` ≥ 80 AND `grep -c "## " docs/architecture.md` ≥ 5
   - commit（ACL 解後）: `docs(architecture): add v1 architecture overview covering Epic 1-3`
 
@@ -480,6 +482,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - commit: `feat(cli): add gov-ai sources status/stats subcommands`
 - [x] **T1.12（v3.3 NEW）** integration smoke test 真網路守護
   - **完成**：新增 `tests/integration/test_sources_smoke.py`，以 `pytest.mark.integration` + `GOV_AI_RUN_INTEGRATION=1` gate 實作 5 個 adapter 的真網路 smoke；每個來源抓 1 筆 live doc 驗 `normalize()` 產出 `PublicGovDoc`，另用 `TrackingSession` 記 request timestamp 驗兩次 live request 間隔符合預設 `rate_limit >= 2s`
+  - **補坑（2026-04-20）**：live smoke 現在會先把 adapter 的 `fixture_dir` / `fixture_path` 指到不存在路徑，禁止 nightly 在 upstream 掛掉時靜默退回本地 fixture；若真網路失敗，integration test 直接 fail，避免把 fixture fallback 誤當 live 健康
   - **補強**：`pyproject.toml` 註冊 `integration` marker，避免平常 pytest 因未知 marker 汙染
   - **驗**：`pytest tests/integration -m integration -q`（預設 skip；nightly 設 `GOV_AI_RUN_INTEGRATION=1` 後跑 live smoke）
   - commit: `test(sources): add nightly integration smoke for 5 adapters`
@@ -629,6 +632,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **P0.7.a.1 / T9.4.a** CLI per-test chdir（v2.4）
 - [x] **P0.A / P0.B / P0.C (v2.8)** sources-research / core 盤點 / 01-real-sources proposal
 - [x] **P0.E / P0.F / P0.G / P0.H (v2.9)** ralph-loop 規則 / sources 骨架 / 02 proposal / 10 份 md 歸位
+- [x] **P0.U (v3.3)** fixture fallback provenance guard：來源 adapter/ingest 會把 fallback 落盤標成 `synthetic: true` + `fixture_fallback: true`，避免假資料冒充 P0.T 真 ingest
 
 ---
 
