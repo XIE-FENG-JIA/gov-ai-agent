@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from src.core.models import PublicGovDoc
 from src.sources.fda_api import FdaApiAdapter
@@ -73,3 +74,17 @@ def test_fda_api_adapter_fetch_unknown_id_raises(mock_get: MagicMock, _mock_slee
 
     with pytest.raises(KeyError):
         adapter.fetch("UNKNOWN")
+
+
+@patch("src.sources.fda_api.time.sleep")
+@patch("src.sources.fda_api.requests.Session.get")
+def test_fda_api_adapter_falls_back_to_local_fixture_on_request_error(
+    mock_get: MagicMock,
+    _mock_sleep: MagicMock,
+) -> None:
+    mock_get.side_effect = requests.ConnectionError("offline")
+
+    adapter = FdaApiAdapter(rate_limit=0)
+    listed = list(adapter.list(limit=3))
+
+    assert [item["id"] for item in listed] == ["FDA-001", "FDA-002", "FDA-003"]

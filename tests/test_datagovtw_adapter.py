@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from src.core.models import PublicGovDoc
 from src.sources.datagovtw import DataGovTwAdapter
@@ -91,3 +92,17 @@ def test_datagovtw_adapter_fetch_unknown_id_raises(mock_post: MagicMock, _mock_s
 
     with pytest.raises(KeyError):
         adapter.fetch("UNKNOWN")
+
+
+@patch("src.sources.datagovtw.time.sleep")
+@patch("src.sources.datagovtw.requests.Session.post")
+def test_datagovtw_adapter_falls_back_to_local_fixtures_on_request_error(
+    mock_post: MagicMock,
+    _mock_sleep: MagicMock,
+) -> None:
+    mock_post.side_effect = requests.ConnectionError("offline")
+
+    adapter = DataGovTwAdapter(rate_limit=0)
+    listed = list(adapter.list(limit=3))
+
+    assert [item["id"] for item in listed] == ["1001", "1002", "1003"]

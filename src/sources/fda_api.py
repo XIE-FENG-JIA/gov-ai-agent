@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json
-import time
 from collections import deque
 from collections.abc import Iterable
 from datetime import date, datetime
+from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
 
@@ -14,6 +14,7 @@ import requests
 
 from src.core.models import PublicGovDoc
 from src.knowledge.fetchers.base import html_to_markdown
+from src.sources._common import build_headers, throttle, with_fixture_fallback
 from src.sources.base import BaseSourceAdapter
 
 
@@ -22,7 +23,7 @@ class FdaApiAdapter(BaseSourceAdapter):
 
     SOURCE_AGENCY = "衛生福利部食品藥物管理署"
     API_URL = "https://www.fda.gov.tw/tc/DataAction.aspx"
-    USER_AGENT = "GovAI-Agent/1.0 (research; contact: local-dev)"
+    DEFAULT_FIXTURE_PATH = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "fda_api" / "notices.json"
 
     def __init__(
         self,
@@ -32,12 +33,14 @@ class FdaApiAdapter(BaseSourceAdapter):
         query_params: dict[str, Any] | None = None,
         rate_limit: float = 2.0,
         timeout: float = 30.0,
+        fixture_path: Path | None = None,
     ) -> None:
         self.session = session or requests.Session()
         self.api_url = api_url
         self.query_params = query_params or {}
         self.rate_limit = rate_limit
         self.timeout = timeout
+        self.fixture_path = fixture_path if fixture_path is not None else self.DEFAULT_FIXTURE_PATH
         self._last_request_time = 0.0
         self._notice_cache: dict[str, dict[str, Any]] = {}
 
@@ -96,8 +99,10 @@ class FdaApiAdapter(BaseSourceAdapter):
         if self._notice_cache and not force_refresh and len(self._notice_cache) >= limit:
             return list(self._notice_cache.values())
 
-        response = self._request_json()
-        payload = self._decode_payload(response)
+        payload = with_fixture_fallback(
+            lambda: self._decode_payload(self._request_json()),
+            self._load_fixture_payload,
+        )
         notices = self._extract_items(payload)
         self._notice_cache = {
             notice_id: notice
@@ -113,18 +118,19 @@ class FdaApiAdapter(BaseSourceAdapter):
         response = self.session.get(
             self.api_url,
             params=self.query_params or None,
-            headers={"User-Agent": self.USER_AGENT, "Accept": "application/json, text/plain, */*"},
+            headers=build_headers(accept="application/json, text/plain, */*"),
             timeout=self.timeout,
         )
         response.raise_for_status()
         return response
 
+    def _load_fixture_payload(self, exc: requests.RequestException) -> Any:
+        if not self.fixture_path.exists():
+            raise exc
+        return json.loads(self.fixture_path.read_text(encoding="utf-8"))
+
     def _throttle(self) -> None:
-        now = time.time()
-        elapsed = now - self._last_request_time
-        if elapsed < self.rate_limit:
-            time.sleep(self.rate_limit - elapsed)
-        self._last_request_time = time.time()
+        self._last_request_time = throttle(self._last_request_time, self.rate_limit)
 
     @staticmethod
     def _decode_payload(response: requests.Response) -> Any:

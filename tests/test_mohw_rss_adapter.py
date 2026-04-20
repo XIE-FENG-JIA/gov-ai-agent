@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from src.core.models import PublicGovDoc
 from src.sources.mohw_rss import MohwRssAdapter
@@ -70,3 +71,17 @@ def test_mohw_rss_adapter_fetch_unknown_id_raises(mock_get: MagicMock, _mock_sle
 
     with pytest.raises(KeyError):
         adapter.fetch("UNKNOWN")
+
+
+@patch("src.sources.mohw_rss.time.sleep")
+@patch("src.sources.mohw_rss.requests.Session.get")
+def test_mohw_rss_adapter_falls_back_to_local_fixture_on_request_error(
+    mock_get: MagicMock,
+    _mock_sleep: MagicMock,
+) -> None:
+    mock_get.side_effect = requests.ConnectionError("offline")
+
+    adapter = MohwRssAdapter(rate_limit=0)
+    listed = list(adapter.list(limit=3))
+
+    assert [item["id"] for item in listed] == ["mohw-news-001", "mohw-news-002", "mohw-news-003"]

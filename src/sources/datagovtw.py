@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-import time
+import json
 from collections.abc import Iterable
 from datetime import date
+from pathlib import Path
 from typing import Any
 
 import requests
 
 from src.core.models import PublicGovDoc
 from src.knowledge.fetchers.constants import OPENDATA_DETAIL_URL
+from src.sources._common import build_headers, throttle, with_fixture_fallback
 from src.sources.base import BaseSourceAdapter
 
 
@@ -19,7 +21,7 @@ class DataGovTwAdapter(BaseSourceAdapter):
 
     SOURCE_AGENCY = "政府資料開放平臺"
     SEARCH_URL = "https://data.gov.tw/api/front/dataset/list"
-    USER_AGENT = "GovAI-Agent/1.0 (research; contact: local-dev)"
+    DEFAULT_FIXTURE_DIR = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "datagovtw"
 
     def __init__(
         self,
@@ -29,12 +31,14 @@ class DataGovTwAdapter(BaseSourceAdapter):
         keyword: str = "公文",
         rate_limit: float = 2.0,
         timeout: float = 30.0,
+        fixture_dir: Path | None = None,
     ) -> None:
         self.session = session or requests.Session()
         self.search_url = search_url
         self.keyword = keyword
         self.rate_limit = rate_limit
         self.timeout = timeout
+        self.fixture_dir = fixture_dir if fixture_dir is not None else self.DEFAULT_FIXTURE_DIR
         self._last_request_time = 0.0
         self._dataset_cache: dict[str, dict[str, Any]] = {}
 
@@ -108,8 +112,10 @@ class DataGovTwAdapter(BaseSourceAdapter):
             "tids": [],
             "sort": "_score_desc",
         }
-        response = self._request_json(payload)
-        data = response.json()
+        data = with_fixture_fallback(
+            lambda: self._request_json(payload).json(),
+            self._load_fixture_catalog,
+        )
         payload_data = data.get("payload", {}) if isinstance(data, dict) else {}
         datasets = payload_data.get("search_result", []) if isinstance(payload_data, dict) else []
         if not isinstance(datasets, list):
@@ -129,22 +135,26 @@ class DataGovTwAdapter(BaseSourceAdapter):
         response = self.session.post(
             self.search_url,
             json=payload,
-            headers={
-                "User-Agent": self.USER_AGENT,
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-            },
+            headers=build_headers(
+                accept="application/json",
+                extra={"Content-Type": "application/json"},
+            ),
             timeout=self.timeout,
         )
         response.raise_for_status()
         return response
 
+    def _load_fixture_catalog(self, exc: requests.RequestException) -> dict[str, Any]:
+        if not self.fixture_dir.exists():
+            raise exc
+
+        datasets: list[dict[str, Any]] = []
+        for path in sorted(self.fixture_dir.glob("*.json")):
+            datasets.append(json.loads(path.read_text(encoding="utf-8")))
+        return {"payload": {"search_result": datasets}}
+
     def _throttle(self) -> None:
-        now = time.time()
-        elapsed = now - self._last_request_time
-        if elapsed < self.rate_limit:
-            time.sleep(self.rate_limit - elapsed)
-        self._last_request_time = time.time()
+        self._last_request_time = throttle(self._last_request_time, self.rate_limit)
 
     @staticmethod
     def _extract_dataset_id(raw: dict[str, Any]) -> str:

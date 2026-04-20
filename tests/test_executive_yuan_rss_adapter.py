@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from src.core.models import PublicGovDoc
 from src.sources.executive_yuan_rss import ExecutiveYuanRssAdapter
@@ -70,3 +71,17 @@ def test_executive_yuan_rss_adapter_fetch_unknown_id_raises(mock_get: MagicMock,
 
     with pytest.raises(KeyError):
         adapter.fetch("UNKNOWN")
+
+
+@patch("src.sources.executive_yuan_rss.time.sleep")
+@patch("src.sources.executive_yuan_rss.requests.Session.get")
+def test_executive_yuan_rss_adapter_falls_back_to_local_fixture_on_request_error(
+    mock_get: MagicMock,
+    _mock_sleep: MagicMock,
+) -> None:
+    mock_get.side_effect = requests.ConnectionError("offline")
+
+    adapter = ExecutiveYuanRssAdapter(rate_limit=0)
+    listed = list(adapter.list(limit=3))
+
+    assert [item["id"] for item in listed] == ["ey-news-001", "ey-news-002", "ey-news-003"]

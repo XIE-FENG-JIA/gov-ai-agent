@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-import time
 import defusedxml.ElementTree as ET
 from collections.abc import Iterable
 from datetime import date, datetime
 from email.utils import parsedate_to_datetime
+from pathlib import Path
 from typing import Any
 
 import requests
 
 from src.core.models import PublicGovDoc
 from src.knowledge.fetchers.base import html_to_markdown
+from src.sources._common import build_headers, throttle, with_fixture_fallback
 from src.sources.base import BaseSourceAdapter
 
 
@@ -21,7 +22,7 @@ class MohwRssAdapter(BaseSourceAdapter):
 
     SOURCE_AGENCY = "衛生福利部"
     FEED_URL = "https://www.mohw.gov.tw/rss-18-1.html"
-    USER_AGENT = "GovAI-Agent/1.0 (research; contact: local-dev)"
+    DEFAULT_FIXTURE_PATH = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "mohw_rss" / "feed.xml"
 
     def __init__(
         self,
@@ -30,11 +31,13 @@ class MohwRssAdapter(BaseSourceAdapter):
         feed_url: str = FEED_URL,
         rate_limit: float = 2.0,
         timeout: float = 30.0,
+        fixture_path: Path | None = None,
     ) -> None:
         self.session = session or requests.Session()
         self.feed_url = feed_url
         self.rate_limit = rate_limit
         self.timeout = timeout
+        self.fixture_path = fixture_path if fixture_path is not None else self.DEFAULT_FIXTURE_PATH
         self._last_request_time = 0.0
         self._entry_cache: dict[str, dict[str, Any]] = {}
 
@@ -97,8 +100,10 @@ class MohwRssAdapter(BaseSourceAdapter):
         if self._entry_cache and not force_refresh:
             return list(self._entry_cache.values())
 
-        response = self._request_feed()
-        entries = self._parse_feed(response.text)
+        entries = with_fixture_fallback(
+            lambda: self._parse_feed(self._request_feed().text),
+            self._load_fixture_feed,
+        )
         self._entry_cache = {
             entry_id: entry
             for entry in entries
@@ -112,18 +117,19 @@ class MohwRssAdapter(BaseSourceAdapter):
         self._throttle()
         response = self.session.get(
             self.feed_url,
-            headers={"User-Agent": self.USER_AGENT, "Accept": "application/rss+xml, application/xml, text/xml"},
+            headers=build_headers(accept="application/rss+xml, application/xml, text/xml"),
             timeout=self.timeout,
         )
         response.raise_for_status()
         return response
 
+    def _load_fixture_feed(self, exc: requests.RequestException) -> list[dict[str, Any]]:
+        if not self.fixture_path.exists():
+            raise exc
+        return self._parse_feed(self.fixture_path.read_text(encoding="utf-8"))
+
     def _throttle(self) -> None:
-        now = time.time()
-        elapsed = now - self._last_request_time
-        if elapsed < self.rate_limit:
-            time.sleep(self.rate_limit - elapsed)
-        self._last_request_time = time.time()
+        self._last_request_time = throttle(self._last_request_time, self.rate_limit)
 
     @staticmethod
     def _parse_feed(xml_text: str) -> list[dict[str, Any]]:
