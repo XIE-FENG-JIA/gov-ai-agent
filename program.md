@@ -206,7 +206,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - commit 1（ACL 解除後）: `refactor(cli/kb): split kb.py into ingest/sync/stats/rebuild submodules (no-op)`
   - commit 2: `refactor(cli/kb): internal cleanup in split submodules`
 
-- [ ] **P1.2（T1.1.b）** ✅ read-only：補齊其餘 7 個來源調研
+- [x] **P1.2（T1.1.b）** ✅ read-only：補齊其餘 7 個來源調研
   - P0.3 完 top-3 後續做：Mohw / Fia / Fda / Pcc / Ppg / 各縣市 data.*.gov.tw
   - 產出：追加 `docs/sources-research.md`
   - commit（ACL 解除後）: `docs(sources): expand research to 10 public gov sources`
