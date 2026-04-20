@@ -13,6 +13,7 @@ from src.cli import workflow_cmd
 from src.cli import batch_tools
 from src.cli import org_memory_cmd
 from src.cli import feedback_cmd
+from src.cli import open_notebook_cmd
 from src.cli import sources_cmd
 from src.cli import open_notebook_cmd
 from src.cli.validate_cmd import validate as validate_cmd
@@ -63,6 +64,7 @@ app.add_typer(workflow_cmd.app, name="workflow", help="工作流程範本管理"
 app.add_typer(batch_tools.app, name="batch", help="批次處理工具")
 app.add_typer(org_memory_cmd.app, name="org-memory", help="組織記憶管理")
 app.add_typer(feedback_cmd.app, name="feedback", help="公文品質回饋")
+app.add_typer(open_notebook_cmd.app, name="open-notebook", help="open-notebook 整合 smoke")
 app.add_typer(sources_cmd.app, name="sources", help="公開政府資料來源")
 app.add_typer(open_notebook_cmd.app, name="open-notebook", help="open-notebook seam smoke tools")
 app.add_typer(glossary_cmd.app, name="glossary", help="公文語彙查詢")

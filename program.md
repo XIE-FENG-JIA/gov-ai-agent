@@ -189,7 +189,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### P0.W — 🟢 ACL-free·Epic 2 seam 骨架（v3.8 升 P0；原 P1.9）
 
-- [ ] **P0.W** ✅ 不依賴 ACL / 不依賴 vendor 可用：`src/integrations/open_notebook/` seam 骨架落地
+- [x] **P0.W** ✅ 不依賴 ACL / 不依賴 vendor 可用：`src/integrations/open_notebook/` seam 骨架落地
   - **v3.8 升格理由**：連 2 輪 0 進度；`docs/integration-plan.md` + `openspec/changes/02-open-notebook-fork/specs/fork/spec.md` 規格齊、`vendor/open-notebook/.git` 已 clone，零外部依賴。屬第八層藉口「方案驅動治理」
   - 產出：
     - `src/integrations/__init__.py` + `src/integrations/open_notebook/{__init__,stub,config}.py`
@@ -203,6 +203,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗 3**：`ls src/integrations/open_notebook/*.py | wc -l` ≥ 3（硬指標 6 破蛋）
   - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25
   - commit（ACL 解除後）: `feat(integrations): add open-notebook seam skeleton with off/smoke adapters`
+  - **完成（2026-04-20）**：新增 `src/integrations/open_notebook/` seam 骨架、`src/cli/open_notebook_cmd.py` smoke CLI 與 `tests/test_integrations_open_notebook.py`；`off/smoke/writer` 三模式工廠已就位，writer mode 在 vendor 僅剩 `.git` stub 時會 loud fail，不會 silent fallback
 
 ### P0.X — 🟢 ACL-free·vendor smoke import（v3.8 升 P0；原 P1.11）
 

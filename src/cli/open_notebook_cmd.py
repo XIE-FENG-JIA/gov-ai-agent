@@ -1,42 +1,44 @@
-"""CLI smoke path for the repo-owned open-notebook seam."""
-
 from __future__ import annotations
-
-from pathlib import Path
 
 import typer
 from rich.console import Console
 
-from src.integrations.open_notebook import IntegrationDisabled, get_adapter
+from src.integrations.open_notebook import (
+    IntegrationDisabled,
+    IntegrationSetupError,
+    get_adapter,
+)
 
 
-app = typer.Typer(help="open-notebook seam smoke tools")
+app = typer.Typer(help="open-notebook integration smoke commands")
 console = Console()
 
 
-def _load_docs(doc_paths: list[Path] | None) -> list[str]:
-    if not doc_paths:
-        return ["Gov AI smoke doc: this seam preserves answer text and evidence payloads."]
-    return [path.read_text(encoding="utf-8") for path in doc_paths]
-
-
 @app.command("smoke")
-def smoke_command(
-    question: str = typer.Option(..., "--question", "-q", help="Ask-style smoke question"),
-    doc: list[Path] | None = typer.Option(None, "--doc", exists=True, dir_okay=False, readable=True, help="Optional UTF-8 text docs"),
-    mode: str | None = typer.Option(None, "--mode", help="Override GOV_AI_OPEN_NOTEBOOK_MODE for this command"),
+def smoke(
+    question: str = typer.Option(..., "--question", help="Question for the smoke adapter."),
+    doc: list[str] = typer.Option(
+        None,
+        "--doc",
+        help="Optional evidence snippets to feed the smoke adapter.",
+    ),
 ) -> None:
-    """Run the repo-owned smoke adapter without touching the production writer."""
+    """Exercise the repo-owned open-notebook seam without touching writer flow."""
+    adapter = get_adapter()
+    docs = [
+        {
+            "title": f"smoke-doc-{index}",
+            "content_md": snippet,
+        }
+        for index, snippet in enumerate(doc or [], start=1)
+    ]
+
     try:
-        adapter = get_adapter(mode)
-        docs = _load_docs(doc)
-        adapter.index(docs)
         result = adapter.ask(question, docs)
-    except (IntegrationDisabled, OSError, UnicodeDecodeError, ValueError) as exc:
-        console.print(f"[red]open-notebook smoke failed[/red] {exc}")
+    except (IntegrationDisabled, IntegrationSetupError) as exc:
+        console.print(f"open-notebook smoke failed: {exc}")
         raise typer.Exit(code=2) from exc
 
-    console.print(result.answer)
-    for idx, citation in enumerate(result.citations, 1):
-        console.print(f"[{idx}] {citation.title}: {citation.snippet}")
-
+    console.print(result.answer_text, markup=False)
+    console.print(f"diagnostics: adapter={result.diagnostics.get('adapter', '?')}")
+    console.print(f"evidence_count={len(result.evidence)}")

@@ -1,2 +1,1 @@
-"""Integration seams owned by the Gov AI repo."""
-
+"""Repo-owned integration seams for external runtimes."""
