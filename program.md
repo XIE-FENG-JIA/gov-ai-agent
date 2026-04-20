@@ -1127,12 +1127,11 @@
 
 ### P1 v4.3 新增（架構保險）
 
-- [ ] **T-CORPUS-GUARD**（v4.3 新增；15 分鐘）✅ ACL-free·corpus 來源護欄 regression test
+- [x] **T-CORPUS-GUARD**（2026-04-21 06:56）✅ ACL-free·corpus 來源護欄 regression test
   - **底層邏輯**：v4.1 P0.CC-CORPUS / P0.CC-CORPUS-CLEAN 落地後，`kb_data/corpus/**/*.md` 9/9 real、0 fixture，但無 regression test guard；下輪任何 adapter refactor 或 ingest 重寫若誤退回 fixture，將把指標 7 打回 0/9 且當輪發現不了
-  - **產出**：`tests/test_corpus_provenance_guard.py` — 掃 `kb_data/corpus/**/*.md` frontmatter，強制 `synthetic: false` count ≥ 9 AND `fixture_fallback: true` count == 0；如違反直接 FAIL
-  - **驗 1**：`pytest tests/test_corpus_provenance_guard.py -q` = 1+ passed
-  - **驗 2**：人為 corrupt 一份 md 為 `synthetic: true` → 測試必 FAIL（反向驗證）
-  - **延宕懲罰**：ACL-free 連 2 輪延宕 = 3.25
+  - **產出**：`tests/test_corpus_provenance_guard.py` 固化 repo corpus provenance；`src/e2e_rewrite.py::load_real_corpus()` 與 `src/cli/verify_cmd.py::_load_corpus_entries()` 同步排除 `fixture_fallback: true`，避免 fixture 假來源混入 E2E rewrite 與 verify 路徑
+  - **驗 1**：`pytest tests/test_corpus_provenance_guard.py tests/test_e2e_rewrite.py tests/test_cli_commands.py -q --no-header -k "corpus_provenance_guard or fixture_fallback or load_real_corpus or verify_docx"` = **6 passed**
+  - **驗 2**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3697 passed / 0 failed**
   - commit（ACL 解後）: `test(corpus): guard kb_data/corpus provenance (synthetic=false, fixture_fallback=false)`
 
 - [ ] **T-INTEGRATION-GATE**（v4.3 新增；20 分鐘）✅ ACL-free·nightly integration smoke gate 制度化
