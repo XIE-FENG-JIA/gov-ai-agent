@@ -1,6 +1,10 @@
 import logging
 import os
 import re
+import json
+import tempfile
+import zipfile
+from xml.etree import ElementTree as ET
 
 from docx import Document
 from docx.shared import Pt, Cm
@@ -38,6 +42,26 @@ KNOWN_DOC_TYPES = frozenset([
     "函", "公告", "簽", "書函", "令", "開會通知單", "開會紀錄",
     "呈", "咨", "會勘通知單", "公務電話紀錄", "手令", "箋函",
 ])
+
+CUSTOM_PROPERTY_FMTID = "{D5CDD505-2E9C-101B-9397-08002B2CF9AE}"
+CUSTOM_PROPERTY_REL_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties"
+CUSTOM_PROPERTY_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.custom-properties+xml"
+CUSTOM_PROPERTIES_XML_PATH = "docProps/custom.xml"
+CONTENT_TYPES_XML_PATH = "[Content_Types].xml"
+PACKAGE_RELS_XML_PATH = "_rels/.rels"
+CUSTOM_PROPERTIES_NS = "http://schemas.openxmlformats.org/officeDocument/2006/custom-properties"
+DOC_PROPS_VT_NS = "http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"
+CONTENT_TYPES_NS = "http://schemas.openxmlformats.org/package/2006/content-types"
+PACKAGE_RELS_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
+_REFERENCE_DEFINITION_RE = re.compile(
+    r"^\[\^(?P<index>\d+)\]:\s*\[Level\s+(?P<level>[A-Z])\]\s*"
+    r"(?P<title>.*?)(?:\s+\|\s+URL:\s+(?P<url>\S+))?(?:\s+\|\s+Hash:\s+(?P<hash>[A-Za-z0-9]+))?\s*$"
+)
+
+ET.register_namespace("cp", CUSTOM_PROPERTIES_NS)
+ET.register_namespace("vt", DOC_PROPS_VT_NS)
+ET.register_namespace("", CONTENT_TYPES_NS)
+ET.register_namespace("", PACKAGE_RELS_NS)
 
 
 class DocxExporter:
@@ -175,7 +199,187 @@ class DocxExporter:
 
         return "函"  # 預設公文類型
 
-    def export(self, draft_text: str, output_path: str, qa_report: str | None = None) -> str:
+    @staticmethod
+    def _extract_reference_entries(draft_text: str) -> list[dict[str, str | int]]:
+        entries: list[dict[str, str | int]] = []
+        for raw_line in draft_text.splitlines():
+            match = _REFERENCE_DEFINITION_RE.match(raw_line.strip())
+            if not match:
+                continue
+            entries.append(
+                {
+                    "index": int(match.group("index")),
+                    "source_level": match.group("level"),
+                    "title": match.group("title").strip(),
+                    "source_url": (match.group("url") or "").strip(),
+                    "content_hash": (match.group("hash") or "").strip(),
+                }
+            )
+        return entries
+
+    @staticmethod
+    def _match_reviewed_source(entry: dict[str, str | int], reviewed_sources: list[dict]) -> dict:
+        for source in reviewed_sources:
+            if source.get("index") == entry["index"]:
+                return source
+        for source in reviewed_sources:
+            if entry["content_hash"] and source.get("content_hash") == entry["content_hash"]:
+                return source
+        for source in reviewed_sources:
+            if entry["source_url"] and source.get("source_url") == entry["source_url"]:
+                return source
+        for source in reviewed_sources:
+            if source.get("title") == entry["title"]:
+                return source
+        return {}
+
+    @classmethod
+    def _build_citation_export_metadata(
+        cls,
+        draft_text: str,
+        citation_metadata: dict | None,
+    ) -> dict[str, object] | None:
+        reference_entries = cls._extract_reference_entries(draft_text)
+        if not reference_entries and not citation_metadata:
+            return None
+
+        citation_metadata = citation_metadata or {}
+        reviewed_sources = list(citation_metadata.get("reviewed_sources") or citation_metadata.get("sources") or [])
+        engine = str(citation_metadata.get("engine") or "").strip()
+        ai_generated = bool(citation_metadata.get("ai_generated", True))
+
+        source_doc_ids: list[str] = []
+        verification_sources: list[dict[str, object]] = []
+        for entry in reference_entries:
+            matched = cls._match_reviewed_source(entry, reviewed_sources)
+            source_doc_id = (
+                matched.get("record_id")
+                or matched.get("source_doc_id")
+                or matched.get("content_hash")
+                or entry["content_hash"]
+                or matched.get("source_url")
+                or entry["source_url"]
+                or matched.get("title")
+                or entry["title"]
+            )
+            if source_doc_id:
+                source_doc_ids.append(str(source_doc_id))
+
+            verification_sources.append(
+                {
+                    "index": int(entry["index"]),
+                    "title": str(entry["title"]),
+                    "source_level": str(matched.get("source_level") or entry["source_level"]),
+                    "source_url": str(matched.get("source_url") or entry["source_url"]),
+                    "content_hash": str(matched.get("content_hash") or entry["content_hash"]),
+                    "source_doc_id": str(source_doc_id or ""),
+                }
+            )
+
+        ordered_source_doc_ids = list(dict.fromkeys(source_doc_ids))
+        return {
+            "source_doc_ids": json.dumps(ordered_source_doc_ids, ensure_ascii=False),
+            "citation_count": len(reference_entries),
+            "ai_generated": ai_generated,
+            "engine": engine,
+            "citation_sources_json": json.dumps(verification_sources, ensure_ascii=False),
+        }
+
+    @staticmethod
+    def _build_custom_properties_xml(properties: dict[str, object]) -> bytes:
+        root = ET.Element(f"{{{CUSTOM_PROPERTIES_NS}}}Properties")
+        for pid, (name, value) in enumerate(properties.items(), start=2):
+            prop = ET.SubElement(
+                root,
+                f"{{{CUSTOM_PROPERTIES_NS}}}property",
+                {
+                    "fmtid": CUSTOM_PROPERTY_FMTID,
+                    "pid": str(pid),
+                    "name": name,
+                },
+            )
+            if isinstance(value, bool):
+                child = ET.SubElement(prop, f"{{{DOC_PROPS_VT_NS}}}bool")
+                child.text = "true" if value else "false"
+            elif isinstance(value, int):
+                child = ET.SubElement(prop, f"{{{DOC_PROPS_VT_NS}}}i4")
+                child.text = str(value)
+            else:
+                child = ET.SubElement(prop, f"{{{DOC_PROPS_VT_NS}}}lpwstr")
+                child.text = str(value)
+        return ET.tostring(root, encoding="UTF-8", xml_declaration=True)
+
+    @staticmethod
+    def _ensure_content_types_custom_override(content_types_xml: bytes) -> bytes:
+        root = ET.fromstring(content_types_xml)
+        override_xpath = f"{{{CONTENT_TYPES_NS}}}Override"
+        exists = any(
+            node.get("PartName") == f"/{CUSTOM_PROPERTIES_XML_PATH}"
+            for node in root.findall(override_xpath)
+        )
+        if not exists:
+            ET.SubElement(
+                root,
+                override_xpath,
+                {
+                    "PartName": f"/{CUSTOM_PROPERTIES_XML_PATH}",
+                    "ContentType": CUSTOM_PROPERTY_CONTENT_TYPE,
+                },
+            )
+        return ET.tostring(root, encoding="UTF-8", xml_declaration=True)
+
+    @staticmethod
+    def _ensure_package_relationship_custom_props(rels_xml: bytes) -> bytes:
+        root = ET.fromstring(rels_xml)
+        rel_xpath = f"{{{PACKAGE_RELS_NS}}}Relationship"
+        exists = any(
+            node.get("Type") == CUSTOM_PROPERTY_REL_TYPE and node.get("Target") == "docProps/custom.xml"
+            for node in root.findall(rel_xpath)
+        )
+        if not exists:
+            existing_ids = {node.get("Id", "") for node in root.findall(rel_xpath)}
+            next_id = 1
+            while f"rId{next_id}" in existing_ids:
+                next_id += 1
+            ET.SubElement(
+                root,
+                rel_xpath,
+                {
+                    "Id": f"rId{next_id}",
+                    "Type": CUSTOM_PROPERTY_REL_TYPE,
+                    "Target": "docProps/custom.xml",
+                },
+            )
+        return ET.tostring(root, encoding="UTF-8", xml_declaration=True)
+
+    @classmethod
+    def _write_custom_properties(cls, output_path: str, properties: dict[str, object]) -> None:
+        with zipfile.ZipFile(output_path, "r") as zin:
+            entries = {name: zin.read(name) for name in zin.namelist()}
+
+        entries[CUSTOM_PROPERTIES_XML_PATH] = cls._build_custom_properties_xml(properties)
+        entries[CONTENT_TYPES_XML_PATH] = cls._ensure_content_types_custom_override(entries[CONTENT_TYPES_XML_PATH])
+        entries[PACKAGE_RELS_XML_PATH] = cls._ensure_package_relationship_custom_props(entries[PACKAGE_RELS_XML_PATH])
+
+        output_dir = os.path.dirname(output_path) or "."
+        fd, temp_path = tempfile.mkstemp(suffix=".docx", dir=output_dir)
+        os.close(fd)
+        try:
+            with zipfile.ZipFile(temp_path, "w", compression=zipfile.ZIP_DEFLATED) as zout:
+                for name, content in entries.items():
+                    zout.writestr(name, content)
+            os.replace(temp_path, output_path)
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
+    def export(
+        self,
+        draft_text: str,
+        output_path: str,
+        qa_report: str | None = None,
+        citation_metadata: dict | None = None,
+    ) -> str:
         """將 Markdown 草稿轉換為 docx 檔案。"""
         # 防護空值輸入
         if not draft_text or not draft_text.strip():
@@ -229,6 +433,10 @@ class DocxExporter:
         except OSError as exc:
             logger.error("DOCX 儲存失敗（%s）: %s", output_path, exc)
             raise
+
+        export_metadata = self._build_citation_export_metadata(draft_text, citation_metadata)
+        if export_metadata:
+            self._write_custom_properties(output_path, export_metadata)
         return output_path
 
     def _setup_page(self, doc: Document) -> None:

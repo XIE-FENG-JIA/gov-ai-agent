@@ -263,6 +263,7 @@ def _export_document(
     *,
     qa_report_str: str | None,
     qa_report,
+    citation_metadata: dict | None,
     save_markdown: bool,
     encoding: str,
     preview: bool,
@@ -292,7 +293,12 @@ def _export_document(
 
     exporter = DocxExporter()
     try:
-        final_path = exporter.export(final_draft, full_output_path, qa_report=qa_report_str)
+        final_path = exporter.export(
+            final_draft,
+            full_output_path,
+            qa_report=qa_report_str,
+            citation_metadata=citation_metadata,
+        )
         console.print(f"[bold green]完成！文件已儲存至：[/bold green] {final_path}")
     except Exception as e:
         console.print(f"[red]匯出失敗：{_sanitize_error(e)}[/red]")
@@ -375,6 +381,20 @@ def _sanitize_error(exc: Exception, max_len: int = 120) -> str:
     if len(msg) > max_len:
         msg = msg[:max_len] + "..."
     return msg
+
+
+def _resolve_generation_engine(llm) -> str:
+    model_name = str(getattr(llm, "model_name", "") or "").strip()
+    if model_name:
+        return model_name
+
+    provider = str(getattr(llm, "provider", "") or "").strip()
+    model = str(getattr(llm, "model", "") or "").strip()
+    if provider and model:
+        return f"{provider}/{model}"
+    if model:
+        return model
+    return provider
 
 def _read_interactive_input() -> str:
     """從 stdin 管道或互動式提示取得使用者輸入。"""
@@ -929,7 +949,7 @@ def _run_core_pipeline(
         console.rule("[bold blue]步驟 4/5 · 審查（已跳過）[/bold blue]")
         console.print("  [yellow]已跳過多 Agent 審查步驟。[/yellow]")
 
-    return requirement, final_draft, qa_report, qa_report_str, ver_num, _do_write, template_engine
+    return requirement, final_draft, qa_report, qa_report_str, ver_num, _do_write, template_engine, writer
 
 
 def _handle_confirm(
@@ -1189,7 +1209,7 @@ def generate(
     gen_start = time.monotonic()
 
     # 核心 pipeline：需求分析→草稿撰寫→格式標準化→多 Agent 審查
-    requirement, final_draft, qa_report, qa_report_str, ver_num, do_write_fn, template_engine = _run_core_pipeline(
+    requirement, final_draft, qa_report, qa_report_str, ver_num, do_write_fn, template_engine, writer = _run_core_pipeline(
         llm, kb, input_text,
         skip_review=skip_review, max_rounds=max_rounds, convergence=convergence,
         skip_info=skip_info, show_rounds=show_rounds, retries=retries,
@@ -1230,6 +1250,11 @@ def generate(
     full_output_path = _export_document(
         final_draft, output_path,
         qa_report_str=qa_report_str, qa_report=qa_report,
+        citation_metadata={
+            "reviewed_sources": list(getattr(writer, "_last_sources_list", []) or []),
+            "engine": _resolve_generation_engine(llm),
+            "ai_generated": True,
+        },
         save_markdown=save_markdown, encoding=encoding, preview=preview,
         lang_check_flag=lang_check, export_report=export_report, requirement=requirement,
     )
