@@ -12,6 +12,15 @@ from src.core.constants import (
     escape_prompt_tag,
     is_llm_error_response,
 )
+from src.integrations.open_notebook import (
+    IntegrationDisabled,
+    IntegrationSetupError,
+)
+from src.integrations.open_notebook.config import get_open_notebook_mode
+from src.integrations.open_notebook.service import (
+    OpenNotebookAskRequest,
+    OpenNotebookService,
+)
 from src.knowledge.manager import KnowledgeBaseManager
 from src.utils.tw_check import to_traditional
 
@@ -892,6 +901,89 @@ class WriterAgent:
             add_skeleton_warning=False,
         )
 
+    @staticmethod
+    def _build_open_notebook_docs(examples: list[dict]) -> list[dict[str, object]]:
+        """將 KB examples 轉成 repo-owned open-notebook ask docs。"""
+        docs: list[dict[str, object]] = []
+        for index, example in enumerate(examples, start=1):
+            metadata = example.get("metadata", {})
+            docs.append({
+                "title": metadata.get("title", f"kb-doc-{index}"),
+                "content_md": example.get("content", "") or "",
+                "source_url": metadata.get("source_url", ""),
+                "source_level": metadata.get("source_level", "B"),
+                "source_type": metadata.get("source", ""),
+                "record_id": metadata.get("meta_id", metadata.get("pcode", metadata.get("dataset_id", ""))),
+            })
+        return docs
+
+    @staticmethod
+    def _build_open_notebook_question(requirement: PublicDocRequirement) -> str:
+        """把公文需求壓成 ask-service 可理解的單一問題字串。"""
+        reason_text = requirement.reason or "（未提供）"
+        actions_text = "；".join(requirement.action_items) if requirement.action_items else "（未提供）"
+        attachments_text = "；".join(requirement.attachments) if requirement.attachments else "（無）"
+        return (
+            f"請撰寫一份{requirement.doc_type}。"
+            f"發文機關：{requirement.sender}。"
+            f"受文者：{requirement.receiver}。"
+            f"主旨：{requirement.subject}。"
+            f"說明：{reason_text}。"
+            f"辦理事項：{actions_text}。"
+            f"附件：{attachments_text}。"
+            "保留台灣公文格式與引用痕跡。"
+        )
+
+    @staticmethod
+    def _sources_from_open_notebook_docs(docs: list[dict[str, object]]) -> list[dict]:
+        """把 ask docs 轉回 writer downstream 使用的 source list。"""
+        sources: list[dict] = []
+        for index, doc in enumerate(docs, start=1):
+            sources.append({
+                "index": index,
+                "title": str(doc.get("title") or f"Source {index}"),
+                "source_level": str(doc.get("source_level") or "B"),
+                "source_url": str(doc.get("source_url") or ""),
+                "source_type": str(doc.get("source_type") or ""),
+                "record_id": str(doc.get("record_id") or ""),
+                "content_hash": "",
+            })
+        return sources
+
+    def _try_open_notebook_draft(
+        self,
+        requirement: PublicDocRequirement,
+        examples: list[dict],
+    ) -> tuple[str, list[dict]] | None:
+        """在明示 runtime toggle 下，嘗試走 repo-owned open-notebook service seam。"""
+        runtime_mode = get_open_notebook_mode()
+        if runtime_mode == "off":
+            return None
+
+        docs = self._build_open_notebook_docs(examples)
+        service = OpenNotebookService(mode=runtime_mode)
+        request = OpenNotebookAskRequest(
+            question=self._build_open_notebook_question(requirement),
+            docs=tuple(docs),
+            top_k=max(len(docs), 1),
+            metadata_filters={"doc_type": requirement.doc_type},
+        )
+
+        try:
+            result = service.ask(request)
+        except (IntegrationDisabled, IntegrationSetupError) as exc:
+            logger.warning("open-notebook writer path unavailable; fallback to legacy LLM: %s", exc)
+            return None
+        except Exception as exc:
+            logger.warning("open-notebook writer path failed unexpectedly; fallback to legacy LLM: %s", exc)
+            return None
+
+        console.print(
+            f"[cyan]open-notebook {runtime_mode} 模式已產生草稿，"
+            f"evidence={len(result.evidence)}。[/cyan]"
+        )
+        return result.answer_text, self._sources_from_open_notebook_docs(docs)
+
     def write_draft(self, requirement: PublicDocRequirement) -> str:
         """根據需求和檢索到的範例產生公文草稿。"""
         # 1. 檢索相關範例
@@ -913,10 +1005,16 @@ class WriterAgent:
             example_parts, sources_list = [], []
         self._last_sources_list = list(sources_list)
 
-        # 3. 組裝 prompt 並呼叫 LLM
+        # 3. 可選 ask-service path；預設仍走既有 LLM 流程
+        open_notebook_result = self._try_open_notebook_draft(requirement, examples)
+        if open_notebook_result is not None:
+            draft, sources_list = open_notebook_result
+            self._last_sources_list = list(sources_list)
+            return self._postprocess_draft(draft, sources_list)
+
+        # 4. 組裝 prompt 並呼叫 LLM
         full_prompt = self._build_prompt(requirement, example_parts)
         console.print("[cyan]正在產生含引用標記的草稿...[/cyan]")
-
         reason_text = requirement.reason or "（未提供）"
         llm_failed = False
         try:
@@ -937,5 +1035,5 @@ class WriterAgent:
                 "請檢查 LLM 服務狀態或稍後重試。[/bold yellow]"
             )
 
-        # 4. 後處理
+        # 5. 後處理
         return self._postprocess_draft(draft, sources_list)

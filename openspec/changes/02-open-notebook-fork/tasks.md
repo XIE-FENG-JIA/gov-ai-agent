@@ -35,7 +35,7 @@
   Validation: `pytest tests/test_integrations_open_notebook.py -q -k "help_lists_smoke_command or smoke_command"`  
   Commit: `feat(cli): add open-notebook smoke path`
 
-- [ ] **T2.5** Wire `src/agents/writer.py` to call the new service adapter behind a feature flag or explicit runtime toggle.  
+- [x] **T2.5** Wire `src/agents/writer.py` to call the new service adapter behind a feature flag or explicit runtime toggle.  
   Requirements:
   - Ask-service integration preserves source-grounded review flow
   - Five-agent review layering stays repo-owned
