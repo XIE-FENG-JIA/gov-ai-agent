@@ -361,7 +361,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### P0.INTEGRATION-GATE — 🟢 ACL-free·v4.9 升 P0（20 分鐘；原 T-INTEGRATION-GATE）
 
-- [ ] **T-INTEGRATION-GATE（v4.9 升 P0）** 🟢 live corpus 9 份持續健康度無監測；v4.3 起列 P1 連 2 輪跳 = 紅線 X 邊緣
+- [x] **T-INTEGRATION-GATE（v4.9 升 P0）** 🟢 2026-04-21 已補 nightly integration gate：`scripts/run_nightly_integration.{py,sh,ps1}` + `docs/integration-nightly.md`；live corpus 9 份持續健康度已有固定入口
   - **執行**：`scripts/run_nightly_integration.sh`（Windows: `.ps1` + Linux: `.sh` 雙版）+ `docs/integration-nightly.md` 文檔；GOV_AI_RUN_INTEGRATION=1 下跑 `tests/integration/test_sources_smoke.py` + `scripts/live_ingest.py --dry-run`
   - **驗 1**：`ls scripts/run_nightly_integration.sh && ls docs/integration-nightly.md` 存在
   - **驗 2**：`GOV_AI_RUN_INTEGRATION=1 bash scripts/run_nightly_integration.sh --dry-run` 退 0
@@ -1247,6 +1247,8 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **T8.1.b (2026-04-21)** 依 HEAD 事實校準完成狀態：`src/cli/generate.py` 已不存在，現況為 `src/cli/generate/{__init__,pipeline,export,cli}.py`；驗證 `pytest tests/test_cli_commands.py tests/test_batch_perf.py tests/test_workflow_cmd.py tests/test_export_citation_metadata.py -q --no-header` = **794 passed**，全量 `pytest tests/ -q --no-header --ignore=tests/integration` = **3678 passed / 0 failed**
 - [x] **P0.EPIC3-BASELINE-PROMOTE (2026-04-21)** `openspec/specs/citation-tw-format.md` baseline capability 已從 `changes/03-citation-tw-format/specs/citation/spec.md` promote；保留 canonical `## 引用來源`、`source_doc_ids` / `citation_count` / `ai_generated` / `engine`、DOCX verification metadata 與 repo-evidence verify 契約
   - **完成（2026-04-21 02:35）**：新增 baseline spec `openspec/specs/citation-tw-format.md`；驗證 `rg -n "source_doc_ids|citation_count|ai_generated|engine|## 引用來源" openspec/specs/citation-tw-format.md` 命中達標，word count > 200
+- [x] **T-INTEGRATION-GATE (2026-04-21)** 新增 nightly integration gate：`scripts/run_nightly_integration.py` 作為核心 runner，`.sh` / `.ps1` 為雙平台 wrapper，預設以 `GOV_AI_RUN_INTEGRATION=1` 執行 `tests/integration/test_sources_smoke.py` 與 `scripts/live_ingest.py --require-live`，另支援 `--dry-run`
+  - **完成（2026-04-21 02:49）**：新增 `docs/integration-nightly.md`，含執行頻率 / 失敗通知 / 復原 SOP；驗證 `pytest tests/test_nightly_integration_runner.py -q` 與 `python scripts/run_nightly_integration.py --dry-run`
 - [x] **T7.4（v3.8）** Spectra coverage 補洞：`openspec/changes/{01-real-sources,02-open-notebook-fork}/tasks.md` 已回填逐 task `Requirements:` metadata；`spectra analyze 01-real-sources` 與 `spectra analyze 02-open-notebook-fork` 於 2026-04-20 17:06 實測皆 0 findings
 - [x] **T1.12-HARDEN (v3.4)** nightly live smoke 禁 silent fixture fallback；`tests/integration/test_sources_smoke.py` 把 fixture_dir 指向不存在路徑，upstream 掛 → integration FAIL 不再假綠
 - [x] **T1.6.a (v3.4)** 校正 `kb_data/examples/*.md` 合成基線為 155，`tests/test_mark_synthetic.py` 新增 guard
