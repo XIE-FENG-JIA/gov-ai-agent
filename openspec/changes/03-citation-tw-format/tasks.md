@@ -16,21 +16,23 @@
   Commit: `feat(citation): add citation formatter seam`
   - **完成（2026-04-20 21:37）**：新增 `src/document/citation_formatter.py`，把引用段 heading 與 line/block 組裝集中到 repo-owned seam；`src/agents/writer/cite.py` 改為委派此 formatter，保留現行輸出契約並讓後續 markdown / DOCX export 共用同一組 citation 組裝邏輯。驗證 `pytest tests/test_citation_level.py tests/test_citation_quality.py -q` = 48 passed，另 `pytest tests/test_writer_agent.py tests/test_agents.py -q` = 58 passed
 
-- [ ] **T3.2** Wire markdown and DOCX export paths so the same reviewed citation
+- [x] **T3.2** Wire markdown and DOCX export paths so the same reviewed citation
   payload populates `## 引用來源` and document metadata.
   Requirements:
   - Citation metadata survives across generation and export
   - DOCX export preserves citation verification metadata
   Validation: `pytest tests/test_document.py tests/test_exporter_extended.py -q`
   Commit: `feat(exporter): preserve citation metadata in docx export`
+  - **完成（2026-04-21 01:33）**：`DocxExporter` 新增 citation export metadata 組裝與 DOCX custom properties 寫入，落地 `source_doc_ids` / `citation_count` / `ai_generated` / `engine`，並附帶 `citation_sources_json` 供後續 verify flow 讀取；`generate` 匯出路徑同步傳入 reviewed source list 與 engine，讓同一批 reviewed evidence 同時落在 markdown 引用段與 docx metadata。驗證 `pytest tests/test_export_citation_metadata.py tests/test_document.py tests/test_exporter_extended.py -q` = 78 passed
 
-- [ ] **T3.3** Define and implement exported metadata keys
+- [x] **T3.3** Define and implement exported metadata keys
   `source_doc_ids`, `citation_count`, `ai_generated`, and `engine`.
   Requirements:
   - Citation metadata survives across generation and export
   - DOCX export preserves citation verification metadata
   Validation: `pytest tests/test_document.py tests/test_cli_commands.py -q -k "stamp or verify"`
   Commit: `feat(document): record citation metadata fields`
+  - **完成（2026-04-21 01:40）**：新增 `src/document/citation_metadata.py`，把 citation export metadata keys、reference parsing、reviewed-source matching 與 DOCX custom-properties readback 收斂成 repo-owned schema；`DocxExporter` 改委派同一套 builder，讓後續 verify flow 可直接讀取 `source_doc_ids` / `citation_count` / `ai_generated` / `engine` / `citation_sources_json`。驗證 `pytest tests/test_document.py tests/test_cli_commands.py -q -k "stamp or verify"` = 11 passed，另 `pytest tests/test_export_citation_metadata.py tests/test_document.py tests/test_exporter_extended.py -q` = 79 passed
 
 - [ ] **T3.4** Add a repo-owned `gov-ai verify <docx>` path that checks exported
   citation metadata and source references against repo evidence.

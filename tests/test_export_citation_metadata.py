@@ -6,11 +6,8 @@ from xml.etree import ElementTree as ET
 
 from typer.testing import CliRunner
 
-from src.document.exporter import (
-    CUSTOM_PROPERTIES_NS,
-    DOC_PROPS_VT_NS,
-    DocxExporter,
-)
+from src.document import read_docx_citation_metadata
+from src.document.exporter import CUSTOM_PROPERTIES_NS, DOC_PROPS_VT_NS, DocxExporter
 
 
 runner = CliRunner()
@@ -84,6 +81,12 @@ def test_docx_export_writes_citation_custom_properties(tmp_path):
             "source_doc_id": "A0030055",
         }
     ]
+
+    metadata = read_docx_citation_metadata(str(output_file))
+    assert metadata["source_doc_ids"] == ["A0030055"]
+    assert metadata["citation_count"] == 1
+    assert metadata["ai_generated"] is True
+    assert metadata["engine"] == "openrouter/elephant-alpha"
 
 
 @patch("src.cli.generate.append_record")

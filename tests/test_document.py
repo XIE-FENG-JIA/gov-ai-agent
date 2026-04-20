@@ -1,3 +1,4 @@
+from src.document import read_docx_citation_metadata
 from src.document.exporter import DocxExporter
 
 
@@ -58,3 +59,57 @@ def test_docx_export_markdown_cleanup(tmp_path):
     exporter.export(draft, str(output_file))
 
     assert output_file.exists()
+
+
+def test_docx_export_reads_back_citation_metadata(tmp_path):
+    exporter = DocxExporter()
+    output_file = tmp_path / "citation-metadata.docx"
+
+    draft = """# 函
+
+### 主旨
+引用測試
+
+### 說明
+依據《公文程式條例》辦理[^1]。
+
+### 參考來源 (AI 引用追蹤)
+[^1]: [Level A] 公文程式條例 | URL: https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030055 | Hash: a1b2c3d4e5f67890
+"""
+
+    exporter.export(
+        draft,
+        str(output_file),
+        citation_metadata={
+            "reviewed_sources": [
+                {
+                    "index": 1,
+                    "title": "公文程式條例",
+                    "source_level": "A",
+                    "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030055",
+                    "record_id": "A0030055",
+                    "content_hash": "a1b2c3d4e5f67890",
+                }
+            ],
+            "engine": "openrouter/elephant-alpha",
+            "ai_generated": True,
+        },
+    )
+
+    metadata = read_docx_citation_metadata(str(output_file))
+    assert metadata == {
+        "source_doc_ids": ["A0030055"],
+        "citation_count": 1,
+        "ai_generated": True,
+        "engine": "openrouter/elephant-alpha",
+        "citation_sources_json": [
+            {
+                "index": 1,
+                "title": "公文程式條例",
+                "source_level": "A",
+                "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030055",
+                "content_hash": "a1b2c3d4e5f67890",
+                "source_doc_id": "A0030055",
+            }
+        ],
+    }

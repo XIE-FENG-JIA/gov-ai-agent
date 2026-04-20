@@ -935,8 +935,10 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 - [x] **T3.1** repo-owned citation formatter seam：`src/document/citation_formatter.py` 統一組裝 citation heading / lines / block，`src/agents/writer/cite.py` 改委派 seam
   - **完成（2026-04-20 21:37）**：新增 `CitationFormatter` 與 canonical heading 常數，讓 reviewed evidence → reference block 的組裝不再散落在 writer mixin；驗證 `pytest tests/test_citation_level.py tests/test_citation_quality.py -q` = 48 passed，`pytest tests/test_writer_agent.py tests/test_agents.py -q` = 58 passed
-- [ ] **T3.2** `src/core/exporter.py` docx 擴充：Custom Properties（`source_doc_ids` / `citation_count` / `ai_generated: true` / `engine: openrouter/elephant-alpha`）+ 文末引用段
-- [ ] **T3.3** 生成 pipeline 強制 citation（`--no-citation` 才能關）
+- [x] **T3.2** `src/document/exporter.py` docx 擴充：Custom Properties（`source_doc_ids` / `citation_count` / `ai_generated: true` / `engine: openrouter/elephant-alpha`）+ 文末引用段
+  - **完成（2026-04-21 01:33）**：`DocxExporter` 會從 reviewed citation payload 寫入 DOCX custom properties，保留 `source_doc_ids` / `citation_count` / `ai_generated` / `engine` 與 `citation_sources_json`，`generate` 匯出路徑同步把 `WriterAgent._last_sources_list` 與 LLM engine 傳入 exporter。驗證 `pytest tests/test_export_citation_metadata.py tests/test_document.py tests/test_exporter_extended.py -q` = 78 passed，`pytest tests/test_cli_commands.py -q -k "stamp or generate"` = 31 passed
+- [x] **T3.3** citation metadata schema/readback：`src/document/citation_metadata.py` 統一定義 `source_doc_ids` / `citation_count` / `ai_generated` / `engine` / `citation_sources_json`
+  - **完成（2026-04-21 01:40）**：抽出 repo-owned citation metadata seam，集中 reference parsing、reviewed-source matching、DOCX export metadata 組裝與 readback；`DocxExporter` 改委派該 seam，後續 `gov-ai verify <docx>` 可以直接讀回同一批 metadata keys。驗證 `pytest tests/test_document.py tests/test_cli_commands.py -q -k "stamp or verify"` = 11 passed，另 `pytest tests/test_export_citation_metadata.py tests/test_document.py tests/test_exporter_extended.py -q` = 79 passed
 - [ ] **T3.4** `gov-ai verify <docx>` 讀 Custom Properties 比對 kb
 
 ---
