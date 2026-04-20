@@ -110,6 +110,30 @@ def test_datagovtw_adapter_falls_back_to_local_fixtures_on_request_error(
 
 @patch("src.sources._common.time.sleep")
 @patch("src.sources.datagovtw.requests.Session.post")
+def test_datagovtw_adapter_retries_direct_connection_after_proxy_error(
+    mock_post: MagicMock,
+    _mock_sleep: MagicMock,
+) -> None:
+    datasets = _fixture_datasets()
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "success": True,
+        "payload": {"search_count": len(datasets), "search_result": datasets},
+    }
+    mock_response.raise_for_status = MagicMock()
+    mock_post.side_effect = [requests.exceptions.ProxyError("proxy down"), mock_response]
+
+    adapter = DataGovTwAdapter(rate_limit=0)
+    listed = list(adapter.list(limit=1))
+
+    assert [item["id"] for item in listed] == ["1001"]
+    assert adapter.fetch("1001")["_fixture_fallback"] is False
+    assert adapter.session.trust_env is False
+    assert mock_post.call_count == 2
+
+
+@patch("src.sources._common.time.sleep")
+@patch("src.sources.datagovtw.requests.Session.post")
 def test_datagovtw_adapter_falls_back_to_local_fixtures_on_invalid_json(
     mock_post: MagicMock,
     _mock_sleep: MagicMock,

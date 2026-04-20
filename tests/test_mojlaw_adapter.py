@@ -111,6 +111,27 @@ def test_mojlaw_adapter_falls_back_to_local_fixtures_on_request_error(
 
 @patch("src.sources.mojlaw.time.sleep")
 @patch("src.sources.mojlaw.requests.Session.get")
+def test_mojlaw_adapter_retries_direct_connection_after_proxy_error(
+    mock_get: MagicMock,
+    _mock_sleep: MagicMock,
+) -> None:
+    laws = _fixture_laws()
+    mock_response = MagicMock()
+    mock_response.content = _make_catalog_zip(laws)
+    mock_response.raise_for_status = MagicMock()
+    mock_get.side_effect = [requests.exceptions.ProxyError("proxy down"), mock_response]
+
+    adapter = MojLawAdapter(rate_limit=0)
+    listed = list(adapter.list(limit=1))
+
+    assert [item["id"] for item in listed] == ["A0030018"]
+    assert adapter.fetch("A0030018")["_fixture_fallback"] is False
+    assert adapter.session.trust_env is False
+    assert mock_get.call_count == 2
+
+
+@patch("src.sources.mojlaw.time.sleep")
+@patch("src.sources.mojlaw.requests.Session.get")
 def test_mojlaw_adapter_falls_back_to_local_fixtures_on_empty_success_response(
     mock_get: MagicMock,
     _mock_sleep: MagicMock,

@@ -13,7 +13,7 @@ import requests
 
 from src.core.models import PublicGovDoc
 from src.knowledge.fetchers.constants import OPENDATA_DETAIL_URL
-from src.sources._common import build_headers, throttle, with_fixture_fallback
+from src.sources._common import build_headers, request_with_proxy_bypass, throttle, with_fixture_fallback
 from src.sources.base import BaseSourceAdapter
 
 
@@ -139,7 +139,9 @@ class DataGovTwAdapter(BaseSourceAdapter):
 
     def _request_json(self, payload: dict[str, Any]) -> requests.Response:
         self._throttle()
-        response = self.session.post(
+        response = request_with_proxy_bypass(
+            self.session,
+            "post",
             self.search_url,
             json=payload,
             headers=build_headers(

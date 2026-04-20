@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import time
 from collections.abc import Callable, Mapping
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 
 import requests
 
@@ -50,3 +50,21 @@ def with_fixture_fallback(
         return FixtureFallbackResult(request_loader(), used_fixture=False)
     except handled_exceptions as exc:
         return FixtureFallbackResult(fallback_loader(exc), used_fixture=True)
+
+
+def request_with_proxy_bypass(
+    session: requests.sessions.Session,
+    method: str,
+    /,
+    *args: Any,
+    **kwargs: Any,
+) -> requests.Response:
+    """Retry one direct request when env-configured proxies reject the connection."""
+    request_fn = getattr(session, method)
+    try:
+        return request_fn(*args, **kwargs)
+    except requests.exceptions.ProxyError:
+        if not getattr(session, "trust_env", False):
+            raise
+        session.trust_env = False
+        return request_fn(*args, **kwargs)

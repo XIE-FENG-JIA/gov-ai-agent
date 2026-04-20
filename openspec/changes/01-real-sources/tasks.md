@@ -71,19 +71,34 @@
   Validation: `pytest tests/test_sources_cli.py -q`  
   Commit: `feat(cli): wire public source ingest commands`
 
+- [x] **T1.11** Requirement coverage: Source adapters use one shared contract is satisfied by `T1.3`, `T1.4`, `T1.5`, `T1.6`, `T1.7`, and `T1.8`.  
+  Validation: `spectra analyze 01-real-sources`
+
+- [x] **T1.12** Requirement coverage: Normalized real-source documents preserve provenance is satisfied by `T1.2`, `T1.4`, `T1.5`, `T1.6`, `T1.7`, `T1.8`, and `T1.9`.  
+  Validation: `spectra analyze 01-real-sources`
+
+- [x] **T1.13** Requirement coverage: Real-source ingestion follows public-data compliance rules is satisfied by `T1.1`, `T1.9`, and `T1.10`.  
+  Validation: `spectra analyze 01-real-sources`
+
+- [x] **T1.14** Requirement coverage: Synthetic content stays outside real-source retrieval is satisfied by `T1.9` and `T1.10`.  
+  Validation: `spectra analyze 01-real-sources`
+
+- [x] **T1.15** Requirement coverage: The first approved source set is intentionally narrow is satisfied by `T1.1`, `T1.4`, `T1.5`, and `T1.6`.  
+  Validation: `spectra analyze 01-real-sources`
+
 ## Requirement Mapping
 
 - Requirement: Source adapters use one shared contract
-  Tasks: `T1.3`
+  Tasks: `T1.3`, `T1.11`
 
 - Requirement: Normalized real-source documents preserve provenance
-  Tasks: `T1.2`, `T1.9`
+  Tasks: `T1.2`, `T1.9`, `T1.12`
 
 - Requirement: Real-source ingestion follows public-data compliance rules
-  Tasks: `T1.1`, `T1.9`, `T1.10`
+  Tasks: `T1.1`, `T1.9`, `T1.10`, `T1.13`
 
 - Requirement: Synthetic content stays outside real-source retrieval
-  Tasks: `T1.9`, `T1.10`
+  Tasks: `T1.9`, `T1.10`, `T1.14`
 
 - Requirement: The first approved source set is intentionally narrow
-  Tasks: `T1.1`, `T1.4`, `T1.5`, `T1.6`
+  Tasks: `T1.1`, `T1.4`, `T1.5`, `T1.6`, `T1.15`

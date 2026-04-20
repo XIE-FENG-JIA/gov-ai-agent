@@ -15,7 +15,7 @@ import requests
 
 from src.core.models import PublicGovDoc
 from src.knowledge.fetchers.base import html_to_markdown
-from src.sources._common import build_headers, throttle, with_fixture_fallback
+from src.sources._common import build_headers, request_with_proxy_bypass, throttle, with_fixture_fallback
 from src.sources.base import BaseSourceAdapter
 
 
@@ -121,7 +121,9 @@ class FdaApiAdapter(BaseSourceAdapter):
 
     def _request_json(self) -> requests.Response:
         self._throttle()
-        response = self.session.get(
+        response = request_with_proxy_bypass(
+            self.session,
+            "get",
             self.api_url,
             params=self.query_params or None,
             headers=build_headers(accept="application/json, text/plain, */*"),

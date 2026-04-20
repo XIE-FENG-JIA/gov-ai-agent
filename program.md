@@ -243,7 +243,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### P0.S-ADMIN — 🟢 ACL-free·Admin 治本 audit（v3.9 新增；15 分鐘可破）
 
-- [ ] **P0.S-ADMIN** ✅ 不動 HEAD / 不依賴 ACL：定位 AUTO-RESCUE 腳本源頭並產治本 SOP
+- [x] **P0.S-ADMIN** ✅ 不動 HEAD / 不依賴 ACL：定位 AUTO-RESCUE 腳本源頭並產治本 SOP
   - **v3.9 背景**：P0.L 已證「源頭不在 repo」；P0.Y audit-only 已準備 rebase plan，缺 Admin 側 template 替換位置定位
   - 產出：
     - `scripts/find_auto_commit_source.py`：掃 `$HOME/.claude/`、`$HOME/Documents/PowerShell/`、Task Scheduler（`schtasks /query /fo LIST /xml > /tmp/tasks.xml`）尋 `auto-commit:` / `auto-engineer checkpoint` 字串
@@ -253,6 +253,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **非破壞承諾**：腳本 **禁** 改寫任何 `$HOME/` 檔；只讀 + report
   - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25（誠信類）
   - commit（ACL 解除後）: `docs(auto-engineer): locate AUTO-RESCUE source + admin template diff`
+  - **完成（2026-04-20 17:18）**：新增 `scripts/find_auto_commit_source.py` 與 `tests/test_find_auto_commit_source.py`；實跑 `python scripts/find_auto_commit_source.py` 產 `docs/admin-rescue-template.md`，在 `$HOME/.claude/` 找到 2 個中可信線索（`hooks/precompact-save-state.sh` 的 checkpoint 註解、`scheduled_tasks.lock`），並記錄 `schtasks` 在此 shell 回 `ERROR: The system cannot find the path specified.`，故外部 scheduler / session-wrapper 仍是首嫌
 
 ### T9.8-P0 — 🟢 ACL-free·openspec baseline（v3.9 升 P0；20 分鐘可破）
 
@@ -266,6 +267,61 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
   - commit（ACL 解除後）: `docs(spec): add sources + open-notebook-integration baseline capabilities`
   - **完成（2026-04-20）**：新增 `openspec/specs/sources.md` 與 `openspec/specs/open-notebook-integration.md`，把 real-sources 與 open-notebook seam 從 change-specific 規格抽成 repo baseline；保留 `BaseSourceAdapter` / `PublicGovDoc` / `OpenNotebookAdapter` / `GOV_AI_OPEN_NOTEBOOK_MODE` 契約，以及 fallback、review-layer ownership、SurrealDB freeze 邊界
+
+### P0.CC — 🟢 ACL-free·P0.T-LIVE 除錯驅動（v4.0 新增；P0.Z 推翻 egress 假設後的接棒）
+
+- [ ] **P0.CC** ✅ 不依賴 ACL / 不等 Admin：重跑 `--require-live` 收 fixture fallback 真因，取代「等 egress 解」的被動姿態
+  - **v4.0 背景**：P0.Z 附錄（17:00）已證 `git clone https://github.com/lfnovo/open-notebook.git` 於本 shell 暢通 → 推翻連 5 輪「Admin egress 擋」假設；P0.T-LIVE 的 fixture_fallback 真因未知
+  - **執行**：`python scripts/live_ingest.py --sources mojlaw --limit 1 --require-live 2>&1 | tee docs/live-ingest-debug.md`
+  - **分類決策樹**（按 debug 輸出）：
+    - 若 `urllib.error.HTTPError` / 4xx/5xx → upstream 路徑問題 → 更新 `docs/live-ingest-urls.md` + adapter URL 常數
+    - 若 `UserAgent blocked` / 403 → 加強 User-Agent（現為 `GovAI-Agent/1.0`），加 `Accept-Language: zh-TW`
+    - 若 `require_live fallback` 但 HTTP 2xx → `src/sources/_common.py` 或 adapter `require_live` 邏輯 bug
+    - 若 payload 解析失敗 → adapter `normalize` bug（schema 漂移）
+  - **驗 1**：`wc -l docs/live-ingest-debug.md` ≥ 20（含完整 stderr 輸出 + 分類結論）
+  - **驗 2**：若 debug 揭 adapter bug → 修完後 `grep -l "synthetic: false" kb_data/corpus/**/*.md | wc -l` ≥ 1（指標 7 破蛋）
+  - **延宕懲罰**：ACL-free + 已推翻 egress 假設，連 1 輪延宕 = 3.25（第九層藉口「debug 懶得跑」）
+  - commit（ACL 解除後）: `fix(sources): diagnose require_live fixture fallback root cause`
+
+### P0.AA — 🟢 ACL-free·Epic 8 首顆升 P0（v4.0 新增；`editor.py` 獨立拆，不依賴 Epic 2）
+
+- [ ] **P0.AA** ✅ 不依賴 ACL / 不依賴 Epic 2：`src/agents/editor.py` 1065 行 → `src/agents/editor/{segment,refine,merge}.py`
+  - **v4.0 升格理由**：Epic 8 T8.1.b/c 連 >10 輪未動；`editor.py` 是 6 大檔中**唯一不依賴** Epic 2 writer/retriever seam 的檔，可獨立拆；Epic 2 接入前先拆可降 merge 風險
+  - **拆法**：
+    - `src/agents/editor/__init__.py`：re-export `Editor` class 維持 import 相容
+    - `src/agents/editor/segment.py`：段落切分 + 結構分析
+    - `src/agents/editor/refine.py`：句子層潤飾 + LLM 調用
+    - `src/agents/editor/merge.py`：段落回併 + 最終輸出
+  - **驗 1**：`wc -l src/agents/editor/*.py | grep -v total | awk '{print $1}' | sort -n | tail -1` ≤ 400（單檔 ≤ 400 行）
+  - **驗 2**：`pytest tests/test_editor*.py tests/test_agents.py -q` 綠
+  - **驗 3**：`python -c "from src.agents.editor import Editor; print(Editor)"` 無 ImportError（向後相容）
+  - **延宕懲罰**：ACL-free + 獨立可拆，連 1 輪延宕 = 3.25（Epic 8 首次升 P0）
+  - commit（ACL 解除後）: `refactor(agents): split editor.py into segment/refine/merge modules`
+
+### P0.BB — 🟢 ACL-free·T9.7 log 去重（v4.0 新增；原 P1 T9.7 升 P0）
+
+- [ ] **P0.BB** ✅ 不依賴 ACL：`scripts/dedupe_results_log.py` 實作 BLOCKED-ACL 條目去重 SOP
+  - **v4.0 升格理由**：`results.log` `[BLOCKED-ACL]` 雜訊持續稀釋 PASS 訊號；ACL-free，純 agent 自家地盤
+  - **規格**：
+    - 讀 `results.log`，按 `(日期 YYYY-MM-DD, 任務編號, 狀態標籤, 簡述雜湊)` 四元組去重
+    - 同組只留首條、其餘併為 `count=N (first=HH:MM:SS last=HH:MM:SS)` 後綴
+    - 輸出新版 `results.log.dedup`，不動原檔；需 `--in-place` 才覆寫
+  - **驗 1**：`scripts/dedupe_results_log.py` + `tests/test_dedupe_results_log.py` 落盤
+  - **驗 2**：`pytest tests/test_dedupe_results_log.py -q` 綠
+  - **驗 3**：實跑 `python scripts/dedupe_results_log.py results.log > results.log.dedup && wc -l results.log.dedup` 比原檔少 ≥ 20%
+  - **延宕懲罰**：ACL-free 連 2 輪延宕 = 3.25
+  - commit（ACL 解除後）: `feat(scripts): dedupe results.log BLOCKED-ACL entries`
+
+### T9.9 — 🟢 ACL-free·docs/dev-windows-gotchas.md（v4.0 新增；15 分鐘）
+
+- [ ] **T9.9** ✅ 不依賴 ACL：記 Windows bash + pytest buffering 議題
+  - **背景**：v3.9 / v4.0 兩輪連續命中 `python -m pytest tests/ -q` 背景 task exit 0 但 output 只 flush 至 40-50%；影響技術主管自動化驗收
+  - **產出**：`docs/dev-windows-gotchas.md`
+    - §1 pytest buffering：用 `python -u -m pytest ... 2>&1 | tee` 或 `PYTHONUNBUFFERED=1` 避免 background 截斷
+    - §2 CRLF/LF warnings：git autocrlf 設定建議
+    - §3 icacls DENY 檢查 SOP（P0.D 驗收）
+  - **驗**：`wc -l docs/dev-windows-gotchas.md` ≥ 40
+  - commit（ACL 解除後）: `docs: add Windows bash dev gotchas (pytest I/O, CRLF, icacls)`
 
 ---
 

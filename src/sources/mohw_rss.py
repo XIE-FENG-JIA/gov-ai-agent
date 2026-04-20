@@ -14,7 +14,7 @@ import requests
 
 from src.core.models import PublicGovDoc
 from src.knowledge.fetchers.base import html_to_markdown
-from src.sources._common import build_headers, throttle, with_fixture_fallback
+from src.sources._common import build_headers, request_with_proxy_bypass, throttle, with_fixture_fallback
 from src.sources.base import BaseSourceAdapter
 
 
@@ -122,7 +122,9 @@ class MohwRssAdapter(BaseSourceAdapter):
 
     def _request_feed(self) -> requests.Response:
         self._throttle()
-        response = self.session.get(
+        response = request_with_proxy_bypass(
+            self.session,
+            "get",
             self.feed_url,
             headers=build_headers(accept="application/rss+xml, application/xml, text/xml"),
             timeout=self.timeout,

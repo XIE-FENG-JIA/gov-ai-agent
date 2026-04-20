@@ -406,3 +406,92 @@
 > [PUA生效 🔥] **底層邏輯**：主管這頓 PUA 讓我看清「列計畫 vs 執行計畫」的顆粒度陷阱——計畫寫得再漂亮，一輪不動手就是紅線 5。**抓手**：PUA L1 = 「就地破」，不是「就地辯」；用 `git clone` 5 分鐘 + `pytest` 585 秒等可量化的輸出打臉主管「隔壁組一次就過」的壓力。**閉環**：v3.9 4/7 → 5/7 真升級；下輪 v4.0 目標 6/7（再破 P0.S-ADMIN）。因為信任所以簡單——信任在於**PUA 後 5 分鐘內見行動**，不是**PUA 後 5 段論證**。
 
 ---
+
+## 反思 [2026-04-20 17:15] — 技術主管第十八輪深度回顧（v3.9 驗收 → v4.0 候選）
+
+### 近期成果（v3.9 → 本輪實測）
+- **T9.8 事實已落**：`openspec/specs/sources.md` (81 行) + `openspec/specs/open-notebook-integration.md` (88 行) baseline capability 齊 — 但 program.md 未勾 = **承諾漂移 v4 苗頭**。
+- **ACL-free 四骨牌（P0.W/X/Y/Z）承 v3.9 結案**：`src/integrations/open_notebook/{__init__,config,stub}.py` + `vendor/open-notebook/pyproject.toml` + `run_api.py` 齊在 HEAD。
+- **指標 2 持平**：`git log -20 | grep -c auto-commit:` = 14 / conventional 6 (30%) — 與 v3.9 header 同；無退步亦無進步。
+- **pytest I/O 截斷重現**：本輪 bash 背景 task exit 0 但 output 只 flush 至 46% — Windows bash + pytest buffering 議題 v3.9 紀錄第二次命中；無 FAIL 證據，引用最近可信 baseline 3620p/10s/0f/585s。
+- **openspec/changes/{01,02}/tasks.md 本輪改動** (+77/-18)：Requirements 重排為 bullet list；未獨立 commit = AUTO-RESCUE 會吞（P0.S 症狀延伸）。
+
+### 發現的問題（按嚴重度）
+
+#### 🔴 誠信級
+1. **T9.8 承諾漂移 v4**：事實已完但 program.md 未勾；累計「事實已完但未勾」= 3 條（P0.T-SPIKE v3.7 / T9.4.b v3.7 / T9.8 v3.9）。**第九層藉口「事後文檔懶得更」**。
+2. **P0.T-LIVE 除錯承諾未跟進**：v3.9 附錄已推翻「egress 擋」假設（GitHub HTTPS 暢通），但本輪 agent 未重跑 `--require-live` 收真因，指標 7 維持 0/9。
+3. **P0.S 格式治理零進展**：近 20 commits 仍 14 條 `auto-commit:`；P0.Y audit 已落但 P0.S-ADMIN（腳本源頭定位）0 動作。
+
+#### 🟠 結構級
+4. **ACL DENY 連 >17 輪（P0.D）**：Admin 依賴未解。
+5. **Epic 8 雜糅未拆**：`src/cli/kb.py` **1614** / `generate.py` **1263** / `agents/editor.py` **1065** / `writer.py` **941** / `api/routes/workflow.py` **910** / `knowledge/manager.py` **899** 行 = 共 6692 行在 6 檔。T8.1.c editor.py **不依賴** Epic 2，>10 輪未動 — Epic 2 接入代價指數上升風險。
+6. **openspec tasks 改動無獨立 commit**：與 P0.S 共生延伸。
+
+#### 🟡 質量級
+7. **測試/源碼比** 67/142 = 47%；但 Epic 1 「真通過」測試 0 筆（9/9 全 fixture_fallback）；`tests/integration/live_smoke` 10 skipped 連 >15 輪。
+8. **Pydantic v2 1363 warnings 持平**（chromadb `types.py` 大宗，非專案代碼）— T8.2 可先 pin 版本或 `filterwarnings` 止癢。
+9. **pytest Windows I/O 議題本輪第二次命中**：bash background exit 0 + output 截 46% → `docs/dev-windows-gotchas.md` 未建。
+
+#### 🟢 流程級
+10. **T9.7 log 去重 SOP 未做**：`results.log` `[BLOCKED-ACL]` 條目雜訊持續稀釋 PASS 訊號；ACL-free，<30 分鐘可破。
+11. **engineer-log.md = 408 行**（v3.9 實測 293 + 本輪含 v3.9 反思追加）— 仍 ≤ 500；T9.6「本輪必落」標籤已成幻影任務（自然達成）。
+
+### 安全性
+- ✅ `src/` 未見 `eval(` / `exec(` / `shell=True` / `pickle.loads` / `yaml.load(` 高危 pattern（承 v3.9 檢測）。
+- 🟡 `GOV_AI_OPEN_NOTEBOOK_MODE` env 白名單未強驗；`config.py` default `off` + writer-mode loud fail 兜底。
+- 🟡 `vendor/open-notebook/` 為外部 clone，後續 import 前應 pin commit + 隔離依賴清單；尚無 SBOM。
+
+### 架構健康度
+- **Spectra 規格對齊**：`openspec/specs/` baseline 2 份已落齊，對齊 `openspec/changes/{01,02}` proposal；**T7.4 coverage backfill 前置條件滿足**，可立即動。
+- **Epic 1 骨架完整、Epic 2 seam 接妥**；Epic 1 真通過未達標、Epic 2 writer/retriever/fallback 未啟動。
+- **Epic 8 雜糅**：6 大檔 > 6600 行，重構壓在 Epic 2 之後反而增 merge 風險；`editor.py` 可獨立拆。
+
+### 七硬指標（v3.9 → v4.0 驗收）
+
+┌────┬──────────────────────────────────────────┬────────┬──────┬──────┬───────────┐
+│ #  │ 指標                                     │ 目標   │ 本輪 │ v3.9 │ 結論      │
+├────┼──────────────────────────────────────────┼────────┼──────┼──────┼───────────┤
+│ 1  │ pytest FAIL                              │ == 0   │ 0    │ 0    │ ✅ 維持   │
+│ 2  │ auto-commit in last 20                   │ ≤ 4    │ 14   │ 14   │ ❌ 零進展 │
+│ 3  │ icacls .git DENY                         │ == 0   │ 2    │ 2    │ ❌ 零進展 │
+│ 4  │ src/integrations/open_notebook/*.py      │ exists │ ✅   │ ✅   │ ✅ 維持   │
+│ 5  │ docs/open-notebook-study.md ≥ 80         │ ≥ 80   │ ✅   │ ✅   │ ✅ 維持   │
+│ 6  │ smoke_open_notebook.py no ImportError    │ ok     │ ✅   │ ✅   │ ✅ 維持   │
+│ 7  │ synthetic=false ≥ 9 & fallback == 0      │ 9/0    │ 0/9  │ 0/9  │ ❌ 零進展 │
+│ 8  │ openspec/specs/*.md ≥ 2（新增 KPI）      │ ≥ 2   │ 2    │ 0    │ ✅ 破蛋   │
+└────┴──────────────────────────────────────────┴────────┴──────┴──────┴───────────┘
+
+**v4.0 實測 5/8 PASS**（新增 KPI 8 破蛋）；剩 3/8（指標 2/3/7）共用 Admin 鎖 + 除錯動作未跟進。
+
+### 建議的優先調整（v3.9 → v4.0 重排）
+
+#### 勾關（本輪事實已完）
+- **T9.8 → [x]**：`openspec/specs/{sources,open-notebook-integration}.md` 兩份就位。
+- **T9.6 → [x]（校正）**：engineer-log.md 408 行 ≤ 500，自然達成；移除「本輪必落」標籤。
+
+#### 新增 P0（ACL-free，零 Admin 依賴）
+- **P0.AA（Epic 8 首顆升 P0）** `src/agents/editor.py` 1065 → `editor/{segment,refine,merge}.py`；不依賴 Epic 2。**估 60 分鐘 / 連 1 輪延宕 = 3.25**。驗：每檔 ≤ 400 行 + `pytest tests/test_editor*.py -q` 綠。
+- **P0.BB** T9.7 `scripts/dedupe_results_log.py` + test；同日同任務同原因只留首條 + `count=N`。**估 30 分鐘**。
+- **P0.CC** P0.T-LIVE **從「等 Admin」轉「除錯驅動」**：egress 已驗暢通（P0.Z），重跑 `python scripts/live_ingest.py --sources mojlaw --limit 1 --require-live 2>&1 | tee docs/live-ingest-debug.md`；按錯誤真因重分類（adapter bug / upstream 路徑 / UA / `require_live` 邏輯）。**估 30-60 分鐘**。
+
+#### 降權
+- **P0.S-ADMIN** 維持 P0 但排序延至 P0.AA/BB/CC 後（顆粒度較小）。
+- **T7.4 Spectra coverage backfill**：T9.8 前置已達，可立即動，順序在 P0.AA 後。
+
+#### 新增
+- **T9.9** `docs/dev-windows-gotchas.md`：Windows bash + pytest buffering 議題 + workaround（`python -u` / `pytest -s` / `2>&1 | tee`）。**估 15 分鐘**。
+
+### 下一步行動（最重要 3 件）
+1. **P0.CC live-ingest 除錯**（30-60 分鐘）：重跑 `--require-live`、收錯誤真因；若 adapter bug → 直接 fix → 指標 7 有機會 3/9 破蛋。
+2. **P0.AA editor.py 拆三**（60 分鐘）：Epic 8 首次落地 ACL-free，SoC 收斂，為 Epic 2 接入減債。
+3. **P0.BB T9.7 log 去重**（30 分鐘）：縮訊號稀釋，給後續 KPI 判讀更乾淨基底。
+
+### v4.0 版本紀要
+- **v4.0 = 「承諾漂移 v4 止血 + 從指標維持轉指標突破」**：T9.8 事實補勾、幻影任務清除（T9.6）、Epic 8 首顆升 P0（P0.AA）、P0.T-LIVE 從「等 Admin」轉「除錯驅動」（P0.CC）。
+- **v3.9 承諾兌現盤點**：P0.Z vendor re-clone ✅；T9.8 baseline specs ✅（但當輪未勾）；P0.S-ADMIN audit 0 動作 ❌；T9.7 log 去重 0 動作 ❌ = **2/4 兌現**。
+- **v4.0 目標**：**8 指標 6/8 PASS**（指標 2 降至 ≤ 12 或指標 7 破蛋 ≥ 3）。
+
+> [PUA生效 🔥] **底層邏輯**：v3.9 破 ACL-free 四骨牌換來 5/8 PASS，但同時留下**三筆「事實已完未勾」承諾漂移**（P0.T-SPIKE / T9.4.b / T9.8）= 第九層藉口「事後文檔懶得更」。**抓手**：v4.0 閉環新規「當輪事實達標就當輪勾，不留下輪」。**顆粒度**：P0.AA 60 分 + P0.BB 30 分 + P0.CC 30-60 分 ≤ 150 分鐘單輪全破。**拉通**：Epic 8 從 P1 升 P0，把「重構當餘力」改成「重構是主道」—— `> 1000` 行檔案繼續累積會讓 Epic 2 writer/retriever 接入代價指數上升，現在不拆以後更貴。**對齊**：指標 7 破蛋只需 1 源 × 1 份真 live md，顆粒度遠比想像小，P0.Z 已證 egress 不是瓶頸，所以 P0.CC 不接受「等 Admin」藉口。因為信任所以簡單——信任是**當輪事實補勾 + 當輪動手除錯**，不是**留待下下輪**。
+
+---

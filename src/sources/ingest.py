@@ -131,6 +131,7 @@ def main(argv: list[str] | None = None) -> int:
 def _adapter_registry() -> dict[str, type[BaseSourceAdapter]]:
     return {
         "datagovtw": DataGovTwAdapter,
+        "executive_yuan_rss": ExecutiveYuanRssAdapter,
         "executiveyuanrss": ExecutiveYuanRssAdapter,
         "fda": FdaApiAdapter,
         "mohw": MohwRssAdapter,

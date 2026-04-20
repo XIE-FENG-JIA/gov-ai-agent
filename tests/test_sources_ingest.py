@@ -175,6 +175,8 @@ def test_build_argument_parser_includes_rss_and_api_sources() -> None:
 
     source_action = next(action for action in parser._actions if action.dest == "source")
 
+    assert "executive_yuan_rss" in source_action.choices
+    assert "executiveyuanrss" in source_action.choices
     assert "fda" in source_action.choices
     assert "mohw" in source_action.choices
 

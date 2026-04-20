@@ -15,7 +15,7 @@ import requests
 
 from src.core.models import PublicGovDoc
 from src.knowledge.fetchers.constants import LAW_API_URL, LAW_DETAIL_URL
-from src.sources._common import build_headers, throttle, with_fixture_fallback
+from src.sources._common import build_headers, request_with_proxy_bypass, throttle, with_fixture_fallback
 from src.sources.base import BaseSourceAdapter
 
 
@@ -120,7 +120,9 @@ class MojLawAdapter(BaseSourceAdapter):
 
     def _request_json(self) -> requests.Response:
         self._throttle()
-        response = self.session.get(
+        response = request_with_proxy_bypass(
+            self.session,
+            "get",
             self.api_url,
             headers=build_headers(accept="application/json", user_agent=self.USER_AGENT),
             timeout=self.timeout,

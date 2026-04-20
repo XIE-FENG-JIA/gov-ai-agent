@@ -68,19 +68,34 @@
   Validation: `rg -n "human review|required before SurrealDB|frozen" docs/integration-plan.md openspec/changes/02-open-notebook-fork/specs/fork/spec.md`  
   Commit: `docs(integration): freeze storage migration until review`
 
+- [x] **T2.10** Requirement coverage: The forked runtime stays behind a narrow import boundary is satisfied by `T2.1`, `T2.2`, and `T2.3`.  
+  Validation: `spectra analyze 02-open-notebook-fork`
+
+- [x] **T2.11** Requirement coverage: Ask-service integration preserves source-grounded review flow is satisfied by `T2.3`, `T2.5`, and `T2.6`.  
+  Validation: `spectra analyze 02-open-notebook-fork`
+
+- [x] **T2.12** Requirement coverage: The first integration slice is import and smoke only is satisfied by `T2.0`, `T2.1`, `T2.2`, `T2.4`, and `T2.9`.  
+  Validation: `spectra analyze 02-open-notebook-fork`
+
+- [x] **T2.13** Requirement coverage: The repo owns fallback behavior when the fork is absent or fails is satisfied by `T2.3`, `T2.7`, and `T2.8`.  
+  Validation: `spectra analyze 02-open-notebook-fork`
+
+- [x] **T2.14** Requirement coverage: Five-agent review layering stays repo-owned is satisfied by `T2.2`, `T2.5`, `T2.6`, and `T2.9`.  
+  Validation: `spectra analyze 02-open-notebook-fork`
+
 ## Requirement Mapping
 
 - Requirement: The forked runtime stays behind a narrow import boundary
-  Tasks: `T2.1`, `T2.2`, `T2.3`
+  Tasks: `T2.1`, `T2.2`, `T2.3`, `T2.10`
 
 - Requirement: Ask-service integration preserves source-grounded review flow
-  Tasks: `T2.3`, `T2.5`, `T2.6`
+  Tasks: `T2.3`, `T2.5`, `T2.6`, `T2.11`
 
 - Requirement: The first integration slice is import and smoke only
-  Tasks: `T2.0`, `T2.1`, `T2.2`, `T2.4`, `T2.9`
+  Tasks: `T2.0`, `T2.1`, `T2.2`, `T2.4`, `T2.9`, `T2.12`
 
 - Requirement: The repo owns fallback behavior when the fork is absent or fails
-  Tasks: `T2.3`, `T2.7`, `T2.8`
+  Tasks: `T2.3`, `T2.7`, `T2.8`, `T2.13`
 
 - Requirement: Five-agent review layering stays repo-owned
-  Tasks: `T2.2`, `T2.5`, `T2.6`, `T2.9`
+  Tasks: `T2.2`, `T2.5`, `T2.6`, `T2.9`, `T2.14`
