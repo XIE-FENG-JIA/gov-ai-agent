@@ -122,7 +122,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### P0.F — ✅ ACL-free：src/sources/ 骨架 + BaseSourceAdapter stub（v2.9 新增）
 
-- [ ] **P0.F** ✅ 不依賴 ACL：建立 `src/sources/` 目錄 + 抽象骨架
+- [x] **P0.F** ✅ 不依賴 ACL：建立 `src/sources/` 目錄 + 抽象骨架
   - **v2.9 背景**：Epic 1 T1.2 承諾 `BaseSourceAdapter` + 5 adapter 連 **9 輪**空口支票；`src/sources/` 目錄根本不存在
   - **三板斧收縮**：本輪只建骨架 + 1 個 adapter 雛形 stub（無實際 API call），驗抽象結構
   - 產出：
@@ -152,7 +152,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 ### P0.G — ✅ ACL-free：openspec/changes/02-open-notebook-fork proposal（v2.9 新增）
 
-- [ ] **P0.G** ✅ 不依賴 ACL：寫 `openspec/changes/02-open-notebook-fork/proposal.md`
+- [x] **P0.G** ✅ 不依賴 ACL：寫 `openspec/changes/02-open-notebook-fork/proposal.md`
   - **v2.9 背景**：Epic 7 T7.1.b 連 6+ 輪未動；v2.8 已證明「寫檔 ACL-free」
   - 內容：problem（現 Writer 是單檔 retrieval-less，需引入 ask_service 系列） / solution（fork lfnovo/open-notebook + 5 agent 審查層疊加） / non-goals（本提案不含 SurrealDB 遷移，留 T2.3） / acceptance（`vendor/open-notebook` 可 import，smoke CLI 跑通），≤ 500 字
   - **驗**：`ls openspec/changes/02-open-notebook-fork/proposal.md && wc -w <檔>` ≤ 500
