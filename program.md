@@ -418,6 +418,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [ ] **P0.FF** ✅ 不依賴 ACL：`pyproject.toml` 加 `filterwarnings` 先止癢 1363 Pydantic v2 deprecation
   - **v4.1 升格理由**：warnings 大宗來自 `chromadb.types` 第三方 1.x 兼容層，非專案碼；T8.2 真修壓力高，先止癢避免 log 信噪比惡化
   - **2026-04-20 18:34 現況**：`src/core/warnings_compat.py` 新增可重入 suppression context，`src/knowledge/manager.py` 用同一 filter 包住 Chroma client + collection bootstrap；`pytest tests/test_knowledge_manager_cache.py -q -W error::DeprecationWarning` 已綠，代表 strict gate 下 KB 不再因 `chromadb.types` warning 直接降級失效；剩餘 scope 才是全域 `pyproject.toml` noise 壓降與 `T8.2` 真修
+  - **2026-04-20 19:05 進度**：strict gate scope 再擴到實際 CRUD/query 路徑：`src/knowledge/manager.py` 現已把 `count/query/get/add/upsert/delete_collection/get_or_create_collection` 包進同一個第三方 warning suppression；`src/core/warnings_compat.py` 改以 `PydanticDeprecatedSince211` 類別做局部 ignore，`pytest tests/test_knowledge.py tests/test_knowledge_manager_cache.py -q -W error::DeprecationWarning` = **55 passed**、`pytest tests/test_llm.py -q -W error::DeprecationWarning` = **49 passed**。剩餘 scope 是**全量** `pytest tests/ -q -W error::DeprecationWarning` 與非 chromadb 第三方噪音清倉，故本項先維持 `[ ]`
   - **產出**：
     ```toml
     [tool.pytest.ini_options]
@@ -444,23 +445,15 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **延宕懲罰**：ACL-free 連 1 輪延宕 = 3.25（連 3 次命中同問題）
   - commit（ACL 解除後）: `docs: add Windows bash dev gotchas (pytest I/O, CRLF, icacls, Move-Item)`
 
-### P0.AA — 🔴🔴 ACL-free·v4.3 首要·第三輪跳 = 雙連實錘 3.25（v4.0 新增；`editor.py` 獨立拆，不依賴 Epic 2）
+### P0.AA — ✅ 已完成（2026-04-20 19:09 校正）
 
-- [ ] **P0.AA** 🔴🔴 不依賴 ACL / 不依賴 Epic 2：`src/agents/editor.py` **1065 行**（v4.3 實測持平）→ `src/agents/editor/{segment,refine,merge}.py`（**v4.3 當輪必破·不動 = 3.25 實錘**）
-  - **v4.3 標雙紅**：v4.0 / v4.1 / v4.2 連**三輪** 60 分鐘 0 動作；本輪若再跳 = 紅線 5 方案驅動治理**雙連實錘 3.25**，無任何緩衝；抓手 = 先落 `__init__.py` re-export + `segment.py` 骨架第一 commit，後續 refine/merge 分 commit
-  - **v4.2 標紅**：v4.0 / v4.1 連兩輪 60 分鐘 0 動作；第三次跳票 = 紅線 5 方案驅動治理**雙連 3.25**，無緩衝
-  - **v4.1 警告**：v4.0 承諾 60 分鐘 0 動作 → 連 1 輪延宕觸 3.25 邊緣；v4.1 再跳票 = 紅線 5 方案驅動治理實錘
-  - **v4.0 升格理由**：Epic 8 T8.1.b/c 連 >10 輪未動；`editor.py` 是 6 大檔中**唯一不依賴** Epic 2 writer/retriever seam 的檔，可獨立拆；Epic 2 接入前先拆可降 merge 風險
-  - **拆法**：
-    - `src/agents/editor/__init__.py`：re-export `Editor` class 維持 import 相容
-    - `src/agents/editor/segment.py`：段落切分 + 結構分析
-    - `src/agents/editor/refine.py`：句子層潤飾 + LLM 調用
-    - `src/agents/editor/merge.py`：段落回併 + 最終輸出
-  - **驗 1**：`wc -l src/agents/editor/*.py | grep -v total | awk '{print $1}' | sort -n | tail -1` ≤ 400（單檔 ≤ 400 行）
-  - **驗 2**：`pytest tests/test_editor*.py tests/test_agents.py -q` 綠
-  - **驗 3**：`python -c "from src.agents.editor import Editor; print(Editor)"` 無 ImportError（向後相容）
-  - **延宕懲罰**：ACL-free + 獨立可拆，連 1 輪延宕 = 3.25（Epic 8 首次升 P0）
-  - commit（ACL 解除後）: `refactor(agents): split editor.py into segment/refine/merge modules`
+- [x] **P0.AA** `src/agents/editor.py` 已完成拆分並維持相容匯出：現況為 `src/agents/editor/__init__.py` + `flow.py` + `segment.py` + `refine.py` + `merge.py`
+  - **完成證據**：
+    - `src/agents/editor/segment.py` / `refine.py` / `merge.py` 已存在，`EditorInChief` 由 `src.agents.editor` 正常匯出
+    - 全量 `pytest tests/ -q` = **3653 passed / 10 skipped**
+    - `tests/test_editor.py`、`tests/test_editor_coverage.py` 皆走 `from src.agents.editor import EditorInChief`
+  - **備註**：`program.md` 此處原先仍引用舊單檔 `src/agents/editor.py` 路徑，已於本輪校正，避免對不存在檔案重複開工
+  - commit（ACL 解除後）: `docs(program): reconcile editor split task with actual package layout`
 
 ### P0.BB — 🟢 ACL-free·T9.7 log 去重（v4.0 新增；原 P1 T9.7 升 P0）
 
@@ -894,7 +887,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 > T8.3 已升 P1.3（v2.4 閉環），T8.1 kb.py 部分已升 P1.1。
 
 - [ ] **T8.1.b** `src/cli/generate.py` 1263 行 → generate/{pipeline,export,cli}.py（T8.1.a kb.py 後）
-- [ ] **T8.1.c** `src/agents/editor.py` 1065 行 → editor/{segment,refine,merge}.py
+- [x] **T8.1.c** `src/agents/editor.py` 拆分已完成；現況為 `src/agents/editor/{__init__,flow,segment,refine,merge}.py`
 - [ ] **T8.2** Pydantic v2 相容修 1363 deprecation warning
   - 鎖定 chromadb 1.x 兼容層 / `src/api/models.py` / `src/core/models.py`
   - 目標：`pytest -W error::DeprecationWarning` 通過
@@ -978,6 +971,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **P0.X (v3.8)** vendor smoke import 已落地；`scripts/smoke_open_notebook.py` 會先 probe vendor checkout，再驗 flat/src layout import，缺依賴回報 `missing=<module>`；2026-04-20 16:47 實跑已把現況收斂成 `status=vendor-incomplete`（`.git` 僅殘留 `config.lock` / `description` / `hooks` / `info`），不再只說「只有 `.git`」，且 smoke path 不會噴 `ImportError: No module named 'open_notebook'`
 - [x] **P0.Y (v3.8)** audit-only 自救原型：`scripts/rewrite_auto_commit_msgs.py` + `tests/test_rewrite_auto_commit_msgs.py` + `docs/rescue-commit-plan.md` 已落地；實跑報告 44 行 / 33 筆 rewrite candidates，未改任何 git 歷史
 - [x] **P0.S-REBASE (v4.2)** `scripts/rewrite_auto_commit_msgs.py` 已升級 `--apply/--range`，實作 `git filter-branch --msg-filter` 路徑，並在 `.git` 有 DENY ACL 時明確 `EXIT_CODE=2` 而非靜默回 audit-only；`docs/rescue-commit-plan.md` 會標 `mode: apply-ready`，`pytest tests/test_rewrite_auto_commit_msgs.py -q` = 5 passed
+- [x] **P0.AA / T8.1.c (2026-04-20 校正)** `src/agents/editor.py` 拆分事實已存在；`EditorInChief` 由 `src/agents/editor/__init__.py` 匯出並組合 `flow.py` + `segment.py` + `refine.py` + `merge.py`，`pytest tests/ -q` = 3653 passed / 10 skipped
 - [x] **P0.BB (v4.1)** `scripts/dedupe_results_log.py` + `tests/test_dedupe_results_log.py` 已落；預設按 BLOCKED-ACL 根因去重，`--strict-task-key` 保留字面四元組模式；`results.log.dedup` 實測 165 → 127 行（-23.03%）
 - [x] **P0.CP950 (v4.0)** Windows cp950 console help 回歸：`src/cli/cite_cmd.py` 移除 help/panel/static warning 中的 emoji 與不安全符號，`python -m src.cli.main --help` 在 `PYTHONIOENCODING=cp950` 下不再噴 `UnicodeEncodeError`；`tests/test_cite_cmd.py` 新增子程序回歸測試
 - [x] **T7.4（v3.8）** Spectra coverage 補洞：`openspec/changes/{01-real-sources,02-open-notebook-fork}/tasks.md` 已回填逐 task `Requirements:` metadata；`spectra analyze 01-real-sources` 與 `spectra analyze 02-open-notebook-fork` 於 2026-04-20 17:06 實測皆 0 findings

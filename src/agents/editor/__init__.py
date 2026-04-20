@@ -9,6 +9,7 @@ from src.agents.consistency_checker import ConsistencyChecker
 from src.agents.fact_checker import FactChecker
 from src.agents.review_parser import format_audit_to_review_result
 from src.agents.style_checker import StyleChecker
+from src.agents.editor.flow import EditorFlowMixin
 from src.agents.editor.merge import EditorReportMixin
 from src.agents.editor.refine import EditorRefineMixin
 from src.agents.editor.segment import EditorSegmentMixin
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 console = Console()
 
 
-class EditorInChief(EditorRefineMixin, EditorSegmentMixin, EditorReportMixin):
+class EditorInChief(EditorFlowMixin, EditorRefineMixin, EditorSegmentMixin, EditorReportMixin):
     """
     協調所有審查 Agent 並產生最終修正版草稿。
     支援並行執行以加速審查。
