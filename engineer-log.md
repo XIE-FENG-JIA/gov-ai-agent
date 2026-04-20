@@ -12,6 +12,51 @@
 > v5.0（第二十八輪）/ v5.1（第二十九輪）反思已封存至 `docs/archive/engineer-log-202604d.md`。
 > 主檔現存：v5.2 + v5.4（v5.3 為 program.md header rollup，無獨立反思段）。
 
+## 反思 [2026-04-21 06:15] — 技術主管第三十三輪（v5.5；caveman；/pua 阿里味；USER OVERRIDE 下校準）
+
+### 近期成果（v5.4 → HEAD；**v5.4 四件 P0 全閉 + T5.4 E2E PASS**）
+- **T5.4-E2E ✅ PASS（2026-04-21 05:08）**：5 型公文（函/公告/簽/令/開會通知）跑完整 pipeline；5/5 docx；每份 `citation_count=2`；`source_doc_ids` 全可追到 `kb_data/corpus/{mojlaw,datagovtw,executiveyuanrss}`；落地 `tests/integration/test_e2e_rewrite.py` + `scripts/run_e2e.py` + `docs/e2e-report.md`。**產品核心 26 hr 首次跑通**。
+- **v5.4 四件 P0 全閉**：① T-WORKFLOW-ROUTER-SPLIT ✅ 5 檔 max 389；② T-API-APP-FACTORY ✅ api_server shim 92；③ T-CLI-HISTORY-SPLIT ✅（v5.4 header 仍寫 🔴 = header drift，實際 `src/cli/history/` package 已落）；④ T-EXPORTER-SPLIT ✅ 3 檔 max 319。
+- **全量 pytest ✅ 3695/0/568.91s**（v5.4 3686 → **+9**；E2E 新測加入）。
+- **v5.5 USER OVERRIDE 生效**：人工鎖死「禁新 task / 禁架構師重排 / 禁新 spec / 禁胖檔 split」；P0 強制聚焦 E2E = 已完成。
+
+### 發現的問題
+1. **🔴 v5.4 header drift 第 N+1 次復活**：line 53「T-CLI-HISTORY-SPLIT 🔴 升首位」實際已閉；header lag HEAD 紅線 X 又實錘。本輪只做 header 校準（不重排，尊重 USER OVERRIDE）。
+2. **🟠 新胖檔群 7 檔冒頭**：`cli/config_tools.py 585` / `knowledge/realtime_lookup.py 520` / `e2e_rewrite.py 488` / `api/routes/agents.py 477` / `api/middleware.py 469` / `api/models.py 461` / `cli/generate/export.py 459`；USER OVERRIDE 已 deprio 到 P3，**不動**；僅記錄待解鎖後排程。
+3. **🟡 T5.4 完成後 7 commits 純 auto-commit checkpoint**：`3167b38 → 39f5a43`（05:05 → 06:05 一小時 6 檔 checkpoint，無實質 diff）= 完工後空轉；USER OVERRIDE 鎖死一切進化路徑 → **等人工解鎖**是 owner 能做的唯一動作。
+4. **🟡 Spectra 對齊度持平 3/5 = 60%**：Epic 4/5 proposal 在 OVERRIDE 下暫停；E2E 已驗證產品核心，proposal 治理空窗不再是 blocker。
+
+### 架構健康度（HEAD 即取）
+- 胖檔前 5：config_tools 585 / realtime_lookup 520 / e2e_rewrite 488 / agents 477 / middleware 469（全 ≤ 600，無 god-file 級）。
+- manager split 後 `_manager_hybrid 341` 擦 400 邊；exporter `__init__ 319` 為已拆 package 頂層（可接受）。
+- 測試：3695 綠；E2E 5/5 traceability 通。
+- 安全：DOCX safe parse ✓；`.env` gitignore ✓；api_server rate-limit / auth 仍未補（Epic 上線前必補，但 OVERRIDE 下暫不動）。
+
+### 建議的優先調整（**不重排 program.md**；尊重 v5.5 USER OVERRIDE）
+**OVERRIDE 下唯一合規動作**：等人工解鎖；本輪只做：
+- A. engineer-log 追加 v5.5 反思（本段）
+- B. program.md v5.4 header line 53 `T-CLI-HISTORY-SPLIT 🔴` 校準為 ✅（事實對齊，不算重排，對齊 line 51/52/54 已完成慣例）
+- C. **不新增任何 task、不改 P0 順序、不動 OVERRIDE block**
+
+### 下一步行動（**OVERRIDE 下 3 件**）
+1. **等人工解鎖**：T5.4 已 PASS 一小時，解鎖規則為「人工解除」；技術主管無權自解。
+2. **解鎖後首要**：補 api_server rate-limit + auth（上線 blocker；不屬 split / spec）。
+3. **解鎖後次要**：Epic 4 writer 改寫策略 proposal（Spectra 3/5 → 3.3/5 抓手；連 7 輪 0 動）。
+
+### v5.5 硬指標（下輪審查）
+1. `python -m pytest tests/ -q --ignore=tests/integration` FAIL=0（當前 ✅ 3695/0）
+2. `wc -l engineer-log.md` ≤ 300（當前 136 + 本輪 ~40 = ~176 ✅）
+3. `ls openspec/changes/04-audit-citation/proposal.md`（OVERRIDE 下持續 ❌ 預期；解鎖後轉綠）
+4. `ls tests/integration/test_e2e_rewrite.py scripts/run_e2e.py docs/e2e-report.md` 三檔齊（當前 ✅）
+5. `rg -c "^### 🔴" program.md` ≤ 6（持平綠）
+6. `find kb_data/corpus -name "*.md"` = 9（持平綠）
+7. v5.4 header line 53 `T-CLI-HISTORY-SPLIT` 已校準為 ✅（本輪做）
+8. USER OVERRIDE block 未被 auto-engineer 自主移除（持平 ✅）
+
+> [PUA生效 🔥] **底層邏輯**：T5.4 PASS = 產品核心 26 hr 首次可驗；USER OVERRIDE 是人工對「127 task / 4 次架構重排 / 產品未跑通」= planning theater 的 3.25 糾偏。**抓手**：技術主管本輪唯一 owner 動作是「校準事實、不越權、請求解鎖」；auto-engineer 在 OVERRIDE 下寫 v5.5 / v5.6 header = 違規，立即回滾。**顆粒度**：本輪只追加反思 + 校準 1 行 header drift，**不新增任務、不改 P0 順序**；新胖檔 7 檔只記錄不動手。**拉通**：T5.4 驗證 retriever → writer → auditor → exporter 全鏈路 citation 可追，Epic 4 改寫策略 proposal 的緊迫性下降 = Spectra 死水不再是血債。**對齊**：v5.5 反思明確承認「OVERRIDE 下 agent 無進化路徑」= 不包裝勝利，不假裝忙碌，7 次 empty checkpoint 實錘空轉。**因為信任所以簡單** — 人工鎖死規則就是信任協議；agent 越權重排 = 破壞信任。talk 不 3.25，do 不越權。
+
+---
+
 ## 反思 [2026-04-21 04:10] — 技術主管第三十二輪（v5.4；caveman；/pua 阿里味）
 
 ### 近期成果（v5.3 header → HEAD 實測；**兌現率再破，但 header drift 復發**）
