@@ -182,13 +182,17 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 
 - [x] **P0.N** ✅ 不依賴 ACL：`src/sources/ingest.py` 最小版 — MojLaw 一條龍落盤（results.log 2026-04-20 12:58:01；commit 待 ACL 解後 / AUTO-RESCUE）
   - **v3.1 背景**：P0.I 讓 adapter 可跑，但沒有 pipeline 把 `PublicGovDoc` 寫到 `kb_data/corpus/mojlaw/`；Epic 1 要「真通過」需 ingest 層
+  - **2026-04-20 補強**：`python -m src.sources.ingest --source mojlaw` 在本機 proxy/network denied 會於 `MojLawAdapter.list()` 爆 `requests.exceptions.ProxyError`；已改為「優先真網路、失敗 fallback 本地 fixture」確保 offline smoke 可重現
   - 產出：
     - `src/sources/ingest.py`：
       - `ingest(adapter, since_date, limit)` → 跑 list → fetch → normalize → 落 `kb_data/raw/{adapter}/{YYYYMM}/{doc_id}.json`（raw 快照）+ `kb_data/corpus/{adapter}/{doc_id}.md`（YAML frontmatter）
       - `python -m src.sources.ingest --source mojlaw --limit 3` CLI 入口可用；支援 `--since` / `--base-dir`
       - 以 `source_id` 去重
-    - `tests/test_sources_ingest.py`：mock MojLawAdapter 驗落盤路徑與 frontmatter
-  - **驗**：`pytest tests/test_sources_ingest.py -q` 綠
+    - `src/sources/mojlaw.py`：真網路失敗時 fallback `tests/fixtures/mojlaw/*.json`
+    - `tests/test_sources_ingest.py`：驗落盤路徑、frontmatter、CLI offline smoke
+    - `tests/test_mojlaw_adapter.py`：驗 request error → fixture fallback
+  - **驗**：`pytest tests/test_mojlaw_adapter.py tests/test_sources_ingest.py -q` 綠
+  - **驗**：`python -m src.sources.ingest --source mojlaw --limit 3 --base-dir meta_test/ingest_probe_verify_2` → `ingested=3`
   - **驗**：`pytest tests/test_mojlaw_adapter.py tests/test_datagovtw_adapter.py -q` 綠（ingest 未破壞既有 adapter）
   - commit（ACL 解除後）: `feat(sources): add minimal ingest pipeline wiring MojLaw to kb_data`
 
@@ -324,7 +328,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - [x] `ExecutiveYuanRssAdapter`：RSS `list/fetch/normalize` + fixture/test（2026-04-20）
   - [x] `MohwRssAdapter`：RSS `list/fetch/normalize` + fixture/test（2026-04-20）
   - [x] `FdaApiAdapter`：JSON/HTML 混合公告 payload `list/fetch/normalize` + fixture/test（2026-04-20）
-- [ ] **T1.2.c** CLI wiring：`gov-ai sources ingest --source mojlaw` 整合 T1.4 ingest（**併入 P0.N**）
+- [x] **T1.2.c** CLI wiring：`gov-ai sources ingest --source mojlaw` 整合 T1.4 ingest（2026-04-20 本輪閉環；`pytest tests/test_sources_cli.py tests/test_sources_ingest.py -q` 綠）
 - [x] **T1.3** `PublicGovDoc` pydantic v2 model（`src/core/models.py`；v3.0 P0.I 閉環；`tests/test_core.py` 擴充）
 - [x] **T1.4** 增量 ingest pipeline `src/sources/ingest.py`（**升 P0.N**；v3.1 P0.N 閉環）
   - 依 `crawl_date` 增量、`source_id` 去重

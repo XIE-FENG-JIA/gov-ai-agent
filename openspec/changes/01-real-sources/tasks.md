@@ -36,6 +36,6 @@
   Validation: `pytest tests/test_sources_ingest.py -q`  
   Commit: `feat(sources): add minimal ingest pipeline for public sources`
 
-- [ ] **T1.10** Wire CLI ingest entrypoints for one-source and all-source incremental runs.  
+- [x] **T1.10** Wire CLI ingest entrypoints for one-source and all-source incremental runs.  
   Validation: `pytest tests/test_sources_cli.py -q`  
   Commit: `feat(cli): wire public source ingest commands`
