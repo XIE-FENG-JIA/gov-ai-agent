@@ -159,6 +159,7 @@ class PublicGovDoc(BaseModel):
                 "crawl_date": "2026-04-20",
                 "content_md": "# 行政程序法\n\n### 第 1 條\n為使行政行為遵循公正、公開與民主之程序。",
                 "synthetic": False,
+                "fixture_fallback": False,
             }]
         }
     )
@@ -173,6 +174,7 @@ class PublicGovDoc(BaseModel):
     crawl_date: date = Field(..., description="抓取日期")
     content_md: str = Field(..., min_length=1, description="標準化 Markdown 內容")
     synthetic: bool = Field(False, description="是否為合成資料")
+    fixture_fallback: bool = Field(False, description="是否由本地 fixture fallback 產生")
 
     @field_validator("source_id", "source_url", "source_agency", "doc_type", "content_md")
     @classmethod

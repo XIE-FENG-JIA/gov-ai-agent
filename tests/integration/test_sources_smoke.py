@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable
 
 import pytest
@@ -26,6 +27,15 @@ def _live_sources_enabled() -> bool:
 def _require_live_sources() -> None:
     if not _live_sources_enabled():
         pytest.skip("set GOV_AI_RUN_INTEGRATION=1 to run live source smoke tests")
+
+
+def _disable_fixtures(adapter: object) -> None:
+    """Force integration smoke to fail on live-request errors instead of silently using fixtures."""
+    sentinel = Path(__file__).resolve().parent / "__fixtures_disabled__"
+    if hasattr(adapter, "fixture_dir"):
+        adapter.fixture_dir = sentinel
+    if hasattr(adapter, "fixture_path"):
+        adapter.fixture_path = sentinel
 
 
 class TrackingSession(requests.Session):
@@ -80,6 +90,7 @@ def test_live_source_smoke_normalizes_one_public_doc(case: SmokeCase) -> None:
 
     session = TrackingSession()
     adapter = case.adapter_factory(session)
+    _disable_fixtures(adapter)
 
     docs = list(adapter.list(limit=1))
 
@@ -104,10 +115,10 @@ def test_live_source_loader_respects_default_rate_limit(case: SmokeCase) -> None
 
     session = TrackingSession()
     adapter = case.adapter_factory(session)
+    _disable_fixtures(adapter)
 
     case.live_loader(adapter)
     case.live_loader(adapter)
 
     assert len(session.request_times) >= 2, f"{case.source_key} did not issue two live requests"
     assert session.request_times[1] - session.request_times[0] >= adapter.rate_limit - 0.05
-

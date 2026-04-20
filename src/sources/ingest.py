@@ -175,6 +175,7 @@ def _write_corpus_markdown(path: Path, doc: PublicGovDoc) -> None:
         "raw_snapshot_path": doc.raw_snapshot_path,
         "crawl_date": doc.crawl_date.isoformat(),
         "synthetic": doc.synthetic,
+        "fixture_fallback": doc.fixture_fallback,
     }
     frontmatter = yaml.dump(metadata, allow_unicode=True, default_flow_style=False, sort_keys=False).strip()
     path.write_text(f"---\n{frontmatter}\n---\n{doc.content_md}\n", encoding="utf-8")

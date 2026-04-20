@@ -94,20 +94,25 @@ class MojLawAdapter(BaseSourceAdapter):
             raw_snapshot_path=None,
             crawl_date=date.today(),
             content_md=self._build_content_markdown(law_name, raw.get("LawArticles", [])),
-            synthetic=False,
+            synthetic=bool(raw.get("_fixture_fallback")),
+            fixture_fallback=bool(raw.get("_fixture_fallback")),
         )
 
     def _load_catalog(self, *, force_refresh: bool = False) -> list[dict[str, Any]]:
         if self._law_cache and not force_refresh:
             return list(self._law_cache.values())
 
-        laws = with_fixture_fallback(
+        result = with_fixture_fallback(
             lambda: self._extract_laws_from_response(self._request_json().content),
             self._load_fixture_catalog,
             handled_exceptions=(requests.RequestException, ValueError, TypeError),
         )
+        laws = result.value
         self._law_cache = {
-            str(law.get("PCode", "")).strip(): law
+            str(law.get("PCode", "")).strip(): {
+                **law,
+                "_fixture_fallback": result.used_fixture,
+            }
             for law in laws
             if str(law.get("PCode", "")).strip()
         }

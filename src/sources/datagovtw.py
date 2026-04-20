@@ -98,7 +98,8 @@ class DataGovTwAdapter(BaseSourceAdapter):
             raw_snapshot_path=None,
             crawl_date=date.today(),
             content_md=self._build_content_markdown(raw),
-            synthetic=False,
+            synthetic=bool(raw.get("_fixture_fallback")),
+            fixture_fallback=bool(raw.get("_fixture_fallback")),
         )
 
     def _load_catalog(self, *, limit: int, force_refresh: bool = False) -> list[dict[str, Any]]:
@@ -113,18 +114,22 @@ class DataGovTwAdapter(BaseSourceAdapter):
             "tids": [],
             "sort": "_score_desc",
         }
-        data = with_fixture_fallback(
+        result = with_fixture_fallback(
             lambda: self._request_json(payload).json(),
             self._load_fixture_catalog,
             handled_exceptions=(requests.RequestException, ValueError, TypeError),
         )
+        data = result.value
         payload_data = data.get("payload", {}) if isinstance(data, dict) else {}
         datasets = payload_data.get("search_result", []) if isinstance(payload_data, dict) else []
         if not isinstance(datasets, list):
             datasets = []
 
         self._dataset_cache = {
-            dataset_id: dataset
+            dataset_id: {
+                **dataset,
+                "_fixture_fallback": result.used_fixture,
+            }
             for dataset in datasets
             if isinstance(dataset, dict)
             for dataset_id in [self._extract_dataset_id(dataset)]

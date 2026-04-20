@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import time
 from collections.abc import Callable, Mapping
-from typing import TypeVar
+from typing import Generic, TypeVar
 
 import requests
 
@@ -12,6 +13,14 @@ import requests
 DEFAULT_USER_AGENT = "GovAI-Agent/1.0 (research; contact: local-dev)"
 
 T = TypeVar("T")
+
+
+@dataclass(frozen=True)
+class FixtureFallbackResult(Generic[T]):
+    """Payload plus whether it came from the local fixture fallback path."""
+
+    value: T
+    used_fixture: bool = False
 
 
 def throttle(last_request_time: float, rate_limit: float) -> float:
@@ -35,9 +44,9 @@ def with_fixture_fallback(
     fallback_loader: Callable[[Exception], T],
     *,
     handled_exceptions: tuple[type[Exception], ...] = (requests.RequestException,),
-) -> T:
+) -> FixtureFallbackResult[T]:
     """Run the live request first and fall back to local fixtures on known request/parsing errors."""
     try:
-        return request_loader()
+        return FixtureFallbackResult(request_loader(), used_fixture=False)
     except handled_exceptions as exc:
-        return fallback_loader(exc)
+        return FixtureFallbackResult(fallback_loader(exc), used_fixture=True)

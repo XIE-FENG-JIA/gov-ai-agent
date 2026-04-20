@@ -94,20 +94,25 @@ class MohwRssAdapter(BaseSourceAdapter):
             raw_snapshot_path=None,
             crawl_date=date.today(),
             content_md=self._build_content_markdown(raw),
-            synthetic=False,
+            synthetic=bool(raw.get("_fixture_fallback")),
+            fixture_fallback=bool(raw.get("_fixture_fallback")),
         )
 
     def _load_feed(self, *, force_refresh: bool = False) -> list[dict[str, Any]]:
         if self._entry_cache and not force_refresh:
             return list(self._entry_cache.values())
 
-        entries = with_fixture_fallback(
+        result = with_fixture_fallback(
             lambda: self._parse_feed(self._request_feed().text),
             self._load_fixture_feed,
             handled_exceptions=(requests.RequestException, ET.ParseError, ValueError, TypeError),
         )
+        entries = result.value
         self._entry_cache = {
-            entry_id: entry
+            entry_id: {
+                **entry,
+                "_fixture_fallback": result.used_fixture,
+            }
             for entry in entries
             if isinstance(entry, dict)
             for entry_id in [self._extract_entry_id(entry)]

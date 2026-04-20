@@ -93,21 +93,25 @@ class FdaApiAdapter(BaseSourceAdapter):
             raw_snapshot_path=None,
             crawl_date=date.today(),
             content_md=self._build_content_markdown(raw),
-            synthetic=False,
+            synthetic=bool(raw.get("_fixture_fallback")),
+            fixture_fallback=bool(raw.get("_fixture_fallback")),
         )
 
     def _load_catalog(self, *, limit: int, force_refresh: bool = False) -> list[dict[str, Any]]:
         if self._notice_cache and not force_refresh and len(self._notice_cache) >= limit:
             return list(self._notice_cache.values())
 
-        payload = with_fixture_fallback(
+        result = with_fixture_fallback(
             lambda: self._decode_payload(self._request_json()),
             self._load_fixture_payload,
             handled_exceptions=(requests.RequestException, ValueError, TypeError),
         )
-        notices = self._extract_items(payload)
+        notices = self._extract_items(result.value)
         self._notice_cache = {
-            notice_id: notice
+            notice_id: {
+                **notice,
+                "_fixture_fallback": result.used_fixture,
+            }
             for notice in notices
             if isinstance(notice, dict)
             for notice_id in [self._extract_notice_id(notice)]

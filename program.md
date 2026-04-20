@@ -412,6 +412,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [ ] **P1.4（T2.0.b）🚦 ACL-gated** clone `vendor/open-notebook`
   - `git clone https://github.com/lfnovo/open-notebook vendor/open-notebook`
   - `.gitignore` 加 `vendor/`
+  - **2026-04-20 blocker**：本機 shell 外連 GitHub 被拒（`Invoke-WebRequest ... main.zip` = `目標電腦拒絕連線`），且 `git clone` 會卡在 `vendor/open-notebook/.git/config: Permission denied`；需 Admin/人工提供 fork snapshot 或解除 shell egress / nested git 權限
   - commit（ACL 解除後）: `chore(vendor): add open-notebook as vendored fork target`
 
 - ~~P1.5（原 src/core 盤點）~~ → v2.7 升 P0.4

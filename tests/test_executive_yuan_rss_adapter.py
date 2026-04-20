@@ -83,8 +83,11 @@ def test_executive_yuan_rss_adapter_falls_back_to_local_fixture_on_request_error
 
     adapter = ExecutiveYuanRssAdapter(rate_limit=0)
     listed = list(adapter.list(limit=3))
+    normalized = adapter.normalize(adapter.fetch("ey-news-001"))
 
     assert [item["id"] for item in listed] == ["ey-news-001", "ey-news-002", "ey-news-003"]
+    assert normalized.synthetic is True
+    assert normalized.fixture_fallback is True
 
 
 @patch("src.sources._common.time.sleep")

@@ -64,6 +64,7 @@ def test_ingest_writes_raw_and_corpus_files(tmp_path: Path) -> None:
     assert metadata["raw_snapshot_path"].endswith("kb_data\\raw\\fake\\202604\\DOC-001.json") is False
     assert metadata["raw_snapshot_path"].endswith("DOC-001.json")
     assert metadata["synthetic"] is False
+    assert metadata["fixture_fallback"] is False
     assert body.strip().startswith("# 測試法規一")
 
 
@@ -113,7 +114,11 @@ def test_main_mojlaw_cli_falls_back_to_local_fixtures(tmp_path: Path, capsys) ->
     captured = capsys.readouterr()
     assert exit_code == 0
     assert "ingested=3 source=mojlaw" in captured.out
-    assert len(list((tmp_path / "corpus" / "mojlaw").glob("*.md"))) == 3
+    written = list((tmp_path / "corpus" / "mojlaw").glob("*.md"))
+    assert len(written) == 3
+    metadata = yaml.safe_load(written[0].read_text(encoding="utf-8").split("---\n", 2)[1])
+    assert metadata["synthetic"] is True
+    assert metadata["fixture_fallback"] is True
 
 
 def test_collect_source_snapshots_reads_existing_storage_dirs(tmp_path: Path) -> None:
