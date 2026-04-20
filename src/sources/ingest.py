@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import inspect
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -15,6 +14,7 @@ import yaml
 from src.core.models import PublicGovDoc
 from src.sources.base import BaseSourceAdapter
 from src.sources.datagovtw import DataGovTwAdapter
+from src.sources.executive_yuan_rss import ExecutiveYuanRssAdapter
 from src.sources.mojlaw import MojLawAdapter
 
 
@@ -97,6 +97,7 @@ def main(argv: list[str] | None = None) -> int:
 def _adapter_registry() -> dict[str, type[BaseSourceAdapter]]:
     return {
         "datagovtw": DataGovTwAdapter,
+        "executiveyuanrss": ExecutiveYuanRssAdapter,
         "mojlaw": MojLawAdapter,
     }
 
@@ -107,13 +108,7 @@ def _adapter_name(adapter: BaseSourceAdapter) -> str:
 
 
 def _list_documents(adapter: BaseSourceAdapter, *, since_date: date | None, limit: int) -> list[dict[str, Any]]:
-    signature = inspect.signature(adapter.list)
-    kwargs: dict[str, Any] = {}
-    if "since_date" in signature.parameters:
-        kwargs["since_date"] = since_date
-    if "limit" in signature.parameters:
-        kwargs["limit"] = limit
-    docs = list(adapter.list(**kwargs))
+    docs = list(adapter.list(since_date=since_date, limit=limit))
     return docs[:limit]
 
 

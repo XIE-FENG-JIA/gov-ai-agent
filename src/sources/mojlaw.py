@@ -8,6 +8,7 @@ import time
 import zipfile
 from collections.abc import Iterable
 from datetime import date
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -22,6 +23,7 @@ class MojLawAdapter(BaseSourceAdapter):
 
     SOURCE_AGENCY = "法務部全國法規資料庫"
     USER_AGENT = "GovAI-Agent/1.0 (research; contact: local-dev)"
+    DEFAULT_FIXTURE_DIR = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "mojlaw"
 
     def __init__(
         self,
@@ -30,15 +32,20 @@ class MojLawAdapter(BaseSourceAdapter):
         api_url: str = LAW_API_URL,
         rate_limit: float = 2.0,
         timeout: float = 60.0,
+        fixture_dir: Path | None = None,
     ) -> None:
         self.session = session or requests.Session()
         self.api_url = api_url
         self.rate_limit = rate_limit
         self.timeout = timeout
+        self.fixture_dir = fixture_dir if fixture_dir is not None else self.DEFAULT_FIXTURE_DIR
         self._last_request_time = 0.0
         self._law_cache: dict[str, dict[str, Any]] = {}
 
-    def list(self, since_date: date | None = None) -> Iterable[dict[str, Any]]:
+    def list(self, since_date: date | None = None, limit: int = 3) -> Iterable[dict[str, Any]]:
+        if limit <= 0:
+            return []
+
         docs: list[dict[str, Any]] = []
         for raw in self._load_catalog():
             source_date = self._extract_source_date(raw)
@@ -54,7 +61,7 @@ class MojLawAdapter(BaseSourceAdapter):
                     "date": source_date,
                 }
             )
-            if len(docs) == 3:
+            if len(docs) == limit:
                 break
         return docs
 
@@ -93,8 +100,11 @@ class MojLawAdapter(BaseSourceAdapter):
         if self._law_cache and not force_refresh:
             return list(self._law_cache.values())
 
-        response = self._request_json()
-        laws = self._extract_laws_from_response(response.content)
+        try:
+            response = self._request_json()
+            laws = self._extract_laws_from_response(response.content)
+        except requests.RequestException as exc:
+            laws = self._load_fixture_catalog(exc)
         self._law_cache = {
             str(law.get("PCode", "")).strip(): law
             for law in laws
@@ -111,6 +121,15 @@ class MojLawAdapter(BaseSourceAdapter):
         )
         response.raise_for_status()
         return response
+
+    def _load_fixture_catalog(self, exc: requests.RequestException) -> list[dict[str, Any]]:
+        if not self.fixture_dir.exists():
+            raise exc
+
+        laws: list[dict[str, Any]] = []
+        for path in sorted(self.fixture_dir.glob("*.json")):
+            laws.append(json.loads(path.read_text(encoding="utf-8")))
+        return laws
 
     def _throttle(self) -> None:
         now = time.time()

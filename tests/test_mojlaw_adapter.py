@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from src.core.models import PublicGovDoc
 from src.sources.mojlaw import MojLawAdapter
@@ -91,3 +92,18 @@ def test_mojlaw_adapter_fetch_unknown_id_raises(mock_get: MagicMock, _mock_sleep
 
     with pytest.raises(KeyError):
         adapter.fetch("UNKNOWN")
+
+
+@patch("src.sources.mojlaw.time.sleep")
+@patch("src.sources.mojlaw.requests.Session.get")
+def test_mojlaw_adapter_falls_back_to_local_fixtures_on_request_error(
+    mock_get: MagicMock,
+    _mock_sleep: MagicMock,
+) -> None:
+    mock_get.side_effect = requests.exceptions.ProxyError("proxy down")
+
+    adapter = MojLawAdapter(rate_limit=0)
+    listed = list(adapter.list(limit=3))
+
+    assert [item["id"] for item in listed] == ["A0030018", "A0030055", "A0030133"]
+    assert adapter.fetch("A0030018")["LawName"] == "公文程式條例"

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+  <channel>
+    <title>行政院新聞 RSS</title>
+    <link>https://www.ey.gov.tw/</link>
+    <description>行政院最新新聞稿</description>
+    <item>
+      <title>行政院公布公文減章措施</title>
+      <link>https://www.ey.gov.tw/Page/ExampleNews1</link>
+      <description><![CDATA[行政院宣布推動公文減章與線上簽核配套。]]></description>
+      <pubDate>Mon, 20 Apr 2026 10:30:00 +0800</pubDate>
+      <guid>ey-news-001</guid>
+    </item>
+    <item>
+      <title>院會通過資料治理精進方案</title>
+      <link>https://www.ey.gov.tw/Page/ExampleNews2</link>
+      <description><![CDATA[方案聚焦跨部會資料交換與標準化。]]></description>
+      <pubDate>Sat, 18 Apr 2026 09:00:00 +0800</pubDate>
+      <guid>ey-news-002</guid>
+    </item>
+    <item>
+      <title>部會新聞摘要</title>
+      <link>https://www.ey.gov.tw/Page/ExampleNews3</link>
+      <description><![CDATA[彙整各部會近期重要施政訊息。]]></description>
+      <pubDate>Tue, 14 Apr 2026 08:15:00 +0800</pubDate>
+      <guid>ey-news-003</guid>
+    </item>
+  </channel>
+</rss>

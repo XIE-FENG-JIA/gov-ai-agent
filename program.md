@@ -320,11 +320,14 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **T1.2.a-實作** MojLawAdapter 真實 list/fetch/normalize（v3.0 P0.I 閉環；results.log #39；21 tests 綠）
 - [x] **T1.2.b-DataGovTw** `DataGovTwAdapter`（v3.1 P0.M 閉環；`pytest tests/test_datagovtw_adapter.py -q` 綠）
 - [ ] **T1.2.b-rest** 其餘 3 adapter：`ExecutiveYuanRssAdapter` / `MohwRssAdapter` / `FdaApiAdapter`（P0.M 跑通後）
+  - [x] `ExecutiveYuanRssAdapter`：RSS `list/fetch/normalize` + fixture/test（2026-04-20）
+  - [ ] `MohwRssAdapter`
+  - [ ] `FdaApiAdapter`
 - [ ] **T1.2.c** CLI wiring：`gov-ai sources ingest --source mojlaw` 整合 T1.4 ingest（**併入 P0.N**）
 - [x] **T1.3** `PublicGovDoc` pydantic v2 model（`src/core/models.py`；v3.0 P0.I 閉環；`tests/test_core.py` 擴充）
 - [x] **T1.4** 增量 ingest pipeline `src/sources/ingest.py`（**升 P0.N**；v3.1 P0.N 閉環）
   - 依 `crawl_date` 增量、`source_id` 去重
-  - raw 存 `kb_data/raw/{adapter}/{YYYYMM}/{doc_id}.html`
+  - raw 存 `kb_data/raw/{adapter}/{YYYYMM}/{doc_id}.json`
   - Normalized 存 `kb_data/corpus/{adapter}/{doc_id}.md`（YAML frontmatter）
   - CLI: `gov-ai sources ingest --source all --since 2026-01-01`
 - [ ] **T1.6** 首次跑 T1.4，3 來源各 ≥50 份（≥150 baseline）

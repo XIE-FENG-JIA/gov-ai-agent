@@ -12,8 +12,8 @@ class BaseSourceAdapter(ABC):
     """Common contract for external public-document source adapters."""
 
     @abstractmethod
-    def list(self, since_date: date | None = None) -> Iterable[dict[str, Any]]:
-        """Return source document summaries newer than the optional cutoff date."""
+    def list(self, since_date: date | None = None, limit: int = 3) -> Iterable[dict[str, Any]]:
+        """Return up to ``limit`` source document summaries newer than the optional cutoff date."""
 
     @abstractmethod
     def fetch(self, doc_id: str) -> dict[str, Any]:

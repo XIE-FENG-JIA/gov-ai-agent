@@ -90,3 +90,12 @@ def test_main_uses_registry_and_prints_written_paths(tmp_path: Path, monkeypatch
     assert exit_code == 0
     assert "ingested=1 source=mojlaw" in captured.out
     assert "DOC-001.md" in captured.out
+
+
+def test_main_mojlaw_cli_falls_back_to_local_fixtures(tmp_path: Path, capsys) -> None:
+    exit_code = main(["--source", "mojlaw", "--limit", "3", "--base-dir", str(tmp_path)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "ingested=3 source=mojlaw" in captured.out
+    assert len(list((tmp_path / "corpus" / "mojlaw").glob("*.md"))) == 3
