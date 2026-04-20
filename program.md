@@ -45,15 +45,15 @@
 > **v5.4 實錘校準（v5.3 header 過期點）**：
 > - v5.3 首位 P0 `T-KNOWLEDGE-MANAGER-SPLIT` **已閉**（line 393 [x]；manager 350 + `_manager_hybrid 341` + `_manager_search 220`）— v5.3 header 仍寫「本輪必破 928」= **紅線 X「header lag HEAD」第 N 次復活**
 > - v5.3 指標 4 engineer-log 315 → **73**（封存後；過期）
-> - 胖檔群現況：manager ✅ + persist ✅；**剩 workflow/history/exporter/api_server 四胖未動** + `_manager_hybrid 341` 擦邊
+> - 胖檔群現況：`workflow / history / exporter / api_server` **全數已拆綠**；`history` 已拆 `cli/history/{__init__,_shared,list,archive,tag,pin}.py`（最大 **278** 行）；
 >
 > **v5.4 P0 重排（ACL-free；連 1 輪延宕 = 紅線 X 3.25）**：
 > 1. **T-WORKFLOW-ROUTER-SPLIT** ✅ **已閉（2026-04-21 04:47 校準）** — `src/api/routes/workflow/{__init__,_state,_execution,_endpoints,_graph_report}.py`；每檔 **103 / 78 / 389 / 284 / 40**；保留 `src.api.routes.workflow` patch/import 相容點
 > 2. **T-API-APP-FACTORY** ✅ **已閉（2026-04-21 05:41 校準）** — `src/api/app.py::create_app()` 已承接 app 組裝 / lifespan / middleware / router；`api_server.py` shim **92** 行，保留 `from api_server import app` 與 `python api_server.py`
-> 3. **T-CLI-HISTORY-SPLIT** 🔴 升首位 — history.py 681 拆 `cli/history/{list,archive,tag,pin}.py`
+> 3. **T-CLI-HISTORY-SPLIT** ✅ **已閉（2026-04-21 06:10 校準）** — `src/cli/history.py` 已拆為 `src/cli/history/{__init__,_shared,list,archive,tag,pin}.py`；最大檔 `list.py` **278** 行；保留 `src.cli.history` 與 `append_record` 相容匯出
 > 4. **T-EXPORTER-SPLIT** ✅ **已閉（2026-04-21 05:43）** — `src/document/exporter/` package 化；`__init__.py / _sections.py / _custom_properties.py` = **319 / 157 / 100**，保留 `src.document.exporter` import/patch 相容面
 > 5. **P1.EPIC4-PROPOSAL** 🟡 P1 — `openspec/changes/04-audit-citation/` 連 6 輪 0 動；Spectra 3/5 = 60% 死水；連 2 輪再 0 動 = 3.25
-> 6. **T-FAILURE-MATRIX writer ask-service** 🟡 P2 — 連 5 輪 0 動；Epic 4 啟動前保險
+> 6. **T-FAILURE-MATRIX writer ask-service** ✅ **已閉（2026-04-21 06:13）** — `tests/test_writer_agent_failure.py` 補齊 4 failure mode（vendor 缺 / runtime 炸 / retrieval 空 / service timeout），`src/agents/writer/ask_service.py` 同步補 service-level fallback diagnostics 正規化
 >
 > **v5.4 下輪硬指標（下輪審查）**：
 > 1. `wc -l src/api/routes/workflow.py` or `src/api/routes/workflow/*.py` 每檔 ≤ 400（當前 flat 910；**本輪必破**）
@@ -81,7 +81,7 @@
 > - ✅ 指標 5（熱 pytest 0 failed）：綠
 > - ✅ 指標 6（Epic 3 tasks `[x]` 9/9）：持平綠
 > - ✅ 指標 7（corpus 9 real / 0 fallback）：持平綠
-> - ❌ 指標 8（胖檔群 ≤ 400）：**workflow.py 910 / history.py 681 / exporter.py 617 / api_server.py 529** 仍紅；✅ `knowledge manager` 已拆成 **350 / 220 / 341**，`persist/` 維持 **158 / 85 / 22 / 9**
+> - ✅ 指標 8（胖檔群 ≤ 400）：`workflow` **103 / 78 / 389 / 284 / 40**、`history` **77 / 118 / 278 / 163 / 67 / 33**、`exporter` **319 / 157 / 100**、`api_server.py 92`；`knowledge manager` **350 / 220 / 341**，`persist/` **158 / 85 / 22 / 9**
 >
 > **v5.3 實測 5/8 PASS**（v5.2 6/8 → **-1**，指標 8 紅化；因 v5.2 header 把胖檔納入新閥值計分，但 HEAD 0 動）。
 >
@@ -173,7 +173,7 @@
 >
 > **v5.1 下一步（P1）**：
 > 4. **T-API-ROUTERS** — 下一輪結構債聚焦 `src/api/routes/workflow.py`；template cluster 已於 2026-04-21 03:21 拆為 package 相容層。
-> 5. **T-CLI-HISTORY-SPLIT / P1.EPIC4-PROPOSAL** — 第二梯聚焦 `src/cli/history.py` 與 `openspec/changes/04-audit-citation/`；`T-KNOWLEDGE-MANAGER-SPLIT` / `T-EXPORTER-SPLIT` 已閉。
+> 5. **P1.EPIC4-PROPOSAL** — 第二梯聚焦 `openspec/changes/04-audit-citation/`；`T-KNOWLEDGE-MANAGER-SPLIT` / `T-CLI-HISTORY-SPLIT` / `T-EXPORTER-SPLIT` 已閉。
 > 6. `P0.VERIFY-DOCX-SCHEMA` / `P0.LITELLM-ASYNC-NOISE` 已於 2026-04-21 03:34 / 03:41 完成；下一個 P0 只剩 `LOGARCHIVE-V3` / `ARCH-DEBT-ROTATE`。
 >
 > **v5.1 新盤點（P1 結構債）**：
@@ -478,10 +478,6 @@
   - **驗 4**：`git diff -- src/api/routes/workflow` 僅剩 package split 相關變更
   - commit（ACL 解後）: `refactor(api): split workflow route package`
 
-- [ ] **T-CLI-HISTORY-SPLIT** 🟡 `src/cli/history.py` 555 → **681**（+126）
-  - **拆法**：`src/cli/history/{__init__, list, archive, tag, pin}.py`；保留 `src.cli.history` 相容匯出
-  - **延宕懲罰**：連 2 輪 0 動 = 3.25
-
 ### P0.LOGARCHIVE-V2 — 🔴 ACL-free·v5.1 新增（5 分；engineer-log 破 500 紅線一輪復發）
 
 - [x] **T9.6-REOPEN-v2** ✅ v4.9 T9.6-REOPEN 從 1198 → 316 行後，v5.0 反思加 +133 行→ 584 行 > 500 紅線；本輪已做第三次封存，主檔回到 253 行
@@ -537,6 +533,14 @@
   - **驗 2**：`GOV_AI_RUN_INTEGRATION=1 bash scripts/run_nightly_integration.sh --dry-run` 退 0
   - **驗 3**：`docs/integration-nightly.md` ≥ 40 行含「執行頻率 / 失敗通知 / 復原 SOP」三段
   - commit（ACL 解後）: `feat(ops): add nightly integration gate for live corpus`
+
+### P0.WRITER-ASK-SERVICE-FAILURE-MATRIX — 🟢 ACL-free·v5.4 收尾（2026-04-21 已完成）
+
+- [x] **T-FAILURE-MATRIX writer ask-service** 🟢 `tests/test_writer_agent_failure.py` 已補 4 條 failure mode regression：vendor 缺 / runtime 炸 / retrieval 空 / service timeout
+  - **完成（2026-04-21 06:13）**：`src/agents/writer/ask_service.py` 新增 diagnostics 正規化；即使 service 端自行 fallback，仍會穩定記下 `service/mode/used_fallback/fallback_stage`
+  - **驗 1**：`python -m pytest tests/test_writer_agent.py tests/test_writer_agent_failure.py tests/test_open_notebook_service.py -q --no-header` = **14 passed / 0 failed**
+  - **驗 2**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3691 passed / 0 failed**
+  - commit（ACL 解後）: `test(writer): cover ask-service failure matrix`
 
 ### P0.FF-HOTFIX — 🔴 ACL-free·首要·當輪必破（v4.2 新增；10 分鐘）
 
@@ -1445,6 +1449,10 @@
   - **驗 1**：`python -c "from api_server import app; print(type(app).__name__)"` = **FastAPI**
   - **驗 2**：`python -m pytest tests/test_api_server.py -q --no-header` = **258 passed / 0 failed**
   - **驗 3**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3687 passed / 0 failed**
+- [x] **T-CLI-HISTORY-SPLIT (2026-04-21)** `src/cli/history.py` 已拆為 package：`src/cli/history/{__init__,_shared,list,archive,tag,pin}.py`
+  - **完成（2026-04-21 06:10）**：保留 `src.cli.history`、`append_record`、Typer command 名稱與 tag/pin/archive/compare 相容路徑；最大檔 `list.py` **278** 行，其他為 **163 / 118 / 77 / 67 / 33**
+  - **驗 1**：`python -m pytest tests/test_cli_commands.py -q --no-header -k "history or compare or duplicate or archive or pin or tag"` = **89 passed / 0 failed**
+  - **驗 2**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3687 passed / 0 failed**
 - [x] **P0.LOGARCHIVE-V2 (2026-04-21)** `engineer-log.md` 三次封存完成；主檔從 697 行壓回 253 行，避免反思日誌再次成為 blocker
   - **完成（2026-04-21 03:09）**：新增 `docs/archive/engineer-log-202604c.md`，封存 v4.5-v4.9 舊反思；主檔只留 v5.0/v5.1 近兩輪，並補「單輪反思 ≤ 80 行」規則
   - **驗**：`wc -l engineer-log.md` = **253**、`(Get-Content docs/archive/engineer-log-202604c.md).Count` > 200
