@@ -637,7 +637,7 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
   - **驗 3**：`spectra analyze 01-real-sources 2>&1 | grep -c "Vague language 'may'"` == 0
   - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
   - commit（ACL 解後）: `docs(spec): backfill requirement→task coverage for 01-real-sources and 02-open-notebook-fork`
-  - **完成（2026-04-20）**：`01-real-sources` 與 `02-open-notebook-fork` 的 tasks 已直接標註 requirement 名稱對應，`specs/sources/spec.md` 的 `may` 已全數改為 SHALL 語氣；`spectra analyze 01-real-sources` / `02-open-notebook-fork` 皆 `No issues found`
+  - **完成（2026-04-20 17:06）**：兩個 change 的 `tasks.md` 已改為逐 task `Requirements:` metadata（不再依賴 inline `Requirement:` 與尾段 mapping）；實測 `spectra analyze 01-real-sources` / `spectra analyze 02-open-notebook-fork` 皆 0 findings
 
 ---
 
@@ -727,13 +727,13 @@ read-only 任務（文件產出、檔案編輯、程式碼盤點）不依賴 ACL
 - [x] **P0.W (v3.8)** `src/integrations/open_notebook/` seam 骨架 + `src/cli/open_notebook_cmd.py` 已落地；`OpenNotebookAdapter` Protocol、`off/smoke/writer` 三模式工廠、vendor `.git` stub 偵測與 writer-mode loud fail 已就位；`pytest tests/test_integrations_open_notebook.py -q` = 7 passed，`GOV_AI_OPEN_NOTEBOOK_MODE=smoke python -m src.cli.main open-notebook smoke --question "hi" --doc "first evidence"` 非空
 - [x] **P0.X (v3.8)** vendor smoke import 已落地；`scripts/smoke_open_notebook.py` 會先 probe vendor checkout，再驗 flat/src layout import，缺依賴回報 `missing=<module>`；2026-04-20 16:47 實跑已把現況收斂成 `status=vendor-incomplete`（`.git` 僅殘留 `config.lock` / `description` / `hooks` / `info`），不再只說「只有 `.git`」，且 smoke path 不會噴 `ImportError: No module named 'open_notebook'`
 - [x] **P0.Y (v3.8)** audit-only 自救原型：`scripts/rewrite_auto_commit_msgs.py` + `tests/test_rewrite_auto_commit_msgs.py` + `docs/rescue-commit-plan.md` 已落地；實跑報告 44 行 / 33 筆 rewrite candidates，未改任何 git 歷史
-- [x] **T7.4（v3.8）** Spectra coverage 補洞：`spectra analyze 01-real-sources` 與 `spectra analyze 02-open-notebook-fork` 皆已 `No issues found`；兩個 change 的 requirement→task 對應與 SHALL 語氣回填完成
+- [x] **T7.4（v3.8）** Spectra coverage 補洞：`openspec/changes/{01-real-sources,02-open-notebook-fork}/tasks.md` 已回填逐 task `Requirements:` metadata；`spectra analyze 01-real-sources` 與 `spectra analyze 02-open-notebook-fork` 於 2026-04-20 17:06 實測皆 0 findings
 - [x] **T1.12-HARDEN (v3.4)** nightly live smoke 禁 silent fixture fallback；`tests/integration/test_sources_smoke.py` 把 fixture_dir 指向不存在路徑，upstream 掛 → integration FAIL 不再假綠
 - [x] **T1.6.a (v3.4)** 校正 `kb_data/examples/*.md` 合成基線為 155，`tests/test_mark_synthetic.py` 新增 guard
 - [x] **T1.6.b (v3.4)** fixture corpus 升級護欄；ingest 辨識既有 `synthetic: true` / `fixture_fallback: true` 檔，僅 live re-ingest 時覆寫
 - [x] **P1.5 (v3.3)** `docs/architecture.md` v1 落地（273 行）涵蓋 CLI/API/ingest + 5 adapter + vendor 邊界 + SurrealDB freeze
 - [x] **P1.7 (v3.4)** `docs/llm-providers.md`（81 行）盤點 `src/core/llm.py` provider 工廠；AUTO-RESCUE `d92bace`
-- [x] **T7.4 (v3.8)** `openspec/changes/{01-real-sources,02-open-notebook-fork}/tasks.md` 已補 requirement→task mapping，`openspec/changes/01-real-sources/specs/sources/spec.md` 已把殘留 `may` 收斂為 `SHALL`；驗證 `spectra analyze 01-real-sources` / `spectra analyze 02-open-notebook-fork` 皆 0 findings
+- [x] **T7.4 (v3.8)** `openspec/changes/{01-real-sources,02-open-notebook-fork}/tasks.md` 已補逐 task requirement traceability metadata；驗證 `spectra analyze 01-real-sources` / `spectra analyze 02-open-notebook-fork` 於 2026-04-20 17:06 皆 0 findings
 - [x] **P1.10 (v3.8)** `docs/open-notebook-study.md`（repo-first study）整理 `ask_service`/evidence/provider/storage/fallback 邊界，並記錄 `vendor/open-notebook` 目前僅 `.git` stub 的實測現況
 - [x] **T2.2 (v3.6)** `docs/integration-plan.md` Fork + thin adapter seam 決策；`GOV_AI_OPEN_NOTEBOOK_MODE=off|smoke|writer` 契約；AUTO-RESCUE `d225281`
 - [x] **T9.4.b (v3.7)** `src/cli/utils.py` resolve_state_path + `GOV_AI_STATE_DIR` env；4 個 call-site 搬遷 + `tests/test_cli_state_dir.py` 6 passed；AUTO-RESCUE `d92bace`
