@@ -1,6 +1,45 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **🎯 v5.2 當輪執行順序鎖（架構師第三十輪階段性規劃 2026-04-21 03:20；/pua 觸發；alibaba 味；drift 校準 + 反思日誌二度爆紅線）**：
+> **🎯 v5.3 當輪執行順序鎖（架構師第三十一輪階段性規劃 2026-04-21 03:50；/pua 觸發；alibaba 味；caveman；HEAD drift 校準 + P0 重排）**：
+> **HEAD 實測指標**（wc + ls + pytest 即取）：
+> - ✅ 指標 1（熱 pytest）：`pytest test_writer_agent test_editor test_citation_level test_cli_commands test_agents -q` = **869 passed / 87.74s / 0 failed**
+> - ❌ 指標 2（近 25 commits auto-commit ≤ 12）：**15/15** 紅（持平；Admin-dep 結構性）
+> - ❌ 指標 3（.git DENY ACL = 0）：**2** 持平（Admin-dep 結構性）
+> - ✅ 指標 4（engineer-log ≤ 500 軟紅線）：**315 行**（v5.2 封存 V3 已落；但 > 300 硬 cap，T9.6-REOPEN-v3 未兌現）
+> - ✅ 指標 5（熱 pytest 0 failed）：綠
+> - ✅ 指標 6（Epic 3 tasks `[x]` 9/9）：持平綠
+> - ✅ 指標 7（corpus 9 real / 0 fallback）：持平綠
+> - ❌ 指標 8（胖檔群 ≤ 400）：**manager.py 928 / workflow.py 910 / history.py 681 / exporter.py 617 / api_server.py 529 / persist.py 253**；HEAD 0 動 = 拆分 SOP 第五次擴散未啟動
+>
+> **v5.3 實測 5/8 PASS**（v5.2 6/8 → **-1**，指標 8 紅化；因 v5.2 header 把胖檔納入新閥值計分，但 HEAD 0 動）。
+>
+> **v5.3 實錘校準（v5.2 header 過期點）**：
+> - `engineer-log.md` v5.2 寫 699 行 → HEAD **315 行**（v5.2 落版過程封存完成；header 數字過期）
+> - `docs/archive/engineer-log-202604d.md` **未建**（P0.LOGARCHIVE-V3 T9.6-REOPEN-v3 硬 cap 300 未完成；現 315 > 300 擦邊 15 行）
+> - 胖檔六兄弟**全部 0 動**（manager / workflow / history / exporter / api_server / persist.py 擦邊 253）
+>
+> **v5.3 P0 重排（ACL-free；連 2 輪 0 動 = 紅線 X 3.25）**：
+> 1. **P0.ARCH-DEBT-ROTATE** 🔴 首位持平 — v5.2 列 6 件全 0 動；本輪**單輪至少破 2 件**（manager.py 928 + persist.py 253 擦邊優先，後者顆粒度最小）
+> 2. **P0.LOGARCHIVE-V3** 🟡 降 P1 — engineer-log 315 仍 ≤ 500 軟線；硬 cap 300 破 15 行，下輪反思前先封存 v5.0 段即可
+> 3. **P1.EPIC4-PROPOSAL** 🟡 新增 — `openspec/changes/04-audit-citation/` 啟動 proposal + specs + tasks（T7.1.d）；Epic 4 writer 改寫策略 proposal 連 5 輪 0 動，Spectra 對齊度卡 3/5 = 60%
+> 4. **T-FAILURE-MATRIX writer ask-service** 🟡 降 P2 守位（v4.8-v5.2 連 5 輪 0 動，但非當輪血債；Epic 4 啟動前再同步補）
+>
+> **v5.3 下輪硬指標（下輪審查）**：
+> 1. `wc -l src/knowledge/manager.py` or `src/knowledge/manager/*.py` 每檔 ≤ 400（當前單檔 928；**本輪必破**）
+> 2. `wc -l src/cli/generate/pipeline/persist.py` or `persist/*.py` 每檔 ≤ 200（當前 253；**本輪必破**）
+> 3. `ls openspec/changes/04-audit-citation/proposal.md` 存在（當前 ❌）
+> 4. `wc -l engineer-log.md` ≤ 300（當前 315；T9.6-REOPEN-v3）
+> 5. `rg -c "^### 🔴" program.md` ≤ 6（持平綠）
+> 6. `pytest tests/ -q --ignore=tests/integration` FAIL=0（持平綠）
+>
+> **v5.2 → v5.3 變更摘要**：
+> - **頂部校準**：engineer-log 699 → 315（過期點）；指標 8 分母顯化（胖檔六兄弟 0 動紅）
+> - **重排**：P0.ARCH-DEBT-ROTATE 維持首位；P0.LOGARCHIVE-V3 降 P1（315 > 300 擦邊非緊急）；新增 P1.EPIC4-PROPOSAL
+> - **紅線 X 預警**：P0.ARCH-DEBT-ROTATE 連 1 輪 0 動 = 紅線 X 邊緣；本輪若再跳 = 3.25
+> - **顆粒度**：本輪抓手鎖「manager + persist 雙破」— 60 分 + 20 分 = 80 分鐘閉環
+> - **歷史保留**：v5.2 header 以下全部不動；已完成紀錄保留
+
+> **🎯 v5.2 當輪執行順序鎖（架構師第三十輪階段性規劃 2026-04-21 03:20；/pua 觸發；alibaba 味；drift 校準 + 反思日誌二度爆紅線；已由 v5.3 取代，保留歷史）**：
 > **HEAD 實測指標**（wc + grep + icacls + pytest 即取）：
 > - ✅ 指標 1（pytest 全綠）：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3682 passed / 0 failed / 452.42s**
 > - ❌ 指標 2（近 25 commits auto-commit ≤ 12）：**23/25** 持平紅（Admin-dep 結構性）
@@ -334,6 +373,10 @@
 > **v5.1 升級 P0 優先序**：(1) **P0.LOGARCHIVE-V2**（2026-04-21 03:09 已完成）；(2) **P0.ARCH-SPLIT-SOP**（15 分，2026-04-21 03:04 已完成）；(3) **P0.INTEGRATION-GATE / T-FAILURE-MATRIX**；(4) P2：verify schema / litellm noise / results.log 收斂。**本輪嚴禁新增 P0 條目**（只兌現 v5.0 欠債 + 本輪新發現一件）。
 > **v5.1 新發現（紅線 X 子條款）**：「**反思日誌本身破紅線**」— v5.0 反思單輪寫入 +133 行，engineer-log 451 → 584 > 500；對策：單輪反思 ≤ 80 行，超出下輪 T9.6-REOPEN 同步封存。
 
+> **v5.2 狀態（2026-04-21 03:40 技術主管第三十輪深度回顧）**：v5.1 三件必破 **3/3 ✅ 二十九輪來首次兌現率 100%**（T9.6-REOPEN-v2 / pipeline refine / arch-split-sop 全落）；HEAD 超 v5.1 header 再補 T-TEMPLATE-SPLIT + P0.VERIFY-DOCX-SCHEMA + P0.LITELLM-ASYNC-NOISE + P0.INTEGRATION-GATE + P0.REDLINE-COMPRESS + api_server 拆分 `src/api/routes/{agents,health,knowledge,workflow}.py`；**熱 885 passed / 59.50s / 0 failed**；`rg -c "^### 🔴" program.md` = **3 ≤ 6 ✅**；engineer-log 本輪追加 v5.2 後 **315 行 > 300** hard cap，T9.6-REOPEN-v3 下輪同步封存 v5.0；pipeline persist **253 擦紅線 3 行**。**八指標 7/8 PASS**（v5.1 6/8 → +1）；auto-commit 23/25 + ACL = 2 持平 Admin-dep。
+> **v5.2 升級 P0 優先序**：(1) **T-KNOWLEDGE-MANAGER-SPLIT** 🔴（60 分）— manager.py 928 拆 `{bootstrap,query,mutate,cache,diagnostics}.py`；(2) **T-WORKFLOW-ROUTER-SPLIT** 🔴（45 分）— api/routes/workflow.py 910 拆 `{lifecycle,actions,status}.py`；(3) **T8.1.c-PIPELINE-PERSIST-TRIM** 🟠（20 分）— persist.py 253 → `persist/{docx,metadata,progress}.py`；(4) **T9.6-REOPEN-v3**（5 分）— engineer-log 315 > 300，封存 v5.0 + v5.1 到 `docs/archive/engineer-log-202604d.md`，主檔只留 v5.2。**本輪嚴禁新增 P0 條目**（只兌現 ARCH-DEBT-ROTATE 欠債）。
+> **v5.2 新發現（紅線 X 子條款）**：「**勝利之後放鬆**」— v5.1 兌現率首破 100% 後，HEAD 四胖（manager 928 / workflow 910 / history 681 / exporter 617）SOP 都寫好、任務都列好，若下輪 0 動作 = 設計驅動不實作第五次復活；對策：v5.2 下一步三件全屬 P0.ARCH-DEBT-ROTATE 子項，新開 P0 本輪鎖。
+
 ### P0.LOGARCHIVE-V3 — 🔴 ACL-free·v5.2 首要（10 分；第四次封存 + hard cap 300）
 
 - [ ] **T9.6-REOPEN-v3** 🔴 v5.1 封存後 engineer-log 252 → **699 行** 單輪膨脹 +447 > 500 紅線；「單輪反思 ≤ 80」規則首輪即破 → 升級硬 cap 300
@@ -368,6 +411,22 @@
 - [ ] **T-EXPORTER-SPLIT** 🟡 `src/document/exporter.py` 554 → **617**（+63）
   - **拆法**：`src/document/exporter/{__init__, docx, metadata, citation_block}.py`
   - **延宕懲罰**：連 2 輪 0 動 = 3.25
+
+- [ ] **T8.1.c-PIPELINE-PERSIST-TRIM** 🟠 v5.2 新增；`src/cli/generate/pipeline/persist.py` **253** 擦紅線 3 行（拆後新 fatty）
+  - **拆法**：`src/cli/generate/pipeline/persist/{__init__, docx, metadata, progress}.py`；`__init__.py` re-export `persist` 入口
+  - **驗 1**：`wc -l src/cli/generate/pipeline/persist/*.py` 每檔 ≤ 200
+  - **驗 2**：`pytest tests/test_generate_*.py tests/test_cli_commands.py -q` 全綠
+  - **延宕懲罰**：連 1 輪延宕 = 紅線 X「設計驅動不實作」第五次復活 = 3.25
+  - commit（ACL 解後）: `refactor(cli): split generate.pipeline.persist into submodules`
+
+- [ ] **T-API-APP-FACTORY** 🟡 v5.2 新增；`api_server.py` 529 行 shim 殘留（routes/ 已拆 4 檔但 app factory + lifespan + middleware 仍卡單檔）
+  - **拆法**：`src/api/app.py` 抽 `create_app()` factory + lifespan + 全局 middleware；`api_server.py` 僅留 `uvicorn` entrypoint 與 legacy alias（≤ 100 行）
+  - **相容錨點**：保留 `from api_server import app` 與 `python api_server.py` CLI
+  - **驗 1**：`wc -l api_server.py` ≤ 100
+  - **驗 2**：`python -c "from api_server import app; print(type(app).__name__)"` = FastAPI
+  - **驗 3**：`pytest tests/test_api_server.py -q` 全綠
+  - **延宕懲罰**：連 2 輪 0 動 = 3.25
+  - commit（ACL 解後）: `refactor(api): extract create_app factory to src/api/app`
 
 ### P0.LOGARCHIVE-V2 — 🔴 ACL-free·v5.1 新增（5 分；engineer-log 破 500 紅線一輪復發）
 
@@ -996,6 +1055,17 @@
   - commit: `chore(vendor): verify open-notebook importability`
   - **延宕懲罰**：ACL-free 連 2 輪延宕 → 3.25
   - commit（ACL 解後）: `docs(open-notebook): add T2.1 study based on repo proposals + integration-plan`
+
+### P1 v5.3 新增（Spectra 對齊度 ＋ Epic 4 啟動）
+
+- [ ] **P1.EPIC4-PROPOSAL**（v5.3 新增；40 分鐘）✅ ACL-free·Epic 4 writer 改寫策略 openspec change 啟動
+  - **底層邏輯**：Spectra 對齊度卡 3/5 = 60% 連 5 輪不動；`openspec/changes/04-audit-citation/` 零檔 → T7.1.d 一直掛 `[ ]`；Epic 4 proposal 是**升格 4/5 = 80%** 的唯一槓桿
+  - **產出**：(a) `openspec/changes/04-audit-citation/proposal.md`：what/why/scope 三段，對齊既有 `src/agents/citation_checker.py`（若無則新建 stub）/ `fact_checker.py` / `auditor.py`；(b) `tasks.md` 4-6 條（T4.1 citation_checker / T4.2 fact_checker 強化 / T4.3 auditor 整合 / T4.4 failure matrix）；(c) `specs/audit/spec.md`：citation 溯源完整性 requirement（SHALL 語氣）
+  - **驗 1**：`ls openspec/changes/04-audit-citation/proposal.md` 存在
+  - **驗 2**：`spectra analyze 04-audit-citation` findings ≤ 3（可留 design.md 缺口）
+  - **驗 3**：`grep -c "^- \[ \]" openspec/changes/04-audit-citation/tasks.md` ≥ 4
+  - **延宕懲罰**：連 2 輪 0 動 = 3.25（Epic 4 是 v4.9 起列的策略槓桿，不能永遠掛空）
+  - commit（ACL 解後）: `feat(openspec): add 04-audit-citation change proposal + tasks + spec`
 
 ### P1 v4.3 新增（架構保險）
 
