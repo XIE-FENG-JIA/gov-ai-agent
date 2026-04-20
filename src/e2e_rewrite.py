@@ -148,13 +148,17 @@ def _read_frontmatter(path: Path) -> tuple[dict[str, Any], str]:
     return (meta if isinstance(meta, dict) else {}), parts[2].strip()
 
 
+def _is_fixture_backed(meta: dict[str, Any]) -> bool:
+    return bool(meta.get("synthetic") or meta.get("fixture_fallback"))
+
+
 def load_real_corpus(base_dir: str | Path = "kb_data/corpus") -> dict[str, dict[str, Any]]:
     corpus_dir = Path(base_dir)
     corpus: dict[str, dict[str, Any]] = {}
     for path in sorted(corpus_dir.rglob("*.md")):
         meta, content = _read_frontmatter(path)
         source_id = str(meta.get("source_id") or meta.get("source_doc_no") or "").strip()
-        if not source_id or meta.get("synthetic") is True:
+        if not source_id or _is_fixture_backed(meta):
             continue
         source_level = "A" if path.parts[-2] == "mojlaw" else "B"
         corpus[source_id] = {

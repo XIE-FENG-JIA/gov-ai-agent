@@ -11871,6 +11871,59 @@ class TestVerifyCitationMetadata:
         assert "A0030055" in result.output
         assert "通過：4/4 項" in result.output
 
+    def test_verify_docx_ignores_fixture_fallback_corpus_entries(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        from src.document.exporter import DocxExporter
+        from src.cli.main import app
+
+        corpus_dir = tmp_path / "kb_data" / "corpus" / "mojlaw"
+        corpus_dir.mkdir(parents=True)
+        (corpus_dir / "A0030055.md").write_text(
+            "---\n"
+            "title: 公文程式條例\n"
+            "source_id: A0030055\n"
+            "source_url: https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030055\n"
+            "synthetic: false\n"
+            "fixture_fallback: true\n"
+            "---\n"
+            "# 公文程式條例\n",
+            encoding="utf-8",
+        )
+
+        output = tmp_path / "fixture-fallback.docx"
+        DocxExporter().export(
+            """# 函
+
+### 主旨
+引用測試
+
+### 說明
+依據《公文程式條例》辦理[^1]。
+
+### 參考來源 (AI 引用追蹤)
+[^1]: [Level A] 公文程式條例 | URL: https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030055 | Hash: a1b2c3d4
+""",
+            str(output),
+            citation_metadata={
+                "reviewed_sources": [
+                    {
+                        "index": 1,
+                        "title": "公文程式條例",
+                        "source_level": "A",
+                        "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030055",
+                        "record_id": "A0030055",
+                        "content_hash": "a1b2c3d4",
+                    }
+                ],
+                "engine": "openrouter/elephant-alpha",
+                "ai_generated": True,
+            },
+        )
+
+        result = runner.invoke(app, ["verify", str(output)])
+        assert result.exit_code == 1
+        assert "找不到對應 repo evidence" in result.output
+
     def test_verify_docx_fails_when_repo_evidence_missing(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         from src.document.exporter import DocxExporter

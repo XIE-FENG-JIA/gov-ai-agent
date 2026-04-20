@@ -27,6 +27,10 @@ def _read_frontmatter(path: Path) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+def _is_fixture_backed(meta: dict) -> bool:
+    return bool(meta.get("synthetic") or meta.get("fixture_fallback"))
+
+
 def _load_corpus_entries(base_dir: Path) -> list[dict[str, str]]:
     entries: list[dict[str, str]] = []
     if not base_dir.exists():
@@ -34,7 +38,7 @@ def _load_corpus_entries(base_dir: Path) -> list[dict[str, str]]:
 
     for path in sorted(base_dir.rglob("*.md")):
         meta = _read_frontmatter(path)
-        if not meta or meta.get("synthetic") is True:
+        if not meta or _is_fixture_backed(meta):
             continue
         entries.append(
             {

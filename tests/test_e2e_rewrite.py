@@ -44,6 +44,16 @@ def test_load_real_corpus_skips_synthetic_and_assigns_source_levels(tmp_path: Pa
         "假資料\n",
         encoding="utf-8",
     )
+    (datagov_dir / "fixture-fallback.md").write_text(
+        "---\n"
+        "title: fixture fallback\n"
+        "source_id: FIX001\n"
+        "synthetic: false\n"
+        "fixture_fallback: true\n"
+        "---\n"
+        "假來源\n",
+        encoding="utf-8",
+    )
 
     corpus = e2e_rewrite.load_real_corpus(tmp_path)
 
@@ -51,6 +61,7 @@ def test_load_real_corpus_skips_synthetic_and_assigns_source_levels(tmp_path: Pa
     assert corpus["A0030055"]["source_level"] == "A"
     assert corpus["162455"]["source_level"] == "B"
     assert "SYN001" not in corpus
+    assert "FIX001" not in corpus
 
 
 def test_find_scenario_supports_tagged_prompt_and_rejects_unknown() -> None:
