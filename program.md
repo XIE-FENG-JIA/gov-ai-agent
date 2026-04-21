@@ -641,26 +641,28 @@
 
 ## P0 — 阻斷性回歸（v4.3：指標 1 回綠·P0.AA 三連跳警報）
 
-### P0.V59-NEW — 🔴 ACL-free·v5.9 新增（2026-04-21 15:10；**第三十七輪 15:38 校準重排**；3 件 P0 + 3 件 P1）
+### P0.V59-NEW — 🔴 ACL-free·v5.9 新增（2026-04-21 15:10；**第三十八輪 17:40 重排；v5.9→v6.0**；3 件 P0 + 3 件 P1）
 
-> **v5.9 第三十七輪重排理由**：v5.9 header 下發 28 min 後 0 動 → 紅線 X 連 1 輪；corpus 60 / pytest 3728 / Spectra 80% 實測已錨；**P0.1-FDA-LIVE-DIAG 從 P1 升 P0 次位**（15 分診斷先於修法，解 corpus 300 三源之一路障）；**T-FAT-ROTATE-V2 刀 3 從 T 段搬到 V59 頂位可見**；**新增 T-BARE-EXCEPT-AUDIT + T9.6-REOPEN-v4 雙 P1**（code smell 盤點 + engineer-log 309 > 300 封存）。
+> **v6.0 第三十八輪重排理由**：v5.9 第三十七輪「下輪必破 3 件」兌現 2/3（corpus ✅ + FDA ✅ + e2e_rewrite **❌ 連 2 輪 0 動 = 3.25**）；engineer-log 326 > 300 hard cap 已破；實測胖檔 8 檔（v5.9 漏記 `datagovtw 410` + `workflow_cmd 406`）、裸 except 136 處（v5.9 漏記 +18）。**P0 順序改寫**：① T-FAT-ROTATE-V2 刀 3 保持首位（連 2 輪 3.25 實錘必破）② T9.6-REOPEN-v4 升 P0 次位（hard cap 破 26 行）③ T-BARE-EXCEPT-AUDIT 刀 2 升 P0 三位（`api/routes/agents.py 9 處` 為 production API handler 吞錯誤最危險點）；新增 EPIC5-TASKS-SPECS P1（Spectra 80%→90% 下槓桿）。
 
+- [ ] **T-FAT-ROTATE-V2（刀 3）** 🔴 **v6.0 P0 首位（45 分；連 2 輪 0 動 = 3.25 實錘；下輪必破）** — 鎖 `src/e2e_rewrite.py 492`；按 `rewrite / assemble / cli` 自然邊界拆成 `src/e2e_rewrite/{__init__,rewrite,assemble,cli}.py`；SOP 第 13 次擴散；`tests/test_e2e_rewrite.py` + `tests/integration/test_e2e_rewrite.py` import 契約守；次刀 `api-agents 488`、三刀 `middleware 469`
+- [ ] **T9.6-REOPEN-v4** 🔴 **v6.0 P0 次位（10 分；hard cap 326 > 300 實錘，連 1 輪 0 動升 P0）** — 封存 engineer-log v5.4/v5.5/v5.6 段到 `docs/archive/engineer-log-202604f.md`；主檔留 v5.7/v5.8/v5.9/v6.0；本輪反思追加 ~40 行後主檔 ~366 行 = **破 hard cap 66 行**
+- [ ] **T-BARE-EXCEPT-AUDIT（刀 2）** 🟠 **v6.0 P0 三位（30 分；production handler 血債升 P0）** — `src/api/routes/agents.py 9 處裸 except` 是 inbound API handler 吞錯誤最危險點；複製 `org_memory_cmd.py` SOP（typed buckets + `logger.warning`）；刀 3 留 `web_preview/app.py 7 / kb/stats.py 6 / knowledge/manager.py 5`；`tests/test_agents_api*.py` + `tests/test_api_auth.py` 回歸守
 - [x] **P0.3-CORPUS-SCALE** ✅（2026-04-21 16:49）— 已執行 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --prune-fixture-fallback --report-path docs/live-ingest-report.md`；corpus **63** → **173**，達成中間里程碑 `find kb_data/corpus -name "*.md" | wc -l` ≥ 150，下一步改跑 `gov-ai kb rebuild --only-real`
 - [x] **P0.1-FDA-LIVE-DIAG** ✅（2026-04-21 16:36）— `FdaApiAdapter` live fetch 斷線已修；`API_URL` 改為 `https://www.fda.gov.tw/DataAction`、兼容中文 schema、無顯式 ID 時生成穩定 `source_id/source_url`、SSL fallback 限縮在 FDA；交付 `docs/fda-endpoint-probe.md`
   - **驗 1**：`python -m pytest tests/test_fda_api_adapter.py tests/test_sources_ingest.py tests/test_live_ingest_script.py -q` = **27 passed**
   - **驗 2**：`python scripts/live_ingest.py --sources fda --limit 3 --require-live --report-path docs/live-ingest-report.md` = **PASS / live_count=3 / fixture_remaining=0**
   - **驗 3**：`python -m pytest tests/ -q --ignore=tests/integration -x` = **3733 passed / 0 failed**
-- [ ] **T-FAT-ROTATE-V2（刀 3）** 🟠 **v5.9 P0 三位（45 分；第三十七輪從 T 段移上）** — 首刀鎖 `src/e2e_rewrite.py 492`；按 `rewrite / assemble / cli` 自然邊界拆成 `src/e2e_rewrite/{__init__,rewrite,assemble,cli}.py`；SOP 第 13 次擴散；`tests/test_e2e_rewrite.py` + `tests/integration/test_e2e_rewrite.py` import 契約守；次刀 `api-agents 488`、三刀 `middleware 469`
-- [ ] **P2-CHROMA-NEMOTRON-VALIDATE** 🟡 v5.9 P1（60 分；**程式已解鎖，runtime 仍缺 key**）— `gov-ai kb rebuild --only-real`（nvidia/llama-nemotron dim=2048）；交付 `docs/embedding-validation.md`（5 E2E 需求 top-K 真公文召回率 + dim 驗證 + cost）
-  - **2026-04-21 校準**：`src/core/llm.py` 已修正 mixed-provider embedding routing；`embedding_provider=openrouter` 不再誤用 active `minimax` 的 `api_key/base_url`
-  - **當前 blocker**：環境僅 `MINIMAX_API_KEY=set`，`LLM_API_KEY/OPENROUTER_API_KEY=missing`；未補 key 前不可宣稱 Nemotron rebuild 驗證完成
-- [x] **T-BARE-EXCEPT-AUDIT** ✅（2026-04-21 17:27）— `src/cli/org_memory_cmd.py` 7 處裸 `except Exception` 已收斂為 typed exception buckets；`list/show/export/report/set/add-term/search` 全補 `logger.warning`，避免 CLI 吞根因又保留使用者輸出穩定；驗證 `python -m pytest tests/test_cli_commands.py -q --no-header` = **751 passed**、`python -m pytest tests/ -q --ignore=tests/integration -x` = **3735 passed / 0 failed**
-- [ ] **T9.6-REOPEN-v4** 🆕 **v5.9 P1 新增（第三十七輪；10 分）** — engineer-log 271 + v5.9 反思 ~38 = **309 > 300 hard cap**；封存 v5.4/v5.5/v5.6 段到 `docs/archive/engineer-log-202604f.md`；主檔留 v5.7/v5.8/v5.9
+- [x] **T-BARE-EXCEPT-AUDIT（刀 1）** ✅（2026-04-21 17:27）— `src/cli/org_memory_cmd.py` 7 處裸 `except Exception` 已收斂為 typed exception buckets；`list/show/export/report/set/add-term/search` 全補 `logger.warning`，避免 CLI 吞根因又保留使用者輸出穩定；驗證 `python -m pytest tests/test_cli_commands.py -q --no-header` = **751 passed**、`python -m pytest tests/ -q --ignore=tests/integration -x` = **3735 passed / 0 failed**
 - [x] **P1-PCC-ADAPTER** ✅（2026-04-21 16:06）— `src/sources/pcc.py` 政府採購網 adapter 已落地；official HTML fixture search/detail + `list / fetch / normalize` 完成，並接入 `_adapter_registry`
   - **完成**：新增 `src/sources/pcc.py`、`tests/fixtures/pcc/{search,PCC-001,PCC-002,PCC-003}.html`、`tests/test_pcc_adapter.py`；`tests/test_sources_base.py` 與 `tests/test_sources_ingest.py` 已補 registry / signature coverage
   - **驗 1**：`python -m pytest tests/test_pcc_adapter.py tests/test_sources_base.py tests/test_sources_ingest.py -q` = **19 passed**
   - **驗 2**：`python -m pytest tests/ -q --ignore=tests/integration -x` = **3732 passed / 0 failed**
-- [ ] **P0.1-MOHW-LIVE-DIAG** 🟡 v5.9 P2（15 分）— `MohwRssAdapter` live fetch 斷線診斷（同 FDA SOP）
+- [ ] **P2-CHROMA-NEMOTRON-VALIDATE** 🟡 v6.0 P1（60 分；**程式已解鎖，runtime 仍缺 key**）— `gov-ai kb rebuild --only-real`（nvidia/llama-nemotron dim=2048）；交付 `docs/embedding-validation.md`（5 E2E 需求 top-K 真公文召回率 + dim 驗證 + cost）
+  - **2026-04-21 校準**：`src/core/llm.py` 已修正 mixed-provider embedding routing；`embedding_provider=openrouter` 不再誤用 active `minimax` 的 `api_key/base_url`
+  - **當前 blocker**：環境僅 `MINIMAX_API_KEY=set`，`LLM_API_KEY/OPENROUTER_API_KEY=missing`；未補 key 前不可宣稱 Nemotron rebuild 驗證完成
+- [ ] **P0.1-MOHW-LIVE-DIAG** 🟡 v6.0 P1（15 分；連 2 輪 0 動邊緣）— `MohwRssAdapter` live fetch 斷線診斷（同 FDA SOP）；15 分 curl + schema diff，解 corpus 300 三源缺一
+- [ ] **EPIC5-TASKS-SPECS** 🆕 **v6.0 P1 新增（40 分；Spectra 80% → 90% 下槓桿）** — Epic 5 proposal 已落但 `openspec/changes/05-kb-governance/{tasks.md,specs/kb-governance/spec.md}` 未開；寫死 `--only-real` rebuild / retirement policy / post-rebuild verify 三條 SHALL requirement + 4-6 條 tasks
 
 ### P0.V57-CLIENT-AUTH — 🔴 ACL-free·v5.7 首位（40 分；真 blocker，非 rate-limit）
 

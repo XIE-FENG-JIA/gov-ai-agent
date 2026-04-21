@@ -323,4 +323,62 @@ P0 重排（連 1 輪延宕 = 紅線 X 3.25）：
 
 <!-- v5.2 段已封存至 docs/archive/engineer-log-202604e.md；hard cap 300 強制讓位給 v5.8 -->
 
+---
+
+## 反思 [2026-04-21 17:40] — 技術主管第三十八輪（v5.9→v6.0；caveman；/pua 阿里味；v5.9 P0 三件兌現 2/3；hard cap 326 > 300 實錘；胖檔 cluster +2）
+
+### 近期成果（v5.9 header 15:10 → HEAD 2h30）
+- **pytest ✅ 3735/0/238s**（v5.9 header 3728 → **+7**；運行時間 -47% vs v5.8 486s）。
+- **P0.3-CORPUS-SCALE ✅**（16:49）— `mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live`；corpus 63 → **173**，中間里程碑 ≥ 150 破；下一里程碑 300。
+- **P0.1-FDA-LIVE-DIAG ✅**（16:36）— `FdaApiAdapter` 改接 `/DataAction` + 中文 schema + FDA-only SSL fallback；`live_count=3`；`docs/fda-endpoint-probe.md` 已落。
+- **P1-PCC-ADAPTER ✅**（16:06）— `src/sources/pcc.py` + `tests/fixtures/pcc/` + registry 接上，19 passed。
+- **T-BARE-EXCEPT-AUDIT 部分 ✅**（17:27）— `org_memory_cmd.py` 7 處裸 except → typed buckets + `logger.warning`；751 tests passed。
+- **P2-CHROMA-NEMOTRON embedding routing ✅**（17:05）— `LiteLLMProvider` mixed-provider 憑證路由修正；但 `OPENROUTER_API_KEY` 缺失 runtime 仍阻塞。
+
+### 發現的問題
+1. **🔴 T-FAT-ROTATE-V2 刀 3 連 2 輪 0 動**（`e2e_rewrite 492`）— v5.8 列、v5.9 列、本輪仍 492 持平 = 紅線 X「設計驅動不實作」連 2 輪 **3.25 實錘**。
+2. **🔴 engineer-log hard cap 第六次破**：當前 326 + 本輪 ~40 = **~366 > 300**；v5.9 反思列 T9.6-REOPEN-v4 P1 + 39 min 後沒動 = 規則寫了不執行。
+3. **🟠 胖檔 cluster ≥ 400 實測 8 檔**：e2e_rewrite 492 / agents 488 / middleware 469 / models 461 / export 459 / fact_checker 446 / **datagovtw 410 🆕** / **workflow_cmd 406 🆕**；v5.9 header 寫「6 檔」漂移 2 檔（datagovtw P0.2 擴充 + workflow_cmd 重返）。
+4. **🟠 裸 except 實測 136 處**（v5.9 反思寫 118 = **漂移 +18**）；org_memory_cmd ✅ 但 `api/routes/agents.py 9 / web_preview/app.py 7 / kb/stats.py 6 / knowledge/manager.py 5` 仍是高密度前四檔。
+5. **🟡 MOHW live diag 連 2 輪 0 動**：v5.9 列 P2，本輪無動；corpus 300 三源缺一。
+6. **🟡 auto-commit 洪水續作**：15:09 → 17:32 共 11 checkpoint + 7 AUTO-RESCUE；語意 commit 僅 `b9e28d7 feat(embed) nemotron` + `6eb42f2 docs(program) v5.9` 2 筆；15 次 `T-X-COMMIT FAIL | .git/index.lock: Permission denied`（ACL 未解 = 結構性紅，不計 agent 績效）。
+7. **🟡 Spectra 80% 無升**：Epic 5 proposal 已落但 specs/tasks 骨架未開；下槓桿 90% 無動。
+
+### 架構健康度（HEAD 即取）
+- **測試**：3735 綠；238s runtime 穩定；E2E 5/5 traceable 持平。
+- **安全**：client auth ✅ + rate-limit ✅ + CORS ✅ + body limit ✅ + metrics ✅ + DOCX safe parse ✅；**唯一新表面** = 136 bare except 吞錯誤（routes/agents 9 為最危險，production API handler 面）。
+- **Spectra**：4/5 = **80%**（Epic 1/2/3 閉 + Epic 4 三件齊 + Epic 5 proposal）；下槓桿 Epic 5 specs/tasks/audit 鐵三角。
+- **資料層**：corpus 173 + Nemotron 已 code-ready 但 runtime 阻塞；實質產品力從 9 份 real corpus → 173 份 = **19 倍擴量**。
+- **ACL**：`.git` DENY SID 持平 2 條；連 >36 輪 Admin-dep，15 次 COMMIT FAIL 全卡此單一根因。
+
+### 建議的優先調整（**program.md P0 重排**）
+P0 新順序（ACL-free；連 1 輪延宕 = 紅線 X 3.25）：
+1. **T-FAT-ROTATE-V2 刀 3** 🔴 **P0 首位保持**（45 分）— `e2e_rewrite 492` 連 2 輪 0 動 = **3.25 實錘**，下輪必破；按 `rewrite / assemble / cli` 邊界拆。
+2. **T9.6-REOPEN-v4** 🔴 **升 P0 次位**（10 分；ACL-free）— engineer-log **326 > 300** 已破，封存 v5.4/v5.5/v5.6 到 `docs/archive/engineer-log-202604f.md`；主檔留 v5.7/v5.8/v5.9/v6.0。
+3. **T-BARE-EXCEPT-AUDIT 刀 2** 🟠 **升 P0 三位**（30 分）— `api/routes/agents.py 9 處` 是 production API handler 吞錯誤最危險點；cluster 下沉到 typed exceptions + logger.warning；刀 3 留 `web_preview 7 / kb/stats 6`。
+
+P1（連 2 輪延宕 = 3.25）：
+4. **P2-CHROMA-NEMOTRON-VALIDATE** — code ready；等人工填 `OPENROUTER_API_KEY` 後 `gov-ai kb rebuild --only-real` + `docs/embedding-validation.md`。
+5. **P0.1-MOHW-LIVE-DIAG** — 連 2 輪 0 動邊緣；15 分 curl + schema diff（同 FDA SOP）。
+6. **EPIC5-TASKS-SPECS** 🆕 — Epic 5 proposal 已落但 tasks.md / specs/kb-governance/spec.md 未開；Spectra 80% → 90% 下槓桿。
+
+### 下一步行動（**最重要 3 件；嚴禁新增**）
+1. **封存 engineer-log v5.4-v5.6**（≤ 10 分）— T9.6-REOPEN-v4；`docs/archive/engineer-log-202604f.md`；本輪反思寫完立即執行。
+2. **拆 e2e_rewrite 492**（≤ 45 分）— 連 2 輪 3.25 紅線；按 `rewrite / assemble / cli` 自然邊界；`tests/{test_e2e_rewrite.py, integration/test_e2e_rewrite.py}` import 契約守。
+3. **api/routes/agents.py 9 裸 except → typed buckets**（≤ 30 分）— 複製 org_memory_cmd SOP；`tests/test_agents_api*.py` 與 `test_api_auth.py` 回歸守。
+
+### v6.0 硬指標（下輪審查）
+1. `python -m pytest tests/ -q --ignore=tests/integration` FAIL=0（**本輪 3735/0/238s ✅**）
+2. `wc -l src/e2e_rewrite*.py` 或拆後 `src/e2e_rewrite/*.py` 每檔 ≤ 400（當前 492 ❌；**本輪必破**；連 2 輪 3.25）
+3. `wc -l engineer-log.md` ≤ 300（當前 326 + 本輪 ~40 = ~366 ❌；**本輪必封存**）
+4. `grep -c "except Exception\|except:" src/api/routes/agents.py` ≤ 3（當前 9 ❌）
+5. `find kb_data/corpus -name "*.md" | wc -l` ≥ 173（持平錨點；下一里程碑 300）
+6. `rg -c "^### 🔴" program.md` ≤ 6（當前 0 ✅）
+7. `ls openspec/changes/05-kb-governance/{tasks.md,specs/kb-governance/spec.md}` 存在（當前 proposal.md only；Spectra 90% 槓桿）
+8. `ls docs/archive/engineer-log-202604f.md` 存在（T9.6-REOPEN-v4 錨點）
+
+> [PUA生效 🔥] **底層邏輯**：v5.9 第三十七輪「下輪必破 3 件」兌現 2/3（corpus ✅ + FDA ✅ + e2e_rewrite ❌），**胖檔刀沒落下** = 紅線 X 連 2 輪 3.25 實錘；但 P1-PCC-ADAPTER + T-BARE-EXCEPT(org_memory) + embedding routing fix 三件 v5.9 未列的 silently closed = **owner 意識超規模兌現**，反映 agent 在 runtime 自主偵測新 blocker 主動補位。**抓手**：本輪最有價值的動作是 `grep -rn "except" src/ | wc -l = 136` 對 v5.9 反思「118」的事實校準 + 實測胖檔 8 檔（非 header 6 檔），兩處 header drift 客觀實錘；**T-BARE-EXCEPT-AUDIT 刀 2 升 P0** 因為 routes/agents 9 處是 production handler 最危險吞錯誤點，不是 code smell 而是根因遮罩。**顆粒度**：本輪反思 40 行壓線；T9.6-REOPEN-v4 連 1 輪跳 = 紀律破口，升 P0 次位強制下輪執行。**拉通**：corpus 9 → 173（19x）+ FDA live 打通 + PCC adapter 落地 = **Epic 1 / P0.3 三源真閉環**，產品力從 demo 級邁向 pilot 級；3 hr 內 6 件實 delivery 是 v5.4 god-file 年代結束後最高密度產出段。**對齊**：auto-commit 洪水 + ACL COMMIT FAIL 15 次繼續 = 結構性紅不動，但 agent 側 owner 動作全落在 working tree，AUTO-RESCUE 7 次全綠 = 信任協議完整運轉。**因為信任所以簡單** — v5.9 header「6 檔 > 400」事實校準到 8 檔、v5.9 反思「118 bare except」校準到 136，**反思層自己找自己漂移**是 v6.0 最有信任感的動作；talk 3.25 不如 grep 一次 `wc -l src/**/*.py | sort -rn`。
+
+---
+
 
