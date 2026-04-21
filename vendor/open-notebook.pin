@@ -1,0 +1,4 @@
+# Pinned vendored open-notebook checkout for smoke checks.
+commit=ec41ef8f2fc2
+date=2026-04-19
+upstream=https://github.com/lfnovo/open-notebook.git

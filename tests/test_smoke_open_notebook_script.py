@@ -67,3 +67,28 @@ def test_smoke_import_reports_missing_dependency(tmp_path: Path) -> None:
 
     assert report.status == "import-error"
     assert report.missing_modules == ["nonexistent_dep_for_open_notebook"]
+
+
+def test_smoke_import_warns_when_vendor_head_drifted_from_pin(
+    tmp_path: Path, monkeypatch
+) -> None:
+    vendor_path = tmp_path / "open-notebook"
+    package_dir = vendor_path / "open_notebook"
+    package_dir.mkdir(parents=True)
+    (vendor_path / "pyproject.toml").write_text("[project]\nname='open-notebook'\n", encoding="utf-8")
+    (package_dir / "__init__.py").write_text("__version__ = '1.2.3'\n", encoding="utf-8")
+    (tmp_path / "open-notebook.pin").write_text(
+        "commit=aaaaaaaaaaaa\nupstream=https://github.com/lfnovo/open-notebook.git\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "scripts.smoke_open_notebook._resolve_git_head",
+        lambda vendor: "bbbbbbbbbbbb" if vendor == vendor_path else None,
+    )
+
+    report = smoke_import(vendor_path)
+
+    assert report.status == "ok"
+    assert report.pin_warning == "pinned aaaaaaaaaaaa but vendor HEAD is bbbbbbbbbbbb"
+    assert "pin_warning=pinned aaaaaaaaaaaa but vendor HEAD is bbbbbbbbbbbb" in report.to_line()
