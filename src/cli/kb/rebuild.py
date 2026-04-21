@@ -2,7 +2,7 @@ from pathlib import Path
 
 import typer
 
-from src.knowledge.corpus_provenance import is_active_corpus_metadata
+from src.knowledge.corpus_provenance import is_active_corpus_metadata, is_fixture_backed_metadata
 
 from ._shared import app, console
 from .corpus import _ingest_fetch_results, _load_full_document, _sanitize_metadata, parse_markdown_with_metadata
@@ -34,6 +34,74 @@ def _should_skip_rebuild_file(metadata: dict, only_real: bool) -> bool:
     return not is_active_corpus_metadata(metadata)
 
 
+def _skip_reason(metadata: dict, only_real: bool) -> str | None:
+    if metadata.get("deprecated"):
+        return "deprecated"
+    if not only_real:
+        return None
+    if is_active_corpus_metadata(metadata):
+        return None
+    if bool(metadata.get("synthetic")):
+        return "synthetic"
+    if is_fixture_backed_metadata(metadata):
+        return "fixture_fallback"
+    return "inactive"
+
+
+def _corpus_collection_for_metadata(metadata: dict) -> str:
+    doc_type = str(metadata.get("doc_type", "")).strip()
+    return "regulations" if doc_type == "法規" else "policies"
+
+
+def _print_provenance_summary(imported: int, skipped: dict[str, int]) -> None:
+    details = [f"匯入 real {imported} 筆"]
+    for reason in ("synthetic", "fixture_fallback", "deprecated", "inactive"):
+        count = skipped.get(reason, 0)
+        if count:
+            details.append(f"跳過 {reason} {count} 筆")
+    console.print(f"[bold cyan]only-real provenance：{' / '.join(details)}[/bold cyan]")
+
+
+def _rebuild_active_corpus(kb, corpus_root: Path) -> tuple[int, dict[str, int]]:
+    files = sorted(corpus_root.rglob("*.md"))
+    imported_by_collection = {collection: 0 for collection, _ in _REBUILD_COLLECTIONS}
+    skipped_by_reason: dict[str, int] = {}
+
+    for file_idx, file_path in enumerate(files):
+        metadata, content = parse_markdown_with_metadata(file_path)
+        reason = _skip_reason(metadata, only_real=True)
+        if reason:
+            skipped_by_reason[reason] = skipped_by_reason.get(reason, 0) + 1
+            continue
+
+        collection = _corpus_collection_for_metadata(metadata)
+        metadata.setdefault("title", file_path.stem)
+        metadata.setdefault("doc_type", "unknown")
+        doc_seed = str(metadata.get("source_id") or file_path.stem)
+        saved_id = kb.upsert_document(
+            kb.make_deterministic_id(doc_seed, collection),
+            content,
+            _sanitize_metadata(metadata),
+            collection_name=collection,
+            full_document=_load_full_document(kb, file_path, content),
+            chunk_index=file_idx,
+            total_chunks=len(files),
+        )
+        if saved_id:
+            imported_by_collection[collection] += 1
+
+    console.print(
+        "[bold cyan]only-real 模式：以 active corpus 為唯一重建來源"
+        f"（{corpus_root.as_posix()}）[/bold cyan]"
+    )
+    for collection, _ in _REBUILD_COLLECTIONS:
+        console.print(f"[green]{collection}[/green]：重建 {imported_by_collection[collection]} 筆")
+
+    total_imported = sum(imported_by_collection.values())
+    _print_provenance_summary(total_imported, skipped_by_reason)
+    return total_imported, skipped_by_reason
+
+
 @app.command("rebuild")
 def rebuild(
     base_dir: str = typer.Option("./kb_data", "--base-dir", help="知識來源根目錄"),
@@ -54,6 +122,20 @@ def rebuild(
     kb = _init_kb()
     console.print("[bold red]正在重建知識庫索引...[/bold red]")
     kb.reset_db()
+
+    corpus_root = source_root / "corpus"
+    if only_real and corpus_root.exists() and any(corpus_root.rglob("*.md")):
+        total_imported, skipped_by_reason = _rebuild_active_corpus(kb, corpus_root)
+        total_skipped = sum(skipped_by_reason.values())
+        console.print(
+            f"[bold]重建完成：總計 {total_imported} 筆"
+            + (f" / 跳過 {total_skipped} 筆" if total_skipped else "")
+            + "[/bold]"
+        )
+        console.print(f"目前資料庫統計：{kb.get_stats()}")
+        return
+    if only_real:
+        console.print("[yellow]only-real 模式未找到 kb_data/corpus，退回 legacy collections 重建。[/yellow]")
 
     total_imported = 0
     total_skipped = 0

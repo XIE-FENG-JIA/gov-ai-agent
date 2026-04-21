@@ -921,6 +921,83 @@ class TestKBCommands:
         assert mock_kb_instance.upsert_document.call_count == 1
         assert "examples：重建 1 筆 / 跳過 1 筆" in result.stdout
         assert "重建完成：總計 1 筆 / 跳過 1 筆" in result.stdout
+        assert "only-real 模式未找到 kb_data/corpus" in result.stdout
+
+    @patch("src.cli.kb.KnowledgeBaseManager")
+    @patch("src.cli.kb.get_llm_factory")
+    @patch("src.cli.kb.ConfigManager")
+    def test_kb_rebuild_only_real_uses_corpus_operational_path(self, mock_cm, mock_factory, mock_kb_class, tmp_path):
+        """測試 kb rebuild --only-real 會優先重建 kb_data/corpus 並回報 provenance 統計。"""
+        from src.cli.main import app
+
+        mock_cm.return_value.config = {
+            "llm": {"provider": "mock"},
+            "knowledge_base": {"path": "./test_kb"},
+        }
+        mock_kb_instance = mock_kb_class.return_value
+        mock_kb_instance.get_stats.return_value = {
+            "examples_count": 0,
+            "regulations_count": 1,
+            "policies_count": 1,
+        }
+        mock_kb_instance.contextual_retrieval = False
+        mock_kb_instance.upsert_document.side_effect = ["law-1", "policy-1"]
+
+        corpus_dir = tmp_path / "corpus"
+        (corpus_dir / "mojlaw").mkdir(parents=True, exist_ok=True)
+        (corpus_dir / "datagovtw").mkdir(parents=True, exist_ok=True)
+        (corpus_dir / "legacy").mkdir(parents=True, exist_ok=True)
+
+        (corpus_dir / "mojlaw" / "A0001.md").write_text(
+            "---\n"
+            "title: 真法規\n"
+            "source_id: A0001\n"
+            "doc_type: 法規\n"
+            "synthetic: false\n"
+            "fixture_fallback: false\n"
+            "---\n"
+            "法規內容\n",
+            encoding="utf-8",
+        )
+        (corpus_dir / "datagovtw" / "doc-1.md").write_text(
+            "---\n"
+            "title: 真公告\n"
+            "source_id: doc-1\n"
+            "doc_type: 公告\n"
+            "synthetic: false\n"
+            "fixture_fallback: false\n"
+            "---\n"
+            "公告內容\n",
+            encoding="utf-8",
+        )
+        (corpus_dir / "datagovtw" / "fixture.md").write_text(
+            "---\n"
+            "title: fixture\n"
+            "source_id: fixture\n"
+            "doc_type: 公告\n"
+            "synthetic: true\n"
+            "fixture_fallback: true\n"
+            "---\n"
+            "fixture 內容\n",
+            encoding="utf-8",
+        )
+        (tmp_path / "examples" / "legacy.md").parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / "examples" / "legacy.md").write_text("# 舊資料\n內容", encoding="utf-8")
+
+        result = runner.invoke(app, ["kb", "rebuild", "--base-dir", str(tmp_path), "--only-real"])
+
+        assert result.exit_code == 0
+        mock_kb_instance.reset_db.assert_called_once()
+        assert mock_kb_instance.upsert_document.call_count == 2
+        collection_names = [call.kwargs["collection_name"] for call in mock_kb_instance.upsert_document.call_args_list]
+        assert sorted(collection_names) == ["policies", "regulations"]
+        assert "only-real 模式：以 active corpus" in result.stdout
+        assert "為唯一重建來源" in result.stdout
+        assert "examples：重建 0 筆" in result.stdout
+        assert "regulations：重建 1 筆" in result.stdout
+        assert "policies：重建 1 筆" in result.stdout
+        assert "only-real provenance：匯入 real 2 筆 / 跳過 synthetic 1 筆" in result.stdout
+        assert "重建完成：總計 2 筆 / 跳過 1 筆" in result.stdout
 
     @patch("src.cli.kb.KnowledgeBaseManager")
     @patch("src.cli.kb.get_llm_factory")
