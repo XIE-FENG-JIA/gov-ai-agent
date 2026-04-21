@@ -28,7 +28,7 @@
 
 ### 架構健康度（HEAD 即取）
 - **胖八 ≤ 600，全 ≤ 400 軟違**；`knowledge/manager 350 / _manager_hybrid 341`（v5.3 拆完擦邊穩定）；`api_server.py 92` shim 保留；`e2e_rewrite 492` 單檔承接產品核心 E2E，可輕度拆。
-- **測試**：tests/ 81+ 檔；`test_api_auth 114` / `test_realtime_lookup 747` / `test_config_tools_extra 401` / `test_e2e_rewrite 141`；熱路徑全綠（v5.6 反思 3697/0、v5.7 header 3702/0）；本輪全量 pytest 背景執行中（Monitor 追蹤）。
+- **測試**：tests/ 81+ 檔；`test_api_auth 114` / `test_realtime_lookup 747` / `test_config_tools_extra 401` / `test_e2e_rewrite 141`；**本輪全量 pytest 3709 passed / 0 failed / 607.48s**（v5.7 header 3702 → **+7**）；熱路徑 5 檔 824/0/177.77s 獨立驗。
 - **安全**：`.env` 未 tracked；`HTTPBearer + API_CLIENT_KEY` 多 key 支援；rate-limit / CORS / body limit / metrics 中介全齊；DOCX safe parse（v5.2 落）；**client auth 已非上線 blocker**。
 - **Spectra**：Epic 1/2/3 全閉（15/15 + 15/15 + 9/9）；Epic 4/5 proposal = 0/2 → 60% 對齊；**產品核心 E2E（T5.4）持續 PASS，5/5 docx traceable**。
 
@@ -44,7 +44,7 @@ P0 重排（連 1 輪延宕 = 紅線 X 3.25）：
 3. **config_tools 拆**：按 `show/validate/fetch_models/init/set_value/export/backup` 自然邊界，測試 `tests/test_config_tools_extra.py 401` 行守住。
 
 ### v5.7 硬指標（下輪審查）
-1. `python -m pytest tests/ -q --ignore=tests/integration` FAIL=0（v5.7 header 3702/0；本輪 Monitor 中）
+1. `python -m pytest tests/ -q --ignore=tests/integration` FAIL=0（**本輪 3709/0/607.48s ✅**；v5.7 header 3702 → +7）
 2. `ls openspec/changes/04-audit-citation/proposal.md` 存在（當前 ❌；**本輪必破**）
 3. `wc -l src/cli/config_tools*.py` 每檔 ≤ 400（當前 585 ❌；**本輪必破**）
 4. `wc -l engineer-log.md` ≤ 300（當前 181 + 本輪 ~40 = ~221 ✅）

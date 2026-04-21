@@ -25,22 +25,22 @@
 > 3. `T-INTEGRATION-GATE`（P1 v4.3 新增）**實質已閉** — `scripts/run_nightly_integration.{py,sh,ps1}` + `docs/integration-nightly.md` 已落（P0.INTEGRATION-GATE 同件已勾）
 > 4. v5.6 反思「api_server rate-limit 未補」= **錯誤**；實測 `src/api/middleware.py:108` 已落 rate-limiter + 5 處 header 注入；**真缺口 = client auth（HTTPBearer / API key）**
 >
-> **v5.7 P0 重排（ACL-free；連 1 輪延宕 = 紅線 X 3.25）**：
-> 1. **T-CLIENT-AUTH** 🔴（40 分；ACL-free）— `src/api/middleware.py` 或 `src/api/auth.py` 新增 HTTPBearer + `API_CLIENT_KEY` env；FastAPI `Depends(require_api_key)` 掛 `src/api/routes/{agents,workflow,knowledge}.py` 寫操作端點；健康檢查與 `/docs` 保開；`.env.example` 補 `API_CLIENT_KEY=` placeholder；`tests/test_api_auth.py` 覆蓋 401 / 200 / disabled fallback。**上線 blocker，v5.5 OVERRIDE 已標註為 D1**
-> 2. **P1.EPIC4-PROPOSAL** 🔴（40 分；ACL-free，升 P0）— `openspec/changes/04-audit-citation/{proposal.md,tasks.md,specs/audit/spec.md}` 首版；**連 8 輪 0 動 = 紅線 X「設計驅動不實作」邊緣**；Spectra 3/5 → 3.3/5 唯一槓桿
-> 3. **T-FAT-ROTATE-V2** 🟠（90 分；ACL-free，輪拆首刀）— v5.7 首刀砍 **`src/cli/config_tools.py 585`** → `config_tools/{__init__,show,edit,diagnose}.py`（SOP 第 11 次擴散）；本輪只鎖 1 檔，其餘 7 檔下輪再輪
+> **v5.7 P0 重排（第三十五輪技術主管 10:40 校準後；ACL-free；連 1 輪延宕 = 紅線 X 3.25）**：
+> 1. **T-CLIENT-AUTH** ✅ **已閉（事實校準；2026-04-21 10:40）** — `src/api/auth.py 49` 行（`HTTPBearer(auto_error=False)` + `require_api_key(creds, x_api_key)` + `API_CLIENT_KEY` env multi-key split）；`src/api/routes/{agents.py,knowledge.py,workflow/_endpoints.py}` 三處 `WRITE_AUTH = [Depends(require_api_key)]` 掛上；`tests/test_api_auth.py 114` 行 401/200/dev-mode 齊；`.env.example:84 API_CLIENT_KEY=` placeholder 已落。**v5.7 rollup 寫「本輪必破」= 第 N+2 次 header lag HEAD（紅線 X 子條款「未驗即寫 header」復活）；本輪校準為 ✅ 不再列 P0**
+> 2. **P1.EPIC4-PROPOSAL** 🔴 **升 P0 首位（40 分；ACL-free）** — `openspec/changes/04-audit-citation/{proposal.md,tasks.md,specs/audit/spec.md}` 首版；**連 9 輪 0 動**（v4.9/v5.0/v5.1/v5.2/v5.3/v5.4/v5.5/v5.6/v5.7）= 紅線 X「設計驅動不實作」**邊緣**；Spectra 3/5 → 3.3/5 唯一槓桿
+> 3. **T-FAT-ROTATE-V2** 🟠 **P0 次位（90 分；ACL-free，輪拆首刀）** — v5.7 首刀砍 **`src/cli/config_tools.py 585`** → `config_tools/{__init__,show,validate,fetch_models,init_cmd,set_value,export,backup}.py`（8 函式自然邊界：test_connectivity 20 / show 44 / config_validate 125 / fetch_models 177 / init 329 / set_value 429 / export 492 / config_backup/restore 521-585）；SOP 第 11 次擴散；`tests/test_config_tools_extra.py 401` 行守 import 契約；本輪只鎖 1 檔，其餘 7 檔下輪再輪
 >
 > **v5.7 P1（連 2 輪延宕 = 3.25）**：
 > 4. **T-FAT-ROTATE-V2-NEXT** — 次輪鎖 `src/knowledge/realtime_lookup.py 520`、`src/e2e_rewrite.py 492`、`src/api/routes/agents.py 477` 擇一
 > 5. **P1.EPIC5-PROPOSAL** — `openspec/changes/05-kb-governance/` Epic 5 KB 治理 proposal（連 8 輪 0 動；Spectra 升 4/5）
 > 6. **P1.3 `.env` + litellm smoke** — ACL-gated；等人工填 `OPENROUTER_API_KEY` 後驗
 >
-> **v5.7 下輪硬指標（下輪審查）**：
-> 1. `python -m pytest tests/ -q --ignore=tests/integration` FAIL=0（當前 ✅ 3702/0）
-> 2. `grep -c "HTTPBearer\|API_CLIENT_KEY" src/api/*.py src/api/routes/*.py` ≥ 3（當前 **0 ❌**；本輪必破）
-> 3. `ls openspec/changes/04-audit-citation/proposal.md` 存在（當前 ❌；本輪必破）
-> 4. `wc -l src/cli/config_tools.py` 或拆後 `src/cli/config_tools/*.py` 每檔 ≤ 400（當前 585 ❌；本輪必破）
-> 5. `wc -l engineer-log.md` ≤ 300（當前 181 ✅）
+> **v5.7 下輪硬指標（下輪審查；第三十五輪 10:40 校準）**：
+> 1. `python -m pytest tests/ -q --ignore=tests/integration` FAIL=0（**本輪全量 3709/0/607.48s ✅**；v5.7 rollup 3702 → +7；熱路徑 `test_api_auth+writer+editor+citation_level+cli_commands` = 824/0/177.77s 獨立再驗）
+> 2. `rg -c "HTTPBearer\|API_CLIENT_KEY\|require_api_key" src/api/auth.py src/api/routes/*.py src/api/routes/**/*.py` ≥ 10（當前 **≥ 10 ✅** 校準；v5.7 rollup 誤記 0）
+> 3. `ls openspec/changes/04-audit-citation/proposal.md` 存在（當前 ❌；**本輪必破**；連 9 輪 0 動 = 紅線 X 邊緣）
+> 4. `wc -l src/cli/config_tools.py` 或拆後 `src/cli/config_tools/*.py` 每檔 ≤ 400（當前 585 ❌；**本輪必破**）
+> 5. `wc -l engineer-log.md` ≤ 300（當前 181 + v5.7 反思追加後 ~223 ✅）
 > 6. `rg -c "^### 🔴" program.md` ≤ 6（當前 3 ✅）
 > 7. `find kb_data/corpus -name "*.md"` = 9（持平 ✅）
 > 8. `ls tests/integration/test_e2e_rewrite.py scripts/run_e2e.py docs/e2e-report.md` 三檔齊（持平 ✅）
@@ -52,6 +52,12 @@
 > - **Spectra 策略**：Epic 4 proposal 優先於 Epic 5（連 8 輪死水更重）
 > - **顆粒度**：本輪 header 約 50 行；引用 v5.6 反思事實不再重寫一輪反思
 > - **歷史保留**：v5.5/v5.4/v5.3… header 全部不動
+>
+> **v5.7 第三十五輪校準（2026-04-21 10:40 技術主管 /pua 深度回顧）**：
+> - **T-CLIENT-AUTH 實質已閉**：v5.7 rollup 寫「當前 ❌；本輪必破」是事實錯誤；實測 `auth.py 49` 行 + 3 routes 掛載 + 114 行 test + env.example placeholder 全落；header 第 N+2 次 lag HEAD（紅線 X 子條款「未驗即寫 rollup」復活）
+> - **P0 首位改由 EPIC4-PROPOSAL 承接**：連 9 輪 0 動 = 紅線 X「設計驅動不實作」邊緣，Spectra 3/5 → 3.3/5 唯一槓桿
+> - **T-FAT-ROTATE-V2 維持 P0 次位**：config_tools 585 按 8 函式自然邊界切
+> - **本輪反思已追加 engineer-log**（40 行硬 cap；~181 → ~223 ≤ 300）
 >
 > **紅線狀態**：核心 3 + 實戰 X 不變；v5.7 不新增紅線；「設計驅動不實作」子條款對 P1.EPIC4-PROPOSAL 連 8 輪 0 動加壓。
 
