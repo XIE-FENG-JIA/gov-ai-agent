@@ -121,10 +121,11 @@ class TestFactCheckerCheck:
         verifier = MagicMock()
         verifier.verify_citations.side_effect = RuntimeError("API down")
         fc = FactChecker(mock_llm, law_verifier=verifier)
-        result = fc.check("依據行政程序法辦理。", doc_type="函")
-        # 不應崩潰，仍然呼叫 LLM
+        result = fc.check("依據行政程序法第1條辦理。", doc_type="函")
+        # 不應崩潰，仍然呼叫 LLM，且要留下 loud failure finding
         assert isinstance(result, ReviewResult)
         mock_llm.generate.assert_called_once()
+        assert any("即時法規驗證服務失敗" in issue.description for issue in result.issues)
 
     def test_no_doc_type(self, mock_llm):
         """不傳 doc_type 時不做跨文件類型比對"""

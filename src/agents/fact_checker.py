@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import math
 import pathlib
@@ -10,6 +11,7 @@ from src.core.llm import LLMProvider
 from src.core.review_models import ReviewResult
 from src.core.constants import LLM_TEMPERATURE_PRECISE, MAX_DRAFT_LENGTH, DEFAULT_REVIEW_SCORE, escape_prompt_tag
 from src.agents.review_parser import parse_review_response
+from src.document.citation_metadata import extract_reference_entries
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -65,13 +67,21 @@ class FactChecker:
         # 即時法規驗證
         verification_context = ""
         citation_checks: list = []
+        verification_failed = False
         if self.law_verifier:
             try:
                 from src.knowledge.realtime_lookup import format_verification_results
                 citation_checks = self.law_verifier.verify_citations(draft)
                 verification_context = format_verification_results(citation_checks)
             except Exception as exc:
+                verification_failed = True
                 logger.warning("即時法規驗證失敗，降級為純 LLM 審查: %s", exc)
+
+        repo_issues = self._build_repo_owned_issues(
+            draft=draft,
+            citation_checks=citation_checks,
+            verification_failed=verification_failed,
+        )
 
         # 法規-文件類型交叉比對
         cross_ref_section = ""
@@ -179,11 +189,140 @@ Do NOT write vague suggestions like "請確認引用是否正確". Give the spec
             response = self.llm.generate(prompt, temperature=LLM_TEMPERATURE_PRECISE)
         except Exception as exc:
             logger.warning("FactChecker LLM 呼叫失敗: %s", exc)
-            return ReviewResult(agent_name=self.AGENT_NAME, issues=[], score=0.0, confidence=0.0)
-        return parse_review_response(
+            return self._merge_repo_issues(
+                ReviewResult(agent_name=self.AGENT_NAME, issues=[], score=0.0, confidence=0.0),
+                repo_issues,
+            )
+        return self._merge_repo_issues(
+            parse_review_response(
             response,
             agent_name=self.AGENT_NAME,
             category=self.CATEGORY,
+            ),
+            repo_issues,
+        )
+
+    def _build_repo_owned_issues(
+        self,
+        *,
+        draft: str,
+        citation_checks: list,
+        verification_failed: bool,
+    ) -> list:
+        issues = []
+        reference_entries = extract_reference_entries(draft)
+        referenced_titles = [str(entry.get("title", "")) for entry in reference_entries]
+
+        if verification_failed and self._draft_has_legal_claims(draft):
+            issues.append(
+                {
+                    "severity": "error",
+                    "location": "即時法規驗證",
+                    "description": "即時法規驗證服務失敗，當前無法確認法規引用真實性，不能視為 citation-clean。",
+                    "suggestion": "修復 realtime_lookup 或稍後重跑審查；在驗證恢復前，勿將此草稿視為已完成法規查核。",
+                }
+            )
+
+        for chk in citation_checks:
+            citation_text = getattr(chk.citation, "original_text", "") or getattr(chk.citation, "law_name", "法規引用")
+            law_name = getattr(chk.citation, "law_name", "")
+            article_no = getattr(chk.citation, "article_no", None)
+            article_exists = getattr(chk, "article_exists", None)
+
+            if not chk.law_exists:
+                issues.append(
+                    {
+                        "severity": "error",
+                        "location": getattr(chk.citation, "location", "法規引用"),
+                        "description": f"法規引用不可驗證：{citation_text} 不存在於全國法規資料庫。",
+                        "suggestion": f"刪除或改正「{citation_text}」；改用實際存在的法規名稱與條號。",
+                    }
+                )
+                continue
+
+            if article_no and article_exists is False:
+                issues.append(
+                    {
+                        "severity": "error",
+                        "location": getattr(chk.citation, "location", "法規引用"),
+                        "description": f"法規引用不可驗證：{law_name} 第 {article_no} 條不存在或查無條文內容。",
+                        "suggestion": f"將「{citation_text}」改為正確條號，或移除此無法驗證的條文引用。",
+                    }
+                )
+                continue
+
+            if law_name and not self._has_repo_evidence(law_name, referenced_titles):
+                issues.append(
+                    {
+                        "severity": "warning",
+                        "location": getattr(chk.citation, "location", "法規引用"),
+                        "description": f"未驗證引用：{law_name} 未在參考來源段落找到對應 repo 證據。",
+                        "suggestion": f"為「{law_name}」補上 [^i] 來源定義，並在參考來源段落加入 URL 或 Hash。",
+                    }
+                )
+
+        return issues
+
+    @staticmethod
+    def _draft_has_legal_claims(draft: str) -> bool:
+        return "第" in draft and any(
+            suffix in draft for suffix in ("法", "條例", "辦法", "規則", "細則", "規程", "標準", "準則", "綱要", "通則")
+        )
+
+    @staticmethod
+    def _has_repo_evidence(law_name: str, referenced_titles: list[str]) -> bool:
+        normalized_law = law_name.replace(" ", "")
+        for title in referenced_titles:
+            normalized_title = title.replace(" ", "")
+            if not normalized_title:
+                continue
+            if normalized_law in normalized_title or normalized_title in normalized_law:
+                return True
+        return False
+
+    def _merge_repo_issues(self, llm_result: ReviewResult, repo_issues: list[dict]) -> ReviewResult:
+        merged = [
+            *[
+                {
+                    "severity": issue.severity,
+                    "location": issue.location,
+                    "description": issue.description,
+                    "suggestion": issue.suggestion,
+                }
+                for issue in llm_result.issues
+            ],
+            *repo_issues,
+        ]
+        seen = set()
+        deduped = []
+        for item in merged:
+            key = (item["severity"], item["location"], item["description"])
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(item)
+
+        issue_penalty = 0.0
+        for item in deduped:
+            issue_penalty += 0.2 if item["severity"] == "error" else 0.05 if item["severity"] == "warning" else 0.0
+
+        merged_result = parse_review_response(
+            response=json.dumps(
+                {
+                    "issues": deduped,
+                    "score": min(llm_result.score, max(0.0, 1.0 - issue_penalty)),
+                    "confidence": llm_result.confidence,
+                },
+                ensure_ascii=False,
+            ),
+            agent_name=self.AGENT_NAME,
+            category=self.CATEGORY,
+        )
+        return ReviewResult(
+            agent_name=merged_result.agent_name,
+            issues=merged_result.issues,
+            score=merged_result.score,
+            confidence=llm_result.confidence,
         )
 
     def _semantic_similarity_check(

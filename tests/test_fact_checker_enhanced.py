@@ -142,6 +142,65 @@ class TestFakeCitationSeverity:
         assert "✅" in prompt
         assert "行政程序法" in prompt
 
+    @patch("src.knowledge.realtime_lookup._request_with_retry")
+    def test_nonexistent_law_becomes_repo_owned_error(self, mock_req):
+        """即使 LLM 漏報，repo-owned 檢查也要保留 error。"""
+        mock_resp = MagicMock()
+        mock_resp.content = _make_law_json(SAMPLE_LAWS)
+        mock_req.return_value = mock_resp
+
+        mock_llm = MagicMock()
+        mock_llm.generate.return_value = '{"issues": [], "score": 0.98}'
+
+        verifier = LawVerifier()
+        checker = FactChecker(mock_llm, law_verifier=verifier)
+        result = checker.check("依據政府資訊安全管理辦法第5條辦理。")
+
+        assert any(
+            issue.severity == "error" and "不存在於全國法規資料庫" in issue.description
+            for issue in result.issues
+        )
+
+    @patch("src.knowledge.realtime_lookup._request_with_retry")
+    def test_verified_law_without_reference_becomes_warning(self, mock_req):
+        """有 realtime 驗證但沒有 repo evidence 時，不可靜默放過。"""
+        mock_resp = MagicMock()
+        mock_resp.content = _make_law_json(SAMPLE_LAWS)
+        mock_req.return_value = mock_resp
+
+        mock_llm = MagicMock()
+        mock_llm.generate.return_value = '{"issues": [], "score": 0.98}'
+
+        verifier = LawVerifier()
+        checker = FactChecker(mock_llm, law_verifier=verifier)
+        result = checker.check("依據行政程序法第100條辦理。")
+
+        assert any(
+            issue.severity == "warning" and "未在參考來源段落找到對應 repo 證據" in issue.description
+            for issue in result.issues
+        )
+
+    @patch("src.knowledge.realtime_lookup._request_with_retry")
+    def test_verified_law_with_reference_avoids_repo_warning(self, mock_req):
+        """有對應 repo reference 時，不應多打一條未驗證引用。"""
+        mock_resp = MagicMock()
+        mock_resp.content = _make_law_json(SAMPLE_LAWS)
+        mock_req.return_value = mock_resp
+
+        mock_llm = MagicMock()
+        mock_llm.generate.return_value = '{"issues": [], "score": 0.98}'
+
+        verifier = LawVerifier()
+        checker = FactChecker(mock_llm, law_verifier=verifier)
+        draft = (
+            "依據行政程序法第100條辦理。[^1]\n\n"
+            "## 參考來源\n"
+            "[^1]: [Level A] 行政程序法第100條 | URL: https://law.moj.gov.tw/example | Hash: abc123\n"
+        )
+        result = checker.check(draft)
+
+        assert not any("未在參考來源段落找到對應 repo 證據" in issue.description for issue in result.issues)
+
 
 # ===========================================================================
 # 法規-文件類型交叉比對
