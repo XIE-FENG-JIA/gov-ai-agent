@@ -2412,7 +2412,8 @@ class TestOuterExceptionHandlers:
 
     def test_review_style_outer_exception(self, client, mock_api_deps):
         """測試 style 端點外層例外處理（agent 構造失敗）"""
-        with patch("src.api.routes.agents.StyleChecker", side_effect=RuntimeError("init failed")):
+        with patch("src.api.routes.agents.StyleChecker", side_effect=RuntimeError("init failed")), \
+             patch("src.api.routes.agents.logger.warning") as mock_warning:
             response = client.post("/api/v1/agent/review/style", json={
                 "draft": "### 主旨\n這是一份測試公文的草稿內容",
                 "doc_type": "函"
@@ -2422,6 +2423,9 @@ class TestOuterExceptionHandlers:
             assert data["success"] is False
             assert data["agent_name"] == "style"
             assert data["error"] is not None
+            mock_warning.assert_called_once()
+            assert mock_warning.call_args[0][0:2] == ("%s 失敗: %s", "文風審查")
+            assert str(mock_warning.call_args[0][2]) == "init failed"
 
     def test_review_fact_outer_exception(self, client, mock_api_deps):
         """測試 fact 端點外層例外處理（agent 構造失敗）"""
@@ -2448,6 +2452,24 @@ class TestOuterExceptionHandlers:
             assert data["success"] is False
             assert data["agent_name"] == "consistency"
             assert data["error"] is not None
+
+    def test_parallel_review_outer_exception_logs_warning(self, client, mock_api_deps):
+        """測試 parallel review 外層例外改走 warning logging。"""
+        with patch("src.api.routes.agents.get_llm", side_effect=RuntimeError("init failed")), \
+             patch("src.api.routes.agents.logger.warning") as mock_warning:
+            response = client.post("/api/v1/agent/review/parallel", json={
+                "draft": "### 主旨\n測試\n### 說明\n一致的內容",
+                "doc_type": "函",
+                "agents": ["style", "fact"],
+            })
+            assert response.status_code == 200
+            data = response.json()
+            assert data["success"] is False
+            assert data["risk_summary"] == "Critical"
+            assert data["error"] is not None
+            mock_warning.assert_called_once()
+            assert mock_warning.call_args[0][0:2] == ("%s 失敗: %s", "並行審查")
+            assert str(mock_warning.call_args[0][2]) == "init failed"
 
 
 # ==================== Thread Safety ====================

@@ -60,6 +60,21 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 WRITE_AUTH = [Depends(require_api_key)]
+_AGENT_ROUTE_EXCEPTIONS = (
+    ConnectionError,
+    FileNotFoundError,
+    KeyError,
+    OSError,
+    RuntimeError,
+    TimeoutError,
+    TypeError,
+    ValueError,
+)
+
+
+def _log_agent_warning(endpoint: str, exc: Exception) -> None:
+    """記錄已知可降級的 agent route 失敗。"""
+    logger.warning("%s 失敗: %s", endpoint, exc)
 
 
 # ------------------------------------------------------------
@@ -87,8 +102,8 @@ async def analyze_requirement(request: RequirementRequest) -> RequirementRespons
             success=True,
             requirement=requirement.model_dump(),
         )
-    except Exception as e:
-        logger.exception("需求分析失敗")
+    except _AGENT_ROUTE_EXCEPTIONS as e:
+        _log_agent_warning("需求分析", e)
         return RequirementResponse(success=False, error=_sanitize_error(e), error_code=_get_error_code(e))
 
 
@@ -128,8 +143,8 @@ async def write_draft(request: WriterRequest) -> WriterResponse:
             draft=raw_draft,
             formatted_draft=formatted_draft,
         )
-    except Exception as e:
-        logger.exception("草稿撰寫失敗")
+    except _AGENT_ROUTE_EXCEPTIONS as e:
+        _log_agent_warning("草稿撰寫", e)
         return WriterResponse(success=False, error=_sanitize_error(e), error_code=_get_error_code(e))
 
 
@@ -161,8 +176,8 @@ async def review_format(request: ReviewRequest) -> ReviewResponse:
             agent_name="format",
             result=review_result_to_dict(result),
         )
-    except Exception as e:
-        logger.exception("格式審查失敗")
+    except _AGENT_ROUTE_EXCEPTIONS as e:
+        _log_agent_warning("格式審查", e)
         return ReviewResponse(
             success=False, agent_name="format", error=_sanitize_error(e), error_code=_get_error_code(e)
         )
@@ -187,8 +202,8 @@ async def review_style(request: ReviewRequest) -> ReviewResponse:
             agent_name="style",
             result=review_result_to_dict(result),
         )
-    except Exception as e:
-        logger.exception("文風審查失敗")
+    except _AGENT_ROUTE_EXCEPTIONS as e:
+        _log_agent_warning("文風審查", e)
         return ReviewResponse(
             success=False, agent_name="style", error=_sanitize_error(e), error_code=_get_error_code(e)
         )
@@ -213,8 +228,8 @@ async def review_fact(request: ReviewRequest) -> ReviewResponse:
             agent_name="fact",
             result=review_result_to_dict(result),
         )
-    except Exception as e:
-        logger.exception("事實審查失敗")
+    except _AGENT_ROUTE_EXCEPTIONS as e:
+        _log_agent_warning("事實審查", e)
         return ReviewResponse(
             success=False, agent_name="fact", error=_sanitize_error(e), error_code=_get_error_code(e)
         )
@@ -239,8 +254,8 @@ async def review_consistency(request: ReviewRequest) -> ReviewResponse:
             agent_name="consistency",
             result=review_result_to_dict(result),
         )
-    except Exception as e:
-        logger.exception("一致性審查失敗")
+    except _AGENT_ROUTE_EXCEPTIONS as e:
+        _log_agent_warning("一致性審查", e)
         return ReviewResponse(
             success=False, agent_name="consistency", error=_sanitize_error(e), error_code=_get_error_code(e)
         )
@@ -265,8 +280,8 @@ async def review_compliance(request: ReviewRequest) -> ReviewResponse:
             agent_name="compliance",
             result=review_result_to_dict(result),
         )
-    except Exception as e:
-        logger.exception("合規審查失敗")
+    except _AGENT_ROUTE_EXCEPTIONS as e:
+        _log_agent_warning("合規審查", e)
         return ReviewResponse(
             success=False, agent_name="compliance", error=_sanitize_error(e), error_code=_get_error_code(e)
         )
@@ -348,7 +363,7 @@ async def parallel_review(
 
             if isinstance(result, Exception):
                 any_agent_failed = True
-                logger.error("Agent %s 執行失敗: %s", agent_name, result)
+                logger.warning("Agent %s 執行失敗: %s", agent_name, result)
                 display_name = _AGENT_DISPLAY_NAMES.get(agent_name, agent_name)
                 results[agent_name] = SingleAgentReviewResponse(
                     agent_name=display_name,
@@ -393,8 +408,8 @@ async def parallel_review(
             risk_summary=risk,
         )
 
-    except Exception as e:
-        logger.exception("並行審查失敗")
+    except _AGENT_ROUTE_EXCEPTIONS as e:
+        _log_agent_warning("並行審查", e)
         return ParallelReviewResponse(
             success=False,
             results={},
@@ -483,6 +498,6 @@ Return ONLY the new draft markdown.
 
         return RefineResponse(success=True, refined_draft=refined)
 
-    except Exception as e:
-        logger.exception("草稿修改失敗")
+    except _AGENT_ROUTE_EXCEPTIONS as e:
+        _log_agent_warning("草稿修改", e)
         return RefineResponse(success=False, error=_sanitize_error(e), error_code=_get_error_code(e))
