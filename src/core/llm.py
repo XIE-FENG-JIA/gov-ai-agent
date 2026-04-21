@@ -129,11 +129,20 @@ class LiteLLMProvider(LLMProvider):
         # Embedding Config
         self.emb_provider = provider_config.get("embedding_provider", "ollama")
         self.emb_model = provider_config.get("embedding_model", "llama3.1:8b")
-        self.emb_base_url = provider_config.get("embedding_base_url", "http://127.0.0.1:11434")
+        self.emb_api_key = provider_config.get("embedding_api_key")
+        self.emb_base_url = provider_config.get("embedding_base_url")
+        if self.emb_provider == "ollama" and not self.emb_base_url:
+            self.emb_base_url = "http://127.0.0.1:11434"
+        elif self.emb_provider == self.provider and not self.emb_base_url:
+            self.emb_base_url = self.base_url
+        if self.emb_provider != "ollama" and not self.emb_api_key:
+            self.emb_api_key = self.api_key
 
         # Validate API Key for cloud providers
         if self.provider in ["gemini", "openrouter"] and not self.api_key:
             logger.warning("找不到 %s 的 API Key，請求可能失敗", self.provider)
+        if self.emb_provider in ["gemini", "openrouter"] and not self.emb_api_key:
+            logger.warning("找不到 %s 的 embedding API Key，嵌入請求可能失敗", self.emb_provider)
 
         # Construct the full model name for litellm generation
         if self.provider == "ollama":
@@ -214,10 +223,8 @@ class LiteLLMProvider(LLMProvider):
             else:
                 emb_model_name = self.emb_model
 
-            # Use specific embedding credentials (usually same as main or none for ollama)
-            # For simplicity, we assume Ollama needs no key, others use main key
-            api_key = self.api_key if self.emb_provider != "ollama" else None
-            base_url = self.emb_base_url if self.emb_provider == "ollama" else self.base_url
+            api_key = self.emb_api_key if self.emb_provider != "ollama" else None
+            base_url = self.emb_base_url
 
             response = litellm.embedding(
                 model=emb_model_name,
@@ -252,22 +259,50 @@ def get_llm_factory(config: dict, full_config: dict | None = None) -> LLMProvide
                      都重新讀取設定檔。
     """
     active_provider = config.get("provider", "ollama")
+    embedding_provider = config.get(
+        "embedding_provider",
+        config.get("provider", "ollama"),
+    )
 
     # 若有提供完整設定，合併 provider 預設值
     if full_config is not None:
         provider_defaults = full_config.get("providers", {}).get(active_provider, {})
+        embedding_provider_defaults = full_config.get("providers", {}).get(embedding_provider, {})
     else:
         provider_defaults = {}
+        embedding_provider_defaults = {}
 
     final_config = provider_defaults.copy()
+    if embedding_provider != active_provider:
+        if (
+            "embedding_api_key" not in final_config
+            and embedding_provider_defaults.get("api_key")
+        ):
+            final_config["embedding_api_key"] = embedding_provider_defaults["api_key"]
+        if (
+            "embedding_base_url" not in final_config
+            and embedding_provider_defaults.get("base_url")
+        ):
+            final_config["embedding_base_url"] = embedding_provider_defaults["base_url"]
+        if (
+            "embedding_model" not in final_config
+            and embedding_provider_defaults.get("model")
+        ):
+            final_config["embedding_model"] = embedding_provider_defaults["model"]
     final_config.update(config)
 
     # 若 config 中的 api_key 為空，嘗試使用 provider 預設值
     if not config.get("api_key") and provider_defaults.get("api_key"):
         final_config["api_key"] = provider_defaults["api_key"]
+    if not config.get("embedding_api_key") and embedding_provider_defaults.get("api_key"):
+        final_config["embedding_api_key"] = embedding_provider_defaults["api_key"]
+    if not config.get("embedding_base_url") and embedding_provider_defaults.get("base_url"):
+        final_config["embedding_base_url"] = embedding_provider_defaults["base_url"]
     if not config.get("model") or config.get("model") == "llama3.1:8b":
         if provider_defaults.get("model"):
             final_config["model"] = provider_defaults["model"]
+    if not config.get("embedding_model") and embedding_provider_defaults.get("model"):
+        final_config["embedding_model"] = embedding_provider_defaults["model"]
 
     if active_provider == "mock":
         return MockLLMProvider(final_config)

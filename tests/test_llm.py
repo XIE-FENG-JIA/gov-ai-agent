@@ -116,12 +116,14 @@ class TestLiteLLMProviderInit:
         config = {
             "embedding_provider": "gemini",
             "embedding_model": "text-embedding-004",
-            "embedding_base_url": "https://custom.url"
+            "embedding_base_url": "https://custom.url",
+            "embedding_api_key": "embed-key",
         }
         provider = LiteLLMProvider(config)
         assert provider.emb_provider == "gemini"
         assert provider.emb_model == "text-embedding-004"
         assert provider.emb_base_url == "https://custom.url"
+        assert provider.emb_api_key == "embed-key"
 
 
 # ==================== LiteLLMProvider generate / embed ====================
@@ -331,6 +333,35 @@ class TestGetLLMFactory:
         )
         assert result.api_key == "custom-key"
 
+    def test_embedding_provider_defaults_merge(self):
+        """不同 embedding provider 應合併其預設 key/base_url/model。"""
+        full_config = {
+            "providers": {
+                "minimax": {
+                    "model": "MiniMax-M2.7",
+                    "api_key": "minimax-key",
+                    "base_url": "https://api.minimax.io/v1",
+                },
+                "openrouter": {
+                    "model": "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+                    "api_key": "openrouter-key",
+                    "base_url": "https://openrouter.ai/api/v1",
+                },
+            }
+        }
+        result = get_llm_factory(
+            {
+                "provider": "minimax",
+                "embedding_provider": "openrouter",
+            },
+            full_config=full_config,
+        )
+        assert result.api_key == "minimax-key"
+        assert result.base_url == "https://api.minimax.io/v1"
+        assert result.emb_api_key == "openrouter-key"
+        assert result.emb_base_url == "https://openrouter.ai/api/v1"
+        assert result.emb_model == "nvidia/llama-nemotron-embed-vl-1b-v2:free"
+
 
 # ==================== LiteLLMProvider embed 邊界測試 ====================
 
@@ -356,6 +387,30 @@ class TestLiteLLMEmbedEdgeCases:
         assert call_kwargs[1]["model"] == "openrouter/text-embed-v1"
         assert call_kwargs[1]["api_key"] == "test-key"
         assert result == [0.5]
+
+    @patch("src.core.llm.litellm")
+    def test_embed_uses_embedding_provider_credentials(self, mock_litellm):
+        """不同 provider 混搭時，embedding 應使用自己的 key/base_url。"""
+        mock_response = MagicMock()
+        mock_response.data = [{"embedding": [0.9]}]
+        mock_litellm.embedding.return_value = mock_response
+
+        provider = LiteLLMProvider({
+            "provider": "minimax",
+            "api_key": "minimax-key",
+            "base_url": "https://api.minimax.io/v1",
+            "embedding_provider": "openrouter",
+            "embedding_model": "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+            "embedding_api_key": "openrouter-key",
+            "embedding_base_url": "https://openrouter.ai/api/v1",
+        })
+        result = provider.embed("test")
+
+        call_kwargs = mock_litellm.embedding.call_args
+        assert call_kwargs[1]["model"] == "openrouter/nvidia/llama-nemotron-embed-vl-1b-v2:free"
+        assert call_kwargs[1]["api_key"] == "openrouter-key"
+        assert call_kwargs[1]["base_url"] == "https://openrouter.ai/api/v1"
+        assert result == [0.9]
 
     @patch("src.core.llm.litellm")
     def test_embed_default_provider_model_name(self, mock_litellm):

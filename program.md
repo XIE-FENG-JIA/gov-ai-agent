@@ -651,7 +651,9 @@
   - **驗 2**：`python scripts/live_ingest.py --sources fda --limit 3 --require-live --report-path docs/live-ingest-report.md` = **PASS / live_count=3 / fixture_remaining=0**
   - **驗 3**：`python -m pytest tests/ -q --ignore=tests/integration -x` = **3733 passed / 0 failed**
 - [ ] **T-FAT-ROTATE-V2（刀 3）** 🟠 **v5.9 P0 三位（45 分；第三十七輪從 T 段移上）** — 首刀鎖 `src/e2e_rewrite.py 492`；按 `rewrite / assemble / cli` 自然邊界拆成 `src/e2e_rewrite/{__init__,rewrite,assemble,cli}.py`；SOP 第 13 次擴散；`tests/test_e2e_rewrite.py` + `tests/integration/test_e2e_rewrite.py` import 契約守；次刀 `api-agents 488`、三刀 `middleware 469`
-- [ ] **P2-CHROMA-NEMOTRON-VALIDATE** 🟡 v5.9 P1（60 分；**已解鎖，可直接執行**）— `gov-ai kb rebuild --only-real`（nvidia/llama-nemotron dim=2048）；交付 `docs/embedding-validation.md`（5 E2E 需求 top-K 真公文召回率 + dim 驗證 + cost）
+- [ ] **P2-CHROMA-NEMOTRON-VALIDATE** 🟡 v5.9 P1（60 分；**程式已解鎖，runtime 仍缺 key**）— `gov-ai kb rebuild --only-real`（nvidia/llama-nemotron dim=2048）；交付 `docs/embedding-validation.md`（5 E2E 需求 top-K 真公文召回率 + dim 驗證 + cost）
+  - **2026-04-21 校準**：`src/core/llm.py` 已修正 mixed-provider embedding routing；`embedding_provider=openrouter` 不再誤用 active `minimax` 的 `api_key/base_url`
+  - **當前 blocker**：環境僅 `MINIMAX_API_KEY=set`，`LLM_API_KEY/OPENROUTER_API_KEY=missing`；未補 key 前不可宣稱 Nemotron rebuild 驗證完成
 - [ ] **T-BARE-EXCEPT-AUDIT** 🆕 **v5.9 P1 新增（第三十七輪；30 分）** — `rg "except Exception|except:" src/` 實測 118 處分佈 50 檔；高密度 3 檔 `src/api/routes/agents.py 9 / src/cli/org_memory_cmd.py 7 / src/cli/kb/stats.py 6` 至少一檔轉 typed except + `logger.warning`；避免 production logging 吞根因
 - [ ] **T9.6-REOPEN-v4** 🆕 **v5.9 P1 新增（第三十七輪；10 分）** — engineer-log 271 + v5.9 反思 ~38 = **309 > 300 hard cap**；封存 v5.4/v5.5/v5.6 段到 `docs/archive/engineer-log-202604f.md`；主檔留 v5.7/v5.8/v5.9
 - [x] **P1-PCC-ADAPTER** ✅（2026-04-21 16:06）— `src/sources/pcc.py` 政府採購網 adapter 已落地；official HTML fixture search/detail + `list / fetch / normalize` 完成，並接入 `_adapter_registry`
