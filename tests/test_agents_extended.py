@@ -1815,8 +1815,8 @@ class TestEditorParallelEdgeCases:
         # 應正常完成不崩潰
         assert report is not None
         assert isinstance(report, QAReport)
-        # 應有 5 個結果（1 成功 + 4 失敗）
-        assert len(report.agent_results) == 5
+        # 應有 6 個結果（Format Auditor + Citation Checker + 4 個並行 Agent）
+        assert len(report.agent_results) == 6
         # 失敗的 Agent score 應為 0.0
         failed_agents = [r for r in report.agent_results if r.score == 0.0]
         assert len(failed_agents) == 4
@@ -2667,7 +2667,7 @@ class TestEditorSafeLowNoRefine:
         # 含完整引用結構的草稿，避免通用驗證器產生額外 error 降低分數
         original_draft = (
             "### 主旨\n高品質草稿\n### 說明\n依據相關法規辦理[^1]。\n\n"
-            "### 參考來源\n[^1]: [Level A] 測試法規"
+            "### 參考來源\n[^1]: [Level A] 測試法規 | URL: https://example.test/law-1"
         )
 
         from unittest.mock import patch

@@ -1665,10 +1665,10 @@ class TestDefaultFailedScoreExclusion:
         _, qa_report = editor.review_and_refine(draft, "函")
 
         # 失敗 agent 的 confidence=0 不貢獻權重
-        # 只剩 format_auditor（規則導向，不崩潰）的結果
+        # 只剩 format_auditor 與 citation_checker（repo-owned 規則導向）的結果
         non_failed = [r for r in qa_report.agent_results if r.confidence > 0]
-        assert len(non_failed) == 1  # 只有 Format Auditor
-        assert non_failed[0].agent_name == "Format Auditor"
+        assert len(non_failed) == 2
+        assert {r.agent_name for r in non_failed} == {"Format Auditor", "Citation Checker"}
 
 
 class TestWriterAgentLLMException:

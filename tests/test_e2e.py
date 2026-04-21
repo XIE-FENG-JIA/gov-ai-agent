@@ -1195,7 +1195,10 @@ class TestScenario8_ParallelReviewTimeout:
         ]
 
         editor = EditorInChief(mock_llm, mock_kb)
-        draft = "# 函\n### 主旨\n依據相關法規辦理[^1]。\n### 說明\n測試內容。\n\n### 參考來源\n[^1]: [Level A] 測試法規"
+        draft = (
+            "# 函\n### 主旨\n依據相關法規辦理[^1]。\n### 說明\n測試內容。\n\n"
+            "### 參考來源\n[^1]: [Level A] 測試法規 | URL: https://example.test/law-1"
+        )
         refined, report = editor.review_and_refine(draft, "函")
 
         assert report.risk_summary in ["Safe", "Low"]
@@ -1856,7 +1859,7 @@ class TestFullIntegrationFlow:
                 "draft": (
                     "### 主旨\n函轉加強校園資源回收一案\n### 說明\n"
                     "一、依據相關法規辦理[^1]，為提升回收成效。\n### 辦法\n一、請加強宣導。\n\n"
-                    "### 參考來源\n[^1]: [Level A] 廢棄物清理法"
+                    "### 參考來源\n[^1]: [Level A] 廢棄物清理法 | URL: https://example.test/waste-act"
                 ),
             },
             {
@@ -1875,7 +1878,7 @@ class TestFullIntegrationFlow:
                 "draft": (
                     "### 主旨\n公告春節期間垃圾清運時間調整\n### 公告事項\n"
                     "一、依據相關規定辦理[^1]，停止清運日期。\n二、恢復清運日期。\n\n"
-                    "### 參考來源\n[^1]: [Level A] 廢棄物清理法"
+                    "### 參考來源\n[^1]: [Level A] 廢棄物清理法 | URL: https://example.test/waste-act"
                 ),
             },
             {
@@ -1894,7 +1897,7 @@ class TestFullIntegrationFlow:
                 "draft": (
                     "### 主旨\n擬辦理環保志工表揚大會一案，陳請核示。\n### 說明\n"
                     "一、依據相關規定辦理[^1]，為肯定志工奉獻。\n### 擬辦\n一、活動日期。\n\n"
-                    "### 參考來源\n[^1]: [Level A] 志願服務法"
+                    "### 參考來源\n[^1]: [Level A] 志願服務法 | URL: https://example.test/volunteer-act"
                 ),
             },
         ]
