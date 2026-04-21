@@ -43,7 +43,9 @@ _KB_MANAGER_EXCEPTIONS = (
     TypeError,
     ValueError,
 )
-_KB_MANAGER_INIT_EXCEPTIONS = _KB_MANAGER_EXCEPTIONS + (
+# ChromaDB / mocks / 損壞的 persisted state 可能丟出未細分的 vendor exception；
+# KnowledgeBaseManager 的契約是「降級不中斷」，因此統一收斂成 warning/error fallback。
+_KB_MANAGER_VENDOR_EXCEPTIONS = _KB_MANAGER_EXCEPTIONS + (
     Exception,
 )
 
@@ -138,7 +140,7 @@ class KnowledgeBaseManager(KnowledgeHybridSearchMixin, KnowledgeSearchMixin):
                     name="policies",
                     metadata={"hnsw:space": "cosine"}
                 )
-        except _KB_MANAGER_INIT_EXCEPTIONS as e:
+        except _KB_MANAGER_VENDOR_EXCEPTIONS as e:
             logger.error(
                 "知識庫初始化失敗（路徑: %s）: %s。系統將以無知識庫模式運作。",
                 persist_path, e,
@@ -223,7 +225,7 @@ class KnowledgeBaseManager(KnowledgeHybridSearchMixin, KnowledgeSearchMixin):
                     metadatas=[metadata],
                     ids=[doc_id]
                 )
-        except _KB_MANAGER_EXCEPTIONS as e:
+        except _KB_MANAGER_VENDOR_EXCEPTIONS as e:
             logger.error("文件寫入知識庫失敗: %s", e)
             return None
         # 新增文件後清除快取，確保後續搜尋能看到新資料
@@ -254,7 +256,7 @@ class KnowledgeBaseManager(KnowledgeHybridSearchMixin, KnowledgeSearchMixin):
             with suppress_known_third_party_deprecations_temporarily():
                 result = target_collection.get(ids=[doc_id], include=[])
             return len(result.get("ids", [])) > 0
-        except _KB_MANAGER_EXCEPTIONS as exc:
+        except _KB_MANAGER_VENDOR_EXCEPTIONS as exc:
             _log_kb_warning(f"查詢文件是否存在 collection={collection_name} doc_id={doc_id}", exc)
             return False
 
@@ -306,7 +308,7 @@ class KnowledgeBaseManager(KnowledgeHybridSearchMixin, KnowledgeSearchMixin):
                     metadatas=[metadata],
                     ids=[doc_id],
                 )
-        except _KB_MANAGER_EXCEPTIONS as e:
+        except _KB_MANAGER_VENDOR_EXCEPTIONS as e:
             logger.error("文件 upsert 知識庫失敗: %s", e)
             return None
         self.invalidate_cache()
@@ -347,7 +349,7 @@ class KnowledgeBaseManager(KnowledgeHybridSearchMixin, KnowledgeSearchMixin):
                 )
                 return enriched
             logger.debug("Contextual enrichment 回傳過長或為空，使用原始 chunk")
-        except _KB_MANAGER_EXCEPTIONS as e:
+        except _KB_MANAGER_VENDOR_EXCEPTIONS as e:
             _log_kb_warning("Contextual enrichment", e)
         return chunk
 
