@@ -6,7 +6,7 @@
 > - ✅ 指標 1（pytest 全綠）：`python -m pytest tests/ -q --ignore=tests/integration -x` = **3728 passed / 0 failed / 223.59s**（v5.8 3727/486.83s → **+1 test，時間砍半**）
 > - ✅ 指標 2（corpus 真公文 ≥ 9 baseline）：`find kb_data/corpus -name "*.md" | wc -l` = **60**（v5.8 9 → **+51；向 P0.3 目標 300 進度 20%**）
 > - ✅ 指標 3（config_tools 拆 ≤ 400）：`257→307 / 225→279 / 96→115`（v5.8 刀 1 落地後輕漲，均 ≤ 400 ✅）
-> - 🟠 指標 4（新胖七 ≤ 400）：`realtime_lookup 520 / e2e_rewrite 492 / api-agents 488 / middleware 469 / api-models 461 / generate-export 459 / fact_checker 446` **七檔 > 400**（v5.8 cluster 持平）
+> - 🟠 指標 4（新胖六 ≤ 400）：`realtime_lookup 386 ✅ / e2e_rewrite 492 / api-agents 488 / middleware 469 / api-models 461 / generate-export 459 / fact_checker 446` **六檔 > 400**（v5.8 cluster 七檔 → **-1**）
 > - ✅ 指標 5（openspec proposal 齊）：Epic 4/5 `proposal.md / tasks.md / specs/*` 三件齊；Spectra 3/5 → **4/5 = 80%**（v5.8 66% → +14pp）
 > - ✅ 指標 6（核心紅線）：`grep -c "^### 🔴" program.md` = 0 ≤ 6 ✅
 > - ❌ 指標 7（fda / mohw live fetch）：adapter 已註冊（`src/sources/ingest.py:131-139` registry 含 `fda / mohw`），但 `python scripts/live_ingest.py --sources fda --limit 3 --require-live` 回 FAIL（`source_id=FDA-001 used fixture fallback`）= **v5.6 OVERRIDE P0.1 描述過期，真因非 registry 缺件**
@@ -20,18 +20,17 @@
 > 3. **P0.1（新處置）**：非 dispatcher bug；改接 P1 FDA/MOHW 實際 feed 驗證（curl HEAD + schema diff），不是 registry 修法。
 >
 > **v5.9 P0 重排（ACL-free；連 1 輪延宕 = 紅線 X 3.25）**：
-> 1. **T-FAT-ROTATE-V2（刀 2）** 🔴 **P0 首位**（45 分）— `src/knowledge/realtime_lookup.py 520` 拆；v5.8 列 P1 連 1 輪 0 動；SOP 第 12 次擴散（按 `lookup / rank / fuse / cache` 自然邊界）；`tests/test_realtime_lookup.py 747` 行守 import 契約。
-> 2. **P0.3-CORPUS-SCALE** 🟠 **P0 次位**（30 分）— corpus 60 → 300；跑 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --prune-fixture-fallback` 三源擴量；fda/mohw 擇另項修復。
-> 3. **P2-CHROMA-NEMOTRON-VALIDATE** 🟠 **P0 三位**（60 分）— corpus ≥ 100 後跑 `gov-ai kb rebuild --only-real`（nvidia/llama-nemotron dim=2048）；交付 `docs/embedding-validation.md`（5 E2E 需求 top-K 真公文召回率）。
+> 1. **P0.3-CORPUS-SCALE** 🔴 **P0 首位**（30 分）— corpus 60 → 300；跑 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --prune-fixture-fallback` 三源擴量；fda/mohw 擇另項修復。
+> 2. **P2-CHROMA-NEMOTRON-VALIDATE** 🟠 **P0 次位**（60 分）— corpus ≥ 100 後跑 `gov-ai kb rebuild --only-real`（nvidia/llama-nemotron dim=2048）；交付 `docs/embedding-validation.md`（5 E2E 需求 top-K 真公文召回率）。
+> 3. **T-FAT-ROTATE-V2（刀 3+）** 🟠 **P0 三位** — 下輪鎖 `e2e_rewrite 492 / api-agents 488 / middleware 469`。
 >
 > **v5.9 P1（連 2 輪延宕 = 3.25）**：
-> 4. **T-FAT-ROTATE-V2（刀 3+）** — 下輪鎖 `e2e_rewrite 492 / api-agents 488 / middleware 469`。
-> 5. **P1-PCC-ADAPTER** — `src/sources/pcc.py`（政府採購網）按 `base.py` 抽象實作；v5.6 OVERRIDE 列連 0 動。
-> 6. **P0.1-FDA-LIVE-DIAG** — FdaApiAdapter 真因定位（curl `https://data.fda.gov.tw/` / endpoint schema / auth 檢查）；15 分診斷 + fix or downgrade 到 P2。
+> 4. **P1-PCC-ADAPTER** — `src/sources/pcc.py`（政府採購網）按 `base.py` 抽象實作；v5.6 OVERRIDE 列連 0 動。
+> 5. **P0.1-FDA-LIVE-DIAG** — FdaApiAdapter 真因定位（curl `https://data.fda.gov.tw/` / endpoint schema / auth 檢查）；15 分診斷 + fix or downgrade 到 P2。
 >
 > **v5.9 下輪硬指標**：
 > 1. `python -m pytest tests/ -q --ignore=tests/integration` FAIL=0（**本輪 3728/0 ✅**）
-> 2. `wc -l src/knowledge/realtime_lookup.py` 或拆後 `src/knowledge/realtime_lookup/*.py` 每檔 ≤ 400（當前 520 ❌；**本輪必破**）
+> 2. `wc -l src/knowledge/realtime_lookup.py` 或拆後 `src/knowledge/realtime_lookup/*.py` 每檔 ≤ 400（**本輪 386 ✅**；helper 拆到 `_realtime_lookup_laws.py 107 / _realtime_lookup_policy.py 31`）
 > 3. `find kb_data/corpus -name "*.md" | wc -l` ≥ 150（當前 60；中間里程碑）
 > 4. `ls docs/embedding-validation.md` 存在（當前 ❌）
 > 5. `rg -c "^### 🔴" program.md` ≤ 6（當前 0 ✅）
@@ -41,12 +40,12 @@
 >
 > **v5.8 → v5.9 變更摘要**：
 > - **事實校準**：v5.6 OVERRIDE P0.1「registry 缺 fda/mohw」過期；真因改寫為 FdaApiAdapter live fetch 斷
-> - **升 P0**：`realtime_lookup 520` 從 v5.8 P1 升 P0 首位（SOP 第 12 次擴散）；P0.3 corpus 擴量 60 → 300 升 P0 次位；P2 embedding validation 升 P0 三位
+> - **已閉**：`realtime_lookup 520` → `realtime_lookup.py 386 + _realtime_lookup_laws.py 107 + _realtime_lookup_policy.py 31`；patch 面 `src.knowledge.realtime_lookup._request_with_retry`、`requests.get`、`ET` 保持不變
 > - **Spectra 升**：Epic 4 + Epic 5 proposal 全落 → 3.3/5 → 4/5（60% → 80%）
 > - **移除**：P0.1「unsupported source(s)」敘述廢；P0.2 已 ✅（v5.6 頭部已標）；T-FAT-ROTATE-V2 刀 1 ✅（v5.8 標）
 > - **保留**：v5.6 OVERRIDE block + v5.8 以下歷史 header 全不動；已完成 `[x]` 紀錄零動
 >
-> **紅線狀態**：核心 3 + 實戰 X 不變；v5.9 不新增紅線；T-FAT-ROTATE-V2 刀 2 連 1 輪 0 動即 3.25（v5.8 已列 P1 本輪升 P0）。
+> **紅線狀態**：核心 3 + 實戰 X 不變；v5.9 不新增紅線；T-FAT-ROTATE-V2 刀 2 已閉，下一刀轉鎖 `e2e_rewrite / api-agents / middleware`。
 
 ---
 
@@ -692,8 +691,9 @@
   - **驗 4**：`python -m pytest tests/ -q --ignore=tests/integration` = **3727 passed / 0 failed**
   - commit（ACL 解後）: `refactor(cli): split config_tools.py into package modules`
 
-- [ ] **T-FAT-ROTATE-V2（刀 2）** 🔴 **v5.9 升 P0 首位**（45 分；2026-04-21 15:10 標）— `src/knowledge/realtime_lookup.py 520` 按 `lookup / rank / fuse / cache` 自然邊界拆；SOP 第 12 次擴散；`tests/test_realtime_lookup.py 747` 行守 import 契約；連 1 輪 0 動 = 紅線 X 3.25
-- [ ] **T-FAT-ROTATE-V2（刀 3+）** 下輪再鎖 `e2e_rewrite 492 / api-agents 488 / middleware 469`；v5.9 P1
+- [x] **T-FAT-ROTATE-V2（刀 2）** ✅ `src/knowledge/realtime_lookup.py` 已由 **520** 壓到 **386**，並抽出 `_realtime_lookup_laws.py 107`、`_realtime_lookup_policy.py 31`；`LawVerifier` / `RecentPolicyFetcher` / `_request_with_retry` / `requests` / `ET` 的公開 patch 面維持不變
+  - **完成（2026-04-21 15:30）**：純函式邏輯外移到 helper modules，主檔保留公開入口與測試 patch 路徑；驗證 `python -m pytest tests/test_realtime_lookup.py -q` = **48 passed**、`python -m pytest tests/test_realtime_lookup.py tests/test_fact_checker_enhanced.py tests/test_fact_checker_coverage.py -q` = **93 passed**、`python -m pytest tests/ -q --ignore=tests/integration -x` = **3728 passed / 0 failed**
+- [ ] **T-FAT-ROTATE-V2（刀 3+）** 🔴 下輪再鎖 `e2e_rewrite 492 / api-agents 488 / middleware 469`；v5.9 P0 三位
 - [x] **P1.EPIC5-PROPOSAL** ✅（2026-04-21 14:13）已新增 `openspec/changes/05-kb-governance/proposal.md`
   - **底層邏輯**：Epic 5 的 E2E 與 real corpus 護欄都已落，但 KB 治理規則還散在 `src/sources/ingest.py`、`src/cli/kb/rebuild.py`、`src/e2e_rewrite.py`、`src/cli/verify_cmd.py`；沒有 proposal，後續 rebuild/retire/governance 任務會繼續漂
   - **完成**：
