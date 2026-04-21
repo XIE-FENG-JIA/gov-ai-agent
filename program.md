@@ -494,17 +494,17 @@
 
 ### P0.V57-CLIENT-AUTH — 🔴 ACL-free·v5.7 首位（40 分；真 blocker，非 rate-limit）
 
-- [ ] **T-CLIENT-AUTH** 🔴 inbound API 無驗證機制；v5.6 反思誤記「rate-limit 未補」，實測 `src/api/middleware.py:108` rate-limit 已落，**真缺口 = client auth**
+- [x] **T-CLIENT-AUTH** ✅（2026-04-21 10:28）inbound API client auth 已落地；v5.6 反思誤記「rate-limit 未補」，實際補的是 **`API_CLIENT_KEY` route-level Bearer auth**
   - **底層邏輯**：T5.4 E2E 已驗通，Epic 上線前 blocker 只剩 client auth；`/agents/{rewrite,verify}`、`/knowledge/{upload,delete}`、`/workflow/{run,batch}` 寫端點任何人匿名即可打，生產部署即破
-  - **產出**：
-    - (a) `src/api/auth.py`（新檔 ≤ 120 行）：`HTTPBearer()` scheme + `require_api_key(credentials)` FastAPI `Depends`；讀 `API_CLIENT_KEY` env（multi-key 以 `,` 分隔）；env 空值 = dev mode 放行（記 warning）
-    - (b) `src/api/routes/{agents,workflow,knowledge}.py` 寫端點全掛 `Depends(require_api_key)`；`/health`、`/docs`、`/openapi.json` 保開放
+  - **完成**：
+    - (a) `src/api/auth.py`：新增 `HTTPBearer(auto_error=False)` + `require_api_key()`；讀 `API_CLIENT_KEY` env、支援逗號分隔 multi-key、空值 dev mode 放行且只警告一次
+    - (b) `src/api/routes/{agents,workflow,knowledge}.py` POST 端點全掛 `Depends(require_api_key)`；`/health`、`/docs`、`/openapi.json`、download/detailed-review 保持既有公開/舊 middleware 行為
     - (c) `.env.example` 補 `API_CLIENT_KEY=` placeholder + 註解
-    - (d) `tests/test_api_auth.py`：覆蓋 401 無 header / 401 錯 key / 200 對 key / dev-mode 空 env 放行 / `/health` 匿名 200 五條
-    - (e) `docs/api-auth.md`（≤ 60 行）：`API_CLIENT_KEY=abc` 設定、`curl -H "Authorization: Bearer abc"` 範例、multi-key 輪換 SOP
-  - **驗 1**：`grep -rn "HTTPBearer\|require_api_key\|API_CLIENT_KEY" src/api/` ≥ 6 處
-  - **驗 2**：`python -m pytest tests/test_api_auth.py -q` ≥ 5 passed
-  - **驗 3**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` FAIL=0（新測加入後不破 3702）
+    - (d) `tests/test_api_auth.py`：新增 7 條回歸，覆蓋 401 無 header / 401 錯 key / 200 對 key / workflow 401 / knowledge 401 / dev-mode 放行 / `/health` 匿名 200
+    - (e) `docs/api-auth.md`：補設定、curl 範例、multi-key 輪換 SOP
+  - **驗 1**：`rg -n "HTTPBearer|require_api_key|API_CLIENT_KEY" src/api/ .env.example docs/api-auth.md` = **18 hits**
+  - **驗 2**：`python -m pytest tests/test_api_auth.py -q` = **7 passed**
+  - **驗 3**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3709 passed / 0 failed**
   - **延宕懲罰**：ACL-free 連 1 輪延宕 = 紅線 X 3.25（Epic 上線 blocker 不容拖）
   - commit（ACL 解後）: `feat(api): enforce bearer api-key auth on write endpoints`
 
