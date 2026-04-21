@@ -1,21 +1,21 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **🎯 v6.2 值班增量（2026-04-21 20:33；/pua；caveman；單刀只砍 fat file）**：
+> **🎯 v6.3 值班增量（2026-04-21 21:09；/pua；caveman；單刀只砍 inbound agent route）**：
 >
 > **HEAD 實測指標（pytest + wc 即取）**：
-> - ✅ `python -m pytest tests/ -q --ignore=tests/integration -x` = **3738 passed / 0 failed / 535.52s**
+> - ✅ `python -m pytest tests/ -q --ignore=tests/integration -x` = **3739 passed / 0 failed / 515.85s**
 > - ✅ `wc -l src/e2e_rewrite/*.py` = **146 / 189 / 43 / 122**（全數 ≤ 400；`src/e2e_rewrite.py` 單檔已拆除）
 > - ✅ `wc -l engineer-log.md` = **284**（hard cap 內）
 > - 🟠 剩餘胖檔 **7**：`api-agents 489 / middleware 470 / api-models 462 / generate/export 460 / fact_checker 447 / datagovtw 411 / workflow_cmd 407`
 >
 > **本輪只做一件事**：
-> - ✅ **T-FAT-ROTATE-V2（刀 3）** 完成 — `src/e2e_rewrite.py 475` 拆成 `src/e2e_rewrite/{__init__,fixtures,reporting,scenarios}.py`；`run_rewrite_e2e` / `run_e2e_suite` / `load_real_corpus` / `_find_scenario` / `SCENARIOS` 對外契約保留，`tests/test_e2e_rewrite.py` monkeypatch 面維持可用
-> - ✅ 驗證：`python -m pytest tests/test_e2e_rewrite.py -q` = **4 passed**；`python -m pytest tests/integration/test_e2e_rewrite.py -q --import-mode=importlib` = **1 passed**；`python -m pytest tests/test_cli_commands.py -q -k "kb_rebuild or rewrite"` = **11 passed**
-> - 🟠 新發現：`src/sources/datagovtw.py 411`、`src/cli/workflow_cmd.py 407` 也已跨 400，併入後續 fat-file 輪拆名單
+> - ✅ **T-BARE-EXCEPT-AUDIT（刀 2）** 完成 — `src/api/routes/agents.py` 9 處裸 `except Exception` 已收斂為 `_AGENT_ROUTE_EXCEPTIONS` typed bucket；`analyze/write/review/parallel/refine` 外層 handler 改走 `logger.warning`
+> - ✅ 驗證：`python -m pytest tests/test_api_server.py -q` = **259 passed**；`python -m pytest tests/ -q --ignore=tests/integration -x` = **3739 passed / 0 failed**；`rg -n "except Exception|except:" src/api/routes/agents.py` = **0 命中**
+> - 🟠 新發現：`src/api/routes/agents.py` 血債已清，但 fat-file cluster 仍是下一刀主戰場；`api-agents` 行數仍 **489**
 >
 > **下輪首選**：
-> 1. `src/api/routes/agents.py` 裸 `except` 刀 2
-> 2. `api-agents / middleware / api-models` fat-file 續拆
+> 1. `api-agents / middleware / api-models` fat-file 續拆
+> 2. `T-ROLLUP-SYNC` 校準 header / rollup 實測數
 
 ---
 
@@ -711,7 +711,7 @@
 
 - [x] **T9.6-REOPEN-v4** ✅（2026-04-21 19:43）— 已封存 `engineer-log.md` 的 v5.4/v5.5/v5.6 段到 `docs/archive/engineer-log-202604f.md`；主檔改為只留 v5.7/v5.8/v5.9/v6.0，`wc -l engineer-log.md` 已回到 hard cap 內
 - [x] **T-FAT-ROTATE-V2（刀 3）** ✅（2026-04-21 20:33）— `src/e2e_rewrite.py 475` 已拆為 `src/e2e_rewrite/{__init__,fixtures,reporting,scenarios}.py`；保留 `run_rewrite_e2e` / `run_e2e_suite` / `load_real_corpus` / `_find_scenario` / `SCENARIOS` 與 `read_docx_citation_metadata` monkeypatch 契約；驗證 `python -m pytest tests/test_e2e_rewrite.py -q` = **4 passed**、`python -m pytest tests/integration/test_e2e_rewrite.py -q --import-mode=importlib` = **1 passed**、`python -m pytest tests/test_cli_commands.py -q -k "kb_rebuild or rewrite"` = **11 passed**、`python -m pytest tests/ -q --ignore=tests/integration -x` = **3738 passed / 0 failed**
-- [ ] **T-BARE-EXCEPT-AUDIT（刀 2）** 🟠 **v6.2 P0 次位（30 分；production handler 血債）** — `src/api/routes/agents.py 9 處裸 except` 是 inbound API handler 吞錯誤最危險點；複製 `org_memory_cmd.py` SOP（typed buckets + `logger.warning`）；刀 3 留 `web_preview/app.py 7 / kb/stats.py 6 / knowledge/manager.py 5 / fact_checker.py 4 / auditor.py 4 / core/llm.py 4 / generate/export.py 4`；`tests/test_agents_api*.py` + `tests/test_api_auth.py` 回歸守
+- [x] **T-BARE-EXCEPT-AUDIT（刀 2）** ✅（2026-04-21 21:09）— `src/api/routes/agents.py` 9 處裸 `except Exception` 已收斂為 `_AGENT_ROUTE_EXCEPTIONS` typed bucket；`analyze/write/review/parallel/refine` 外層 handler 改走 `logger.warning`，並補 `tests/test_api_server.py` logging 回歸；刀 3 留 `web_preview/app.py 7 / kb/stats.py 6 / knowledge/manager.py 5 / fact_checker.py 4 / auditor.py 4 / core/llm.py 4 / generate/export.py 4`；驗證 `python -m pytest tests/test_api_server.py -q` = **259 passed**、`python -m pytest tests/ -q --ignore=tests/integration -x` = **3739 passed / 0 failed**
 - [ ] **T-ROLLUP-SYNC** 🟠 **v6.2 P0 三位新（5 分；ACL-free；反思 vs rollup delivery gap 連 N+3 輪）** — v6.1 header 指標 7 寫「engineer-log 384」但 T9.6-REOPEN-v4 19:43 封存後 working tree 實測 **228 ≤ 300** ✅；動作已做未 commit（`git diff HEAD engineer-log.md` -162 deletions）；ACL 解後 AUTO-RESCUE 將封存狀態落版，或反思層主動校準 v6.1 header 為 228；T9.6 關閉不是結束，rollup 同步才是
 - [ ] **T-FAT-ROTATE-V2（刀 4+）** 🟡 **v6.2 P1（輪拆；連 2 輪延宕 = 3.25）** — 剩 **7** 胖檔 > 400：`api-agents 489 / middleware 470 / api-models 462 / generate/export 460 / fact_checker 447 / datagovtw 411 / workflow_cmd 407`；SOP 第 14/15/16/17/18/19/20 刀輪到哪刀哪；單輪只切 1 檔避免顆粒度漂移
 - [ ] **P2-CORPUS-300** 🟡 **v6.2 P1 新（corpus 擴量續推；連 2 輪延宕 = 3.25）** — corpus 173 → 300（缺 127，40% 進度）；`scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss,pcc --limit 100 --require-live --prune-fixture-fallback`；PCC adapter 已在 registry 可四源並行；同步推 MOHW live diag（連 2 輪 0 動邊緣）
