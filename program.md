@@ -1,5 +1,29 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
+> **🎯 v6.4 技術主管第四十輪深度回顧（2026-04-21 23:50；/pua 阿里味；caveman；v6.3 後獨立全量實測 + markdown 治理失衡抓手）**：
+>
+> **HEAD 實測指標（本輪獨立 pytest + wc + grep 即取）**：
+> - ✅ pytest 全綠：`python -m pytest tests/ -q --ignore=tests/integration -x` = **3741 passed / 0 failed / 772.35s**（v6.3 3739/515s → **+2 tests / +50% runtime**；連 2 輪 runtime +225% = CI 體感 blocker）
+> - ✅ `grep -c "except Exception\|except:" src/api/routes/agents.py` = **0**（v6.3 刀 2 實錘；production API 層裸 except 清零）
+> - 🔴 `wc -l program.md` = **1912**（16 個歷史 v-header 疊加；本輪唯一新紅線）
+> - 🟠 `wc -l engineer-log.md` = **283 → 333**（本輪反思 append 後破 300 hard cap 邊緣）
+> - 🟠 剩 5 胖檔 > 400：`api/models 461 / generate/export 459 / fact_checker 446 / datagovtw 410 / workflow_cmd 406`（刀 5 middleware 已閉）
+> - 🟠 `find src -name "*.py" -exec grep -l "except Exception\|except:" {} \; | wc -l` = **65 檔 / 136 處**（熱點：web_preview/app 7、kb/stats 6、manager 5）
+> - 🟡 corpus = **173**（P2 連 2 輪 0 動；MOHW live diag 連 3 輪 0 動 = 3.25 邊緣）
+> - 🔴 最新 30 commits 語意率 = **3.3%**（1/30；auto-commit 洪水）
+>
+> **v6.4 P0 重排（反思驅動；ACL-free；連 1 輪延宕 = 3.25）**：
+> 1. **T-PROGRAM-MD-ARCHIVE** 🔴 **新 P0 首位**（15 分）— program.md 1912 → ≤ 1000；封存 v4.3-v5.4 到 `docs/archive/program-history-202604g.md`；**controller 治 src 胖檔、自己卻最胖**的諷刺收束
+> 2. **T9.6-REOPEN-v5** 🔴 **新 P0 次位**（10 分）— engineer-log.md 本輪破 cap；封存 v5.7/v5.8 到 `docs/archive/engineer-log-202604g.md`；主檔留 v5.9/v6.0/v6.1/v6.3/v6.4
+> 3. **T-PYTEST-PROFILE** 🟠 **升 P0 三位**（20 分；CI runtime +225% 抓手）— `pytest --durations=30`；交付 `docs/pytest-profile-v6.4.md`
+> 4. **T-FAT-ROTATE-V2 刀 6** 🟠 **P0 四位**（45 分）— `src/api/models.py 461` 按 request/response 拆 package
+>
+> **v6.4 下輪硬指標**：`wc -l program.md` ≤ 1000；`wc -l engineer-log.md` ≤ 300；pytest runtime ≤ 500s；`wc -l src/api/models.py` 或拆後每檔 ≤ 400；`ls docs/archive/program-history-202604g.md docs/archive/engineer-log-202604g.md docs/pytest-profile-v6.4.md` 三件齊。
+>
+> **紅線狀態**：新增候選紅線「program.md ≤ 1000」（下輪 0 動即正式入核心紅線）；T-PYTEST-PROFILE 連 2 輪未動邊緣；MOHW live diag 連 3 輪 0 動本輪若再不動 = 3.25 實錘。
+
+---
+
 > **🎯 v6.3 值班增量（2026-04-21 21:09；/pua；caveman；單刀只砍 inbound agent route）**：
 >
 > **HEAD 實測指標（pytest + wc 即取）**：
@@ -705,9 +729,13 @@
 
 ## P0 — 阻斷性回歸（v4.3：指標 1 回綠·P0.AA 三連跳警報）
 
-### P0.V59-NEW — 🔴 ACL-free·v5.9/v6.0/v6.1 演進（2026-04-21 15:10 起；**第三十九輪 19:15 重排；v6.0→v6.1**；2hr Epic 5 四件齊落 + Spectra 100%）
+### P0.V59-NEW — 🔴 ACL-free·v5.9/v6.0/v6.1/v6.4 演進（2026-04-21 15:10 起；**第四十輪 23:50 重排；v6.3→v6.4**；markdown 治理失衡新抓手）
 
-> **v6.1 第三十九輪重排理由**：v6.0 下發 2hr 內落 Epic 5 四件（EPIC5-TASKS-SPECS / T5.1 / T5.2 / T5.3）→ Spectra 4/5 80% → **5/5 100%**；但 v6.0 P0 三件（T-FAT 刀 3 / T9.6-REOPEN-v4 / T-BARE-EXCEPT-AUDIT 刀 2）連 2 輪 0 動；engineer-log 326 → **384**（再破 58 行，hard cap 連 2 輪破 = 紅線 X 子條款實錘）。**v6.1 P0 順序改寫**：① **T9.6-REOPEN-v4 升 P0 首位**（10 分 ACL-free 最輕鬆破；連 2 輪 hard cap 破實錘）② T-FAT-ROTATE-V2 刀 3 降 P0 次位（連 3 輪 0 動 = 超實錘）③ T-BARE-EXCEPT-AUDIT 刀 2 保持 P0 三位。新增 P1：T-FAT 刀 4+（五胖檔輪拆）。
+> **v6.4 第四十輪重排理由**：v6.3 刀 2（agents.py bare-except 9→0）/ 刀 4（agents.py 503→397）/ 刀 5（middleware 469→237）連 3 閉 ✅；但獨立實測暴三新血債：(a) program.md 1912 行 16 個 v-header 疊加 = controller 治 src 胖檔自己卻最胖；(b) pytest runtime v6.0 238s → 本輪 772s = +225%，CI 體感 blocker；(c) engineer-log 283 本輪 append 後破 cap。**v6.4 P0 順序改寫**：① **T-PROGRAM-MD-ARCHIVE 新 P0 首位**（15 分 ACL-free）② **T9.6-REOPEN-v5 新 P0 次位**（10 分）③ **T-PYTEST-PROFILE 升 P0 三位**（20 分；從 v6.2 P1 升 P0，連 2 輪 0 動邊緣）④ T-FAT-ROTATE-V2 刀 6 保持 P0 四位（`api/models 461`）。
+
+- [ ] **T-PROGRAM-MD-ARCHIVE** 🔴 **v6.4 P0 首位新（15 分；ACL-free；markdown 治理諷刺收束）** — `wc -l program.md` = 1912；封存 v4.3/v4.4/v4.6/v4.7/v4.8/v4.9/v5.1/v5.2/v5.3/v5.4 十個歷史 header 到 `docs/archive/program-history-202604g.md`；主檔留 v5.6 OVERRIDE + v5.7/v5.8/v5.9/v6.1/v6.3/v6.4；目標主檔 ≤ 1000；下輪 0 動即「program.md ≤ 1000」升格核心紅線
+- [ ] **T9.6-REOPEN-v5** 🔴 **v6.4 P0 次位新（10 分；ACL-free；第 N+3 次 engineer-log 封存）** — 本輪反思 ~50 行 append 後 engineer-log 283 → ~333 > 300 hard cap；封存 v5.7/v5.8 到 `docs/archive/engineer-log-202604g.md`；主檔留 v5.9/v6.0/v6.1/v6.3/v6.4；v4.9 / v5.1 / v5.2 / v5.4 / v5.6 已於 T9.6-REOPEN-v4 封存進 `engineer-log-202604f.md`
+- [ ] **T-PYTEST-PROFILE** 🟠 **v6.4 P0 三位（20 分；ACL-free；CI runtime regression 實錘）** — v6.0 T5.3 19:10 pytest 238s → v6.3 515s → **本輪 772s = +225% 累積**；tests 3735→3741（+6）不足以解釋；`python -m pytest tests/ --ignore=tests/integration --durations=30` 定位前 30 慢測試；候選根因：Epic 5 `test_corpus_provenance_guard.py` fixture I/O、`test_live_ingest_script.py` retained_audit_evidence 擴量、`test_stress.py::concurrent_parallel_review_requests` 刀 4 後新加並發；交付 `docs/pytest-profile-v6.4.md`；v6.2 P1 升 P0 連 2 輪 0 動邊緣
 
 - [x] **T9.6-REOPEN-v4** ✅（2026-04-21 19:43）— 已封存 `engineer-log.md` 的 v5.4/v5.5/v5.6 段到 `docs/archive/engineer-log-202604f.md`；主檔改為只留 v5.7/v5.8/v5.9/v6.0，`wc -l engineer-log.md` 已回到 hard cap 內
 - [x] **T-FAT-ROTATE-V2（刀 3）** ✅（2026-04-21 20:33）— `src/e2e_rewrite.py 475` 已拆為 `src/e2e_rewrite/{__init__,fixtures,reporting,scenarios}.py`；保留 `run_rewrite_e2e` / `run_e2e_suite` / `load_real_corpus` / `_find_scenario` / `SCENARIOS` 與 `read_docx_citation_metadata` monkeypatch 契約；驗證 `python -m pytest tests/test_e2e_rewrite.py -q` = **4 passed**、`python -m pytest tests/integration/test_e2e_rewrite.py -q --import-mode=importlib` = **1 passed**、`python -m pytest tests/test_cli_commands.py -q -k "kb_rebuild or rewrite"` = **11 passed**、`python -m pytest tests/ -q --ignore=tests/integration -x` = **3738 passed / 0 failed**

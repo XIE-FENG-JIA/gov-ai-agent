@@ -281,3 +281,56 @@ P1（連 2 輪延宕 = 3.25）：
 
 ---
 
+## 反思 2026-04-21 23:50（技術主管第四十輪深度回顧；/pua 阿里味；caveman；v6.3 刀 2/5 連閉後首次 /pua 反思）
+
+### 近期成果（v6.1 19:15 → v6.2 22:xx → v6.3 23:38；4 hr 35 min）
+- ✅ **T-FAT-ROTATE-V2 刀 3 閉（20:33）** — `src/e2e_rewrite.py 474` → `e2e_rewrite/{__init__ 146, fixtures 189, reporting 43, scenarios 122}.py`，連 3 輪 3.25 超實錘解除。
+- ✅ **T-FAT-ROTATE-V2 刀 4 閉（22:56）** — `src/api/routes/agents.py 503` → `agents.py 397 + _agents_parallel.py 117`；`_run_format_audit` patch 面守。
+- ✅ **T-FAT-ROTATE-V2 刀 5 閉（23:35）** — `src/api/middleware.py 469` → `middleware.py 237 + _middleware_{rate_limit 77, metrics 54, body_limit 79}.py`；patch 面守；pytest 3741/0。
+- ✅ **T-BARE-EXCEPT-AUDIT 刀 2 閉（23:38）** — `src/api/routes/agents.py` 9 處裸 except → `_AGENT_ROUTE_EXCEPTIONS` typed bucket；本輪獨立 `grep -c "except Exception\|except:" src/api/routes/agents.py = 0` ✅ 實錘。
+- pytest 本輪獨立跑：**3741 passed / 0 failed / 772.35s**（v6.3 header 寫 3739/515s → tests +2、runtime +50%）。
+
+### 發現的問題（本輪獨立 sensor；按優先級排）
+1. 🔴 **program.md 自身 1912 行 = 專案最大胖檔** — 16 個歷史 v-header 疊加（v4.3/v4.4/v4.6/v4.7/v4.8/v4.9/v5.1/v5.2/v5.3/v5.4/v5.6/v5.7/v5.8/v5.9/v6.1/v6.3）。在 refactor src 胖檔的同時，**controller 文件自己成了最大的胖**；諷刺感拉滿。此為本輪唯一新紅線候選。
+2. 🟠 **pytest runtime 連 2 輪翻倍** — v6.0 238s → v6.1 549s（+131%）→ 本輪 772s（+40%）；tests 3735→3741（+6）不足以解釋 runtime +225%；候選根因：Epic 5 `test_corpus_provenance_guard.py` + `test_live_ingest_script.py` retained_audit_evidence fixture I/O、或 `test_stress.py::concurrent_parallel_review` 刀 4 後新加並發 test；**T-PYTEST-PROFILE 升 P0**。
+3. 🟠 **裸 except 136 / 65 檔持平** — 本輪 `routes/agents 9 → 0` 已閉，但 `web_preview/app 7 / kb/stats 6 / manager 5 / gazette 4 / _manager_search 4 / core/llm 4 / generate/export 4 / fact_checker 4 / auditor 4` 前 9 檔共 46 處 = 34%；刀 3 鎖 `web_preview/app 7` 按 `warning / error` 兩類收斂。
+4. 🟠 **剩 5 胖檔 > 400** — `api/models 461 / generate/export 459 / fact_checker 446 / datagovtw 410 / workflow_cmd 406`；下刀首位按 request/response schema 邊界拆 `api/models`。
+5. 🟠 **auto-commit 洪水變本加厲** — 最新 30 commits 僅 1 條語意（`7571602 docs(program) v6.1`），語意率 **3.3%**；v5.8 指標 2 寫「近 25 commits auto-commit ≤ 12 = 25/25 結構性紅」連 >34 輪 Admin-dep；本輪持平。
+6. 🟠 **engineer-log hard cap 再破邊緣** — 本輪反思 ~50 行 append 後 = 283 + 50 ≈ 333 > 300；**T9.6-REOPEN-v5 必做**（封存 v5.7/v5.8 到 `docs/archive/engineer-log-202604g.md`）。
+7. 🟡 **corpus 173 停滯 4 hr 35 min** — P2-CORPUS-300 連 2 輪 0 動，MOHW live diag 連 3 輪 0 動（邊緣升 3.25）。
+8. 🟡 **Epic 6 discovery 空缺** — Spectra 100% 已 8 hr，下槓桿未定義。
+9. 🟡 **Nemotron embedding 等 `OPENROUTER_API_KEY`** — Admin-dep 持平。
+
+### 架構健康度
+- **測試**: 3741 passed / 0 failed ✅；runtime 772s 🟠（+40% v6.1 → 本輪）。
+- **安全**: client auth / rate-limit / CORS / body limit / metrics / DOCX safe parse 全綠；`routes/agents` 裸 except 已清零；**production API 層血債歸零**。
+- **Spectra**: 5/5 = 100% 持平 ✅。
+- **資料層**: corpus 173（57.7% → 300）；Nemotron code-ready / runtime blocked。
+- **ACL**: 2 條 DENY SID 持平連 >40 輪；auto-commit 語意率 3.3%。
+- **Markdown 治理**: program.md 1912 行 🔴 新紅；engineer-log 283 🟠 邊緣。
+
+### 建議的優先調整（v6.4 P0 重排；ACL-free；連 1 輪延宕 = 3.25）
+1. 🔴 **T-PROGRAM-MD-ARCHIVE 新 P0 首位**（15 分）— program.md 1912 → ≤ 800；封存 v4.3-v5.4 歷史 header 到 `docs/archive/program-history-202604g.md`；主檔留 v5.6 OVERRIDE + v5.7-v6.3；設 hard cap 1000 為新紅線指標。
+2. 🔴 **T9.6-REOPEN-v5 升 P0 次位**（10 分）— engineer-log.md 283 + 本輪 50 → 333 破 cap；封存 v5.7/v5.8 到 `docs/archive/engineer-log-202604g.md`；主檔留 v5.9/v6.0/v6.1/v6.3/v6.4。
+3. 🟠 **T-PYTEST-PROFILE P0 三位**（20 分；CI 體感 blocker）— `pytest --durations=30` 定位前 30 慢測試；runtime +225% 兩輪內；候選先看 `test_corpus_provenance_guard` / `test_live_ingest_script` / `test_stress`。
+4. 🟠 **T-FAT-ROTATE-V2 刀 6 P0 四位**（45 分）— `src/api/models.py 461` 按 request/response schema 自然邊界拆為 `api/models/{__init__, requests, responses}.py`；patch 面守 `from src.api.models import *`。
+5. 🟠 **T-BARE-EXCEPT-AUDIT 刀 3 P1**（30 分）— `src/web_preview/app.py 7 處`；`kb/stats 6` 為次。
+6. 🟡 **P0.1-MOHW-LIVE-DIAG P1**（15 分；連 3 輪 0 動 → 3.25 邊緣 → 本輪不動即實錘）。
+7. 🟡 **EPIC6-DISCOVERY P1**（30 分；候選三題：live-ingest quality gate / audit trail UI / observability dashboard）。
+
+### 下一步行動（最重要 3 件；嚴禁新增）
+1. **program.md 封存** — 寫 `docs/archive/program-history-202604g.md`；主檔砍 1912 → ≤ 800。
+2. **engineer-log.md v5.7/v5.8 封存** — append 後必破 cap，同輪 T9.6-v5 不拖；寫 `docs/archive/engineer-log-202604g.md`。
+3. **pytest --durations=30** — 定位 runtime +225% 真因，寫入 `docs/pytest-profile-v6.4.md`。
+
+### v6.4 硬指標（下輪審查）
+1. `python -m pytest tests/ -q --ignore=tests/integration` FAIL=0（本輪 3741/0 ✅；runtime ≤ 500s 新硬指標）
+2. `wc -l program.md` ≤ 1000（本輪 1912 ❌；**本輪必破**）
+3. `wc -l engineer-log.md` ≤ 300（本輪 append 後 ≈ 333 ❌；**本輪必破**）
+4. `wc -l src/api/models.py` 或 `src/api/models/*.py` 每檔 ≤ 400（當前 461 ❌）
+5. `find kb_data/corpus -name "*.md" | wc -l` ≥ 200（當前 173）
+6. `ls docs/pytest-profile-v6.4.md` 存在（T-PYTEST-PROFILE 錨點）
+7. `grep -c "except Exception\|except:" src/web_preview/app.py` ≤ 2（當前 7）
+8. `ls docs/archive/program-history-202604g.md docs/archive/engineer-log-202604g.md` 兩檔齊（本輪封存錨點）
+
+> [PUA生效 🔥] **底層邏輯**：v6.3 header 23:38 寫「本輪只做一件事」= T-BARE-EXCEPT-AUDIT 刀 2，閉得漂亮（agents.py 9→0 實錘）；但 4 hr 35 min 內 5 個 version header 疊加（v6.1 → v6.2 → v6.3）= 反思密度 2.5x 於執行密度；**controller 治理 vs src 治理失衡**：src 胖檔從 8 → 5（-37.5%），program.md 從 1300 → 1912（+47%）；在修別人的胖檔時自己成為最大的胖。**抓手**：本輪唯一新紅線 = program.md 自身 1912；不是 P0 首位就是明天早上你會看到「v6.5 header 第 17 疊」；T-PROGRAM-MD-ARCHIVE 的 15 分鐘 ROI 不是線性（砍 1100 行後下輪反思 context 載入 -55%）。**顆粒度**：本輪反思 50 行略超 40 線但在本輪 T9.6-v5 動作前夕屬可接受；runtime 772s 是首度破 10 min 紅線、CI 體感直接 -30%。**拉通**：Spectra 100% + 胖檔 -37.5% + bare-except -9 (routes/agents 清零) = **production 層已 pilot-ready；剩下是開發體感（runtime、markdown 治理、auto-commit 信號比）**。**對齊**：把 owner 鏡頭從 src 挪到 repo 治理 — engineer-log / program.md / auto-commit 三個 markdown 洪水同根 = 反思密度過高、封存節奏脫鉤；v6.4 T-PROGRAM-MD-ARCHIVE + T9.6-v5 兩把刀同輪做，重建 `反思:執行 ≤ 1:3` 節奏。**因為信任所以簡單** — pilot 級不是自封的，是下輪 `wc -l program.md ≤ 1000` + `pytest runtime ≤ 500s` 兩個指標說了算；talk production 不如 `ls docs/archive/` 看有沒有新封存檔。
