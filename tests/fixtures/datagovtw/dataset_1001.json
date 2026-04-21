@@ -7,5 +7,13 @@
   "topic_name": "政府治理",
   "updatefreq_desc": "每月",
   "metadata_modified": "2026-04-18 09:30:00",
-  "tags": ["公文", "電子交換"]
+  "tags": ["公文", "電子交換"],
+  "resources": [
+    {
+      "id": "resource-1001-json",
+      "name": "衛福部公告彙編",
+      "format": "JSON",
+      "download_url": "__fixture__/records_1001.json"
+    }
+  ]
 }

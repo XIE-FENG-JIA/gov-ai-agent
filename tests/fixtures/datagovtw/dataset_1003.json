@@ -7,5 +7,13 @@
   "topic_name": "公告",
   "updatefreq_desc": "每日",
   "metadata_modified": "2026-04-12T08:00:00+08:00",
-  "tags": ["公告", "地方政府"]
+  "tags": ["公告", "地方政府"],
+  "resources": [
+    {
+      "id": "resource-1003-json",
+      "name": "更新統計",
+      "format": "JSON",
+      "download_url": "__fixture__/records_1003.json"
+    }
+  ]
 }

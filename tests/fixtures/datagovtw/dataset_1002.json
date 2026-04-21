@@ -7,5 +7,13 @@
   "topic_name": "數位政策",
   "updatefreq_desc": "不定期",
   "metadata_modified": "2026-04-16",
-  "tags": ["公文", "附件"]
+  "tags": ["公文", "附件"],
+  "resources": [
+    {
+      "id": "resource-1002-csv",
+      "name": "數發部公告",
+      "format": "CSV",
+      "download_url": "__fixture__/records_1002.csv"
+    }
+  ]
 }
