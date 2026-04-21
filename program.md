@@ -1142,11 +1142,12 @@
   - **延宕懲罰**：ACL-free 連 2 輪延宕 = 3.25
   - commit（ACL 解後）: `feat(scripts): add integration runner gate + SOP doc`
 
-- [ ] **T2.3-PIN**（v4.3 新增；10 分鐘）✅ ACL-free·vendor/open-notebook commit pin
+- [x] **T2.3-PIN**（2026-04-21 08:37）✅ ACL-free·vendor/open-notebook commit pin
   - **底層邏輯**：`vendor/open-notebook` 目前以 `--depth 1` clone 無 pin；upstream 若 force-push 或刪 branch，本機 smoke 隨時炸；T2.3 資料層遷移前必須先 pin
-  - **產出**：(a) `vendor/open-notebook.pin`（或 `docs/vendor-pins.md`）記 `commit=<sha> date=<YYYY-MM-DD> upstream=https://github.com/lfnovo/open-notebook`；(b) `scripts/smoke_open_notebook.py` 起始 check `HEAD` == pinned sha，不符 warn（不 fail）
-  - **驗 1**：`ls vendor/open-notebook.pin || ls docs/vendor-pins.md` 存在
-  - **驗 2**：`cat <pin-file> | rg -c "commit=[0-9a-f]{7,}"` ≥ 1
+  - **完成**：(a) 新增 `vendor/open-notebook.pin`，固定 `commit=ec41ef8f2fc2 date=2026-04-19 upstream=https://github.com/lfnovo/open-notebook.git`；(b) `scripts/smoke_open_notebook.py` 新增 pin 讀取與 git HEAD 比對，vendored checkout 漂移時只 warn、不 fail；(c) 補 `tests/test_smoke_open_notebook_script.py` 兩條回歸，覆蓋 mismatch warn 與 short-SHA prefix match
+  - **驗 1**：`python -m pytest tests/test_smoke_open_notebook_script.py -q --no-header` = **7 passed**
+  - **驗 2**：`python scripts/smoke_open_notebook.py` = `status=ok` 且無 pin mismatch warning
+  - **驗 3**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3701 passed / 0 failed**
   - **延宕懲罰**：ACL-free 連 2 輪延宕 = 3.25
   - commit（ACL 解後）: `chore(vendor): pin open-notebook upstream commit sha`
 
