@@ -1,20 +1,211 @@
 # Live Ingest Report
 
 - base_dir: kb_data
-- limit: 3
+- limit: 100
 - force_live: 1
 
-## fda
+## mojlaw
 - status: PASS
-- count: 3
-- live_count: 3
-- ingested_count: 3
+- count: 100
+- live_count: 100
+- ingested_count: 80
 - fixture_remaining: 0
 - archived_count: 0
-- summary: live_total=3 newly_ingested=3 fixture_remaining=0 archived=0
+- summary: live_total=100 newly_ingested=80 fixture_remaining=0 archived=0
 
 | source_url | synthetic | fixture_fallback | first_sentence |
 | --- | --- | --- | --- |
-| https://www.fda.gov.tw/DataAction?keyword=%E9%A3%9F%E5%93%81%E6%A8%99%E7%A4%BA%E5%8D%87%E7%B4%9A%EF%BC%81%E9%A3%9F%E8%97%A5%E7%BD%B2%E8%88%87%E5%81%A5%E5%BA%B7%E7%BD%B2%E6%94%9C%E6%89%8B%E6%8E%A8%E5%8B%95%E3%80%8C%E7%B4%85%E9%BB%83%E7%B6%A0%E3%80%8D%E5%88%B6%E5%BA%A6&startdate=2026%2F04%2F10&enddate=2026%2F04%2F10 | False | False | 食品標示升級！食藥署與健康署攜手推動「紅黃綠」制度 **發布日期**：2026-04-10 **原文連結**：https://www.fda.gov.tw/DataAction?keyword=%E9%A3%9F%E5%93%81%E6%A8%99%E7%A4%BA%E5%8D%87%E7%B4%9A%EF%BC%81%E9%A3%9F%E8%97%A5%E7%BD%B2%E8%88%87%E5%81%A5%E5%BA%B7%E7%BD%B2%E6%94%9C%E6%89%8B%E6%8E%A8%E5%8B%95%E3%80%8C%E7%B4%85%E9%BB%83%E7%B6%A0%E3%80%8D%E5%88%B6%E5%BA%A6&startdate=2026%2F04%2F10&enddate=2026%2F04%2F10 **附檔連結**：https://www.fda.gov.tw/TC/includes/GetFile.ashx?mID=19&id=124966 摘要 食品藥物管理署（下稱食藥署）與國民健康署（下稱健康署）合作推動食品正面營養資訊「紅黃綠」標示制度，透過更直觀、易辨識的方式，作為選擇較健康食品的重要參考，協助民眾積極預防慢性疾病、促進國人健康飲食 |
-| https://www.fda.gov.tw/DataAction?keyword=%E9%A6%AC%E9%88%B4%E8%96%AF%E6%9C%89%E8%A1%9B%E7%94%9F%E6%A8%99%E6%BA%96%E8%88%87%E8%BC%B8%E5%85%A5%E6%AA%A2%E7%96%AB%E6%A2%9D%E4%BB%B6%E9%9B%99%E9%87%8D%E6%8A%8A%E9%97%9C++%E7%A2%BA%E4%BF%9D%E5%AE%89%E5%85%A8&startdate=2026%2F04%2F17&enddate=2026%2F04%2F17 | False | False | 馬鈴薯有衛生標準與輸入檢疫條件雙重把關  確保安全 **發布日期**：2026-04-17 **原文連結**：https://www.fda.gov.tw/DataAction?keyword=%E9%A6%AC%E9%88%B4%E8%96%AF%E6%9C%89%E8%A1%9B%E7%94%9F%E6%A8%99%E6%BA%96%E8%88%87%E8%BC%B8%E5%85%A5%E6%AA%A2%E7%96%AB%E6%A2%9D%E4%BB%B6%E9%9B%99%E9%87%8D%E6%8A%8A%E9%97%9C++%E7%A2%BA%E4%BF%9D%E5%AE%89%E5%85%A8&startdate=2026%2F04%2F17&enddate=2026%2F04%2F17 摘要 針對外界質疑輸入馬鈴薯的食用安全，衛生福利部食品藥物管理署(下稱食藥署)表示，臺美對等貿易協定及美國對各國貿易障礙評估報告提及之加工用馬鈴薯(chipping&ensp;potato﹐processing&ensp;potato)，輸入臺灣之前，均應符合農業部的檢疫條件規範，抵臺還須通過邊境查驗、後市場抽驗的把關 |
-| https://www.fda.gov.tw/DataAction?keyword=%E9%A3%9F%E8%97%A5%E7%BD%B2%E7%B1%B2%E9%A3%9F%E5%93%81%E6%A5%AD%E8%80%85%E5%AF%A9%E6%85%8E%E8%A9%95%E4%BC%B0%E4%B8%AD%E5%9C%8B%E5%B8%82%E5%A0%B4%E9%A2%A8%E9%9A%AA&startdate=2026%2F04%2F19&enddate=2026%2F04%2F19 | False | False | 食藥署籲食品業者審慎評估中國市場風險 **發布日期**：2026-04-19 **原文連結**：https://www.fda.gov.tw/DataAction?keyword=%E9%A3%9F%E8%97%A5%E7%BD%B2%E7%B1%B2%E9%A3%9F%E5%93%81%E6%A5%AD%E8%80%85%E5%AF%A9%E6%85%8E%E8%A9%95%E4%BC%B0%E4%B8%AD%E5%9C%8B%E5%B8%82%E5%A0%B4%E9%A2%A8%E9%9A%AA&startdate=2026%2F04%2F19&enddate=2026%2F04%2F19 摘要 針對近期中國宣布「惠台措施」中涉及食品輸銷相關措施部分，衛生福利部食品藥物管理署（下稱食藥署）今（19）日表示，食品貿易應依國際規範與科學原則辦理，建立透明、可預測之制度環境，供業者據以規劃市場 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0000001 | False | False | 中華民國憲法 第 一 章 總綱 第 1 條 中華民國基於三民主義，為民有民治民享之民主共和國 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0000002 | False | False | 中華民國憲法增修條文 第 1 條 中華民國自由地區選舉人於立法院提出憲法修正案、領土變更案，經公告半年，應於三個月內投票複決，不適用憲法第四條、第一百七十四條之規定 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0000003 | False | False | 憲法實施之準備程序 1 一、自憲法公布之日起現行法令之與憲法相牴觸者，國民政府應迅速分別予以修改或廢止，並應於依照本憲法所產生之國民大會集會以前，完成此項工作 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0000004 | False | False | 訓政結束程序法 第 1 條 國民政府主席、國民政府委員會及其五院外之直轄機關行使原有之法定職權，應於依憲法產生之總統就職之日，即行停止 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0000005 | False | False | 動員戡亂時期臨時條款 1 一、總統在動員戡亂時期，為避免國家或人民遭遇緊急危難，或應付財政 經濟上重大變故，得經行政院會議之決議，為緊急處分，不受憲法第 三十九條或第四十三條所規定程序之限制 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0000007 | False | False | 戒嚴時期人民受損權利回復條例 第 1 條 為回復戒嚴時期人民受損之權利，特制定本條例 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0000009 | False | False | 中華民國領海及鄰接區法 第 1 條 為維護中華民國領海之主權及鄰接區權利，特制定本法 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0000010 | False | False | 中華民國專屬經濟海域及大陸礁層法 第 1 條 為維護與行使中華民國專屬經濟海域及大陸礁層之權利，特制定本法 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0000012 | False | False | 民國八十八年九月二十五日總統緊急命令（九二一震災） 1 查臺灣地區於民國八十八年九月二十一日遭遇前所未有強烈地震，其中臺中縣、南投縣全縣受創甚深，臺北市、臺北縣、苗栗縣、臺中市、彰化縣、雲林縣及其他縣市亦有重大之災區及災戶，民眾生命、身體及財產蒙受重大損失，影響民生至鉅，災害救助、災民安置及災後重建，刻不容緩 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010001 | False | False | 國民大會組織法 第 1 條 本法依憲法第三十四條及憲法增修條文第一條第四項及第八條制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010012 | False | False | 中華民國總統府組織法 第 1 條 總統依據憲法行使職權，設總統府 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010013 | False | False | 國策顧問委員會組織條例 第 1 條 本條例依總統府組織法第二十五條之規定制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010014 | False | False | 戰略顧問委員會組織條例 第 1 條 本條例依總統府組織法第二十五條之規定制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010015 | False | False | 稽勳委員會組織條例 第 1 條 稽勳委員會隸屬於國民政府，掌理勳績之審核事項 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010016 | False | False | 中央研究院組織法 第 1 條 本法依中華民國總統府組織法第十七條規定制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010017 | False | False | 國史館組織條例 第 1 條 國史館隸屬於總統府，掌理纂修國史事宜 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010018 | False | False | 國父陵園管理委員會組織條例 第 1 條 國父陵園管理委員會隸屬於國民政府，其職掌如左： 一、護衛陵墓 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010021 | False | False | 國家安全會議組織法 第 1 條 本法依中華民國憲法增修條文第二條第四項規定制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010022 | False | False | 國家安全局組織法 第 1 條 本法依中華民國憲法增修條文第二條及國家安全會議組織法第八條制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010026 | False | False | 國史館臺灣文獻館組織條例 第 1 條 本條例依國史館組織條例第十一條規定制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010032 | False | False | 行政院組織法 第 1 條 本法依憲法第六十一條制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010037 | False | False | 行政院公共工程委員會組織條例 第 1 條 行政院為統籌公共工程之規劃、審議、協調及督導，設行政院公共工程委員會（以下簡稱本會） |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010039 | False | False | 行政院經濟建設委員會組織條例 第 1 條 行政院為從事國家經濟建設之設計、審議、協調及考核，特設經濟建設委 員會 (以下簡稱本會) |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010042 | False | False | 檔案管理局組織條例 第 1 條 本條例依行政院研究發展考核委員會組織條例第七條之二規定制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010043 | False | False | 立法院各委員會組織法 第 1 條 本法依立法院組織法第十二條制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010044 | False | False | 立法院組織法 第 1 條 本法依憲法第七十六條制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010051 | False | False | 司法院組織法 第 1 條 本法依憲法第八十二條制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010053 | False | False | 法院組織法 第 一 章 總則 第 1 條 本法所稱法院，分左列三級： 一、地方法院 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010054 | False | False | 最高法院設置分庭條例 第 1 條 最高法院為便於處理訴訟事件，得就適當區域設置分庭 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010055 | False | False | 行政法院組織法 第 一 章 總則 第 1 條 行政法院掌理行政訴訟審判事務 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010056 | False | False | 懲戒法院組織法 第 1 條 懲戒法院掌理全國公務員之懲戒及法官法第四十七條第一項第二款至第四款之事項 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010058 | False | False | 法官學院組織法 第 1 條 本法依司法院組織法第二十二條之一制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010063 | False | False | 考試院組織法 第 1 條 本法依憲法第八十九條制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010064 | False | False | 考銓處組織條例 第 1 條 考試院在一省或二省以上之地區設考銓處，依本條例之規定，掌理各該省區內之考選銓敘事宜，並分別受考選委員會、銓敘部之指揮監督 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010071 | False | False | 監察院組織法 第 1 條 本法依憲法第一百零六條制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010072 | False | False | 監察院各委員會組織法 第 1 條 本法依監察院組織法第三條第一項制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010073 | False | False | 監察院監察委員行署組織條例 第 1 條 本條例依監察院組織法第八條之規定制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0020001 | False | False | 總統副總統選舉罷免法（舊 36.03.31 制定） 第 1 條 國民大會依憲法及本法之規定，行使選舉罷免總統、副總統之職權 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0020002 | False | False | 國民大會同意權行使法 第 1 條 本法依憲法第三十四條制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0020003 | False | False | 國民大會代表報酬及費用支給條例 第 1 條 國民大會代表報酬及費用之支給，依據司法院釋字第二八二號、第二九九 號及第四二一號解釋，特制定本條例 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0020057 | False | False | 立法院各委員會辦事通則 第 1 條 各委員會事務除依立法院組織法、立法院各委員會組織法及立法院議事規 則之規定處理外依本通則處理之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0020058 | False | False | 立法院職權行使法 第 一 章 總則 第 1 條 本法依立法院組織法第二條第二項制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0020062 | False | False | 中央政府預算執行暫行條例 第 1 條 為使中央政府各機關預算執行更為嚴密有效，並適應其特殊需要，特制定 本條例 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0020064 | False | False | 立法委員行為法 第 一 章 總則 第 1 條 為維護國會尊嚴，確立立法委員倫理風範及行為準則，健全民主政治發展，依立法院組織法第二條制定本法 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030001 | False | False | 總統副總統宣誓條例 第 1 條 總統、副總統宣誓，依本條例之規定 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030002 | False | False | 卸任總統副總統禮遇條例 第 1 條 為禮遇卸任總統、副總統，特制定本條例 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030004 | False | False | 褒揚條例 第 1 條 為褒揚國民立德、立功、立言，貢獻國家，激勵當世，垂之史冊，昭示來茲，特制定本條例 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030006 | False | False | 勳章條例 第 1 條 中華民國人民有勳勞於國家或社會者，得授予勳章 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030011 | False | False | 印信條例 第 1 條 印信之製發及使用，依本條例行之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030013 | False | False | 宣誓條例 第 1 條 本條例所列公職人員之宣誓，除法律另有規定外，依本條例行之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030018 | False | False | 公文程式條例 第 1 條 稱公文者，謂處理公務之文書；其程式，除法律別有規定外，依本條例之規定辦理 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030019 | False | False | 請願法 第 1 條 人民請願，依本法之規定 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030020 | False | False | 訴願法 第 一 章 總則 第 一 節 訴願事件 第 1 條 人民對於中央或地方機關之行政處分，認為違法或不當，致損害其權利或利益者，得依本法提起訴願 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030023 | False | False | 行政執行法 第 一 章 總則 第 1 條 行政執行，依本法之規定；本法未規定者，適用其他法律之規定 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030024 | False | False | 國家總動員法 第 1 條 國民政府於戰時，為集中運用全國之人力、物力，加強國防力量，貫澈抗 戰目的，制定國家總動員法 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030025 | False | False | 公務人員交代條例 第 1 條 公務人員之交代，除法律另有規定外，依本條例行之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030028 | False | False | 國家安全法 第 1 條 為確保國家安全，維護社會安定，特制定本法 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030032 | False | False | 行政院研究發展考核委員會組織條例 第 1 條 行政院為辦理研究發展、綜合規劃、管制考核、行政資訊管理、政府出版 品管理及促進地方發展工作，設行政院研究發展考核委員會 (以下簡稱本 會) |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030055 | False | False | 行政程序法 第 一 章 總則 第 一 節 法例 第 1 條 為使行政行為遵循公正、公開與民主之程序，確保依法行政之原則，以保障人民權益，提高行政效能，增進人民對行政之信賴，特制定本法 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030057 | False | False | 政府採購法 第 一 章 總則 第 1 條 為建立政府採購制度，依公平、公開之採購程序，提升採購效率與功能，確保採購品質，爰制定本法 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030110 | False | False | 九二一震災重建暫行條例 第 一 章 總則 第 1 條 為有效、迅速推動震災災後重建工作，以重建城鄉、復興產業、恢復家園 ，特制定本條例 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030116 | False | False | 千禧年資訊年序爭議處理法 第 1 條 為因應公元二千年資訊年序錯置危機，鼓勵公開資訊，平衡消費者權益與事業責任，迅速妥適解決紛爭，特制定本法；本法未規定者，適用其他有關法律之規定 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030121 | False | False | 離島建設條例 第 1 條 為推動離島開發建設，健全產業發展，維護自然生態環境，保存文化特色，改善生活品質，增進居民福利，特制定本條例；本條例未規定者，適用其他法律之規定 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030133 | False | False | 中央法規標準法 第 一 章 總則 第 1 條 中央法規之制定、施行、適用、修正及廢止，除憲法規定外，依本法之規定 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030134 | False | False | 檔案法 第 一 章 總則 第 1 條 為健全政府機關檔案管理，促進檔案開放與運用，發揮檔案功能，特制定本法 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030154 | False | False | 行政訴訟法 第 一 編 總則 第 一 章 行政訴訟事件 第 1 條 行政訴訟以保障人民權益，確保國家行政權之合法行使，增進司法功能為宗旨 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030155 | False | False | 公務員懲戒法 第 一 章 總則 第 1 條 公務員非依本法不受懲戒 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030156 | False | False | 行政訴訟法施行法 第 1 條 本法稱修正行政訴訟法者，指與本法同日施行之行政訴訟法；稱舊法者，指修正行政訴訟法施行前之行政訴訟法 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030159 | False | False | 憲法訴訟法 第 一 章 總則 第 1 條 司法院大法官組成憲法法庭，依本法之規定審理下列案件： 一、法規範憲法審查及裁判憲法審查案件 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030161 | False | False | 證人保護法 第 1 條 為保護刑事案件及檢肅流氓案件之證人，使其勇於出面作證，以利犯罪之偵查、審判，或流氓之認定、審理，並維護被告或被移送人之權益，特制定本法 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030199 | False | False | 監察法 第 一 章 總則 第 1 條 監察院依憲法及憲法增修條文之規定，行使彈劾、糾舉及審計權，並提出糾正案，除審計權之行使另有規定外，悉依本法之規定 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0040001 | False | False | 省縣自治法 第 一 章 總則 第 1 條 本法依中華民國憲法增修條文第十七條制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0040002 | False | False | 直轄市自治法 第 一 章 總則 第 1 條 本法依中華民國憲法第一百十八條制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0040003 | False | False | 地方制度法 第 一 章 總則 第 1 條 本法依中華民國憲法第一百十八條及中華民國憲法增修條文第九條第一項制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0040010 | False | False | 縣長任用法 第 1 條 縣長非年在三十歲以上，具有左列各款資格之一者，不得任用： 一、依法受縣長考試及格者 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0040011 | False | False | 縣行政人員任用條例 第 1 條 縣行政人員之任用，除法律另有規定外，依本條例行之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0040012 | False | False | 臺灣省政府功能業務與組織調整暫行條例 第 1 條 本條例依中華民國憲法增修條文第九條第三項制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=B0000001 | False | False | 民法 第 一 編 總則 第 一 章 法例 第 1 條 民事，法律所未規定者，依習慣；無習慣者，依法理 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=B0000002 | False | False | 民法總則施行法 第 1 條 民事在民法總則施行前發生者，除本施行法有特別規定外，不適用民法總則之規定，其在修正前發生者，除本施行法有特別規定外，亦不適用修正後之規定 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=B0000003 | False | False | 民法債編施行法 第 1 條 民法債編施行前發生之債，除本施行法有特別規定外，不適用民法債編之規定；其在修正施行前發生者，除本施行法有特別規定外，亦不適用修正施行後之規定 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=B0000004 | False | False | 民法物權編施行法 第 1 條 物權在民法物權編施行前發生者，除本施行法有特別規定外，不適用民法物權編之規定；其在修正施行前發生者，除本施行法有特別規定外，亦不適用修正施行後之規定 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=B0000005 | False | False | 民法親屬編施行法 第 1 條 關於親屬之事件，在民法親屬編施行前發生者，除本施行法有特別規定外，不適用民法親屬編之規定；其在修正前發生者，除本施行法有特別規定外，亦不適用修正後之規定 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=B0000006 | False | False | 民法繼承編施行法 第 1 條 繼承在民法繼承編施行前開始者，除本施行法有特別規定外，不適用民法繼承編之規定；其在修正前開始者，除本施行法有特別規定外，亦不適用修正後之規定 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=B0000007 | False | False | 涉外民事法律適用法 第 一 章 通則 第 1 條 涉外民事，本法未規定者，適用其他法律之規定；其他法律無規定者，依法理 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=B0010001 | False | False | 民事訴訟法 第 一 編 總則 第 一 章 法院 第 一 節 管轄 第 1 條 訴訟，由被告住所地之法院管轄 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=B0010002 | False | False | 民事訴訟法施行法 第 1 條 本施行法稱修正民事訴訟法者，謂中華民國五十七年一月九日修正後，公布施行之民事訴訟法 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=B0010003 | False | False | 民事訴訟費用法 第 1 條 民事訴訟費用之徵收及計算，依本法之規定 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=B0010004 | False | False | 強制執行法 第 一 章 總則 第 1 條 民事強制執行事務，於地方法院及其分院設民事執行處辦理之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=B0010005 | False | False | 管收條例 第 1 條 本條例依強制執行法第二十六條制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=B0010006 | False | False | 破產法 第 一 章 總則 第 1 條 債務人不能清償債務者，依本法所規定和解或破產程序，清理其債務 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=B0010007 | False | False | 破產法施行法 第 1 條 破產法施行前不能清償債務之事件，已由法院或商會開始處理者，視其進行程度依破產法所定之程序終結之，其已進行之部分，不失其效力 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=B0010008 | False | False | 非訟事件法 第 一 章 總則 第 一 節 事件管轄 第 1 條 法院管轄之非訟事件，除法律另有規定外，適用本法之規定 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=B0010010 | False | False | 公證法 第 一 章 總則 第 1 條 公證事務，由法院或民間之公證人辦理之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=B0010012 | False | False | 提存法 第 1 條 地方法院及其分院設提存所，辦理提存事務 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=B0010014 | False | False | 外國法院委託事件協助法 第 1 條 法院受外國法院委託協助民事或刑事事件，除條約或法律有特別規定外，依本法辦理 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=D0000123 | False | False | 行政院原住民族委員會組織條例 第 1 條 行政院原住民族委員會 (以下簡稱本會) 主管全國原住民族事務 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=D0000128 | False | False | 行政院原住民族委員會文化園區管理局組織條例 第 1 條 本條例依行政院原住民族委員會組織條例第七條之二規定制定之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=D0000129 | False | False | 行政院客家委員會組織條例 第 1 條 行政院為統籌處理有關客家事務，特設行政院客家委員會 (以下簡稱本會 ) |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=F0120018 | False | False | 戒嚴時期不當叛亂暨匪諜審判案件補償條例 第 1 條 為戒嚴時期不當叛亂暨匪諜審判案件之受裁判者，於解嚴後不能獲得補償或救濟，特制定本條例補償之 |
+| https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=H0000052 | False | False | 行政院體育委員會組織條例 第 1 條 為統籌國家體育事務，行政院特設行政院體育委員會（以下簡稱本會） |
+
+## datagovtw
+- status: PASS
+- count: 20
+- live_count: 20
+- ingested_count: 0
+- fixture_remaining: 0
+- archived_count: 0
+- summary: live_total=20 newly_ingested=0 fixture_remaining=0 archived=0
+
+| source_url | synthetic | fixture_fallback | first_sentence |
+| --- | --- | --- | --- |
+| https://data.gov.tw/dataset/104316 | False | False | 高雄市文化局辦理公聽會參加人數 **提供機關**：高雄市政府主計處 說明 文化局辦理公聽會參加人數 **服務分類**：公共資訊 **主題**：其他 **更新頻率**：不定期更新 |
+| https://data.gov.tw/dataset/108301 | False | False | 核能安全委員會公文時效統計 **提供機關**：核能安全委員會 說明 本會各類公文每月時效統計資料 **服務分類**：公共資訊 **主題**：政府統計 **更新頻率**：每1月 |
+| https://data.gov.tw/dataset/122002 | False | False | 臺北市政府所屬各機關各類公文總量及一般公文發文處理日數 **提供機關**：臺北市政府研究發展考核委員會 說明 臺北市政府所屬各機關各年度一般公文、專案案件、申請案件、陳情案件及行政救濟公文總量，以及104年迄今各年度一般公文發文處理日數 ( |
+| https://data.gov.tw/dataset/162455 | False | False | 數位發展部各類公文收文統計及一般公文發文創簽稿統計 **提供機關**：數位發展部 說明 本資料集由數位發展部為落實政府開放公共資訊之目的，按年更新機關各月份的公文收創等件數，包含一般公文、立法委員質詢案件、人民申請案件、訴願案件、人民陳情案件、專案管制案件及監察案件等七類公文，希望能給資料使用者用於公務機關文書處理之分析利用 |
+| https://data.gov.tw/dataset/167217 | False | False | 107年高雄市政府消防局一般公文時效統計表 **提供機關**：高雄市政府消防局 說明 107年一般公文時效統計表 **服務分類**：公共資訊 **主題**：其他 **更新頻率**：不定期更新 |
+| https://data.gov.tw/dataset/167218 | False | False | 106年高雄市政府消防局一般公文時效統計表 **提供機關**：高雄市政府消防局 說明 106年一般公文時效統計表 **服務分類**：公共資訊 **主題**：其他 **更新頻率**：不定期更新 |
+| https://data.gov.tw/dataset/167220 | False | False | 104年高雄市政府消防局一般公文時效統計表 **提供機關**：高雄市政府消防局 說明 104年一般公文時效統計表 **服務分類**：公共資訊 **主題**：其他 **更新頻率**：不定期更新 |
+| https://data.gov.tw/dataset/167221 | False | False | 103年高雄市政府消防局一般公文時效統計表 **提供機關**：高雄市政府消防局 說明 103年一般公文時效統計表 **服務分類**：公共資訊 **主題**：其他 **更新頻率**：不定期更新 |
+| https://data.gov.tw/dataset/167223 | False | False | 101年高雄市政府消防局一般公文時效統計表 **提供機關**：高雄市政府消防局 說明 101年一般公文時效統計表 **服務分類**：公共資訊 **主題**：其他 **更新頻率**：不定期更新 |
+| https://data.gov.tw/dataset/167704 | False | False | 桃園市政府一般公文時效統計(112年3月起) **提供機關**：桃園市政府智慧城鄉發展委員會 說明 各一級機關每月應辦、已辦結公文之合計(含發文件數及收文創簽等件數) |
+| https://data.gov.tw/dataset/167875 | False | False | 桃園市政府一般公文時效統計(106年9月至112年2月前) **提供機關**：桃園市政府智慧城鄉發展委員會 說明 各一級機關每月應辦、已辦結公文之合計(含發文件數及收文創簽等件數) |
+| https://data.gov.tw/dataset/168324 | False | False | 桃園市政府消防局一般公文每月統計 **提供機關**：桃園市政府消防局 說明 桃園市政府消防局一般公文每月統計報表 **服務分類**：公共資訊 **主題**：其他 **更新頻率**：每1月 |
+| https://data.gov.tw/dataset/173524 | False | False | 數位發展部數位產業署各類公文收文統計及一般公文發文創簽稿統計 **提供機關**：數位發展部數位產業署 說明 本資料集由秘書室為了統計目的，紀錄數位發展部數位產業署各類公文收文統計及一般公文發文創簽稿統計，提供給資料使用者參考使用 |
+| https://data.gov.tw/dataset/30790 | False | False | 場址列管公文 **提供機關**：環境部環境管理署 說明 場址列管紀錄相關公文 **服務分類**：生活安全及品質 **主題**：其他 **更新頻率**：每1年 |
+| https://data.gov.tw/dataset/32311 | False | False | 財政部南區國稅局公文電子交換統計表 **提供機關**：財政部南區國稅局 說明 為落實電子化政府及節能減紙，本局積極推動公文電子交換，為利民眾了解執行成效，爰彙整公文電子交換(含收文、發文)件數及比率供參 |
+| https://data.gov.tw/dataset/34943 | False | False | 公文統計資料 **提供機關**：環境部 說明 提供公文總收文、總發文、紙本發文及電子發文每月件數 **服務分類**：生活安全及品質 **主題**：其他 **更新頻率**：不定期更新 |
+| https://data.gov.tw/dataset/35627 | False | False | 財政部臺北國稅局公文電子交換統計表 **提供機關**：財政部臺北國稅局 說明 提供財政部臺北國稅局公文電子交換(含收文、發文)件數及比率等統計數據 |
+| https://data.gov.tw/dataset/38256 | False | False | 國立臺灣博物館新聞公告 **提供機關**：國立臺灣博物館 說明 臺博館新聞公告 **服務分類**：公共資訊 **主題**：其他 **更新頻率**：每1月 |
+| https://data.gov.tw/dataset/7615 | False | False | 節能減紙指標-公文電子交換比率 **提供機關**：國家發展委員會檔案管理局 說明 各機關每月更新公文電子交換相關數據 **服務分類**：公共資訊 **主題**：其他 **更新頻率**：不定期更新 |
+| https://data.gov.tw/dataset/88790 | False | False | 30280-07-02-2 臺中市政府各區公所一般公文統計表 **提供機關**：臺中市政府研究發展考核委員會 說明 臺中市各區公所一般公文件數統計，包含發文、存查件數統計 |
+
+## executive_yuan_rss
+- status: PASS
+- count: 50
+- live_count: 50
+- ingested_count: 30
+- fixture_remaining: 0
+- archived_count: 0
+- summary: live_total=50 newly_ingested=30 fixture_remaining=0 archived=0
+
+| source_url | synthetic | fixture_fallback | first_sentence |
+| --- | --- | --- | --- |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//0095b7bc-c441-495f-bd98-d819e0a44088 | False | False | 參訪彰化牧場及品嚐在地豬肉美食 卓揆：攜手產業持續拓銷臺灣豬肉至國際多元市場 **發布日期**：2026-04-18 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//0095b7bc-c441-495f-bd98-d819e0a44088 摘要 關心臺灣養豬產業發展，行政院長卓榮泰今（18）日參訪「彰化漢寶牧場產業淨零轉型與智慧升級示範場域」，並於附近餐廳品嚐在地優質豬肉美食 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//07fec5d4-4bce-467a-8156-cb3c69803ec5 | False | False | 卓揆表彰優秀學者卓著貢獻 勉持續引領學術發展 促政府產業合作 打造更好的臺灣 **發布日期**：2026-03-23 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//07fec5d4-4bce-467a-8156-cb3c69803ec5 摘要 行政院長卓榮泰今（23）日出席「第29屆國家講座主持人、第8屆國家產學大師獎暨第69屆學術獎頒獎典禮」時表示，很榮幸出席匯聚全國文化、知識與專業領域最高榮譽的頒獎典禮，與大師齊聚一堂 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//0851bcf8-e37a-4bc3-a4ac-59a2322b69f1 | False | False | 我國已向美國提交301調查書面意見 全力鞏固臺美ART及MOU談判成果 **發布日期**：2026-04-15 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//0851bcf8-e37a-4bc3-a4ac-59a2322b69f1 摘要 美國貿易代表署(USTR)分別對我國等16個貿易夥伴「存在結構性產能過剩」，以及60個貿易夥伴「未確實執行強迫勞動貨品進口禁令」展開301調查，行政院臺美經貿工作小組表示，我政府已召開多次跨部會會議為301調查進行整體準備，同時與美方密切溝通，並已於美東時間4月14日以我政府名義提交書面說明給美方，全力維繫我國在臺美對等貿易協定(ART)及投資MOU取得之談判成果 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//0bc0abcb-fbf3-4c42-819f-3288f891207f | False | False | 無人機相關預算對民主供應鏈戰略布局及國軍戰力至關重要 行政院籲請立法院儘速審議通過國防特別條例及115年總預算 **發布日期**：2026-03-22 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//0bc0abcb-fbf3-4c42-819f-3288f891207f 摘要 無人機產業為「五大信賴產業」中軍工產業的重要項目，亦是帶動國內資通訊、半導體及國防產業升級的重要引擎，兼具產業升級及國防自主雙重戰略意涵 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//0d1a12ba-75fe-4033-911e-272c2c550325 | False | False | 2026城鎮韌性演習下周展開 卓揆：3大重點提升全社會防衛韌性意識 **發布日期**：2026-04-16 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//0d1a12ba-75fe-4033-911e-272c2c550325 摘要 行政院長卓榮泰今（16）日在行政院會聽取國防部「2026城鎮韌性（全民防衛動員）演習」報告後表示，臺灣不只面臨極端氣候的挑戰，更位處威權主義擴張的最前緣 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//10ad2ab8-5d79-4409-bd86-03d6ef7dfee8 | False | False | 召開「穩定物價小組」臨時會報 鄭副院長：持續確保民生關鍵物資穩定供應 **發布日期**：2026-04-08 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//10ad2ab8-5d79-4409-bd86-03d6ef7dfee8 摘要 行政院副院長鄭麗君於今（8）日召開「穩定物價小組」第5次臨時會報表示，主計總處今日最新公布第1季消費者物價指數（CPI）年增率1.23%，低於原預測數1.38%，顯示政府啟動因應中東衝突民生安定相關措施，已初步發揮穩定物價的政策綜效，請各部會持續努力，減緩中東衝突對國內民生經濟的影響 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//15a3731b-45a6-4959-9048-0513a5295d0b | False | False | 卓揆：最大化跨區水資源支援能量 全力達成6月底前「民生用水不進入分區供水、產業生產穩定不受影響」目標 **發布日期**：2026-03-26 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//15a3731b-45a6-4959-9048-0513a5295d0b 摘要 行政院長卓榮泰今（26）日在行政院會聽取經濟部「當前供水情勢及因應措施」報告後表示，水資源是國家經濟發展的重要基礎，依據交通部中央氣象署統計，去（2025）年冬季迄今為止，臺灣西半部降雨創下75年以來最少紀錄，新竹以南水庫集水區降雨量是歷年同期的7%至37%左右 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//160a327a-bbe6-4938-a4ff-d8cc79e1211f | False | False | 卓揆感謝各部會積極協調原物料供應及查察不法 全力維持物價穩定、守護民生安定 **發布日期**：2026-04-09 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//160a327a-bbe6-4938-a4ff-d8cc79e1211f 摘要 行政院長卓榮泰今（9）日於行政院會針對近期原物料供應及物價議題表示，有關塑膠袋供應，請經濟部持續掌握上、中、下游供應鏈生產時程，不要有任何落差；至於瀝青混凝土供應，請中油及台塑化公司務必優先供應國內，也請經濟部與中油、台塑化進一步協調如何增產及調整比例，以滿足國內市場需求 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//1802604a-d4d6-40d2-a067-f1bc48199d63 | False | False | 出席「玉山黃金種子計畫感恩活動」 鄭副院長：感謝打造200所玉山圖書館 為偏鄉帶入閱讀資源、陪伴孩子成長 **發布日期**：2026-04-13 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//1802604a-d4d6-40d2-a067-f1bc48199d63 摘要 行政院副院長鄭麗君今（13）日出席「玉山黃金種子計畫感恩活動」時表示，閱讀是每個孩子的教育權，也是每位公民的文化權，18年來，「玉山黃金種子計畫」秉持為偏鄉孩子帶入閱讀資源、陪伴孩子成長的初衷，在全國各地打造200所玉山圖書館，送入將近50萬冊書籍，為孩子的成長載入養分，也在他們的生命留下美好記憶 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//18b0a7aa-6531-4d02-9803-e4cdd2ca28b6 | False | False | 參訪彰化無人機反制系統研發公司 卓揆：發展本土軍工產業，一項都不能少 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//1e139ef1-1b4b-4f34-ab18-2b14635893c8 | False | False | 出席「115年度防災士培訓」 卓揆期勉學員將臨災應變能力融入日常 強化全社會防衛韌性 **發布日期**：2026-03-22 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//1e139ef1-1b4b-4f34-ab18-2b14635893c8 摘要 行政院長卓榮泰今（22）日前往彰化縣出席「115年度防災士培訓」時表示，面對極端氣候與複合型災害挑戰，政府積極推動「全社會防衛韌性」，透過防災士培訓，強化全民防救災能力，讓防災成為日常生活的一部分，守護人民生命財產安全，確保社會穩定，打造「遇災不慌、應變有序、互助有力」的社會 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//22e86cf7-a485-4614-b2e9-a1360f09baca | False | False | 出席「國道1號甲線新建工程」動土典禮 卓揆：打造更安全、便捷及永續交通路網 帶動桃園全面發展 **發布日期**：2026-04-11 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//22e86cf7-a485-4614-b2e9-a1360f09baca 摘要 行政院長卓榮泰今（11）日出席「國道1號甲線新建工程」動土祈福典禮時表示，今日工程完工後預計為地方帶來四大效益，包括：第一，滿足桃園機場第三航廈及第三跑道完工後，每年預計帶來4,500萬人次旅運量的需求；第二，桃園機場的貨運車流，可透過國1甲往返臺北港及全國各地，形成更完善的貨運路網，提升自由貿易港區及未來新貨運園區的整體競爭力；第三，桃園航空城土地開發案預計帶來約20萬個就業及居住人口，國1甲可提供航空城，以及南崁、蘆竹、竹圍等地居民便利往返國道1號及台61線；第四，有助減輕國道2號及台4線進入桃園機場的車流負擔，尤其預計可分擔國道2號約20%的機場交通量 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//25299951-452b-4fd0-a39e-c7ddfdd6a2de | False | False | 卓院長再度呼籲立院速審115年度中央政府總預算案 讓國家有更大能力因應國內外衝擊 擔負對人民責任 **發布日期**：2026-04-02 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//25299951-452b-4fd0-a39e-c7ddfdd6a2de 摘要 行政院長卓榮泰今（2）日於行政院會指出，4月份已進入明（116）年度中央政府總預算案概算作業程序，上（3/26）週行政院會已通過明年度中央政府施政方針 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//2c33c420-2cee-49ad-b8de-26c7fffb0705 | False | False | 卓揆表揚台灣電力工會模範勞工 肯定台電全力支持民生及產業發展 **發布日期**：2026-04-15 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//2c33c420-2cee-49ad-b8de-26c7fffb0705 摘要 行政院長卓榮泰今（15）日出席「台灣電力工會115年五一勞動節模範勞工表揚大會」，並頒獎表揚及感謝32名丹娜絲颱風搶修有功人員 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//334ac874-99e7-4449-9911-a571997b9ec3 | False | False | 中東情勢衝擊國內物價 卓揆祭五大措施全力確保民生穩定 **發布日期**：2026-03-26 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//334ac874-99e7-4449-9911-a571997b9ec3 摘要 行政院長卓榮泰今（26）日於行政院會針對中東情勢及國內物價因應表示，中東情勢變化快速，目前仍非常緊張，自2月28日以來，各部會全力投入護僑行動，已有相當多國人安全返抵國門，同時我駐外館處也持續掌握，並與仍在當地的國人保持聯繫 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//33e490b7-e949-4dd1-becb-ef6df2326e35 | False | False | 政院通過「就業服務法」部分條文修正草案 確保勞工持有證明文件自主權 強化勞動權益保障 **發布日期**：2026-04-09 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//33e490b7-e949-4dd1-becb-ef6df2326e35 摘要 為健全我國就業服務體制、落實國際公約內容，進一步提升我國產品在全球供應鏈之信任度，行政院會今（9）日通過勞動部擬具之「就業服務法」部分條文修正草案，將函請立法院審議 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//380d04a4-ee57-4735-b164-0cea4c16996b | False | False | 接見日本台灣親善協會 卓揆盼臺日雙方強強聯手 向世界爭取更大發展機會 **發布日期**：2026-03-25 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//380d04a4-ee57-4735-b164-0cea4c16996b 摘要 行政院長卓榮泰今（25）日接見「日本台灣親善協會」會長衛藤征士郎前眾議員一行時表示，感謝衛藤會長在擔任國會議員及「日本台灣親善協會」會長任內，皆持續推動臺日友好關係，長年以來對促進雙方交流合作貢獻良多 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//3e817752-d8b3-4557-aee4-296dfb765fd2 | False | False | 中央政府總預算將付委 卓揆：盼朝野持續良性互動 確保施政穩健推動不中斷 **發布日期**：2026-04-16 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//3e817752-d8b3-4557-aee4-296dfb765fd2 摘要 行政院長卓榮泰今（16）日於行政院會針對「115年度中央政府總預算案」表示，立法院昨（15）日正式啟動朝野協商機制並達成協議，讓延宕230天的中央政府總預算，能在近日順利完成付委程序，這是行政、立法兩院及朝野各黨團事前持續溝通、會談所形成的重要進展，也是彼此良性互動的具體展現；這樣的協商成果，不只是彼此退讓，而是朝向國家發展、人民福祉共同向前邁進的重要一步，值得各界共同珍惜 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//422c2864-4fc7-46ba-a3b8-cfa1b1490685 | False | False | 出席「2026 Touch Taiwan 系列展」開幕 卓揆盼透過先進顯示器技術 向世界展現臺灣國家力量 **發布日期**：2026-04-08 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//422c2864-4fc7-46ba-a3b8-cfa1b1490685 摘要 行政院長卓榮泰今（8）日出席「2026 Touch Taiwan 系列展」開幕暨頒獎典禮時表示，「Touch Taiwan 系列展」是國內光電領域的重要展覽，今（2026）年總計超過250家國內外廠商參展，隨著顯示器產業跨入先進封裝技術，展現科技水準日新月異，期盼在業界長期努力及政府政策支持下，透過顯示器產業持續向世界展現臺灣國家力量，為國家帶來光榮 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//4b7b88fa-5469-401e-b061-3b7d356e8cda | False | False | 主持治安會報 卓揆：從「加重處罰、加速攔阻、加強保護」三大面向強化防詐體系 有效防制新興金融犯罪 **發布日期**：2026-04-08 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//4b7b88fa-5469-401e-b061-3b7d356e8cda 摘要 行政院長卓榮泰今（8）日主持「行政院115年第2次治安會報」時表示，近年我國整體治安表現獲得國際與國內高度肯定，顯示政府持續推動各項治安政策已具成效 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//4f46c897-4ce7-4f50-bcc9-cd8a1341e570 | False | False | 卓揆：推動專法四階段管理虛擬資產交易服務 保障國人資產安全、提升臺灣金融產業競爭力 **發布日期**：2026-04-02 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//4f46c897-4ce7-4f50-bcc9-cd8a1341e570 摘要 行政院長卓榮泰今（2）日在行政院會聽取金融監督管理委員會「我國虛擬資產發展狀況」報告後表示，近年來金融科技日新月異，尤其虛擬資產的應用快速發展，改變傳統金融提供交易服務的方式 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//50c6ffe7-ae88-4942-a8b0-58754bb87ee4 | False | False | 卓揆：建構「臺灣海洋雷達觀測網」 提升海域科技治理效能、打造安全永續海洋環境 **發布日期**：2026-04-16 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//50c6ffe7-ae88-4942-a8b0-58754bb87ee4 摘要 行政院長卓榮泰今（16）日於行政院會聽取海洋委員會「建構國家級海洋雷達觀測網」報告後表示，臺灣是海洋國家，與海洋有關的航行運輸、經濟作業、休閒遊憩等活動相當頻繁，面對地緣政治、船舶航行風險、海難搜救及污染防治等艱鉅挑戰，需建立完整且精準之國家級「臺灣海洋雷達觀測網」，以提供關鍵科學數據支持，實現對沿近海域高解析度監測，有效提升海域科技治理效能 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//538adc20-fdd1-4468-b062-6b0f5c635a12 | False | False | 主持食安會報 卓揆：持續強化學校營養師專業職能及嬰幼兒食品管理機制 為下一代飲食安全把關 **發布日期**：2026-03-25 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//538adc20-fdd1-4468-b062-6b0f5c635a12 摘要 行政院長卓榮泰今（25）日主持「行政院食品安全會報115年第1次會議」時表示，為下一代飲食安全把關，教育部推動飲食教育，建立營養師專業協作機制，請教育部持續深化營養師與教師間的交流及協作關係，並整合中央廚房、營養師人力及教學資源，共同發展跨校支援及偏鄉優先補強模式 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//5b99010a-3109-4f02-bead-20783147df96 | False | False | 鄭副院長召會決議4月起液化石油氣貨物稅減徵50% 要求落實穩定物價多項措施確保全年CPI年增率不超過2% **發布日期**：2026-03-18 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//5b99010a-3109-4f02-bead-20783147df96 摘要 為因應中東情勢變局對全球能源及物價之衝擊，行政院副院長鄭麗君今（18）日召開「穩定物價小組」第2次臨時會報 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//5c4c4e1c-9f4f-4b75-a7d3-30be59522441 | False | False | 主持「因應中東衝突民生安定專案會議」 卓揆：持續媒合供應鏈、補貼價格、監控局勢及聯合稽查 以維持國內民生經濟穩定 **發布日期**：2026-04-20 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//5c4c4e1c-9f4f-4b75-a7d3-30be59522441 摘要 行政院長卓榮泰今（20）日主持「因應中東衝突民生安定專案會議」時表示，政府持續關注中東衝突的民生安定情形，國內整體情勢已趨於穩定，顯示各部會前階段推動穩定措施已見物價穩定的具體成效；惟國際情勢仍未明朗，區域衝突發展多變，國際油價亦呈現波動，上週雖一度下滑，近日再度回升，顯示外在環境仍具高度不確定性 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//5c64af35-6308-495b-a9f7-051497cbe9d9 | False | False | 召開「因應中東衝突民生安定專案會議」　卓揆：確保產銷秩序正常 穩定各項原物料生產 **發布日期**：2026-04-06 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//5c64af35-6308-495b-a9f7-051497cbe9d9 摘要 為因應中東情勢對我國內之影響，行政院長卓榮泰今（6）日上午邀集鄭麗君副院長、張惇涵秘書長、陳時中政委、葉俊顯政委兼國發會主委、林明昕政委，以及相關部會正副首長召開「因應中東衝突民生安定專案會議」，研商中東地區我國國人安全、產銷秩序、醫材原物料供應、農漁民安定措施、航空用油補助等措施，並於會後由李慧芝發言人偕同三位政委及相關部會召開記者會說明 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//5f1bf770-1ac9-42c9-a9a4-fa3839a8ce90 | False | False | 出席美光苗栗銅鑼晶圓一廠揭牌典禮 卓揆盼臺灣持續發展更完整半導體產業鏈 帶領百工百業進入智慧運用時代 **發布日期**：2026-03-26 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//5f1bf770-1ac9-42c9-a9a4-fa3839a8ce90 摘要 行政院長卓榮泰今（26）日出席「臺灣美光苗栗銅鑼晶圓一廠揭牌典禮」時表示，感謝美光深耕臺灣多年，迄今投資已達1.4兆元，是臺灣最大的外資投資者，臺灣也是美光全球最大的生產基地，生產DRAM（動態隨機存取記憶體）與HBM（高頻寬記憶體），支援AI基礎建設的發展；政府也長期支持與國際間合作，經濟部已於2025年核定美光第2期「高效能暨高頻寬記憶體技術」研發補助，支持美光在臺布局領先全球的高效能暨高頻寬記憶體技術，並與國內產業加強連結，帶領臺灣半導體產業持續占有國際關鍵地位，更帶動相關設備與材料領域升級，提升臺灣硬體製造與軟體設計的整體能量，形成更完整的產業鏈 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//60c34c3b-ab49-4593-87da-75c4e707dbc4 | False | False | 大同電鍋、蒜頭、媽祖結緣品都是騙──行政院打詐中心呼籲慎防身分認證詐騙 **發布日期**：2026-04-06 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//60c34c3b-ab49-4593-87da-75c4e707dbc4 摘要 針對近日在Facebook、Threads等社交平台大量出現的大同電鍋、農產品、媽祖結緣品等詐騙貼文與短片廣告，行政院打擊詐欺指揮中心鄭重呼籲民眾慎防歹徒假借身分認證失敗、金流認證失敗等名義進行詐騙，強調只要網路賣家使用「7-Eleven賣貨便」或「全家Fun心取」進行交易，出現「未完成實名認證」、「金流認證失敗」等字眼或是要求直接加Line或與線上客服聯絡就是詐騙，請立即停止交易撥打165，防止辛苦血汗錢被詐騙集團騙走 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//6d5edda8-43b5-4e9a-84f8-c57798989ad0 | False | False | 視察彰化田尾花卉產區 卓揆：四大策略全力發展彰化花卉產業 協助花農進軍國際市場&#160; **發布日期**：2026-04-18 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//6d5edda8-43b5-4e9a-84f8-c57798989ad0 摘要 行政院長卓榮泰今（18）日視察彰化田尾花卉產區時表示，彰化縣是花卉生產大縣，其中康乃馨每十株就有一株產自彰化，彰化菊花產量更占全國9成以上 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//71a50a7b-a635-4167-aac0-004bc5fc99ee | False | False | 出席楠梓園區聯外交通整體計畫聯合動土 卓揆：提升園區對外交通效率、確保客貨安全分流、減輕楠梓交流道流量負擔 **發布日期**：2026-03-28 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//71a50a7b-a635-4167-aac0-004bc5fc99ee 摘要 行政院長卓榮泰今（28）日出席「高雄第三（楠梓）園區聯外交通整體計畫聯合動土祈福典禮」時表示，本項工程工期約1千天，預計2028年12月完工，未來將帶來三大效益，包括：一、「提升楠梓園區對外交通效率」，讓楠梓園區直接對接國道 1 號，沿途無須行經紅綠燈，縮短行車時間；二、「客貨安全分流」，讓園區大型工業用貨車走專用道，與一般民眾通勤車流分開，不僅增加行車安全，也提升對產業運輸的便利性；三、「減輕楠梓交流道的流量負擔」，避免園區開發後加劇楠梓交流道的壅塞 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//8180a0dc-5163-426d-9f09-0b94ac8b6d43 | False | False | 出席僑生就業博覽會 卓揆：推動「安心住、好就業」新制 僑外生畢業2年內工作免許可、工作型態不受限 **發布日期**：2026-04-11 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//8180a0dc-5163-426d-9f09-0b94ac8b6d43 摘要 行政院長卓榮泰今（11）日出席「2026年僑生就業博覽會」時表示，為延攬優秀人才，並促進我國產業發展，政府今（2026）年推出「安心住、好就業」新制度，僑外生畢業後申請延期居留的最長2年期間內，放寬為可「自由工作」，受聘不需由雇主向勞動部申請工作許可，亦無須轉換工作簽證，且工作型態不限於「專門性或技術性」工作，並提供「Talent Taiwan一站式國際人才服務中心」，透過更便利、更簡化的流程，讓僑外生精準對接企業職缺，促進我國產業茁壯發展 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//823731fd-210a-4eef-8c1f-a6686b7ac0ad | False | False | 視察臺東樂齡社福大樓工程 卓揆期待成為全方位、多功能社區長照據點、落實「雙就業、雙照顧」目標 **發布日期**：2026-04-04 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//823731fd-210a-4eef-8c1f-a6686b7ac0ad 摘要 行政院長卓榮泰今（4）日前往臺東市視察「臺東樂齡社福大樓」工程進度時表示，今日適逢兒童節，這棟大樓未來不僅要顧老，更要發揮育兒、育幼功能，實現「扶老攜幼」願景，讓「長照3.0」服務每個年齡層，實現「國人健康、國家更強、世界擁抱臺灣」目標 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//8b5dcbff-6f6f-41c7-8ddd-840a5634a0b6 | False | False | 卓揆接見北美臺商回國訪問暨投資考察團 盼僑界發揮社會影響力 協助政府維護國家與產業競爭力 **發布日期**：2026-04-09 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//8b5dcbff-6f6f-41c7-8ddd-840a5634a0b6 摘要 行政院長卓榮泰今（9）日接見「第38屆北美臺商回國訪問暨投資考察團」時表示，感謝北美洲臺灣商會聯合總會長年在海外耕耘，協助臺灣與國際建立強而有力的連結，並在年度「叩門之旅」中，就臺美經貿交流、投資環境及經濟安全等議題深入交換意見，為未來臺美雙方合作增加更多重要寶貴資源 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//90948b84-4c1b-4a58-bc6a-180253f0a7cd | False | False | 鄭副院長：因應中東情勢啟動七大主軸措施 確保能源供應、民生物價及供應鏈運作穩定 **發布日期**：2026-04-02 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//90948b84-4c1b-4a58-bc6a-180253f0a7cd 摘要 行政院副院長鄭麗君今（2）日偕同相關部會出席行政院院會後記者會，說明政府因應中東情勢變化之七大主軸，包括：「保護國人及僑民安全」、「穩定能源供應」、「穩定民生物價」、「穩定供應鏈運作」、「穩定市場秩序」、「穩定金融及股匯市」及「中央地方協力合作」 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//9f5e6919-1b20-4254-a34e-57084a46f82f | False | False | 接見「泰國台泰國會議員友好協會顧問團」 卓揆：推動十三項國家戰略產業 強化臺泰民主供應鏈合作 成為國家進步力量 **發布日期**：2026-03-30 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//9f5e6919-1b20-4254-a34e-57084a46f82f 摘要 行政院長卓榮泰今（30）日接見「泰國台泰國會議員友好協會顧問團」一行時表示，泰國是臺灣「新南向政策」中的重要國家，無論在僑務、商務及外交領域皆具關鍵地位 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//a1a7e79e-056e-420a-acd4-a3504102e86f | False | False | 視察中油林園石化廠 卓揆：啟動五大因應措施 穩定國內石化供應鏈與民生必需品 **發布日期**：2026-04-01 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//a1a7e79e-056e-420a-acd4-a3504102e86f 摘要 行政院長卓榮泰今（1）日前往高雄市視察中油林園石化廠，為第一線同仁加油打氣 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//a4f5668c-de11-47a1-b65e-f85ee22f7a6f | False | False | 卓揆：「剛柔並濟」執行政府公權力顯有成效 導入AI優化未來執行效能 **發布日期**：2026-04-16 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//a4f5668c-de11-47a1-b65e-f85ee22f7a6f 摘要 行政院長卓榮泰今（16）日在行政院會聽取法務部「公義執法剛柔並濟 創新賦能優化執行」報告後表示，為有效維護國家財政與公共利益，並貫徹政府公權力，法務部行政執行署堅守程序正義，執行績效表現近年持續攀升，自2001年成立迄今累計執行金額已逾6,980億元，持續就重大矚目及具指標性案件加強徵起，彰顯國家公權力與執行效能 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//ac057c9d-b81a-47fc-bb83-c2c689a30335 | False | False | 前瞻建設展成效 0404豪雨多地2小時內退水 卓揆籲立院儘速審議通過今年治水預算 **發布日期**：2026-04-09 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//ac057c9d-b81a-47fc-bb83-c2c689a30335 摘要 行政院長卓榮泰今（9）日在行政院會聽取經濟部「0404豪雨及供水情勢」報告後表示，面對極端氣候變遷帶來的極端挑戰，降雨量時而患寡、時而患不均，經濟部近日已同時開設抗旱應變小組與防災應變小組 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//b5cdf0b2-c140-433e-8929-1b5d870969ad | False | False | 卓揆：投入62.5億強化獨居老人一體化服務 「雙擴大、雙新增」打造全方位安老網絡 **發布日期**：2026-03-19 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//b5cdf0b2-c140-433e-8929-1b5d870969ad 摘要 行政院長卓榮泰今（19）日在行政院會聽取衛生福利部「擴大推動獨居老人服務」報告後表示，我國在去（114）年底已邁入超高齡社會，到今（115）年2月底，老年人口達470萬餘人，而依照估算，其中有超過70萬人屬於獨居生活狀態 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//bf42b716-b317-4024-b78d-e11b5c724bec | False | False | 政院通過「環境雙法」修正 實現「最大化資源循環效益、最小化廢棄物最終處理」目標 **發布日期**：2026-04-09 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//bf42b716-b317-4024-b78d-e11b5c724bec 摘要 行政院會今（9）日通過環境部擬具之「資源回收再利用法」修正草案及「廢棄物清理法」部分條文修正草案，並將「資源回收再利用法」法案名稱修正為「資源循環推動法」，將函請立法院審議 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//bfd446a7-ce23-4308-9347-9ce6e6c44196 | False | False | 政院通過「虛擬資產服務法」草案 健全虛擬資產業務經營與發展、保障交易人權益 **發布日期**：2026-04-02 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//bfd446a7-ce23-4308-9347-9ce6e6c44196 摘要 為健全虛擬資產業務的經營與發展，保障交易人權益，提升市場信任，行政院會今（2）日通過金融監督管理委員會擬具之「虛擬資產服務法」草案，將送請立法院審議 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//c1746341-6010-4671-926b-67941ac2c50d | False | False | 外籍幫傭新制4/13上路 卓揆：家有未滿12歲兒童即可申請 減輕家務負擔，安心續留職場 **發布日期**：2026-03-19 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//c1746341-6010-4671-926b-67941ac2c50d 摘要 行政院長卓榮泰今（19）日於行政院會聽取勞動部「多一個幫手，少一分疲憊-外籍幫傭申請條件新制，優先協助特殊家庭減緩壓力」報告後表示，面對家庭結構變遷，在工作與育兒之間，照顧者面臨不小的照顧壓力，尤其是特殊需求家庭照顧負擔更為沉重，因此為減輕家庭壓力，讓勞動者可以安心續留職場，勞動部將推動外籍家庭幫傭的新制，只要家中有1名未滿12歲的兒童，即可申請外籍家庭幫傭，就業安定費每月5,000元；弱勢、特殊需求及高需求家庭，將優先取得人力，且每月就業安定費降為2,000元，以強化家庭照顧支持，希望讓有需求的家庭，能「多一個幫手，少一分疲憊」 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//c3a8930e-8c49-424b-a242-1d2eecad38ab | False | False | 出席台北電器空調影音大展 卓揆：全面導入AI服務 提升國人生活品質&#160; **發布日期**：2026-04-11 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//c3a8930e-8c49-424b-a242-1d2eecad38ab 摘要 行政院長卓榮泰今 （11）日出席「2026第36屆台北電器空調影音大展」時表示，政府多年來持續推動節能減碳，隨著AI人工智慧時代來臨，政府近年更致力將AI技術導入公共服務，並透過各項電器產品，深入至各家庭之中，讓國人享受新科技、新技術、新服務 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//d1ecd59e-685a-4b1c-b493-76715c358211 | False | False | 行政院動員全國防汛整備 陳金德視察學甲M幹線工程 **發布日期**：2026-04-14 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//d1ecd59e-685a-4b1c-b493-76715c358211 摘要 汛期將至，行政院政務委員、公共工程委員會主任委員陳金德近期密集視察全臺防汛工程整備情形，今（14）日率隊赴臺南市學甲區視察「M幹線抽水站及調節池工程」，確認工程將如期於今年6月完工，屆時剛好趕上汛期發揮功能 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//e0ffa4a3-4767-487f-b007-fbcdd72afb3f | False | False | 出席國科會「AI創新應用大樓｣啟用典禮 卓揆：串聯南科創造2.2兆元年產值及3.5萬個就業機會 **發布日期**：2026-03-28 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//e0ffa4a3-4767-487f-b007-fbcdd72afb3f 摘要 行政院長卓榮泰今（28）日前往臺南市出席國家科學及技術委員會「AI創新應用大樓」啟用典禮時表示，在賴清德總統「均衡臺灣」理念下，產業發展與競爭力不能仰賴單一區域，因此政府正全力推動全國「六大區域產業及生活圈｣，其中「大南方新矽谷｣已成為臺灣邁向「人工智慧島」最重要的據點與核心；而臺南「沙崙智慧綠能科學城」具備研發、驗證及應用的基本實力，更是「大南方新矽谷」核心中的核心，同時隨著今日「AI創新應用大樓｣的啟用，未來將與南部科學園區緊密串聯，整體可望創造高達2.2兆元年產值，帶動3萬5千個就業機會，吸引更多優秀人才投入國家建設行列 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//e6c89e7d-2ca3-4c4a-87d7-e145d31bc829 | False | False | 視察土石方去化推動情形 卓揆：去化量能提升至2.35億立方公尺 解決產業困難、落實國土永續 **發布日期**：2026-04-18 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//e6c89e7d-2ca3-4c4a-87d7-e145d31bc829 摘要 行政院長卓榮泰今（18）日前往彰濱產業園區視察營建剩餘土石方去化推動情形時表示，為保持國土完整、促進土地保育，中央陸續在北、中、南各地展開土石方暫置場與去化場場地的觀察與尋覓，並推動國家級「填海造陸」、「窪地回填」計畫，讓營建剩餘土石方去化獲得最終解決 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//eac11d9f-ebd5-48a6-8735-95f4f05aec73 | False | False | 主持「因應中東衝突民生安定專案會議」 卓揆：緊盯國際情勢與原物料供應鏈動態、強化聯合稽查 確保經濟與民生安定 **發布日期**：2026-04-13 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//eac11d9f-ebd5-48a6-8735-95f4f05aec73 摘要 行政院長卓榮泰今（13）日主持「因應中東衝突民生安定專案會議」時表示，面對中東情勢的高度不確定性，政府持續掌握能源及各項原物料供應鏈動態，維持油、氣、塑料及醫材等重要民生物資穩定供應，並強化跨部會聯合稽查機制，嚴查哄抬、囤積及不合理價格行為，確保經濟與民生安定 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//eec952dc-715b-48f7-ae73-00da587a6777 | False | False | 接見墨爾本臺灣同鄉會返國參訪團 卓揆：深化臺澳合作 強化經濟韌性 維護臺灣自由民主 **發布日期**：2026-04-13 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//eec952dc-715b-48f7-ae73-00da587a6777 摘要 行政院長卓榮泰今（13）日接見「墨爾本臺灣同鄉會回國訪問團」時表示，近期行政院已多次接見來自日本、北美及亞洲等地訪團，顯示全球臺灣僑胞社團長期關心臺灣經濟、科技、國防及社會制度發展，展現對國家的深厚情感與支持 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//f26d7be4-c4b2-47b8-a3c3-0b39f22a5bf0 | False | False | 穩定物價4月民生用天然氣、桶裝瓦斯凍漲 鄭副院長指示協調增加國內石化上游原料產能，力求穩定塑膠相關民生關鍵物資供給 **發布日期**：2026-03-26 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//f26d7be4-c4b2-47b8-a3c3-0b39f22a5bf0 摘要 為因應中東情勢變局對全球能源及物價之衝擊，卓院長於今（26）日行政院會做出穩定物價五項指示，行政院副院長鄭麗君於今日續召開「穩定物價小組」第3次臨時會報，進一步責請經濟部、衛福部、農業部、法務部等相關單位，協調國內石化業者優先供應國內，並拓展海外原料多元採購，維持石化原料穩定供貨；搭建醫療耗材穩定供應平台，確保不缺貨不斷貨；同時，強化塑膠袋及其他重要民生物資的價量監控，啟動跨部會物價聯合稽查，嚴查囤積、哄抬等不法行為 |
+| https://www.ey.gov.tw/Page/9277F759E41CCD91//f4874f2c-ec76-40b7-95cc-6b22ca155e05 | False | False | 卓揆：完善清明連假交通疏運整備及聯防備援 確保民眾安心返鄉、快樂出遊 **發布日期**：2026-03-26 **原文連結**：https://www.ey.gov.tw/Page/9277F759E41CCD91//f4874f2c-ec76-40b7-95cc-6b22ca155e05 摘要 行政院長卓榮泰今（26）日在行政院會聽取交通部「115年清明節連續假期交通疏運計畫」報告後表示，下週即將到來的清明節連假一共4天，為因應民眾返鄉掃墓及出遊需求，交通部已進行整體疏運規劃，加強運能整備、強化風險管控與對策運用、備妥運具聯防備援機制，要讓國人安心返鄉、快樂出遊 |

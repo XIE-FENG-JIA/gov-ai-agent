@@ -4,7 +4,7 @@
 >
 > **HEAD 實測指標（ls + wc + pytest + python 即取，ACL-free）**：
 > - ✅ 指標 1（pytest 全綠）：`python -m pytest tests/ -q --ignore=tests/integration -x` = **3728 passed / 0 failed / 223.59s**（v5.8 3727/486.83s → **+1 test，時間砍半**）
-> - ✅ 指標 2（corpus 真公文 ≥ 9 baseline）：`find kb_data/corpus -name "*.md" | wc -l` = **60**（v5.8 9 → **+51；向 P0.3 目標 300 進度 20%**）
+> - ✅ 指標 2（corpus 真公文 ≥ 9 baseline）：`find kb_data/corpus -name "*.md" | wc -l` = **173**（v5.8 9 → **+164；向 P0.3 目標 300 進度 57.7%**）
 > - ✅ 指標 3（config_tools 拆 ≤ 400）：`257→307 / 225→279 / 96→115`（v5.8 刀 1 落地後輕漲，均 ≤ 400 ✅）
 > - 🟠 指標 4（新胖六 ≤ 400）：`realtime_lookup 386 ✅ / e2e_rewrite 492 / api-agents 488 / middleware 469 / api-models 461 / generate-export 459 / fact_checker 446` **六檔 > 400**（v5.8 cluster 七檔 → **-1**）
 > - ✅ 指標 5（openspec proposal 齊）：Epic 4/5 `proposal.md / tasks.md / specs/*` 三件齊；Spectra 3/5 → **4/5 = 80%**（v5.8 66% → +14pp）
@@ -20,8 +20,8 @@
 > 3. **P0.1（本輪處置）**：`FdaApiAdapter` 已改接新 live endpoint、兼容新舊 schema、無 `Id/Link` 時生成穩定 `source_id` 與 query-backed `source_url`，並把 SSL fallback **限縮在 FDA adapter**；交付 `docs/fda-endpoint-probe.md`。
 >
 > **v5.9 P0 重排（ACL-free；連 1 輪延宕 = 紅線 X 3.25）**：
-> 1. **P0.3-CORPUS-SCALE** 🔴 **P0 首位**（30 分）— corpus **63** → 300；跑 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --prune-fixture-fallback` 三源擴量；`fda` 已解，`mohw` 擇另項診斷。
-> 2. **P2-CHROMA-NEMOTRON-VALIDATE** 🟠 **P0 次位**（60 分）— corpus ≥ 100 後跑 `gov-ai kb rebuild --only-real`（nvidia/llama-nemotron dim=2048）；交付 `docs/embedding-validation.md`（5 E2E 需求 top-K 真公文召回率）。
+> 1. **P0.3-CORPUS-SCALE** ✅（2026-04-21 16:49）— 已跑 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --prune-fixture-fallback --report-path docs/live-ingest-report.md`；corpus **63** → **173**，中間里程碑 `≥ 150` 已達成。
+> 2. **P2-CHROMA-NEMOTRON-VALIDATE** 🔴 **P0 首位**（60 分）— corpus 已 ≥ 100，可直接跑 `gov-ai kb rebuild --only-real`（nvidia/llama-nemotron dim=2048）；交付 `docs/embedding-validation.md`（5 E2E 需求 top-K 真公文召回率）。
 > 3. **T-FAT-ROTATE-V2（刀 3+）** 🟠 **P0 三位** — 下輪鎖 `e2e_rewrite 492 / api-agents 488 / middleware 469`。
 >
 > **v5.9 P1（連 2 輪延宕 = 3.25）**：
@@ -31,7 +31,7 @@
 > **v5.9 下輪硬指標**：
 > 1. `python -m pytest tests/ -q --ignore=tests/integration` FAIL=0（**本輪 3728/0 ✅**）
 > 2. `wc -l src/knowledge/realtime_lookup.py` 或拆後 `src/knowledge/realtime_lookup/*.py` 每檔 ≤ 400（**本輪 386 ✅**；helper 拆到 `_realtime_lookup_laws.py 107 / _realtime_lookup_policy.py 31`）
-> 3. `find kb_data/corpus -name "*.md" | wc -l` ≥ 150（當前 60；中間里程碑）
+> 3. `find kb_data/corpus -name "*.md" | wc -l` ≥ 150（當前 173 ✅；中間里程碑已達成）
 > 4. `ls docs/embedding-validation.md` 存在（當前 ❌）
 > 5. `rg -c "^### 🔴" program.md` ≤ 6（當前 0 ✅）
 > 6. `ls openspec/changes/{04-audit-citation,05-kb-governance}/proposal.md`（當前 ✅）
@@ -645,13 +645,13 @@
 
 > **v5.9 第三十七輪重排理由**：v5.9 header 下發 28 min 後 0 動 → 紅線 X 連 1 輪；corpus 60 / pytest 3728 / Spectra 80% 實測已錨；**P0.1-FDA-LIVE-DIAG 從 P1 升 P0 次位**（15 分診斷先於修法，解 corpus 300 三源之一路障）；**T-FAT-ROTATE-V2 刀 3 從 T 段搬到 V59 頂位可見**；**新增 T-BARE-EXCEPT-AUDIT + T9.6-REOPEN-v4 雙 P1**（code smell 盤點 + engineer-log 309 > 300 封存）。
 
-- [ ] **P0.3-CORPUS-SCALE** 🔴 **v5.9 P0 首位（30 分；連 1 輪 0 動；下輪必破）** — corpus **63** → 300；執行 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --prune-fixture-fallback`；驗 `find kb_data/corpus -name "*.md" | wc -l` ≥ 150
+- [x] **P0.3-CORPUS-SCALE** ✅（2026-04-21 16:49）— 已執行 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --prune-fixture-fallback --report-path docs/live-ingest-report.md`；corpus **63** → **173**，達成中間里程碑 `find kb_data/corpus -name "*.md" | wc -l` ≥ 150，下一步改跑 `gov-ai kb rebuild --only-real`
 - [x] **P0.1-FDA-LIVE-DIAG** ✅（2026-04-21 16:36）— `FdaApiAdapter` live fetch 斷線已修；`API_URL` 改為 `https://www.fda.gov.tw/DataAction`、兼容中文 schema、無顯式 ID 時生成穩定 `source_id/source_url`、SSL fallback 限縮在 FDA；交付 `docs/fda-endpoint-probe.md`
   - **驗 1**：`python -m pytest tests/test_fda_api_adapter.py tests/test_sources_ingest.py tests/test_live_ingest_script.py -q` = **27 passed**
   - **驗 2**：`python scripts/live_ingest.py --sources fda --limit 3 --require-live --report-path docs/live-ingest-report.md` = **PASS / live_count=3 / fixture_remaining=0**
   - **驗 3**：`python -m pytest tests/ -q --ignore=tests/integration -x` = **3733 passed / 0 failed**
 - [ ] **T-FAT-ROTATE-V2（刀 3）** 🟠 **v5.9 P0 三位（45 分；第三十七輪從 T 段移上）** — 首刀鎖 `src/e2e_rewrite.py 492`；按 `rewrite / assemble / cli` 自然邊界拆成 `src/e2e_rewrite/{__init__,rewrite,assemble,cli}.py`；SOP 第 13 次擴散；`tests/test_e2e_rewrite.py` + `tests/integration/test_e2e_rewrite.py` import 契約守；次刀 `api-agents 488`、三刀 `middleware 469`
-- [ ] **P2-CHROMA-NEMOTRON-VALIDATE** 🟡 v5.9 P1（60 分；**等 corpus ≥ 100 後執行**）— `gov-ai kb rebuild --only-real`（nvidia/llama-nemotron dim=2048）；交付 `docs/embedding-validation.md`（5 E2E 需求 top-K 真公文召回率 + dim 驗證 + cost）
+- [ ] **P2-CHROMA-NEMOTRON-VALIDATE** 🟡 v5.9 P1（60 分；**已解鎖，可直接執行**）— `gov-ai kb rebuild --only-real`（nvidia/llama-nemotron dim=2048）；交付 `docs/embedding-validation.md`（5 E2E 需求 top-K 真公文召回率 + dim 驗證 + cost）
 - [ ] **T-BARE-EXCEPT-AUDIT** 🆕 **v5.9 P1 新增（第三十七輪；30 分）** — `rg "except Exception|except:" src/` 實測 118 處分佈 50 檔；高密度 3 檔 `src/api/routes/agents.py 9 / src/cli/org_memory_cmd.py 7 / src/cli/kb/stats.py 6` 至少一檔轉 typed except + `logger.warning`；避免 production logging 吞根因
 - [ ] **T9.6-REOPEN-v4** 🆕 **v5.9 P1 新增（第三十七輪；10 分）** — engineer-log 271 + v5.9 反思 ~38 = **309 > 300 hard cap**；封存 v5.4/v5.5/v5.6 段到 `docs/archive/engineer-log-202604f.md`；主檔留 v5.7/v5.8/v5.9
 - [x] **P1-PCC-ADAPTER** ✅（2026-04-21 16:06）— `src/sources/pcc.py` 政府採購網 adapter 已落地；official HTML fixture search/detail + `list / fetch / normalize` 完成，並接入 `_adapter_registry`
