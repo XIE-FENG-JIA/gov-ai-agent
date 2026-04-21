@@ -654,7 +654,7 @@
 - [ ] **P2-CHROMA-NEMOTRON-VALIDATE** 🟡 v5.9 P1（60 分；**程式已解鎖，runtime 仍缺 key**）— `gov-ai kb rebuild --only-real`（nvidia/llama-nemotron dim=2048）；交付 `docs/embedding-validation.md`（5 E2E 需求 top-K 真公文召回率 + dim 驗證 + cost）
   - **2026-04-21 校準**：`src/core/llm.py` 已修正 mixed-provider embedding routing；`embedding_provider=openrouter` 不再誤用 active `minimax` 的 `api_key/base_url`
   - **當前 blocker**：環境僅 `MINIMAX_API_KEY=set`，`LLM_API_KEY/OPENROUTER_API_KEY=missing`；未補 key 前不可宣稱 Nemotron rebuild 驗證完成
-- [ ] **T-BARE-EXCEPT-AUDIT** 🆕 **v5.9 P1 新增（第三十七輪；30 分）** — `rg "except Exception|except:" src/` 實測 118 處分佈 50 檔；高密度 3 檔 `src/api/routes/agents.py 9 / src/cli/org_memory_cmd.py 7 / src/cli/kb/stats.py 6` 至少一檔轉 typed except + `logger.warning`；避免 production logging 吞根因
+- [x] **T-BARE-EXCEPT-AUDIT** ✅（2026-04-21 17:27）— `src/cli/org_memory_cmd.py` 7 處裸 `except Exception` 已收斂為 typed exception buckets；`list/show/export/report/set/add-term/search` 全補 `logger.warning`，避免 CLI 吞根因又保留使用者輸出穩定；驗證 `python -m pytest tests/test_cli_commands.py -q --no-header` = **751 passed**、`python -m pytest tests/ -q --ignore=tests/integration -x` = **3735 passed / 0 failed**
 - [ ] **T9.6-REOPEN-v4** 🆕 **v5.9 P1 新增（第三十七輪；10 分）** — engineer-log 271 + v5.9 反思 ~38 = **309 > 300 hard cap**；封存 v5.4/v5.5/v5.6 段到 `docs/archive/engineer-log-202604f.md`；主檔留 v5.7/v5.8/v5.9
 - [x] **P1-PCC-ADAPTER** ✅（2026-04-21 16:06）— `src/sources/pcc.py` 政府採購網 adapter 已落地；official HTML fixture search/detail + `list / fetch / normalize` 完成，並接入 `_adapter_registry`
   - **完成**：新增 `src/sources/pcc.py`、`tests/fixtures/pcc/{search,PCC-001,PCC-002,PCC-003}.html`、`tests/test_pcc_adapter.py`；`tests/test_sources_base.py` 與 `tests/test_sources_ingest.py` 已補 registry / signature coverage
