@@ -174,3 +174,44 @@ def test_writer_failure_matrix_keeps_service_draft_when_retrieval_is_empty(
         "used_fallback": "true",
         "fallback_stage": "service",
     }
+
+
+@pytest.mark.parametrize(
+    ("mode", "exc", "stage", "reason"),
+    [
+        ("writer", IntegrationSetupError("vendor path missing"), "setup", "vendor path missing"),
+        ("smoke", RuntimeError("boom"), "runtime", "boom"),
+        ("smoke", TimeoutError("service timed out"), "runtime", "service timed out"),
+    ],
+)
+def test_writer_failure_matrix_emits_structured_fallback_diagnostics(
+    monkeypatch: pytest.MonkeyPatch,
+    mode: str,
+    exc: Exception,
+    stage: str,
+    reason: str,
+) -> None:
+    monkeypatch.setenv("GOV_AI_OPEN_NOTEBOOK_MODE", mode)
+    mock_llm = _legacy_writer()
+    mock_kb = _kb_with_examples()
+
+    class FailingService:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        def ask(self, request: OpenNotebookAskRequest) -> AskResult:
+            raise exc
+
+    monkeypatch.setattr("src.agents.writer.OpenNotebookService", FailingService)
+    writer = WriterAgent(mock_llm, mock_kb)
+
+    draft = writer.write_draft(_requirement())
+
+    assert "legacy 草稿" in draft
+    assert writer._last_open_notebook_diagnostics == {
+        "service": "open-notebook",
+        "mode": mode,
+        "used_fallback": "true",
+        "fallback_stage": stage,
+        "fallback_reason": reason,
+    }

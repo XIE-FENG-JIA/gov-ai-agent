@@ -217,6 +217,41 @@ class TestFakeCitationSeverity:
 
         assert not any("不存在於全國法規資料庫" in issue.description for issue in result.issues)
 
+    @patch("src.knowledge.realtime_lookup._request_with_retry")
+    def test_wrong_article_number_becomes_repo_owned_error(self, mock_req):
+        """T4.4 matrix: 不存在條號不可靜默放過。"""
+        mock_resp = MagicMock()
+        mock_resp.content = _make_law_json(SAMPLE_LAWS)
+        mock_req.return_value = mock_resp
+
+        mock_llm = MagicMock()
+        mock_llm.generate.return_value = '{"issues": [], "score": 0.98}'
+
+        verifier = LawVerifier()
+        checker = FactChecker(mock_llm, law_verifier=verifier)
+        result = checker.check("依據行政程序法第999條辦理。")
+
+        assert any(
+            issue.severity == "error" and "第 999 條不存在或查無條文內容" in issue.description
+            for issue in result.issues
+        )
+
+    def test_verification_degraded_becomes_repo_owned_error(self):
+        """T4.4 matrix: 驗證 upstream 降級時要 loud fail。"""
+        verifier = MagicMock()
+        verifier.verify_citations.side_effect = RuntimeError("API down")
+
+        mock_llm = MagicMock()
+        mock_llm.generate.return_value = '{"issues": [], "score": 0.98}'
+
+        checker = FactChecker(mock_llm, law_verifier=verifier)
+        result = checker.check("依據行政程序法第1條辦理。")
+
+        assert any(
+            issue.severity == "error" and "即時法規驗證服務失敗" in issue.description
+            for issue in result.issues
+        )
+
 
 # ===========================================================================
 # 法規-文件類型交叉比對

@@ -636,3 +636,37 @@ class TestStructuredIssueFormat:
             assert "description" in e, f"缺少 description: {e}"
             assert "location" in e, f"缺少 location: {e}"
             assert "suggestion" in e, f"缺少 suggestion: {e}"
+
+
+class TestCitationAuditFailureMatrix:
+    """Citation audit failure matrix: orphan footnotes + missing evidence."""
+
+    @pytest.mark.parametrize(
+        ("checker_name", "draft", "expected_fragment"),
+        [
+            (
+                "check_citation_integrity",
+                "依據相關法規辦理[^1]。\n### 參考來源\n（無定義）",
+                "孤兒引用",
+            ),
+            (
+                "check_evidence_presence",
+                "本案請查照辦理。",
+                "缺少「參考來源」段落",
+            ),
+            (
+                "check_evidence_presence",
+                "本案請查照辦理。",
+                "無任何引用標記",
+            ),
+        ],
+    )
+    def test_citation_audit_failure_modes_are_loud(
+        self,
+        registry,
+        checker_name: str,
+        draft: str,
+        expected_fragment: str,
+    ):
+        issues = getattr(registry, checker_name)(draft)
+        assert any(expected_fragment in _d(issue) for issue in issues)
