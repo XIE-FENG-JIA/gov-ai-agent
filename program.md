@@ -663,6 +663,7 @@
   - **當前 blocker**：環境僅 `MINIMAX_API_KEY=set`，`LLM_API_KEY/OPENROUTER_API_KEY=missing`；未補 key 前不可宣稱 Nemotron rebuild 驗證完成
 - [ ] **P0.1-MOHW-LIVE-DIAG** 🟡 v6.0 P1（15 分；連 2 輪 0 動邊緣）— `MohwRssAdapter` live fetch 斷線診斷（同 FDA SOP）；15 分 curl + schema diff，解 corpus 300 三源缺一
 - [x] **EPIC5-TASKS-SPECS** ✅（2026-04-21 18:05）— `openspec/changes/05-kb-governance/{tasks.md,specs/kb-governance/spec.md}` 已補齊；寫死 active retrieval 排除 `synthetic/fixture_fallback`、`--require-live` loud fail + retirement/audit evidence、`gov-ai kb rebuild --only-real` 需 post-rebuild verify 三條 SHALL requirement，並補 `T5.0-T5.7` 任務映射；`spectra analyze 05-kb-governance` = 0 findings
+- [x] **T5.2 / live-ingest audit evidence** ✅（2026-04-21 18:38）— `scripts/live_ingest.py` 現在在 `--require-live` 失敗時仍會回收既有 corpus audit evidence：FAIL summary 帶 `retained_fixture` / `archived_fixture` / `live_rows` 計數，Markdown report 追加 `retained_audit_evidence` 表格，不再把 fixture fallback 失敗寫成只有一行 exception；驗證 `python -m pytest tests/test_live_ingest_script.py tests/test_sources_ingest.py -q` = **22 passed**
 
 ### P0.V57-CLIENT-AUTH — 🔴 ACL-free·v5.7 首位（40 分；真 blocker，非 rate-limit）
 

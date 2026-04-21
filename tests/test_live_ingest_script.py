@@ -160,12 +160,23 @@ def test_write_report_renders_markdown_table(tmp_path: Path) -> None:
                     "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030018",
                     "synthetic": False,
                     "fixture_fallback": False,
+                    "archived_fixture": False,
                     "first_sentence": "公文程式條例 第一條",
                 }
             ],
             ingested_count=1,
             fixture_remaining=0,
             archived_count=1,
+            audit_records=[
+                {
+                    "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030018",
+                    "synthetic": False,
+                    "fixture_fallback": False,
+                    "deprecated": False,
+                    "archived_fixture": False,
+                    "first_sentence": "公文程式條例 第一條",
+                }
+            ],
         ),
         live_ingest.SourceRunResult(
             source="datagovtw",
@@ -174,8 +185,18 @@ def test_write_report_renders_markdown_table(tmp_path: Path) -> None:
             summary="live ingest required",
             records=[],
             ingested_count=0,
-            fixture_remaining=0,
+            fixture_remaining=1,
             archived_count=0,
+            audit_records=[
+                {
+                    "source_url": "https://example.test/fixture",
+                    "synthetic": True,
+                    "fixture_fallback": True,
+                    "deprecated": False,
+                    "archived_fixture": False,
+                    "first_sentence": "Fixture only",
+                }
+            ],
         ),
     ]
 
@@ -184,11 +205,46 @@ def test_write_report_renders_markdown_table(tmp_path: Path) -> None:
     content = report_path.read_text(encoding="utf-8")
     assert "# Live Ingest Report" in content
     assert "- force_live: 1" in content
-    assert "| source_url | synthetic | fixture_fallback | first_sentence |" in content
+    assert "| source_url | synthetic | fixture_fallback | archived_fixture | first_sentence |" in content
     assert "live ingest required" in content
     assert "- live_count: 1" in content
     assert "- ingested_count: 1" in content
     assert "- archived_count: 1" in content
+    assert "### retained_audit_evidence" in content
+    assert "https://example.test/fixture" in content
+
+
+def test_run_live_ingest_failure_keeps_fixture_audit_evidence(tmp_path: Path, monkeypatch) -> None:
+    class FakeAdapter:
+        pass
+
+    def fake_ingest(adapter, *, limit, base_dir, require_live):  # type: ignore[no-untyped-def]
+        raise RuntimeError("live ingest required for mojlaw")
+
+    corpus_root = tmp_path / "corpus" / "mojlaw"
+    corpus_root.mkdir(parents=True, exist_ok=True)
+    (corpus_root / "fixture.md").write_text(
+        "---\n"
+        "source_url: https://example.test/fixture\n"
+        "synthetic: true\n"
+        "fixture_fallback: true\n"
+        "---\n"
+        "# Fixture doc\n\n假資料。\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(live_ingest, "_available_sources", lambda: {"mojlaw": FakeAdapter})
+    monkeypatch.setattr(live_ingest, "_load_ingest_function", lambda: fake_ingest)
+
+    results = live_ingest.run_live_ingest(source_keys=["mojlaw"], limit=1, base_dir=tmp_path)
+
+    assert results[0].status == "FAIL"
+    assert results[0].count == 0
+    assert results[0].fixture_remaining == 1
+    assert results[0].archived_count == 0
+    assert len(results[0].audit_records) == 1
+    assert results[0].audit_records[0]["fixture_fallback"] is True
+    assert "retained_fixture=1" in results[0].summary
 
 
 def test_main_reports_existing_real_corpus_when_no_new_docs_ingested(tmp_path: Path, monkeypatch) -> None:

@@ -17,7 +17,7 @@
   Validation: `python -m pytest tests/test_corpus_provenance_guard.py tests/test_cli_commands.py -q -k "verify or kb_rebuild"`
   Commit: `refactor(kb): centralize active corpus eligibility rules`
 
-- [ ] **T5.2** Harden live-ingest governance so `--require-live` failures leave
+- [x] **T5.2** Harden live-ingest governance so `--require-live` failures leave
   clear retirement/archive evidence whenever a source falls back to fixtures.
   Requirements:
   - Live ingest and retirement rules fail loudly and leave audit evidence

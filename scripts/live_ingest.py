@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from functools import lru_cache
 from pathlib import Path
@@ -39,6 +39,7 @@ class SourceRunResult:
     ingested_count: int = 0
     fixture_remaining: int = 0
     archived_count: int = 0
+    audit_records: list[dict[str, Any]] = field(default_factory=list)
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
@@ -142,16 +143,29 @@ def run_live_ingest(
                         ingested_count=len(records),
                         fixture_remaining=fixture_remaining,
                         archived_count=archived_count,
+                        audit_records=rows,
                     )
                 )
             except Exception as exc:  # pragma: no cover - exercised in script tests via mocks
+                rows = _read_source_records(base_dir=base_dir, storage_names=storage_names, include_archived=True)
+                live_rows = [row for row in rows if not row["fixture_fallback"] and not row["archived_fixture"]]
+                fixture_remaining = sum(1 for row in rows if row["fixture_fallback"])
+                archived_count = sum(1 for row in rows if row["archived_fixture"])
+                evidence_suffix = (
+                    f" | retained_fixture={fixture_remaining} archived_fixture={archived_count} live_rows={len(live_rows)}"
+                    if rows
+                    else ""
+                )
                 results.append(
                     SourceRunResult(
                         source=source_key,
                         status="FAIL",
-                        count=0,
-                        summary=str(exc),
-                        records=[],
+                        count=len(live_rows),
+                        summary=f"{exc}{evidence_suffix}",
+                        records=live_rows,
+                        fixture_remaining=fixture_remaining,
+                        archived_count=archived_count,
+                        audit_records=rows,
                     )
                 )
     finally:
@@ -194,11 +208,25 @@ def write_report(
         )
         if result.records:
             lines.append("")
-            lines.append("| source_url | synthetic | fixture_fallback | first_sentence |")
-            lines.append("| --- | --- | --- | --- |")
+            lines.append("| source_url | synthetic | fixture_fallback | archived_fixture | first_sentence |")
+            lines.append("| --- | --- | --- | --- | --- |")
             for row in result.records:
                 lines.append(
-                    "| {source_url} | {synthetic} | {fixture_fallback} | {first_sentence} |".format(**row)
+                    "| {source_url} | {synthetic} | {fixture_fallback} | {archived_fixture} | {first_sentence} |".format(
+                        **row
+                    )
+                )
+        if result.status != "PASS" and result.audit_records:
+            lines.append("")
+            lines.append("### retained_audit_evidence")
+            lines.append("")
+            lines.append("| source_url | synthetic | fixture_fallback | deprecated | archived_fixture | first_sentence |")
+            lines.append("| --- | --- | --- | --- | --- | --- |")
+            for row in result.audit_records:
+                lines.append(
+                    "| {source_url} | {synthetic} | {fixture_fallback} | {deprecated} | {archived_fixture} | {first_sentence} |".format(
+                        **row
+                    )
                 )
         lines.append("")
     report_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
@@ -276,7 +304,7 @@ def _storage_names(*, source_key: str, adapter: Any) -> list[str]:
     return list(dict.fromkeys(name for name in candidates if name))
 
 
-def _read_source_records(*, base_dir: Path, storage_names: list[str]) -> list[dict[str, Any]]:
+def _read_source_records(*, base_dir: Path, storage_names: list[str], include_archived: bool = False) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     seen_paths: set[Path] = set()
     for storage_name in storage_names:
@@ -290,7 +318,7 @@ def _read_source_records(*, base_dir: Path, storage_names: list[str]) -> list[di
             record = _read_record(path)
             if record is None:
                 continue
-            if record["deprecated"] and record["archived_fixture"]:
+            if not include_archived and record["deprecated"] and record["archived_fixture"]:
                 continue
             rows.append(record)
     return rows
