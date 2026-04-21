@@ -832,10 +832,11 @@
 
 ### P0.FF — 🟢 ACL-free·Pydantic warnings 止癢（v4.1 新增；10 分鐘）
 
-- [ ] **P0.FF** ✅ 不依賴 ACL：`pyproject.toml` 加 `filterwarnings` 先止癢 1363 Pydantic v2 deprecation
+- [x] **P0.FF** ✅ 不依賴 ACL：`pyproject.toml` 加 `filterwarnings` 先止癢 1363 Pydantic v2 deprecation
   - **v4.1 升格理由**：warnings 大宗來自 `chromadb.types` 第三方 1.x 兼容層，非專案碼；T8.2 真修壓力高，先止癢避免 log 信噪比惡化
   - **2026-04-20 18:34 現況**：`src/core/warnings_compat.py` 新增可重入 suppression context，`src/knowledge/manager.py` 用同一 filter 包住 Chroma client + collection bootstrap；`pytest tests/test_knowledge_manager_cache.py -q -W error::DeprecationWarning` 已綠，代表 strict gate 下 KB 不再因 `chromadb.types` warning 直接降級失效；剩餘 scope 才是全域 `pyproject.toml` noise 壓降與 `T8.2` 真修
-  - **2026-04-20 19:05 進度**：strict gate scope 再擴到實際 CRUD/query 路徑：`src/knowledge/manager.py` 現已把 `count/query/get/add/upsert/delete_collection/get_or_create_collection` 包進同一個第三方 warning suppression；`src/core/warnings_compat.py` 改以 `PydanticDeprecatedSince211` 類別做局部 ignore，`pytest tests/test_knowledge.py tests/test_knowledge_manager_cache.py -q -W error::DeprecationWarning` = **55 passed**、`pytest tests/test_llm.py -q -W error::DeprecationWarning` = **49 passed**。剩餘 scope 是**全量** `pytest tests/ -q -W error::DeprecationWarning` 與非 chromadb 第三方噪音清倉，故本項先維持 `[ ]`
+  - **2026-04-20 19:05 進度**：strict gate scope 再擴到實際 CRUD/query 路徑：`src/knowledge/manager.py` 現已把 `count/query/get/add/upsert/delete_collection/get_or_create_collection` 包進同一個第三方 warning suppression；`src/core/warnings_compat.py` 改以 `PydanticDeprecatedSince211` 類別做局部 ignore，`pytest tests/test_knowledge.py tests/test_knowledge_manager_cache.py -q -W error::DeprecationWarning` = **55 passed**、`pytest tests/test_llm.py -q -W error::DeprecationWarning` = **49 passed**
+  - **完成（2026-04-21 08:58）**：`python -m pytest tests/ -q --no-header --ignore=tests/integration -W error::DeprecationWarning` = **3701 passed / 0 failed**；strict deprecation gate 已全綠，`P0.FF` 與 `T8.2` 同步閉環
   - **產出**：
     ```toml
     [tool.pytest.ini_options]
@@ -1331,9 +1332,9 @@
 
 - [x] **T8.1.b** `src/cli/generate.py` 已拆為 `src/cli/generate/{__init__,pipeline,export,cli}.py`
 - [x] **T8.1.c** `src/agents/editor.py` 拆分已完成；現況為 `src/agents/editor/{__init__,flow,segment,refine,merge}.py`
-- [ ] **T8.2** Pydantic v2 相容修 1363 deprecation warning
+- [x] **T8.2** Pydantic v2 相容修 1363 deprecation warning
   - 鎖定 chromadb 1.x 兼容層 / `src/api/models.py` / `src/core/models.py`
-  - 目標：`pytest -W error::DeprecationWarning` 通過
+  - **完成（2026-04-21 08:58）**：`python -m pytest tests/ -q --no-header --ignore=tests/integration -W error::DeprecationWarning` 通過
 
 ---
 
