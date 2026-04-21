@@ -40,6 +40,21 @@
 >
 > **紅線狀態**：核心 3 + 實戰 X 不變；第四十二輪 /pua 反思發現 v7.0 header 裸 except 計數 stale（127→實測 109），方法論紅線新增 = **下輪所有 grep/wc/find 必須 HEAD 獨立跑**，不用 header 當事實源；`P2-CORPUS-300`、`MOHW live diag`、Nemotron validate 三件 Admin/key 依賴，**若三輪再不動全體降 P2 或塞 Legacy**；auto-commit 洪水結構性紅不動如山。
 
+> **v7.0-sensor 校準段（2026-04-22 03:50；第四十二輪深度回顧 HEAD 獨立 sensor）**：
+> - ✅ **T-BARE-EXCEPT-AUDIT 刀 3 無聲閉環**（results.log 03:06 PASS）— 18 處已落；v7.0 header P0 三位 stale；本輪降 [x]。
+> - ✅ **P0-TEST-REGRESSION 閉**（03:41 PASS）— pytest 基線 **3741 → 3745 passed**（+4）；KnowledgeBaseManager Chroma 降級處理。
+> - 🔴 **engineer-log 實測 396**（v7.0 header 寫 336；+60 stale）；本輪 append 後 ≈ 450 → T9.6-REOPEN-v5 連 2 輪延宕。
+> - 🟠 **裸 except 熱點遷移**：新 TOP 9 = `gazette_fetcher 4 / _manager_search 4 / core/llm 4 / generate/export 4 / fact_checker 4 / auditor 4 / _manager_hybrid 3 / reviewers 3 / config_tools 3`。
+> - 🟠 **fact_checker.py 446 漏列 fat-rotate**（v7.0 header 胖檔清單有列，但未排任務）— **新 P0 刀 8** 鎖定。
+> - 🟡 **TODO/FIXME 97 處未盤點**（首次入 sensor；下 epoch T-TODO-AUDIT 治理題）。
+> - 🟡 **auto-commit 語意率 2/30 = 6.7%**（近 30 條：v7.0 規劃 + P0-TEST-REGRESSION 兩條語意）。
+>
+> **v7.1 P0 精校（本輪新增刀 4 + 刀 8）**：
+> 1. 🔴 **T9.6-REOPEN-v5** 首位不動（engineer-log ≈ 450 > 300）
+> 2. 🟠 **T-FAT-ROTATE-V2 刀 7** 次位（api/models 461 拆 package）
+> 3. 🟠 **T-BARE-EXCEPT-AUDIT 刀 4**（NEW；三位）— `core/llm 4 + gazette_fetcher 4 + _manager_search 4 = 12 處 / 3 檔`；core/llm 推理大腦優先
+> 4. 🟠 **T-FAT-ROTATE-V2 刀 8**（NEW；四位）— fact_checker.py 446 拆 package；agent 大腦級
+
 ---
 
 ## 🚨 北極星指令（優先於所有判斷）
@@ -136,7 +151,10 @@
 
 - [ ] **T9.6-REOPEN-v5**（10 分；ACL-free；**首位升級**；連 1 輪延宕）— engineer-log.md 336 + 本輪反思 ≈ 385 > 300 hard cap；封存 v5.7/v5.8/v6.0 / 早於 v6.1 的反思到 `docs/archive/engineer-log-202604g.md`；主檔留 v6.1/v6.3/v6.4/v7.0/v7.0-sensor（第四十二輪）。
 - [ ] **T-FAT-ROTATE-V2 刀 7**（40 分；ACL-free；**P0 次位**）— `src/api/models.py 461` 按 request/response schema 邊界拆 `src/api/models/{__init__, requests, responses}.py`；`from src.api.models import *` 匯入面守；`tests/test_api_*.py` 契約守。
-- [ ] **T-BARE-EXCEPT-AUDIT 刀 3**（45 分；ACL-free；合併三檔；**P0 三位**）— HEAD 實測 `src/web_preview/app.py 7` + `src/cli/kb/stats.py 6` + `src/knowledge/manager.py 5` = 18 處 / 3 檔 → typed bucket + logger.warning；總裸 except 109 → 目標 ≤ 90。
+- [x] **T-BARE-EXCEPT-AUDIT 刀 3**（2026-04-22 03:06 閉；ACL-free）— `src/web_preview/app.py 7` + `src/cli/kb/stats.py 6` + `src/knowledge/manager.py 5` = 18 處 / 3 檔已收斂 typed bucket + `logger.warning`；補 logging 回歸測試；pytest 3741 / 0 / 778s 全綠；結構性 typed-bucket 模板沿用刀 1/2 成熟。
+- [ ] **T-BARE-EXCEPT-AUDIT 刀 4**（45 分；ACL-free；**NEW P0 三位**）— HEAD 實測 `src/core/llm.py 4` + `src/knowledge/fetchers/gazette_fetcher.py 4` + `src/knowledge/_manager_search.py 4` = 12 處 / 3 檔；`core/llm` 推理大腦路徑優先；typed bucket + `logger.warning` 沿用刀 1/2/3 模板；目標總裸 except 109 → ≤ 97。
+- [ ] **T-FAT-ROTATE-V2 刀 8**（40 分；ACL-free；**NEW P0 四位**）— `src/agents/fact_checker.py 446` 按 check strategy 拆 `src/agents/fact_checker/{__init__, checks, pipeline}.py` 或類比結構；保留 `src.agents.fact_checker` 匯入面；`tests/test_agents*.py` / `tests/test_fact_*.py` 契約守。
+- [x] **P0-TEST-REGRESSION**（2026-04-22 03:41 閉；ACL-free）— `src/knowledge/manager.py` 對 corrupted Chroma persisted config + opaque vendor exception 降級處理；新增 `_type` KeyError 回歸；pytest **3741 → 3745 passed**（+4 測試）；基線刷新。
 - [x] **T-PROGRAM-MD-ARCHIVE-REAL**（2026-04-22；前輪）— 頭部 v5.5-v6.4 歷史 header 真封存至 `docs/archive/program-history-202604g.md`；主檔收斂到 v7.0 單 header + 規則 + 活任務。
 
 ### P1（連 2 輪延宕 = 3.25）
@@ -180,7 +198,7 @@
 
 ## 已完成
 
-- [x] **近期閉環（2026-04-22）** — `T-PROGRAM-MD-ARCHIVE`、`T-PROGRAM-MD-ARCHIVE-REAL`、`T-PYTEST-PROFILE`、`T-ROLLUP-SYNC`、`T-FAT-ROTATE-V2` 刀 3/4/5/6、`T9.6-REOPEN-v4`、`T-BARE-EXCEPT-AUDIT` 刀 1/2/3、`P1-PCC-ADAPTER`、`P0.1-FDA-LIVE-DIAG`、`P0.3-CORPUS-SCALE`、`EPIC5-TASKS-SPECS`、`T5.1`、`T5.2`、`T5.3`、`T5.4`。
+- [x] **近期閉環（2026-04-22）** — `T-PROGRAM-MD-ARCHIVE`、`T-PROGRAM-MD-ARCHIVE-REAL`、`T-PYTEST-PROFILE`、`T-ROLLUP-SYNC`、`T-FAT-ROTATE-V2` 刀 3/4/5/6、`T9.6-REOPEN-v4`、`T-BARE-EXCEPT-AUDIT` 刀 1/2/3、`P0-TEST-REGRESSION`（KB manager Chroma 降級處理；基線 3745）、`P1-PCC-ADAPTER`、`P0.1-FDA-LIVE-DIAG`、`P0.3-CORPUS-SCALE`、`EPIC5-TASKS-SPECS`、`T5.1`、`T5.2`、`T5.3`、`T5.4`。
 - [x] **Openspec 收官** — 01-real-sources / 02-open-notebook-fork / 03-citation-tw-format / 04-audit-citation / 05-kb-governance 五件 proposal + tasks + specs 全齊；tasks 全 `[x]` = 15 + 15 + 9 + 8 + 8 = 55 件。
 - [x] **較早完成項** — 已移到 [docs/archive/program-history-202604g.md](docs/archive/program-history-202604g.md)。
 
