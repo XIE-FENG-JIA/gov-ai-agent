@@ -201,6 +201,22 @@ class TestFakeCitationSeverity:
 
         assert not any("未在參考來源段落找到對應 repo 證據" in issue.description for issue in result.issues)
 
+    @patch("src.knowledge.realtime_lookup._request_with_retry")
+    def test_generic_related_law_placeholder_not_promoted_to_fake_law_error(self, mock_req):
+        """泛稱 placeholder 不是 actionable citation，不應升格成不存在法規。"""
+        mock_resp = MagicMock()
+        mock_resp.content = _make_law_json(SAMPLE_LAWS)
+        mock_req.return_value = mock_resp
+
+        mock_llm = MagicMock()
+        mock_llm.generate.return_value = '{"issues": [], "score": 0.98}'
+
+        verifier = LawVerifier()
+        checker = FactChecker(mock_llm, law_verifier=verifier)
+        result = checker.check("依據相關法規辦理。")
+
+        assert not any("不存在於全國法規資料庫" in issue.description for issue in result.issues)
+
 
 # ===========================================================================
 # 法規-文件類型交叉比對

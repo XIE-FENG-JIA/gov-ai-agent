@@ -77,10 +77,11 @@ class FactChecker:
                 verification_failed = True
                 logger.warning("即時法規驗證失敗，降級為純 LLM 審查: %s", exc)
 
+        verification_degraded = verification_failed or self._is_verification_degraded(citation_checks)
         repo_issues = self._build_repo_owned_issues(
             draft=draft,
             citation_checks=citation_checks,
-            verification_failed=verification_failed,
+            verification_degraded=verification_degraded,
         )
 
         # 法規-文件類型交叉比對
@@ -207,13 +208,21 @@ Do NOT write vague suggestions like "請確認引用是否正確". Give the spec
         *,
         draft: str,
         citation_checks: list,
-        verification_failed: bool,
+        verification_degraded: bool,
     ) -> list:
         issues = []
         reference_entries = extract_reference_entries(draft)
         referenced_titles = [str(entry.get("title", "")) for entry in reference_entries]
+        actionable_checks = [
+            chk
+            for chk in citation_checks
+            if self._is_actionable_citation(
+                getattr(chk.citation, "law_name", ""),
+                getattr(chk.citation, "article_no", None),
+            )
+        ]
 
-        if verification_failed and self._draft_has_legal_claims(draft):
+        if verification_degraded and (actionable_checks or (not citation_checks and self._draft_has_legal_claims(draft))):
             issues.append(
                 {
                     "severity": "error",
@@ -222,12 +231,15 @@ Do NOT write vague suggestions like "請確認引用是否正確". Give the spec
                     "suggestion": "修復 realtime_lookup 或稍後重跑審查；在驗證恢復前，勿將此草稿視為已完成法規查核。",
                 }
             )
+            return issues
 
-        for chk in citation_checks:
+        for chk in actionable_checks:
             citation_text = getattr(chk.citation, "original_text", "") or getattr(chk.citation, "law_name", "法規引用")
             law_name = getattr(chk.citation, "law_name", "")
             article_no = getattr(chk.citation, "article_no", None)
             article_exists = getattr(chk, "article_exists", None)
+            if not self._is_actionable_citation(law_name, article_no):
+                continue
 
             if not chk.law_exists:
                 issues.append(
@@ -279,6 +291,32 @@ Do NOT write vague suggestions like "請確認引用是否正確". Give the spec
             if normalized_law in normalized_title or normalized_title in normalized_law:
                 return True
         return False
+
+    def _is_verification_degraded(self, citation_checks: list) -> bool:
+        if not self.law_verifier or not citation_checks:
+            return False
+        cache = getattr(self.law_verifier.__class__, "_cache", None)
+        if cache is None:
+            cache = getattr(self.law_verifier, "_cache", None)
+        cache_data = getattr(cache, "data", None)
+        return isinstance(cache_data, dict) and not cache_data
+
+    @staticmethod
+    def _is_actionable_citation(law_name: str, article_no: str | None) -> bool:
+        normalized = law_name.replace(" ", "")
+        generic_names = {
+            "相關法",
+            "相關法規",
+            "相關規定",
+            "相關辦法",
+            "相關條例",
+            "相關規則",
+        }
+        if normalized in generic_names:
+            return False
+        if normalized.startswith("相關") and article_no is None:
+            return False
+        return bool(normalized)
 
     def _merge_repo_issues(self, llm_result: ReviewResult, repo_issues: list[dict]) -> ReviewResult:
         merged = [
