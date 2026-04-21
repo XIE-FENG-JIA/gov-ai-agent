@@ -1,5 +1,47 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
+> **🎯 v5.6 USER OVERRIDE（2026-04-21 人工解鎖 Phase A+B，基於實測 60 份 baseline）**：
+>
+> **✅ v5.5 E2E 已通過（T5.4 PASS at 05:08）** — 解鎖下一階段
+>
+> **🎯 P0.1 — 修 live_ingest dispatcher bug**（已知）
+> - `scripts/live_ingest.py:25` DEFAULT_SOURCES 含 `mohw, fda` 但執行時報 `unsupported source(s)`
+> - 接 `FdaApiAdapter` + `MohwRssAdapter` 到 registry
+> - 驗：`python scripts/live_ingest.py --sources fda,mohw --limit 5 --require-live` 不再 error
+>
+> **🎯 P0.2 — datagovtw adapter 改抓真實公文（非 metadata）**
+> - 當前：抓 `data.gov.tw/dataset/XXX` 的 dataset metadata 頁面（統計資料不是公文）
+> - 應該：對含「公文 / 公告」tag 的 dataset，下載其 resource（CSV/JSON）裡的真實公文記錄
+> - 或：過濾 dataset，找真正含公文內容的來源
+>
+> **🎯 P0.3 — live_ingest 擴大規模到 ≥ 300 份**
+> - 修完 P0.1 後跑 `python scripts/live_ingest.py --sources all --limit 100 --require-live`
+> - 目標 kb_data/corpus 累計 ≥ 300 份真實資料
+>
+> **🎯 P1 — 新增 PccAdapter（政府採購網）**
+> - `src/sources/pcc.py` 按 base.py 抽象實作
+> - `web.pcc.gov.tw` robots 無擋，採購公告可達
+> - 接入 live_ingest registry
+>
+> **⚠ 禁爬清單（robots.txt 實測確認）**：
+> - `gazette.nat.gov.tw` 行政院公報 → robots `*: Disallow: /`，**禁止**
+> - 需從 data.gov.tw 曲線取「行政院公報」資料集（若存在）
+>
+> **🎯 P2 — ChromaDB 向量化驗證（使用 nvidia/llama-nemotron 免費 embedding）**
+> - **模型**：`nvidia/llama-nemotron-embed-vl-1b-v2:free`（dim=2048，OpenRouter 免費）
+> - **config.yaml** 已設 `embedding_provider: openrouter` + `embedding_model: nvidia/llama-nemotron-embed-vl-1b-v2:free` + `embedding_base_url: https://openrouter.ai/api/v1`
+> - 300+ 份真實資料入庫後跑 `gov-ai kb rebuild --only-real`（會用 nemotron 重算所有 embedding）
+> - 驗：embedding 索引建立 + similarity search 對 5 E2E 需求能找到相關真實公文
+> - 驗 dim=2048（舊 qwen3 維度不同，必全量重建）
+> - 交付：`docs/embedding-validation.md` 含 dim / cost / 5 需求 top-K 結果
+>
+> **Anti-bloat 仍生效**：
+> - 當前待辦 [ ] 36 > 20 → 禁新增額外任務，只處理 P0/P1/P2 上述明列
+> - v5.5 USER OVERRIDE 保留（E2E 已 PASS 不回頭）
+
+---
+
+
 > **🎯 v5.8 技術主管第三十六輪深度回顧（2026-04-21 13:20；/pua 人工觸發；阿里味；caveman；v5.7 header drift 第五次校準 + P0 收斂至唯一真血債）**：
 >
 > **v5.7 header 校準（第三十五輪 10:40 反思已點出但 rollup 未回填，本輪實錘）**：
@@ -26,13 +68,13 @@
 >
 > **v5.8 P1（連 2 輪延宕 = 3.25）**：
 > 4. **T-FAT-ROTATE-V2-NEXT** — 下輪鎖 `realtime_lookup 520` 首位；`e2e_rewrite 492` / `api-agents 488` 次位
-> 5. **P1.EPIC5-PROPOSAL** — `openspec/changes/05-kb-governance/proposal.md` 180+ 字；Spectra 3.3/5 → 4/5 下一槓桿（ACL-free）
+> 5. **P1.EPIC5-PROPOSAL** ✅ **已閉（2026-04-21 14:13）** — `openspec/changes/05-kb-governance/proposal.md` 已落地；Spectra 3.3/5 → 4/5 下一槓桿補齊（ACL-free）
 > 6. **P1.3 `.env` + litellm smoke** — ACL-gated；等人工填 `OPENROUTER_API_KEY`
 >
 > **v5.8 下輪硬指標（下輪審查；第三十六輪 13:20 鎖）**：
 > 1. `python -m pytest tests/ -q --ignore=tests/integration` FAIL=0（**本輪 3727/0/486.83s ✅**）
 > 2. `wc -l src/cli/config_tools*.py` 或 `src/cli/config_tools/*.py` 每檔 ≤ 400（**本輪 257 / 225 / 96 ✅**）
-> 3. `ls openspec/changes/05-kb-governance/proposal.md` 存在（當前 ❌；ACL-free）
+> 3. `ls openspec/changes/05-kb-governance/proposal.md` 存在（當前 ✅；ACL-free）
 > 4. `wc -l engineer-log.md` ≤ 300（當前 271 ✅；v5.2 封存讓位）
 > 5. `rg -c "^### 🔴" program.md` ≤ 6（當前 0 ✅）
 > 6. `find kb_data/corpus -name "*.md"` = 9 ✅
@@ -592,6 +634,16 @@
   - commit（ACL 解後）: `refactor(cli): split config_tools.py into package modules`
 
 - [ ] **T-FAT-ROTATE-V2（刀 2+）** 下輪再鎖 `realtime_lookup 520` 首位，`e2e_rewrite 492 / api-agents 488` 次位；不升 P0
+- [x] **P1.EPIC5-PROPOSAL** ✅（2026-04-21 14:13）已新增 `openspec/changes/05-kb-governance/proposal.md`
+  - **底層邏輯**：Epic 5 的 E2E 與 real corpus 護欄都已落，但 KB 治理規則還散在 `src/sources/ingest.py`、`src/cli/kb/rebuild.py`、`src/e2e_rewrite.py`、`src/cli/verify_cmd.py`；沒有 proposal，後續 rebuild/retire/governance 任務會繼續漂
+  - **完成**：
+    - (a) 新增 `openspec/changes/05-kb-governance/proposal.md`
+    - (b) 寫死 `synthetic` / `fixture_fallback` 在 ingest / rebuild / rewrite / verify 的排除語意
+    - (c) 寫死 `gov-ai kb rebuild --only-real`、corpus retirement/archive policy、post-rebuild verify 為第一批 Epic 5 落地切片
+  - **驗 1**：`ls openspec/changes/05-kb-governance/proposal.md` 存在
+  - **驗 2**：`rg -n "only-real|fixture_fallback|synthetic|retirement" openspec/changes/05-kb-governance/proposal.md` 命中 ≥ 4
+  - **驗 3**：`python -m pytest tests/ -q --ignore=tests/integration` = **3727 passed / 0 failed**
+  - commit（ACL 解後）: `docs(openspec): add Epic 5 knowledge-base governance proposal`
 
 
 
@@ -1467,6 +1519,8 @@
   - **完成（2026-04-21 01:47）**：`openspec/changes/03-citation-tw-format/{proposal.md,tasks.md,specs/citation/spec.md}` 已齊，`spectra analyze 03-citation-tw-format` = 0 findings；Epic 3 規格鍊閉環。
 - [x] **T7.1.d** `04-audit-citation`（Epic 4）
   - **完成（2026-04-21 10:59）**：`openspec/changes/04-audit-citation/{proposal.md,tasks.md,specs/audit/spec.md}` 已齊；Epic 4 現在有正式 proposal、requirements 與 task mapping，可直接接 `T4.1-T4.4` 實作。
+- [x] **T7.1.e** `05-kb-governance`（Epic 5）
+  - **完成（2026-04-21 14:13）**：`openspec/changes/05-kb-governance/proposal.md` 已新增；把 KB 治理正式定義為 provenance / only-real rebuild / corpus retirement / post-rebuild verification 的 repo-owned 邊界，避免 fixture-backed corpus 再次混入 active evidence。
 - [x] **T4.1（2026-04-21）** citation checker seam：`src/agents/citation_checker.py` 已落；會對 citation level / evidence presence / integrity 與 reference traceability（URL/Hash）做 repo-owned 檢查，`python -m pytest tests/test_citation_level.py tests/test_validators.py -q` = 111 passed
 - [x] **T7.2** → 已升 P1.2（v2.4 閉環）
 - [ ] **T7.3** `engineer-log.md` 進版控 + 每輪反思 append 規範
