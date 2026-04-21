@@ -662,7 +662,7 @@
   - **2026-04-21 校準**：`src/core/llm.py` 已修正 mixed-provider embedding routing；`embedding_provider=openrouter` 不再誤用 active `minimax` 的 `api_key/base_url`
   - **當前 blocker**：環境僅 `MINIMAX_API_KEY=set`，`LLM_API_KEY/OPENROUTER_API_KEY=missing`；未補 key 前不可宣稱 Nemotron rebuild 驗證完成
 - [ ] **P0.1-MOHW-LIVE-DIAG** 🟡 v6.0 P1（15 分；連 2 輪 0 動邊緣）— `MohwRssAdapter` live fetch 斷線診斷（同 FDA SOP）；15 分 curl + schema diff，解 corpus 300 三源缺一
-- [ ] **EPIC5-TASKS-SPECS** 🆕 **v6.0 P1 新增（40 分；Spectra 80% → 90% 下槓桿）** — Epic 5 proposal 已落但 `openspec/changes/05-kb-governance/{tasks.md,specs/kb-governance/spec.md}` 未開；寫死 `--only-real` rebuild / retirement policy / post-rebuild verify 三條 SHALL requirement + 4-6 條 tasks
+- [x] **EPIC5-TASKS-SPECS** ✅（2026-04-21 18:05）— `openspec/changes/05-kb-governance/{tasks.md,specs/kb-governance/spec.md}` 已補齊；寫死 active retrieval 排除 `synthetic/fixture_fallback`、`--require-live` loud fail + retirement/audit evidence、`gov-ai kb rebuild --only-real` 需 post-rebuild verify 三條 SHALL requirement，並補 `T5.0-T5.7` 任務映射；`spectra analyze 05-kb-governance` = 0 findings
 
 ### P0.V57-CLIENT-AUTH — 🔴 ACL-free·v5.7 首位（40 分；真 blocker，非 rate-limit）
 
@@ -1595,7 +1595,7 @@
 - [x] **T7.1.d** `04-audit-citation`（Epic 4）
   - **完成（2026-04-21 10:59）**：`openspec/changes/04-audit-citation/{proposal.md,tasks.md,specs/audit/spec.md}` 已齊；Epic 4 現在有正式 proposal、requirements 與 task mapping，可直接接 `T4.1-T4.4` 實作。
 - [x] **T7.1.e** `05-kb-governance`（Epic 5）
-  - **完成（2026-04-21 14:13）**：`openspec/changes/05-kb-governance/proposal.md` 已新增；把 KB 治理正式定義為 provenance / only-real rebuild / corpus retirement / post-rebuild verification 的 repo-owned 邊界，避免 fixture-backed corpus 再次混入 active evidence。
+  - **完成（2026-04-21 18:05）**：`openspec/changes/05-kb-governance/{proposal.md,tasks.md,specs/kb-governance/spec.md}` 已齊；Epic 5 現在具備 proposal / requirement / tasks mapping 完整 change package，Spectra 可直接分析 provenance exclusion、loud live-ingest failure、only-real rebuild verification 三條治理契約。
 - [x] **P0.2（2026-04-21）** `datagovtw` 真實公文 ingest
   - **完成（2026-04-21 15:00）**：`src/sources/datagovtw.py` 已從 dataset metadata 改為展開 resource（CSV/JSON）真實記錄；僅對有標題且有主旨/內容/文號的列建立 `PublicGovDoc`，metadata-only 資料集直接過濾。fixture 升級為 resource-backed 測試資料，`python -m pytest tests/test_datagovtw_adapter.py tests/test_sources_base.py tests/test_live_ingest_script.py -q` = **21 passed**，全量 `python -m pytest tests/ -q --ignore=tests/integration` = **3728 passed / 0 failed**。
 - [x] **T4.1（2026-04-21）** citation checker seam：`src/agents/citation_checker.py` 已落；會對 citation level / evidence presence / integrity 與 reference traceability（URL/Hash）做 repo-owned 檢查，`python -m pytest tests/test_citation_level.py tests/test_validators.py -q` = 111 passed
