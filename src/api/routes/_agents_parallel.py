@@ -34,24 +34,16 @@ async def run_parallel_review(
     llm: Any,
     kb: Any,
     executor: Any,
-    format_auditor_cls: type,
+    format_runner: Any,
     style_checker_cls: type,
     fact_checker_cls: type,
     consistency_checker_cls: type,
     compliance_checker_cls: type,
-    formatter: Any,
 ) -> ParallelReviewResponse:
     """Execute all requested review agents and aggregate the outcome."""
     results: dict[str, SingleAgentReviewResponse] = {}
     agent_map = {
-        "format": lambda: run_format_audit(
-            request.draft,
-            request.doc_type,
-            llm,
-            kb,
-            format_auditor_cls,
-            formatter,
-        ),
+        "format": lambda: format_runner(request.draft, request.doc_type, llm, kb),
         "style": lambda: style_checker_cls(llm).check(request.draft),
         "fact": lambda: fact_checker_cls(llm).check(request.draft, doc_type=request.doc_type),
         "consistency": lambda: consistency_checker_cls(llm).check(request.draft),

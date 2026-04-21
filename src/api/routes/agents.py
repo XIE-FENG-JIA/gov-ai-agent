@@ -19,18 +19,16 @@ from src.agents.consistency_checker import ConsistencyChecker
 from src.agents.compliance_checker import ComplianceChecker
 from src.agents.auditor import FormatAuditor
 from src.agents.review_parser import format_audit_to_review_result
-from src.knowledge.manager import KnowledgeBaseManager
 
 from src.api.auth import require_api_key
 from src.api.dependencies import get_llm, get_kb
 import src.api.dependencies as _deps
-from src.api.routes._agents_parallel import run_parallel_review
+from src.api.routes._agents_parallel import run_parallel_review, run_format_audit as _run_format_audit_impl
 from src.api.helpers import (
     _sanitize_error,
     _get_error_code,
     review_result_to_dict,
     run_in_executor,
-    ENDPOINT_TIMEOUT,
 )
 from src.api.models import (
     RequirementRequest,
@@ -39,7 +37,6 @@ from src.api.models import (
     WriterResponse,
     ReviewRequest,
     ReviewResponse,
-    SingleAgentReviewResponse,
     ParallelReviewRequest,
     ParallelReviewResponse,
     RefineRequest,
@@ -65,6 +62,11 @@ _AGENT_ROUTE_EXCEPTIONS = (
 def _log_agent_warning(endpoint: str, exc: Exception) -> None:
     """記錄已知可降級的 agent route 失敗。"""
     logger.warning("%s 失敗: %s", endpoint, exc)
+
+
+def _run_format_audit(draft: str, doc_type: str, llm: Any, kb: Any) -> Any:
+    """保留既有 patch 面，實際邏輯委派給 helper module。"""
+    return _run_format_audit_impl(draft, doc_type, llm, kb, FormatAuditor, format_audit_to_review_result)
 
 
 # ------------------------------------------------------------
@@ -297,12 +299,11 @@ async def parallel_review(
             llm=get_llm(),
             kb=get_kb(),
             executor=_deps.executor,
-            format_auditor_cls=FormatAuditor,
+            format_runner=_run_format_audit,
             style_checker_cls=StyleChecker,
             fact_checker_cls=FactChecker,
             consistency_checker_cls=ConsistencyChecker,
             compliance_checker_cls=ComplianceChecker,
-            formatter=format_audit_to_review_result,
         )
     except _AGENT_ROUTE_EXCEPTIONS as e:
         _log_agent_warning("並行審查", e)
