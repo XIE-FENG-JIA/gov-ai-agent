@@ -8,11 +8,15 @@ import time
 import uuid
 from importlib import import_module
 
+from fastapi import Depends
 from fastapi.responses import JSONResponse
 
+from src.api.auth import require_api_key
 from src.api.models import BatchItemResult, BatchRequest, BatchResponse, MeetingRequest, MeetingResponse
 
 from ._state import logger, router
+
+WRITE_AUTH = [Depends(require_api_key)]
 
 
 def _workflow_package():
@@ -23,6 +27,7 @@ def _workflow_package():
     "/api/v1/meeting",
     response_model=MeetingResponse,
     tags=["完整流程"],
+    dependencies=WRITE_AUTH,
 )
 async def run_meeting(request: MeetingRequest) -> MeetingResponse:
     """完整開會流程。"""
@@ -190,6 +195,7 @@ async def download_file(filename: str):
     "/api/v1/batch",
     response_model=BatchResponse,
     tags=["批次處理"],
+    dependencies=WRITE_AUTH,
 )
 async def run_batch(request: BatchRequest) -> BatchResponse:
     """批次處理多筆公文需求。"""

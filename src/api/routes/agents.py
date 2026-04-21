@@ -8,7 +8,7 @@ import logging
 import re
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from src.core.constants import (
     DEFAULT_FAILED_SCORE,
@@ -32,6 +32,7 @@ from src.agents.auditor import FormatAuditor
 from src.agents.review_parser import format_audit_to_review_result
 from src.knowledge.manager import KnowledgeBaseManager
 
+from src.api.auth import require_api_key
 from src.api.dependencies import get_llm, get_kb
 import src.api.dependencies as _deps
 from src.api.helpers import (
@@ -58,6 +59,7 @@ from src.api.models import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+WRITE_AUTH = [Depends(require_api_key)]
 
 
 # ------------------------------------------------------------
@@ -68,6 +70,7 @@ router = APIRouter()
     "/api/v1/agent/requirement",
     response_model=RequirementResponse,
     tags=["需求分析"],
+    dependencies=WRITE_AUTH,
 )
 async def analyze_requirement(request: RequirementRequest) -> RequirementResponse:
     """需求分析 Agent
@@ -97,6 +100,7 @@ async def analyze_requirement(request: RequirementRequest) -> RequirementRespons
     "/api/v1/agent/writer",
     response_model=WriterResponse,
     tags=["草稿撰寫"],
+    dependencies=WRITE_AUTH,
 )
 async def write_draft(request: WriterRequest) -> WriterResponse:
     """撰寫 Agent
@@ -137,6 +141,7 @@ async def write_draft(request: WriterRequest) -> WriterResponse:
     "/api/v1/agent/review/format",
     response_model=ReviewResponse,
     tags=["審查"],
+    dependencies=WRITE_AUTH,
 )
 async def review_format(request: ReviewRequest) -> ReviewResponse:
     """格式審查 Agent
@@ -167,6 +172,7 @@ async def review_format(request: ReviewRequest) -> ReviewResponse:
     "/api/v1/agent/review/style",
     response_model=ReviewResponse,
     tags=["審查"],
+    dependencies=WRITE_AUTH,
 )
 async def review_style(request: ReviewRequest) -> ReviewResponse:
     """文風審查 Agent
@@ -192,6 +198,7 @@ async def review_style(request: ReviewRequest) -> ReviewResponse:
     "/api/v1/agent/review/fact",
     response_model=ReviewResponse,
     tags=["審查"],
+    dependencies=WRITE_AUTH,
 )
 async def review_fact(request: ReviewRequest) -> ReviewResponse:
     """事實審查 Agent
@@ -217,6 +224,7 @@ async def review_fact(request: ReviewRequest) -> ReviewResponse:
     "/api/v1/agent/review/consistency",
     response_model=ReviewResponse,
     tags=["審查"],
+    dependencies=WRITE_AUTH,
 )
 async def review_consistency(request: ReviewRequest) -> ReviewResponse:
     """一致性審查 Agent
@@ -242,6 +250,7 @@ async def review_consistency(request: ReviewRequest) -> ReviewResponse:
     "/api/v1/agent/review/compliance",
     response_model=ReviewResponse,
     tags=["審查"],
+    dependencies=WRITE_AUTH,
 )
 async def review_compliance(request: ReviewRequest) -> ReviewResponse:
     """政策合規審查 Agent
@@ -280,6 +289,7 @@ def _run_format_audit(
     "/api/v1/agent/review/parallel",
     response_model=ParallelReviewResponse,
     tags=["審查"],
+    dependencies=WRITE_AUTH,
 )
 async def parallel_review(
     request: ParallelReviewRequest,
@@ -403,6 +413,7 @@ async def parallel_review(
     "/api/v1/agent/refine",
     response_model=RefineResponse,
     tags=["修改"],
+    dependencies=WRITE_AUTH,
 )
 async def refine_draft(request: RefineRequest) -> RefineResponse:
     """Editor Agent
