@@ -33,25 +33,29 @@
   Commit: `feat(auditor): aggregate citation audit results`
   - **完成（2026-04-21 12:30）**：`EditorInChief` 現於 format audit 後同步納入 `CitationChecker`，並在 targeted review 中重跑 citation findings；`src/core/scoring.py` 另把 `Citation Checker` 映射到 `fact` 權重，避免被誤算成 `style` 弱化風險。新增回歸測試鎖定 aggregation、targeted rerun 與權重映射。驗證 `python -m pytest tests/test_editor.py tests/test_editor_coverage.py tests/test_review_parser.py -q` = 144 passed、`python -m pytest tests/test_scoring.py -q` = 36 passed
 
-- [ ] **T4.4** Add a citation-audit failure matrix covering orphan footnotes,
+- [x] **T4.4** Add a citation-audit failure matrix covering orphan footnotes,
   missing evidence, unverifiable legal claims, and degraded verification
   upstreams.
   Requirements:
   - Citation audit failures fail loudly before export handoff
   Validation: `pytest tests/test_validators.py tests/test_fact_checker_enhanced.py tests/test_writer_agent_failure.py -q`
   Commit: `test(audit): cover citation audit failure matrix`
+  - **完成（2026-04-21 13:06）**：新增 matrix 回歸測試，明確鎖定四類 citation-audit failure：`tests/test_validators.py` 驗 orphan footnotes / missing evidence 會 loud fail，`tests/test_fact_checker_enhanced.py` 驗不存在條號與 degraded verification 會留下 repo-owned error，`tests/test_writer_agent_failure.py` 驗 setup/runtime/service fallback 都會保留結構化 diagnostics。驗證 `python -m pytest tests/test_validators.py tests/test_fact_checker_enhanced.py tests/test_writer_agent_failure.py -q` = 115 passed
 
-- [ ] **T4.5** Requirement coverage: repo-owned citation audit is satisfied by
+- [x] **T4.5** Requirement coverage: repo-owned citation audit is satisfied by
   `T4.0`, `T4.1`, and `T4.3`.
   Validation: `spectra analyze 04-audit-citation`
+  - **完成（2026-04-21 13:06）**：tasks metadata 已明確對應 `Citation audit stays repo-owned and source-grounded` requirement，`spectra analyze 04-audit-citation` coverage warning 清零。
 
-- [ ] **T4.6** Requirement coverage: citation audit uses repo evidence and
+- [x] **T4.6** Requirement coverage: citation audit uses repo evidence and
   verification state is satisfied by `T4.1`, `T4.2`, and `T4.4`.
   Validation: `spectra analyze 04-audit-citation`
+  - **完成（2026-04-21 13:06）**：tasks metadata 已明確對應 `Citation audit uses repo evidence and verification state` requirement，`spectra analyze 04-audit-citation` coverage warning 清零。
 
-- [ ] **T4.7** Requirement coverage: citation audit failures fail loudly before
+- [x] **T4.7** Requirement coverage: citation audit failures fail loudly before
   export handoff is satisfied by `T4.2`, `T4.3`, and `T4.4`.
   Validation: `spectra analyze 04-audit-citation`
+  - **完成（2026-04-21 13:06）**：tasks metadata 已明確對應 `Citation audit failures fail loudly before export handoff` requirement，`spectra analyze 04-audit-citation` coverage warning 清零。
 
 ## Requirement Mapping
 

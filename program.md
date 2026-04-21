@@ -1387,6 +1387,8 @@
   - **完成（2026-04-21 12:16）**：`FactChecker` 先用 repo-owned 規則合併 `realtime_lookup` 與 `extract_reference_entries()` 結果，再交給 LLM 補充其他 fact 問題；當 verifier 掛掉或 cache 空掉時，會明確報「不能視為 citation-clean」，避免 silent downgrade；只對具體法規引用升格不存在/條號錯誤/缺 repo evidence finding，generic placeholder 不誤炸。
 - [x] **T4.3** `src/agents/auditor.py` / editor aggregation 整合 citation checker
   - **完成（2026-04-21 12:30）**：`EditorInChief` 審查流程現加入 `CitationChecker`，並在 targeted review 僅重跑 citation 問題；`src/core/scoring.py` 同步把 `Citation Checker` 歸到 `fact` 權重，避免 audit aggregation 低估引用風險。驗證 `python -m pytest tests/test_editor.py tests/test_editor_coverage.py tests/test_review_parser.py -q` = 144 passed、`python -m pytest tests/test_scoring.py -q` = 36 passed
+- [x] **T4.4** citation audit failure matrix
+  - **完成（2026-04-21 13:06）**：補齊 orphan footnotes / missing evidence / unverifiable legal claims / degraded verification upstream 四類回歸矩陣；同步把 6-agent citation flow 的舊測試基準升級到 traceable references 與 `Citation Checker` 新權重，避免 Epic 4 自己把非 integration pytest 打紅。驗證 `python -m pytest tests/test_validators.py tests/test_fact_checker_enhanced.py tests/test_writer_agent_failure.py -q` = 115 passed；回歸修復後 `python -m pytest tests/test_agents_extended.py -q -k "all_agents_fail or safe_score_no_auto_refine"`、`python -m pytest tests/test_e2e.py -q -k "parallel_review_all_pass or multi_doc_type_full_flow"`、`python -m pytest tests/test_robustness.py -q -k "all_agents_failed_gives_zero_score"` 皆綠。
 
 ---
 

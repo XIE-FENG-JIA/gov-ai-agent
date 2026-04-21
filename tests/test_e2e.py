@@ -1842,6 +1842,20 @@ class TestFullIntegrationFlow:
 
         每種公文類型都經過完整的「需求分析 → 撰寫 → 模板 → 審查 → 匯出」流程。
         """
+        mock_kb.search_hybrid.return_value = [
+            {
+                "content": "依據實際法規與公開來源辦理。",
+                "distance": 0.3,
+                "metadata": {
+                    "title": "公文引用範例",
+                    "source_level": "A",
+                    "source_url": "https://example.test/citation-source",
+                    "source": "law",
+                    "meta_id": "citation-source-1",
+                },
+            }
+        ]
+
         doc_configs = [
             {
                 "type": "函",
