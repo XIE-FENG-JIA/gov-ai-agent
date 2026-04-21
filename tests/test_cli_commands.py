@@ -1002,6 +1002,98 @@ class TestKBCommands:
     @patch("src.cli.kb.KnowledgeBaseManager")
     @patch("src.cli.kb.get_llm_factory")
     @patch("src.cli.kb.ConfigManager")
+    def test_kb_rebuild_only_real_verifies_docx_against_active_corpus(
+        self,
+        mock_cm,
+        mock_factory,
+        mock_kb_class,
+        tmp_path,
+    ):
+        """測試 kb rebuild --only-real 可在重建後驗證 DOCX citation metadata。"""
+        from src.cli.main import app
+        from src.document.exporter import DocxExporter
+
+        mock_cm.return_value.config = {
+            "llm": {"provider": "mock"},
+            "knowledge_base": {"path": "./test_kb"},
+        }
+        mock_kb_instance = mock_kb_class.return_value
+        mock_kb_instance.get_stats.return_value = {
+            "examples_count": 0,
+            "regulations_count": 1,
+            "policies_count": 0,
+        }
+        mock_kb_instance.contextual_retrieval = False
+        mock_kb_instance.upsert_document.return_value = "law-1"
+
+        corpus_dir = tmp_path / "corpus" / "mojlaw"
+        corpus_dir.mkdir(parents=True, exist_ok=True)
+        (corpus_dir / "A0030055.md").write_text(
+            "---\n"
+            "title: 公文程式條例\n"
+            "source_id: A0030055\n"
+            "source_url: https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030055\n"
+            "doc_type: 法規\n"
+            "synthetic: false\n"
+            "fixture_fallback: false\n"
+            "---\n"
+            "法規內容\n",
+            encoding="utf-8",
+        )
+
+        output = tmp_path / "verified-after-rebuild.docx"
+        DocxExporter().export(
+            """# 函
+
+### 主旨
+引用測試
+
+### 說明
+依據《公文程式條例》辦理[^1]。
+
+### 參考來源 (AI 引用追蹤)
+[^1]: [Level A] 公文程式條例 | URL: https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030055 | Hash: a1b2c3d4
+""",
+            str(output),
+            citation_metadata={
+                "reviewed_sources": [
+                    {
+                        "index": 1,
+                        "title": "公文程式條例",
+                        "source_level": "A",
+                        "source_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0030055",
+                        "record_id": "A0030055",
+                        "content_hash": "a1b2c3d4",
+                    }
+                ],
+                "engine": "openrouter/elephant-alpha",
+                "ai_generated": True,
+            },
+        )
+
+        result = runner.invoke(
+            app,
+            [
+                "kb",
+                "rebuild",
+                "--base-dir",
+                str(tmp_path),
+                "--only-real",
+                "--verify-docx",
+                str(output),
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert mock_kb_instance.reset_db.call_count == 1
+        assert mock_kb_instance.upsert_document.call_count == 1
+        assert "Only-real 重建後驗證" in result.stdout
+        assert "only-real post-rebuild verify：通過 4/4 項" in result.stdout
+        assert "A0030055" in result.stdout
+
+    @patch("src.cli.kb.KnowledgeBaseManager")
+    @patch("src.cli.kb.get_llm_factory")
+    @patch("src.cli.kb.ConfigManager")
     def test_kb_search_multiple_results_table(self, mock_cm, mock_factory, mock_kb_class):
         """測試搜尋多個結果時正確顯示表格"""
         from src.cli.main import app

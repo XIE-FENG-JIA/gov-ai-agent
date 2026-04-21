@@ -50,28 +50,24 @@ def _find_corpus_match(source: dict, corpus_entries: list[dict[str, str]]) -> di
     return {}
 
 
-def verify(
-    file_path: str = typer.Argument(..., help="要驗證 citation metadata 的 .docx 檔案"),
-) -> None:
-    docx_path = Path(file_path)
+def collect_citation_verification_checks(
+    docx_path: Path,
+    corpus_dir: Path | None = None,
+) -> list[tuple[str, bool, str]]:
     if not docx_path.is_file():
-        console.print(f"[red]錯誤：找不到檔案 {file_path}[/red]")
-        raise typer.Exit(1)
+        raise FileNotFoundError(f"找不到檔案 {docx_path}")
 
     if docx_path.suffix.lower() != ".docx":
-        console.print("[red]錯誤：僅支援 .docx 檔案格式。[/red]")
-        raise typer.Exit(1)
+        raise ValueError("僅支援 .docx 檔案格式。")
 
     metadata = read_docx_citation_metadata(str(docx_path))
     if not metadata:
-        console.print("[red]錯誤：文件缺少 citation metadata，無法驗證。[/red]")
-        raise typer.Exit(1)
+        raise ValueError("文件缺少 citation metadata，無法驗證。")
 
     citation_sources = list(metadata.get("citation_sources_json") or [])
     source_doc_ids = [str(item) for item in metadata.get("source_doc_ids") or []]
     citation_count = int(metadata.get("citation_count") or 0)
-
-    corpus_entries = _load_corpus_entries(Path("kb_data") / "corpus")
+    corpus_entries = _load_corpus_entries(corpus_dir or (Path("kb_data") / "corpus"))
     derived_ids = list(
         dict.fromkeys(
             str(source.get("source_doc_id") or "").strip()
@@ -94,7 +90,15 @@ def verify(
         else:
             checks.append((f"citation[{index}] {label}", False, "找不到對應 repo evidence"))
 
-    table = Table(title="Citation 驗證結果", show_lines=True)
+    return checks
+
+
+def render_citation_verification_results(
+    checks: list[tuple[str, bool, str]],
+    *,
+    title: str = "Citation 驗證結果",
+) -> tuple[int, int]:
+    table = Table(title=title, show_lines=True)
     table.add_column("檢查項目", style="cyan", width=30)
     table.add_column("狀態", width=6, justify="center")
     table.add_column("說明", width=60)
@@ -107,6 +111,21 @@ def verify(
 
     console.print(table)
     console.print(f"\n  通過：{passed}/{len(checks)} 項")
+    return passed, len(checks)
 
-    if passed != len(checks):
+
+def verify(
+    file_path: str = typer.Argument(..., help="要驗證 citation metadata 的 .docx 檔案"),
+) -> None:
+    try:
+        checks = collect_citation_verification_checks(Path(file_path))
+    except FileNotFoundError:
+        console.print(f"[red]錯誤：找不到檔案 {file_path}[/red]")
+        raise typer.Exit(1)
+    except ValueError as exc:
+        console.print(f"[red]錯誤：{exc}[/red]")
+        raise typer.Exit(1)
+
+    passed, total = render_citation_verification_results(checks)
+    if passed != total:
         raise typer.Exit(1)

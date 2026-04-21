@@ -2,6 +2,7 @@ from pathlib import Path
 
 import typer
 
+from src.cli.verify_cmd import collect_citation_verification_checks, render_citation_verification_results
 from src.knowledge.corpus_provenance import is_active_corpus_metadata, is_fixture_backed_metadata
 
 from ._shared import app, console
@@ -110,6 +111,11 @@ def rebuild(
         "--only-real",
         help="只重建真實來源文件（跳過 synthetic / fixture_fallback）",
     ),
+    verify_docx: str | None = typer.Option(
+        None,
+        "--verify-docx",
+        help="only-real 重建後立刻驗證指定 DOCX 的 citation metadata 仍能對回 active corpus",
+    ),
 ) -> None:
     """重建知識庫索引：重設 DB 後重新匯入 examples/regulations/policies。"""
     from . import _init_kb
@@ -123,6 +129,10 @@ def rebuild(
     console.print("[bold red]正在重建知識庫索引...[/bold red]")
     kb.reset_db()
 
+    if verify_docx and not only_real:
+        console.print("[red]錯誤：--verify-docx 只能搭配 --only-real 使用。[/red]")
+        raise typer.Exit(1)
+
     corpus_root = source_root / "corpus"
     if only_real and corpus_root.exists() and any(corpus_root.rglob("*.md")):
         total_imported, skipped_by_reason = _rebuild_active_corpus(kb, corpus_root)
@@ -132,6 +142,23 @@ def rebuild(
             + (f" / 跳過 {total_skipped} 筆" if total_skipped else "")
             + "[/bold]"
         )
+        if verify_docx:
+            try:
+                checks = collect_citation_verification_checks(Path(verify_docx), corpus_root)
+            except FileNotFoundError:
+                console.print(f"[red]錯誤：找不到檔案 {verify_docx}[/red]")
+                raise typer.Exit(1)
+            except ValueError as exc:
+                console.print(f"[red]錯誤：{exc}[/red]")
+                raise typer.Exit(1)
+
+            passed, total = render_citation_verification_results(
+                checks,
+                title="Only-real 重建後驗證",
+            )
+            console.print(f"[bold cyan]only-real post-rebuild verify：通過 {passed}/{total} 項[/bold cyan]")
+            if passed != total:
+                raise typer.Exit(1)
         console.print(f"目前資料庫統計：{kb.get_stats()}")
         return
     if only_real:
