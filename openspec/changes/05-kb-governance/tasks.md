@@ -24,7 +24,7 @@
   Validation: `python -m pytest tests/test_live_ingest_script.py tests/test_sources_ingest.py -q`
   Commit: `feat(kb): record loud fixture-fallback retirement outcomes`
 
-- [ ] **T5.3** Enforce `gov-ai kb rebuild --only-real` as the operational path
+- [x] **T5.3** Enforce `gov-ai kb rebuild --only-real` as the operational path
   for real-source index rebuilds and report imported vs skipped provenance
   counts.
   Requirements:
@@ -33,7 +33,7 @@
   Validation: `python -m pytest tests/test_cli_commands.py tests/test_knowledge.py -q -k "kb_rebuild or stats"`
   Commit: `feat(kb): harden only-real rebuild reporting`
 
-- [ ] **T5.4** Add a post-rebuild verification step that proves exported
+- [x] **T5.4** Add a post-rebuild verification step that proves exported
   citation metadata still resolves only to active repo evidence after an
   `--only-real` rebuild.
   Requirements:
@@ -41,17 +41,17 @@
   Validation: `python -m pytest tests/test_cli_commands.py tests/test_e2e_rewrite.py tests/test_corpus_provenance_guard.py -q -k "verify or rebuild or provenance"`
   Commit: `test(kb): verify only-real rebuild evidence integrity`
 
-- [ ] **T5.5** Requirement coverage: Active retrieval excludes synthetic or fixture-backed corpus entries is satisfied by `T5.0`, `T5.1`, and `T5.3`.
+- [x] **T5.5** Requirement coverage: Active retrieval excludes synthetic or fixture-backed corpus entries is satisfied by `T5.0`, `T5.1`, and `T5.3`.
   Requirements:
   - Active retrieval excludes synthetic or fixture-backed corpus entries
   Validation: `spectra analyze 05-kb-governance`
 
-- [ ] **T5.6** Requirement coverage: Live ingest and retirement rules fail loudly and leave audit evidence is satisfied by `T5.0` and `T5.2`.
+- [x] **T5.6** Requirement coverage: Live ingest and retirement rules fail loudly and leave audit evidence is satisfied by `T5.0` and `T5.2`.
   Requirements:
   - Live ingest and retirement rules fail loudly and leave audit evidence
   Validation: `spectra analyze 05-kb-governance`
 
-- [ ] **T5.7** Requirement coverage: Only-real rebuilds require explicit post-rebuild verification is satisfied by `T5.0`, `T5.3`, and `T5.4`.
+- [x] **T5.7** Requirement coverage: Only-real rebuilds require explicit post-rebuild verification is satisfied by `T5.0`, `T5.3`, and `T5.4`.
   Requirements:
   - Only-real rebuilds require explicit post-rebuild verification
   Validation: `spectra analyze 05-kb-governance`
