@@ -1,16 +1,24 @@
 import json
 import logging
-import typer
-import requests
-import yaml
 import os
+import requests
+import typer
+import yaml
 from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
 from rich.prompt import Confirm, Prompt
+from src.cli.utils import atomic_yaml_write, safe_config_write
+from src.cli.config_tools_fetch_impl import fetch_models_impl
+from src.cli.config_tools_mutations_impl import (
+    backup_impl,
+    export_impl,
+    init_impl,
+    restore_impl,
+    set_value_impl,
+    show_impl,
+    validate_impl,
+)
 from src.core.config import ConfigManager
 from src.core.llm import LiteLLMProvider
-from src.cli.utils import atomic_yaml_write, safe_config_write
 
 logger = logging.getLogger(__name__)
 
@@ -59,66 +67,10 @@ def show(
 
         gov-ai config show --section llm
     """
-    if format not in ("yaml", "json"):
-        console.print(f"[red]不支援的格式：{format}（請使用 yaml 或 json）[/red]")
+    try:
+        show_impl(format_name=format, section=section, console=console, config_manager_cls=ConfigManager)
+    except (ValueError, KeyError):
         raise typer.Exit(1)
-
-    cm = ConfigManager()
-    config = cm.config
-
-    if section:
-        sec_val = section.lower().strip()
-        if sec_val in config:
-            section_data = {sec_val: config[sec_val]}
-            if format == "json":
-                console.print(json.dumps(section_data, ensure_ascii=False, indent=2))
-            else:
-                console.print(f"\n[bold cyan]{sec_val} 設定區段：[/bold cyan]")
-                for k, v in (config[sec_val] if isinstance(config[sec_val], dict) else {}).items():
-                    console.print(f"  {k}: {v}")
-            console.print(f"\n  [dim]區段篩選：{sec_val}[/dim]")
-            return
-        else:
-            console.print(f"[yellow]找不到區段：{section}（可用：{', '.join(config.keys())}）[/yellow]")
-            raise typer.Exit(1)
-
-    if format == "json":
-        console.print(json.dumps(config, ensure_ascii=False, indent=2))
-        return
-
-    table = Table(title="目前組態設定", show_lines=True)
-    table.add_column("設定項", style="cyan", no_wrap=True)
-    table.add_column("值", style="green")
-
-    # LLM 設定
-    llm = config.get("llm", {})
-    table.add_row("LLM 提供者", llm.get("provider", "未設定"))
-    table.add_row("LLM 模型", llm.get("model", "未設定"))
-    table.add_row("LLM Base URL", llm.get("base_url", "未設定"))
-    api_key = llm.get("api_key", "")
-    table.add_row("API Key", f"{'****' + api_key[-4:] if api_key and len(api_key) > 4 else '（未設定）'}")
-
-    # Embedding 設定
-    table.add_row("Embedding 提供者", llm.get("embedding_provider", "未設定"))
-    table.add_row("Embedding 模型", llm.get("embedding_model", "未設定"))
-    table.add_row("Embedding Base URL", llm.get("embedding_base_url", "未設定"))
-
-    # 知識庫設定
-    kb = config.get("knowledge_base", {})
-    table.add_row("知識庫路徑", kb.get("path", "未設定"))
-
-    # 機構記憶設定
-    org = config.get("organizational_memory", {})
-    table.add_row("機構記憶", "啟用" if org.get("enabled") else "停用")
-
-    # 可用的 Provider 列表
-    providers = config.get("providers", {})
-    if providers:
-        provider_list = ", ".join(providers.keys())
-        table.add_row("已設定提供者", provider_list)
-
-    console.print(table)
-    console.print(f"\n[dim]設定檔位置：{cm.config_path.absolute()}[/dim]")
 
 
 @app.command(name="validate")
@@ -136,41 +88,13 @@ def config_validate(
 
         gov-ai config validate --path my_config.yaml
     """
-    # 1. 檢查檔案是否存在
-    if not os.path.isfile(config_path):
-        console.print(f"[red]找不到設定檔：{config_path}[/red]")
-        raise typer.Exit(1)
-
-    # 2. 嘗試解析 YAML
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+        validate_impl(config_path=config_path, console=console, yaml_module=yaml)
     except yaml.YAMLError as e:
         console.print(f"[red]設定檔格式錯誤：{e}[/red]")
         raise typer.Exit(1)
-
-    if not isinstance(data, dict):
-        data = {}
-
-    # 3. 檢查必要欄位
-    missing: list[str] = []
-    llm_section = data.get("llm")
-    if not isinstance(llm_section, dict):
-        missing.append("llm")
-        missing.append("llm.provider")
-        missing.append("llm.model")
-    else:
-        if not llm_section.get("provider"):
-            missing.append("llm.provider")
-        if not llm_section.get("model"):
-            missing.append("llm.model")
-
-    if missing:
-        console.print(f"[red]缺少必要欄位：{', '.join(missing)}[/red]")
-        console.print("[red]設定檔驗證失敗[/red]")
+    except (FileNotFoundError, ValueError):
         raise typer.Exit(1)
-
-    console.print("[green]設定檔驗證通過[/green]")
 
 
 @app.command()
@@ -190,109 +114,22 @@ def fetch_models(
 
         gov-ai config fetch-models -l 10 --no-test  列出前 10 名但不測試連線
     """
-    console.print("[cyan]正在從 OpenRouter 擷取模型清單...[/cyan]")
-
-    # Load Config to get API Key
-    cm = ConfigManager()
-    # Try to find OpenRouter API Key
-    # It could be in providers.openrouter.api_key or directly in env
-    api_key = cm.config.get("providers", {}).get("openrouter", {}).get("api_key", "")
-
-    # If api_key is still a template string (unexpanded),
-    # try to get from env manually if ConfigManager didn't expand it yet?
-    # ConfigManager expands on load. So if it's "", check env directly just in case.
-    if not api_key:
-        api_key = os.getenv("LLM_API_KEY") or os.getenv("OPENROUTER_API_KEY")
-
     try:
-        response = requests.get("https://openrouter.ai/api/v1/models", timeout=15)
-        response.raise_for_status()
-        data = response.json()
-        all_models = data.get("data", [])
-    except requests.Timeout:
-        console.print("[red]擷取模型清單逾時（15 秒），請確認網路連線後再試。[/red]")
+        fetch_models_impl(
+            update=update,
+            limit=limit,
+            test=test,
+            console=console,
+            logger=logger,
+            config_manager_cls=ConfigManager,
+            requests_module=requests,
+            confirm_cls=Confirm,
+            yaml_module=yaml,
+            safe_config_write_fn=safe_config_write,
+            test_connectivity_fn=test_connectivity,
+        )
+    except (requests.Timeout, requests.ConnectionError, Exception):
         raise typer.Exit(1)
-    except requests.ConnectionError:
-        console.print("[red]無法連線至 OpenRouter API，請確認網路連線。[/red]")
-        raise typer.Exit(1)
-    except Exception as e:
-        logger.debug("擷取模型清單失敗: %s", e)
-        console.print("[red]擷取模型清單失敗，請稍後再試。[/red]")
-        raise typer.Exit(1)
-
-    # Filter for free models
-    free_models = []
-    for m in all_models:
-        pricing = m.get("pricing", {})
-        try:
-            prompt_price = float(pricing.get("prompt", -1))
-            completion_price = float(pricing.get("completion", -1))
-            if prompt_price == 0 and completion_price == 0:
-                free_models.append(m)
-        except ValueError:
-            continue
-
-    # Sort by context length (descending)
-    free_models.sort(key=lambda x: x.get("context_length", 0), reverse=True)
-
-    # 顯示結果
-    table = Table(title=f"前 {limit} 名免費模型（上下文長度 + 連線測試）")
-    table.add_column("狀態", justify="center")
-    table.add_column("ID", style="green")
-    table.add_column("名稱", style="cyan")
-    table.add_column("上下文長度", justify="right")
-
-    candidate_models = free_models[:limit]
-    best_working_model = None
-
-    with console.status("[bold green]正在測試連線...[/bold green]") as status:
-        for m in candidate_models:
-            status_icon = "[gray]?[/gray]"
-
-            if test and api_key:
-                status.update(f"正在測試 {m['id']}...")
-                if test_connectivity(m['id'], api_key):
-                    status_icon = "[bold green]✅[/bold green]"
-                    if not best_working_model:
-                        best_working_model = m["id"]
-                else:
-                    status_icon = "[bold red]❌[/bold red]"
-
-            table.add_row(
-                status_icon,
-                m["id"],
-                m.get("name", "N/A"),
-                str(m.get("context_length", "N/A"))
-            )
-
-    console.print(table)
-
-    if test and not api_key:
-        console.print("[yellow]警告：找不到 API Key，已跳過連線測試。[/yellow]")
-        # 無法測試時，退回使用清單中第一個模型
-        if not best_working_model and candidate_models:
-            best_working_model = candidate_models[0]["id"]
-
-    if not best_working_model and candidate_models:
-        console.print("[yellow]沒有模型通過連線測試，退回使用清單中第一個模型。[/yellow]")
-        best_working_model = candidate_models[0]["id"]
-
-    if update and best_working_model:
-        if Confirm.ask(f"是否將 config.yaml 中 OpenRouter 模型更新為 [bold green]{best_working_model}[/bold green]？"):
-            # Same save logic as before
-            with open(cm.config_path, 'r', encoding='utf-8') as f:
-                raw_config = yaml.safe_load(f) or {}
-
-            if "providers" not in raw_config:
-                raw_config["providers"] = {}
-            if "openrouter" not in raw_config["providers"]:
-                raw_config["providers"]["openrouter"] = {}
-
-            raw_config["providers"]["openrouter"]["model"] = best_working_model
-
-            safe_config_write(str(cm.config_path), raw_config)
-
-            console.print("[green]設定檔更新成功！[/green]")
 
 
 _PROVIDER_TEMPLATES = {
@@ -336,76 +173,17 @@ def init() -> None:
 
         gov-ai config init
     """
-    config_path = "config.yaml"
-    if os.path.isfile(config_path):
-        if not Confirm.ask(
-            f"[yellow]{config_path} 已存在，是否覆蓋？[/yellow]", default=False
-        ):
-            console.print("已取消。")
-            raise typer.Exit()
-
-    console.print(Panel(
-        "[bold cyan]公文 AI 助理 — 設定檔建立引導[/bold cyan]\n\n"
-        "此引導將協助您建立 config.yaml 設定檔。",
-        border_style="cyan",
-    ))
-
-    # 1. 選擇 LLM 提供者
-    console.print("\n[bold]1. 選擇 LLM 提供者[/bold]")
-    console.print("  [dim]1) ollama  — 本機部署（免費，需安裝 Ollama）[/dim]")
-    console.print("  [dim]2) gemini  — Google Gemini API（需 API Key）[/dim]")
-    console.print("  [dim]3) openrouter — OpenRouter 聚合 API（需 API Key）[/dim]")
-    console.print("  [dim]4) minimax — MiniMax API（需 API Key）[/dim]")
-
-    choice = Prompt.ask("請選擇", choices=["1", "2", "3", "4"], default="1")
-    provider_map = {"1": "ollama", "2": "gemini", "3": "openrouter", "4": "minimax"}
-    provider = provider_map[choice]
-    llm_config = dict(_PROVIDER_TEMPLATES[provider])
-
-    # 2. 如需要 API Key，引導設定
-    if provider in ("gemini", "openrouter", "minimax"):
-        console.print("\n[bold]2. 設定 API Key[/bold]")
-        if provider == "gemini":
-            console.print("  [dim]請至 https://aistudio.google.com/apikey 取得 API Key[/dim]")
-            env_var = "GEMINI_API_KEY"
-        elif provider == "openrouter":
-            console.print("  [dim]請至 https://openrouter.ai/keys 取得 API Key[/dim]")
-            env_var = "LLM_API_KEY"
-        else:
-            console.print("  [dim]請至 MiniMax 開放平台取得 API Key[/dim]")
-            env_var = "MINIMAX_API_KEY"
-
-        current = os.environ.get(env_var, "")
-        if current:
-            console.print(f"  [green]✓ 已偵測到環境變數 {env_var}[/green]")
-        else:
-            console.print(f"  [yellow]⚠ 環境變數 {env_var} 未設定[/yellow]")
-            console.print(f"  [dim]請執行：export {env_var}=your-api-key[/dim]")
-    else:
-        console.print("\n[bold]2. Ollama 設定[/bold]")
-        console.print("  [dim]請確認 Ollama 已安裝並啟動：ollama serve[/dim]")
-        model = Prompt.ask("  模型名稱", default="llama3.1:8b")
-        llm_config["model"] = model
-        llm_config["embedding_model"] = model
-
-    # 3. 知識庫路徑
-    console.print("\n[bold]3. 知識庫路徑[/bold]")
-    kb_path = Prompt.ask("  知識庫儲存路徑", default="./kb_data")
-
-    # 4. 產生設定檔
-    config_data = {
-        "llm": llm_config,
-        "knowledge_base": {"path": kb_path},
-        "api": {"auth_enabled": True, "api_keys": []},
-        "organizational_memory": {"enabled": True, "storage_path": f"{kb_path}/agency_preferences.json"},
-    }
-
-    atomic_yaml_write(str(config_path), config_data)
-
-    console.print(f"\n[bold green]✓ 設定檔已建立：{config_path}[/bold green]")
-    console.print("\n[bold]下一步：[/bold]")
-    console.print("  [cyan]gov-ai quickstart[/cyan]  驗證環境")
-    console.print("  [cyan]gov-ai generate -i \"台北市環保局發給各學校，加強資源回收\"[/cyan]  產生公文")
+    try:
+        init_impl(
+            console=console,
+            confirm_cls=Confirm,
+            prompt_cls=Prompt,
+            atomic_yaml_write_fn=atomic_yaml_write,
+            provider_templates=_PROVIDER_TEMPLATES,
+            environ=os.environ,
+        )
+    except RuntimeError:
+        raise typer.Exit()
 
 
 def _parse_value(value: str) -> None:
@@ -442,38 +220,19 @@ def set_value(
 
         gov-ai config set llm.provider gemini
     """
-    cm = ConfigManager()
     try:
-        with open(cm.config_path, "r", encoding="utf-8") as f:
-            raw_config = yaml.safe_load(f) or {}
+        set_value_impl(
+            key=key,
+            value=value,
+            console=console,
+            config_manager_cls=ConfigManager,
+            yaml_module=yaml,
+            parse_value_fn=_parse_value,
+            safe_config_write_fn=safe_config_write,
+        )
     except Exception as e:
         console.print(f"[red]載入設定檔失敗：{e}[/red]")
         raise typer.Exit(1)
-
-    keys = key.split(".")
-    parsed_value = _parse_value(value)
-
-    # 取得修改前的值
-    node = raw_config
-    for k in keys:
-        if isinstance(node, dict):
-            node = node.get(k)
-        else:
-            node = None
-            break
-    old_value = node
-
-    # 遞迴設定值
-    node = raw_config
-    for k in keys[:-1]:
-        if k not in node or not isinstance(node.get(k), dict):
-            node[k] = {}
-        node = node[k]
-    node[keys[-1]] = parsed_value
-
-    safe_config_write(str(cm.config_path), raw_config)
-
-    console.print(f"[cyan]{key}[/cyan]: [red]{old_value}[/red] → [green]{parsed_value}[/green]")
 
 
 def _mask_sensitive(data, _sensitive_keys=("api_key", "secret", "token", "password")) -> None:
@@ -495,26 +254,17 @@ def export(
 ) -> None:
     """匯出目前設定。"""
     try:
-        cm = ConfigManager()
-        config = cm.config
+        export_impl(
+            output=output,
+            format_name=format,
+            console=console,
+            config_manager_cls=ConfigManager,
+            mask_sensitive_fn=_mask_sensitive,
+            yaml_module=yaml,
+        )
     except Exception as e:
         console.print(f"[red]錯誤：無法讀取設定：{e}[/red]")
         raise typer.Exit(1)
-
-    # 遮蔽敏感資訊
-    masked = _mask_sensitive(config)
-
-    if format.lower() == "yaml":
-        result_text = yaml.dump(masked, allow_unicode=True, default_flow_style=False)
-    else:
-        result_text = json.dumps(masked, ensure_ascii=False, indent=2)
-
-    if output:
-        with open(output, "w", encoding="utf-8") as f:
-            f.write(result_text)
-        console.print(f"[green]已匯出設定至：{output}[/green]")
-    else:
-        console.print(result_text)
 
 
 @app.command(name="backup")
@@ -522,21 +272,10 @@ def config_backup(
     output: str = typer.Option("", "-o", "--output", help="備份檔案路徑"),
 ) -> None:
     """備份目前的設定檔。"""
-    import shutil
-    cm = ConfigManager()
-    src_path = str(cm.config_path)
-
-    if not os.path.isfile(src_path):
-        console.print("[red]找不到設定檔。[/red]")
+    try:
+        backup_impl(output=output, console=console, config_manager_cls=ConfigManager)
+    except FileNotFoundError:
         raise typer.Exit(1)
-
-    if output:
-        dst_path = output
-    else:
-        dst_path = src_path + ".backup"
-
-    shutil.copy2(src_path, dst_path)
-    console.print(f"[green]已備份設定檔至：{dst_path}[/green]")
 
 
 @app.command(name="restore")
@@ -554,32 +293,15 @@ def config_restore(
 
         gov-ai config restore -s config.yaml.backup  從指定備份還原
     """
-    import shutil
-    cm = ConfigManager()
-    dst_path = str(cm.config_path)
-
-    if source:
-        bak_path = source
-    else:
-        bak_path = dst_path + ".bak"
-
-    if not os.path.isfile(bak_path):
-        console.print(f"[red]找不到備份檔案：{bak_path}[/red]")
-        console.print("[dim]提示：shrink guard 備份為 .bak，手動備份為 .backup[/dim]")
-        raise typer.Exit(1)
-
-    # 顯示備份內容摘要
     try:
-        with open(bak_path, "r", encoding="utf-8") as f:
-            bak_data = yaml.safe_load(f) or {}
-        keys = list(bak_data.keys()) if isinstance(bak_data, dict) else []
-        console.print(f"[cyan]備份檔案包含 {len(keys)} 個 top-level key：{', '.join(keys)}[/cyan]")
-    except Exception:
-        pass
-
-    if not Confirm.ask(f"確定要用 [bold]{bak_path}[/bold] 覆蓋目前的設定檔？"):
-        console.print("[dim]已取消。[/dim]")
+        restore_impl(
+            source=source,
+            console=console,
+            config_manager_cls=ConfigManager,
+            yaml_module=yaml,
+            confirm_cls=Confirm,
+        )
+    except FileNotFoundError:
+        raise typer.Exit(1)
+    except RuntimeError:
         raise typer.Exit(0)
-
-    shutil.copy2(bak_path, dst_path)
-    console.print(f"[green]已從 {bak_path} 還原設定檔。[/green]")
