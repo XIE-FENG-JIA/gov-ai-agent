@@ -9,10 +9,10 @@
 > - 接 `FdaApiAdapter` + `MohwRssAdapter` 到 registry
 > - 驗：`python scripts/live_ingest.py --sources fda,mohw --limit 5 --require-live` 不再 error
 >
-> **🎯 P0.2 — datagovtw adapter 改抓真實公文（非 metadata）**
-> - 當前：抓 `data.gov.tw/dataset/XXX` 的 dataset metadata 頁面（統計資料不是公文）
-> - 應該：對含「公文 / 公告」tag 的 dataset，下載其 resource（CSV/JSON）裡的真實公文記錄
-> - 或：過濾 dataset，找真正含公文內容的來源
+> **✅ P0.2 已閉（2026-04-21 15:00）— datagovtw adapter 改抓真實公文（非 metadata）**
+> - 現況：`src/sources/datagovtw.py` 會展開 dataset resource，解析 CSV/JSON 真實公文列；metadata-only resource 直接跳過
+> - 驗 1：`python -m pytest tests/test_datagovtw_adapter.py tests/test_sources_base.py tests/test_live_ingest_script.py -q` = **21 passed**
+> - 驗 2：`python -m pytest tests/ -q --ignore=tests/integration` = **3728 passed / 0 failed**
 >
 > **🎯 P0.3 — live_ingest 擴大規模到 ≥ 300 份**
 > - 修完 P0.1 後跑 `python scripts/live_ingest.py --sources all --limit 100 --require-live`
@@ -1521,6 +1521,8 @@
   - **完成（2026-04-21 10:59）**：`openspec/changes/04-audit-citation/{proposal.md,tasks.md,specs/audit/spec.md}` 已齊；Epic 4 現在有正式 proposal、requirements 與 task mapping，可直接接 `T4.1-T4.4` 實作。
 - [x] **T7.1.e** `05-kb-governance`（Epic 5）
   - **完成（2026-04-21 14:13）**：`openspec/changes/05-kb-governance/proposal.md` 已新增；把 KB 治理正式定義為 provenance / only-real rebuild / corpus retirement / post-rebuild verification 的 repo-owned 邊界，避免 fixture-backed corpus 再次混入 active evidence。
+- [x] **P0.2（2026-04-21）** `datagovtw` 真實公文 ingest
+  - **完成（2026-04-21 15:00）**：`src/sources/datagovtw.py` 已從 dataset metadata 改為展開 resource（CSV/JSON）真實記錄；僅對有標題且有主旨/內容/文號的列建立 `PublicGovDoc`，metadata-only 資料集直接過濾。fixture 升級為 resource-backed 測試資料，`python -m pytest tests/test_datagovtw_adapter.py tests/test_sources_base.py tests/test_live_ingest_script.py -q` = **21 passed**，全量 `python -m pytest tests/ -q --ignore=tests/integration` = **3728 passed / 0 failed**。
 - [x] **T4.1（2026-04-21）** citation checker seam：`src/agents/citation_checker.py` 已落；會對 citation level / evidence presence / integrity 與 reference traceability（URL/Hash）做 repo-owned 檢查，`python -m pytest tests/test_citation_level.py tests/test_validators.py -q` = 111 passed
 - [x] **T7.2** → 已升 P1.2（v2.4 閉環）
 - [ ] **T7.3** `engineer-log.md` 進版控 + 每輪反思 append 規範
