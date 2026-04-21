@@ -290,6 +290,21 @@ class TestKbPage:
         assert resp.status_code == 200
         assert "逾時" in resp.text
 
+    @pytest.mark.asyncio
+    async def test_kb_page_logs_warning(self, async_client, caplog):
+        mock_client_instance = AsyncMock()
+        mock_client_instance.get.side_effect = httpx.TimeoutException("timeout")
+        mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
+        mock_client_instance.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("src.web_preview.app.httpx.AsyncClient", return_value=mock_client_instance), \
+             patch("src.web_preview.app.get_config", return_value={}):
+            with caplog.at_level("WARNING"):
+                async with async_client as c:
+                    await c.get("/kb")
+
+        assert "取得知識庫狀態 失敗: timeout" in caplog.text
+
 
 # ── POST /kb/search ───────────────────────────────────
 

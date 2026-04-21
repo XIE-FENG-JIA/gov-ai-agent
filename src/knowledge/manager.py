@@ -35,6 +35,13 @@ except ImportError:
 _CHROMADB_IMPORT_FAILED = chromadb is None
 
 logger = logging.getLogger(__name__)
+_KB_MANAGER_EXCEPTIONS = (
+    AttributeError,
+    OSError,
+    RuntimeError,
+    TypeError,
+    ValueError,
+)
 
 # 搜尋快取設定
 _CACHE_TTL = 300       # 5 分鐘
@@ -47,6 +54,11 @@ _EMBED_CACHE_MAXSIZE = 128  # 最多快取 128 筆 embedding
 # 文件集合快取設定（BM25/keyword 搜尋用，避免每次重新從 ChromaDB 拉取全量文件）
 _DOC_CACHE_TTL = 60        # 1 分鐘（文件可能被新增，不宜太長）
 _DOC_CACHE_MAXSIZE = 32    # 按 (集合組合, 篩選條件) 快取
+
+
+def _log_kb_warning(action: str, exc: Exception) -> None:
+    """記錄可預期的知識庫降級錯誤。"""
+    logger.warning("%s 失敗: %s", action, exc)
 
 
 def _resolve_chromadb() -> Any:
@@ -122,7 +134,7 @@ class KnowledgeBaseManager(KnowledgeHybridSearchMixin, KnowledgeSearchMixin):
                     name="policies",
                     metadata={"hnsw:space": "cosine"}
                 )
-        except Exception as e:
+        except _KB_MANAGER_EXCEPTIONS as e:
             logger.error(
                 "知識庫初始化失敗（路徑: %s）: %s。系統將以無知識庫模式運作。",
                 persist_path, e,
@@ -207,7 +219,7 @@ class KnowledgeBaseManager(KnowledgeHybridSearchMixin, KnowledgeSearchMixin):
                     metadatas=[metadata],
                     ids=[doc_id]
                 )
-        except Exception as e:
+        except _KB_MANAGER_EXCEPTIONS as e:
             logger.error("文件寫入知識庫失敗: %s", e)
             return None
         # 新增文件後清除快取，確保後續搜尋能看到新資料
@@ -238,7 +250,8 @@ class KnowledgeBaseManager(KnowledgeHybridSearchMixin, KnowledgeSearchMixin):
             with suppress_known_third_party_deprecations_temporarily():
                 result = target_collection.get(ids=[doc_id], include=[])
             return len(result.get("ids", [])) > 0
-        except Exception:
+        except _KB_MANAGER_EXCEPTIONS as exc:
+            _log_kb_warning(f"查詢文件是否存在 collection={collection_name} doc_id={doc_id}", exc)
             return False
 
     def upsert_document(
@@ -289,7 +302,7 @@ class KnowledgeBaseManager(KnowledgeHybridSearchMixin, KnowledgeSearchMixin):
                     metadatas=[metadata],
                     ids=[doc_id],
                 )
-        except Exception as e:
+        except _KB_MANAGER_EXCEPTIONS as e:
             logger.error("文件 upsert 知識庫失敗: %s", e)
             return None
         self.invalidate_cache()
@@ -330,8 +343,8 @@ class KnowledgeBaseManager(KnowledgeHybridSearchMixin, KnowledgeSearchMixin):
                 )
                 return enriched
             logger.debug("Contextual enrichment 回傳過長或為空，使用原始 chunk")
-        except Exception as e:
-            logger.warning("Contextual enrichment 失敗，使用原始 chunk: %s", e)
+        except _KB_MANAGER_EXCEPTIONS as e:
+            _log_kb_warning("Contextual enrichment", e)
         return chunk
 
     @property

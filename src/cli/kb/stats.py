@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from pathlib import Path
 
@@ -6,6 +7,19 @@ import typer
 from rich.table import Table
 
 from ._shared import app, console
+
+logger = logging.getLogger(__name__)
+_KB_STATS_EXCEPTIONS = (
+    OSError,
+    RuntimeError,
+    TypeError,
+    ValueError,
+)
+
+
+def _log_stats_warning(action: str, exc: Exception) -> None:
+    """記錄可預期的 CLI 降級錯誤。"""
+    logger.warning("%s 失敗: %s", action, exc)
 
 
 @app.command("list-docs")
@@ -59,7 +73,8 @@ def list_docs(
                     meta.get("title", "無標題") if isinstance(meta, dict) else "無標題",
                     meta.get("doc_type", "-") if isinstance(meta, dict) else "-",
                 )
-        except Exception as exc:
+        except _KB_STATS_EXCEPTIONS as exc:
+            _log_stats_warning(f"讀取集合 {coll_name}", exc)
             console.print(f"[yellow]讀取集合 '{coll_name}' 時發生錯誤：{exc}[/yellow]")
 
     if row_num == 0:
@@ -98,7 +113,8 @@ def delete_doc(
             raise typer.Exit(1)
     except typer.Exit:
         raise
-    except Exception as exc:
+    except _KB_STATS_EXCEPTIONS as exc:
+        _log_stats_warning(f"查詢集合 {collection} 文件 {doc_id}", exc)
         console.print(f"[red]查詢失敗：{exc}[/red]")
         raise typer.Exit(1)
 
@@ -106,7 +122,8 @@ def delete_doc(
         coll.delete(ids=[doc_id])
         kb.invalidate_cache()
         console.print(f"[green]已從 '{collection}' 刪除文件 {doc_id}[/green]")
-    except Exception as exc:
+    except _KB_STATS_EXCEPTIONS as exc:
+        _log_stats_warning(f"刪除集合 {collection} 文件 {doc_id}", exc)
         console.print(f"[red]刪除失敗：{exc}[/red]")
         raise typer.Exit(1)
 
@@ -123,7 +140,8 @@ def list_collections() -> None:
 
     try:
         colls = kb.client.list_collections()
-    except Exception as exc:
+    except _KB_STATS_EXCEPTIONS as exc:
+        _log_stats_warning("列出知識庫集合", exc)
         console.print(f"[red]無法列出集合：{exc}[/red]")
         raise typer.Exit(1)
 
@@ -211,7 +229,8 @@ def export_data(
                     for index, doc_id in enumerate(ids)
                 ],
             }
-        except Exception as exc:
+        except _KB_STATS_EXCEPTIONS as exc:
+            _log_stats_warning(f"匯出集合 {name}", exc)
             console.print(f"[dim]讀取集合 {name} 失敗：{exc}[/dim]")
             collections_info[name] = {"count": 0, "documents": []}
 
@@ -235,7 +254,8 @@ def kb_export(
 
     try:
         kb_path = ConfigManager().config.get("knowledge_base", {}).get("path", "./kb_data")
-    except Exception as exc:
+    except _KB_STATS_EXCEPTIONS as exc:
+        _log_stats_warning("載入知識庫匯出設定", exc)
         console.print(f"[dim]設定檔載入失敗，使用預設路徑：{exc}[/dim]")
         kb_path = "./kb_data"
 

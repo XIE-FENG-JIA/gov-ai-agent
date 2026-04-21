@@ -506,3 +506,14 @@ class TestDocumentExists:
         kb.upsert_document(det_id, "範例文件", {"title": "範例", "doc_type": "函"})
         assert kb.document_exists(det_id, "examples") is True
         assert kb.document_exists(det_id, "regulations") is False
+
+    def test_logs_warning_when_collection_get_fails(self, tmp_path, mock_llm, caplog):
+        """查詢失敗時應降級為 False 並留下 warning。"""
+        kb = KnowledgeBaseManager(str(tmp_path / "kb"), mock_llm)
+
+        with patch.object(kb.examples_collection, "get", side_effect=RuntimeError("boom")):
+            with caplog.at_level("WARNING"):
+                result = kb.document_exists("doc-1", "examples")
+
+        assert result is False
+        assert "查詢文件是否存在 collection=examples doc_id=doc-1 失敗: boom" in caplog.text

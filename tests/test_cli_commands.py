@@ -4195,6 +4195,21 @@ class TestKBEdgeCases:
         assert result.exit_code == 1
         assert "無法列出" in result.stdout
 
+    def test_collections_exception_logs_warning(self, monkeypatch, caplog):
+        """list_collections 例外應記 warning log"""
+        from src.cli import kb as kb_module
+        from src.cli.kb import app as kb_app
+
+        mock_kb = self._make_available_kb()
+        mock_kb.client.list_collections.side_effect = RuntimeError("connection lost")
+        monkeypatch.setattr(kb_module, "_init_kb", lambda: mock_kb)
+
+        with caplog.at_level("WARNING"):
+            result = runner.invoke(kb_app, ["collections"])
+
+        assert result.exit_code == 1
+        assert "列出知識庫集合 失敗: connection lost" in caplog.text
+
     # ---- list-docs 邊界 ----
 
     def test_list_docs_limit_break(self, monkeypatch):

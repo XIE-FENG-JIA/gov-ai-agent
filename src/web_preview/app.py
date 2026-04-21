@@ -7,6 +7,7 @@ Web UI 預覽 — FastAPI + Jinja2 + HTMX
 避免重複初始化 agents。
 """
 
+import json
 import logging
 import os
 from pathlib import Path
@@ -25,6 +26,14 @@ from src.api.dependencies import get_config
 from src.cli.utils import detect_state_dir, resolve_state_read_path
 
 logger = logging.getLogger(__name__)
+_WEB_UI_EXCEPTIONS = (
+    httpx.HTTPError,
+    json.JSONDecodeError,
+    OSError,
+    RuntimeError,
+    TypeError,
+    ValueError,
+)
 
 _DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _DIR.parent.parent
@@ -100,6 +109,11 @@ def _sanitize_web_error(exc: Exception) -> str:
     return _SAFE.get(type(exc).__name__, "發生內部錯誤，請稍後再試或聯繫管理員。")
 
 
+def _log_web_warning(action: str, exc: Exception) -> None:
+    """記錄可預期的 Web UI 降級錯誤。"""
+    logger.warning("%s 失敗: %s", action, exc)
+
+
 # ── 首頁 ─────────────────────────────────────────────
 @web_app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
@@ -167,8 +181,8 @@ async def generate(
                 result = data
             else:
                 error = data.get("error") or data.get("detail") or f"HTTP {resp.status_code}"
-    except Exception as e:
-        logger.exception("生成公文時發生錯誤")
+    except _WEB_UI_EXCEPTIONS as e:
+        _log_web_warning("生成公文", e)
         error = _sanitize_web_error(e)
 
     return templates.TemplateResponse(
@@ -200,8 +214,8 @@ async def kb_page(request: Request):
                     "llm_provider": data.get("llm_provider", "unknown"),
                     "llm_model": data.get("llm_model", "unknown"),
                 }
-    except Exception as e:
-        logger.exception("取得知識庫狀態時發生錯誤")
+    except _WEB_UI_EXCEPTIONS as e:
+        _log_web_warning("取得知識庫狀態", e)
         error = _sanitize_web_error(e)
 
     return templates.TemplateResponse(
@@ -237,8 +251,8 @@ async def kb_search(
                 results = data.get("results", [])
             else:
                 error = data.get("error") or data.get("detail") or f"HTTP {resp.status_code}"
-    except Exception as e:
-        logger.exception("知識庫搜尋時發生錯誤")
+    except _WEB_UI_EXCEPTIONS as e:
+        _log_web_warning("知識庫搜尋", e)
         error = _sanitize_web_error(e)
 
     return templates.TemplateResponse(
@@ -252,8 +266,6 @@ async def kb_search(
 @web_app.get("/history", response_class=HTMLResponse)
 async def history_page(request: Request):
     """生成歷史紀錄頁面"""
-    import json
-
     records = []
     error = None
     history_path = Path(
@@ -269,8 +281,8 @@ async def history_page(request: Request):
             data = json.loads(history_path.read_text(encoding="utf-8"))
             if isinstance(data, list):
                 records = list(reversed(data))[:100]
-    except Exception as e:
-        logger.exception("讀取歷史紀錄時發生錯誤")
+    except _WEB_UI_EXCEPTIONS as e:
+        _log_web_warning("讀取歷史紀錄", e)
         error = _sanitize_web_error(e)
 
     return templates.TemplateResponse(
@@ -306,8 +318,8 @@ async def config_page(request: Request):
             resp = await client.get(f"{_API_BASE}/api/v1/health", headers=_api_headers())
             if resp.status_code == 200:
                 health = resp.json()
-    except Exception as e:
-        logger.exception("取得設定頁資料時發生錯誤")
+    except _WEB_UI_EXCEPTIONS as e:
+        _log_web_warning("取得設定頁資料", e)
         error = _sanitize_web_error(e)
 
     return templates.TemplateResponse(
@@ -337,8 +349,8 @@ async def metrics_data(request: Request):
                 metrics = resp.json()
             else:
                 error = f"API 回傳 HTTP {resp.status_code}"
-    except Exception as e:
-        logger.exception("取得效能指標時發生錯誤")
+    except _WEB_UI_EXCEPTIONS as e:
+        _log_web_warning("取得效能指標", e)
         error = _sanitize_web_error(e)
 
     return templates.TemplateResponse(
@@ -379,8 +391,8 @@ async def detailed_review(session_id: str = ""):
                 status_code=resp.status_code,
                 content=resp.json(),
             )
-    except Exception as e:
-        logger.exception("取得詳細審查報告時發生錯誤")
+    except _WEB_UI_EXCEPTIONS as e:
+        _log_web_warning("取得詳細審查報告", e)
         return JSONResponse(
             status_code=500,
             content={"success": False, "error": _sanitize_web_error(e)},
