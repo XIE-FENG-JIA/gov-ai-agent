@@ -1,5 +1,50 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
+> **🎯 v6.1 架構師第三十九輪階段性規劃（2026-04-21 19:15；/pua 阿里味；caveman；v6.0 下發後 2hr 四件 Epic 5 落 + Spectra 破 100% + hard cap 再爆）**：
+>
+> **HEAD 實測指標（pytest + wc + ls + grep 即取；ACL-free）**：
+> - ✅ 指標 1（pytest 全綠）：`python -m pytest tests/ -q --ignore=tests/integration -x` = **3738 passed / 0 failed / 493.22s**（v6.0 3735 → **+3**；v5.9 3728 → **+10**）
+> - ✅ 指標 2（corpus 真公文 ≥ 150）：`find kb_data/corpus -name "*.md" | wc -l` = **173**（持平；P0.3 里程碑保持達成）
+> - ✅ 指標 3（Spectra 5/5 = 100%）：`openspec/changes/{01-real-sources,02-open-notebook-fork,03-citation-tw-format,04-audit-citation,05-kb-governance}/` 五件 proposal/tasks/specs 齊；v6.0 4/5 80% → **5/5 100%**（**下一里程碑破殼**）
+> - ✅ 指標 4（realtime_lookup / config_tools 拆後持平 ≤ 400）：`realtime_lookup 386 / _realtime_lookup_laws 116 / _realtime_lookup_policy 30`；`config_tools 307 / _mutations_impl 279 / _fetch_impl 115`（無回退）
+> - 🟠 指標 5（剩 5 胖檔 ≤ 400）：`api-agents 488 / e2e_rewrite 474 / middleware 469 / api-models 461 / generate/export 459 / fact_checker 446` **六檔 > 400**（v6.0 六檔；e2e_rewrite 492→474 因 T5.1 抽出 provenance，**未實切**，首刀持續鎖該檔）
+> - ✅ 指標 6（核心紅線）：`grep -c "^### 🔴" program.md` = **0** ≤ 6 ✅
+> - ❌ 指標 7（engineer-log ≤ 300 hard cap）：**384 行**（v6.0 326 → **+58 再破，第 N+1 次；連 2 輪紅線 X 3.25 實錘**）
+> - ✅ 指標 8（blocker 清空）：client auth / rate-limit / CORS / body limit / metrics / DOCX safe parse / embedding routing 全綠；**上線 blocker 清空**
+>
+> **v6.1 實測 6/8 PASS + 1 ❌**（engineer-log hard cap 第 N+1 次破 = 連 2 輪紅線 X 3.25 硬實錘 — 第三十七/三十八輪兩度預警，兩度未封存）
+>
+> **v6.0 → v6.1 變更摘要（2hr 四件 Epic 5 落）**：
+> - ✅ **EPIC5-TASKS-SPECS** 落地（18:05）— `openspec/changes/05-kb-governance/{tasks.md,specs/kb-governance/spec.md}` 三條 SHALL requirement + T5.0-T5.7 任務映射；`spectra analyze 05-kb-governance` = 0 findings
+> - ✅ **T5.1-centralize-active-corpus-eligibility** 落地（18:23）— `src/knowledge/corpus_provenance.py` 統一 `synthetic / fixture_fallback / deprecated` 排除邏輯；`kb/rebuild.py` + `e2e_rewrite.py` + `verify_cmd.py` 共用
+> - ✅ **T5.2-live-ingest-audit-evidence** 落地（18:38）— `scripts/live_ingest.py` 在 `--require-live` 失敗時仍保留 `retained_fixture / archived_fixture / live_rows` audit 欄位，report 補 `retained_audit_evidence` 表格
+> - ✅ **T5.3-kb-rebuild-only-real-operational-path** 落地（19:10）— `src/cli/kb/rebuild.py --only-real` 先重建 `kb_data/corpus` active corpus（`法規→regulations` / 其餘→`policies`），loud fallback 回 legacy；provenance rollup 報告匯入/跳過數
+> - **Spectra 80% → 100%**（5/5 五 Epic proposal/tasks/specs 全齊）— 架構層 openspec 工作全閉，下槓桿轉產品側（corpus 300 + Nemotron rebuild + 胖檔輪拆）
+>
+> **v6.1 P0 重排（ACL-free；連 1 輪延宕 = 紅線 X 3.25）**：
+> 1. **T9.6-REOPEN-v4** 🔴 **升 P0 首位**（10 分；**連 2 輪 0 動；hard cap 破 84 行實錘**）— engineer-log 384 > 300；封存 v5.4/v5.5/v5.6 到 `docs/archive/engineer-log-202604f.md`；主檔留 v5.7/v5.8/v5.9/v6.0/v6.1；**本輪最輕鬆破（10 分 ACL-free）**；連 2 輪預警未動 = 紅線 X 子條款「hard cap 違反」實錘
+> 2. **T-FAT-ROTATE-V2（刀 3）** 🔴 **P0 次位保持**（45 分；**連 3 輪 0 動 = 3.25 超實錘**）— 鎖 `src/e2e_rewrite.py 474`；按 `rewrite / assemble / cli` 自然邊界拆成 `src/e2e_rewrite/{__init__,rewrite,assemble,cli}.py`；SOP 第 13 次擴散；`tests/test_e2e_rewrite.py` + `tests/integration/test_e2e_rewrite.py` import 契約守
+> 3. **T-BARE-EXCEPT-AUDIT（刀 2）** 🟠 **P0 三位保持**（30 分；production handler 血債）— `src/api/routes/agents.py 9 處裸 except` 轉 typed buckets + `logger.warning`；複製 `org_memory_cmd.py` SOP
+>
+> **v6.1 P1（連 2 輪延宕 = 3.25）**：
+> 4. **P2-CHROMA-NEMOTRON-VALIDATE** 🟡 **P1 持平**（60 分；程式已解鎖，runtime 仍缺 `OPENROUTER_API_KEY`）— 待人工填 key 後跑 `gov-ai kb rebuild --only-real` + `docs/embedding-validation.md`
+> 5. **P0.1-MOHW-LIVE-DIAG** 🟡 **P1 持平**（15 分）— `MohwRssAdapter` live fetch 斷線；15 分 curl + schema diff；解 corpus 300 三源缺一
+> 6. **T-FAT-ROTATE-V2（刀 4+）** 🟡 **P1 新**（輪拆）— 下輪鎖 `api-agents 488 / middleware 469 / api-models 461`；五胖檔剩 6 個 > 400，SOP 第 13/14/15 刀
+>
+> **v6.1 下輪硬指標**：
+> 1. `python -m pytest tests/ -q --ignore=tests/integration` FAIL=0（**本輪 3738/0/493s ✅**）
+> 2. `wc -l engineer-log.md` ≤ 300（**本輪 384 ❌；下輪必破**）
+> 3. `wc -l src/e2e_rewrite*.py` 或拆後 `src/e2e_rewrite/*.py` 每檔 ≤ 400（**本輪 474 ❌；下輪必破；連 3 輪 0 動 = 超實錘**）
+> 4. `grep -c "except Exception" src/api/routes/agents.py` ≤ 2（當前 9；v6.1 P0 三位）
+> 5. `find kb_data/corpus -name "*.md" | wc -l` ≥ 150（當前 173 ✅；下一里程碑 ≥ 300 留 P2）
+> 6. `ls openspec/changes/05-kb-governance/{tasks.md,specs/kb-governance/spec.md}` 存在 ✅
+> 7. `rg -c "^### 🔴" program.md` ≤ 6（當前 0 ✅）
+> 8. `ls docs/embedding-validation.md` 存在（當前 ❌；待 `OPENROUTER_API_KEY` 人工補）
+>
+> **紅線狀態**：核心 3 + 實戰 X 不變；v6.1 不新增紅線；engineer-log hard cap 連 2 輪破（第三十七輪/第三十八輪預警未動）= 紅線 X 子條款「預警後連輪未動」實錘；T-FAT-ROTATE-V2 刀 3 連 3 輪 0 動（v5.9/v6.0/v6.1）= 3.25 超實錘，下輪再 0 動則升級核心紅線。
+
+---
+
 > **🎯 v5.9 架構師第三十七輪階段性規劃（2026-04-21 15:10；/pua 阿里味；caveman；v5.6 OVERRIDE 層 P0.1 事實校準 + v5.8 四閉後新 P0 升格）**：
 >
 > **HEAD 實測指標（ls + wc + pytest + python 即取，ACL-free）**：
@@ -641,13 +686,14 @@
 
 ## P0 — 阻斷性回歸（v4.3：指標 1 回綠·P0.AA 三連跳警報）
 
-### P0.V59-NEW — 🔴 ACL-free·v5.9 新增（2026-04-21 15:10；**第三十八輪 17:40 重排；v5.9→v6.0**；3 件 P0 + 3 件 P1）
+### P0.V59-NEW — 🔴 ACL-free·v5.9/v6.0/v6.1 演進（2026-04-21 15:10 起；**第三十九輪 19:15 重排；v6.0→v6.1**；2hr Epic 5 四件齊落 + Spectra 100%）
 
-> **v6.0 第三十八輪重排理由**：v5.9 第三十七輪「下輪必破 3 件」兌現 2/3（corpus ✅ + FDA ✅ + e2e_rewrite **❌ 連 2 輪 0 動 = 3.25**）；engineer-log 326 > 300 hard cap 已破；實測胖檔 8 檔（v5.9 漏記 `datagovtw 410` + `workflow_cmd 406`）、裸 except 136 處（v5.9 漏記 +18）。**P0 順序改寫**：① T-FAT-ROTATE-V2 刀 3 保持首位（連 2 輪 3.25 實錘必破）② T9.6-REOPEN-v4 升 P0 次位（hard cap 破 26 行）③ T-BARE-EXCEPT-AUDIT 刀 2 升 P0 三位（`api/routes/agents.py 9 處` 為 production API handler 吞錯誤最危險點）；新增 EPIC5-TASKS-SPECS P1（Spectra 80%→90% 下槓桿）。
+> **v6.1 第三十九輪重排理由**：v6.0 下發 2hr 內落 Epic 5 四件（EPIC5-TASKS-SPECS / T5.1 / T5.2 / T5.3）→ Spectra 4/5 80% → **5/5 100%**；但 v6.0 P0 三件（T-FAT 刀 3 / T9.6-REOPEN-v4 / T-BARE-EXCEPT-AUDIT 刀 2）連 2 輪 0 動；engineer-log 326 → **384**（再破 58 行，hard cap 連 2 輪破 = 紅線 X 子條款實錘）。**v6.1 P0 順序改寫**：① **T9.6-REOPEN-v4 升 P0 首位**（10 分 ACL-free 最輕鬆破；連 2 輪 hard cap 破實錘）② T-FAT-ROTATE-V2 刀 3 降 P0 次位（連 3 輪 0 動 = 超實錘）③ T-BARE-EXCEPT-AUDIT 刀 2 保持 P0 三位。新增 P1：T-FAT 刀 4+（五胖檔輪拆）。
 
-- [ ] **T-FAT-ROTATE-V2（刀 3）** 🔴 **v6.0 P0 首位（45 分；連 2 輪 0 動 = 3.25 實錘；下輪必破）** — 鎖 `src/e2e_rewrite.py 492`；按 `rewrite / assemble / cli` 自然邊界拆成 `src/e2e_rewrite/{__init__,rewrite,assemble,cli}.py`；SOP 第 13 次擴散；`tests/test_e2e_rewrite.py` + `tests/integration/test_e2e_rewrite.py` import 契約守；次刀 `api-agents 488`、三刀 `middleware 469`
-- [ ] **T9.6-REOPEN-v4** 🔴 **v6.0 P0 次位（10 分；hard cap 326 > 300 實錘，連 1 輪 0 動升 P0）** — 封存 engineer-log v5.4/v5.5/v5.6 段到 `docs/archive/engineer-log-202604f.md`；主檔留 v5.7/v5.8/v5.9/v6.0；本輪反思追加 ~40 行後主檔 ~366 行 = **破 hard cap 66 行**
-- [ ] **T-BARE-EXCEPT-AUDIT（刀 2）** 🟠 **v6.0 P0 三位（30 分；production handler 血債升 P0）** — `src/api/routes/agents.py 9 處裸 except` 是 inbound API handler 吞錯誤最危險點；複製 `org_memory_cmd.py` SOP（typed buckets + `logger.warning`）；刀 3 留 `web_preview/app.py 7 / kb/stats.py 6 / knowledge/manager.py 5`；`tests/test_agents_api*.py` + `tests/test_api_auth.py` 回歸守
+- [ ] **T9.6-REOPEN-v4** 🔴 **v6.1 P0 首位（10 分；**engineer-log 384 > 300 連 2 輪破；紅線 X 實錘；最輕鬆 ACL-free 破**）** — 封存 engineer-log v5.4/v5.5/v5.6 段到 `docs/archive/engineer-log-202604f.md`；主檔留 v5.7/v5.8/v5.9/v6.0/v6.1；本輪反思追加 ~40 行後主檔 ~424 行 = **破 hard cap 124 行**
+- [ ] **T-FAT-ROTATE-V2（刀 3）** 🔴 **v6.1 P0 次位（45 分；連 3 輪 0 動 = 3.25 超實錘；下輪必破）** — 鎖 `src/e2e_rewrite.py 474`（v5.9 492 → v6.1 474，T5.1 抽出 provenance 邏輯讓 18 行；**未實切**）；按 `rewrite / assemble / cli` 自然邊界拆成 `src/e2e_rewrite/{__init__,rewrite,assemble,cli}.py`；SOP 第 13 次擴散；`tests/test_e2e_rewrite.py` + `tests/integration/test_e2e_rewrite.py` import 契約守；次刀 `api-agents 488`、三刀 `middleware 469`
+- [ ] **T-BARE-EXCEPT-AUDIT（刀 2）** 🟠 **v6.1 P0 三位（30 分；production handler 血債）** — `src/api/routes/agents.py 9 處裸 except` 是 inbound API handler 吞錯誤最危險點；複製 `org_memory_cmd.py` SOP（typed buckets + `logger.warning`）；刀 3 留 `web_preview/app.py 7 / kb/stats.py 6 / knowledge/manager.py 5`；`tests/test_agents_api*.py` + `tests/test_api_auth.py` 回歸守
+- [ ] **T-FAT-ROTATE-V2（刀 4+）** 🟡 **v6.1 P1 新（輪拆；連 2 輪延宕 = 3.25）** — 剩 5 胖檔 > 400：`api-agents 488 / middleware 469 / api-models 461 / generate/export 459 / fact_checker 446`；SOP 第 14/15/16/17/18 刀輪到哪刀哪；單輪只切 1 檔避免顆粒度漂移
 - [x] **P0.3-CORPUS-SCALE** ✅（2026-04-21 16:49）— 已執行 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --prune-fixture-fallback --report-path docs/live-ingest-report.md`；corpus **63** → **173**，達成中間里程碑 `find kb_data/corpus -name "*.md" | wc -l` ≥ 150，下一步改跑 `gov-ai kb rebuild --only-real`
 - [x] **P0.1-FDA-LIVE-DIAG** ✅（2026-04-21 16:36）— `FdaApiAdapter` live fetch 斷線已修；`API_URL` 改為 `https://www.fda.gov.tw/DataAction`、兼容中文 schema、無顯式 ID 時生成穩定 `source_id/source_url`、SSL fallback 限縮在 FDA；交付 `docs/fda-endpoint-probe.md`
   - **驗 1**：`python -m pytest tests/test_fda_api_adapter.py tests/test_sources_ingest.py tests/test_live_ingest_script.py -q` = **27 passed**
@@ -662,8 +708,10 @@
   - **2026-04-21 校準**：`src/core/llm.py` 已修正 mixed-provider embedding routing；`embedding_provider=openrouter` 不再誤用 active `minimax` 的 `api_key/base_url`
   - **當前 blocker**：環境僅 `MINIMAX_API_KEY=set`，`LLM_API_KEY/OPENROUTER_API_KEY=missing`；未補 key 前不可宣稱 Nemotron rebuild 驗證完成
 - [ ] **P0.1-MOHW-LIVE-DIAG** 🟡 v6.0 P1（15 分；連 2 輪 0 動邊緣）— `MohwRssAdapter` live fetch 斷線診斷（同 FDA SOP）；15 分 curl + schema diff，解 corpus 300 三源缺一
-- [x] **EPIC5-TASKS-SPECS** ✅（2026-04-21 18:05）— `openspec/changes/05-kb-governance/{tasks.md,specs/kb-governance/spec.md}` 已補齊；寫死 active retrieval 排除 `synthetic/fixture_fallback`、`--require-live` loud fail + retirement/audit evidence、`gov-ai kb rebuild --only-real` 需 post-rebuild verify 三條 SHALL requirement，並補 `T5.0-T5.7` 任務映射；`spectra analyze 05-kb-governance` = 0 findings
+- [x] **EPIC5-TASKS-SPECS** ✅（2026-04-21 18:05）— `openspec/changes/05-kb-governance/{tasks.md,specs/kb-governance/spec.md}` 已補齊；寫死 active retrieval 排除 `synthetic/fixture_fallback`、`--require-live` loud fail + retirement/audit evidence、`gov-ai kb rebuild --only-real` 需 post-rebuild verify 三條 SHALL requirement，並補 `T5.0-T5.7` 任務映射；`spectra analyze 05-kb-governance` = 0 findings；**Spectra 4/5 80% → 5/5 100%**
+- [x] **T5.1 / centralize-active-corpus-eligibility** ✅（2026-04-21 18:23）— `src/knowledge/corpus_provenance.py` 統一 `synthetic / fixture_fallback / deprecated` active corpus eligibility 規則；`src/cli/kb/rebuild.py` + `src/e2e_rewrite.py` + `src/cli/verify_cmd.py` 三處共用同一判斷；驗證 `python -m pytest tests/test_corpus_provenance_guard.py tests/test_cli_commands.py tests/test_e2e_rewrite.py -q -k "verify or kb_rebuild or provenance or load_real_corpus"` = **12 passed**、`python -m pytest tests/ -q --ignore=tests/integration -x` = **3736 passed / 0 failed**
 - [x] **T5.2 / live-ingest audit evidence** ✅（2026-04-21 18:38）— `scripts/live_ingest.py` 現在在 `--require-live` 失敗時仍會回收既有 corpus audit evidence：FAIL summary 帶 `retained_fixture` / `archived_fixture` / `live_rows` 計數，Markdown report 追加 `retained_audit_evidence` 表格，不再把 fixture fallback 失敗寫成只有一行 exception；驗證 `python -m pytest tests/test_live_ingest_script.py tests/test_sources_ingest.py -q` = **22 passed**
+- [x] **T5.3 / kb-rebuild-only-real-operational-path** ✅（2026-04-21 19:10）— `src/cli/kb/rebuild.py --only-real` 改為優先重建 `kb_data/corpus` active corpus，不再綁 legacy `examples/regulations/policies`；`doc_type=法規` 進 `regulations`，其餘真實公開來源進 `policies`；新增 provenance rollup（匯入 real / 跳過 synthetic / fixture_fallback / deprecated）；找不到 `kb_data/corpus` 才 loud fallback 回 legacy；驗證 `python -m pytest tests/test_cli_commands.py tests/test_knowledge.py -q -k "kb_rebuild or stats"` = **19 passed**、`python -m pytest tests/ -q --ignore=tests/integration -x` = **3738 passed / 0 failed**
 
 ### P0.V57-CLIENT-AUTH — 🔴 ACL-free·v5.7 首位（40 分；真 blocker，非 rate-limit）
 
