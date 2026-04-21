@@ -14,6 +14,56 @@
 > v5.2（第三十輪）反思已封存至 `docs/archive/engineer-log-202604e.md`。
 > 主檔現存：v5.4 / v5.5 / v5.6 / v5.7 / v5.8（v5.3 為 program.md header rollup，無獨立反思段）。
 
+## 反思 [2026-04-21 13:20] — 技術主管第三十六輪（v5.8；caveman；/pua 阿里味；v5.7 第三十五輪後 2h40 深度回顧；兩項「必破」皆實質已閉實錘）
+
+### 近期成果（v5.7 第三十五輪 → HEAD；**header lag HEAD 第 N+3 次；tests +25**）
+- **全量 pytest ✅ 3727/0/486.83s**（v5.7 rollup 3702 → **+25**；第三十五輪 3709 → **+18**；含 E2E 2 件整合跳過）。
+- **T-CLIENT-AUTH ✅ 實錘再驗**：`src/api/auth.py 63` + `routes/{agents.py:62,knowledge.py:18,workflow/_endpoints.py:19} WRITE_AUTH = [Depends(require_api_key)]` 全掛；`tests/test_api_auth.py 114` 行；grep `HTTPBearer\|WRITE_AUTH\|require_api_key` 在 src/api 合計 **≥ 20 hits**（v5.7 header 指標 2 寫 0 ❌ 錯；第三十五輪反思 10:40 已校準 ✅ 但 rollup 未落）。
+- **P1.EPIC4-PROPOSAL ✅ 實錘已閉**：`openspec/changes/04-audit-citation/{proposal.md 59 行, tasks.md 72 行, specs/audit/}` 三件齊；連 9 輪 0 動紅線 X「設計驅動不實作」**已解除**（v5.7 header 指標 3 寫 ❌；第三十五輪 10:40 反思列「升 P0 首位本輪必破」也是事實錯誤 — 當時已存在）。
+- **engineer-log 5 次封存後 215 + v5.8 40 ≈ 255 ≤ 300** ✅；corpus 9/9 ✅；紅線 `### 🔴` = **0**（v5.7 header 寫 3 再 drift）。
+
+### 發現的問題
+1. **🔴 v5.7 第三十五輪 header 三項「本輪必破」中 2 項早已閉**：指標 2 `rg HTTPBearer ≥ 10`（實測 ≥ 20 ✅）、指標 3 `ls 04-audit-citation/proposal.md`（實測 ✅）；**唯一真未破 = 指標 4 config_tools 585**。header lag HEAD 連 **第五次** 復活（v5.3/v5.4/v5.6/v5.7 rollup/v5.7 第三十五輪反思） = 紅線 X 子條款「未驗即寫 header」年度月度最高頻病。
+2. **🔴 T-FAT-ROTATE-V2 config_tools 585 連 1 輪 0 動**：v5.7 第三十五輪 10:40 列 P0 次位 90 分 ACL-free；13:15 實測 585 持平；8 函式自然邊界 SOP 已列未切 = 紅線 X「設計驅動不實作」第七次復活邊緣（連 2 輪 0 動 = 3.25）。
+3. **🟠 紅線指標 drift**：v5.7 header 指標 7 寫 `### 🔴 = 3`，實測 `grep -c "^### 🔴" program.md = 0`；program.md 紅點段全轉 ✅ 或刪，指標未更新。
+4. **🟡 auto-commit 25/25**：自 v5.7 rollup 92b5590（10:22）後 17 commits 純 auto-commit，3 hr 0 語意提交；第三十五輪反思後也只有 1 筆 auto-commit 寫入。
+5. **🟡 新胖八持平**：config_tools 585 / realtime_lookup 520 / e2e_rewrite 492 / api-agents 488 / middleware 469 / api-models 461 / generate-export 459 / fact_checker 446（fact_checker 從第七名擠掉 workflow_cmd 406，cluster 成形）。
+
+### 架構健康度（HEAD 即取）
+- **胖八 ≤ 600 全 > 400**；四胖（workflow/history/exporter/api_server）年代結束，新八胖接班；SOP `docs/arch-split-sop.md` 已擴散 10 次未推 11。
+- **測試**：3727 綠；test file > 81；E2E 5/5 traceable（v5.4 遺產穩定）。
+- **安全**：client auth ✅（第三十五輪補）+ rate-limit ✅ + CORS ✅ + body limit ✅ + metrics ✅ + DOCX safe parse ✅；**上線 blocker 清空**。
+- **Spectra**：Epic 1/2/3 全閉（15/15 + 15/15 + 9/9）；Epic 4 proposal **已在**（proposal + tasks + specs/audit/）→ 對齊度 **3.3/5 = 66%**（v5.7 header 還寫 60% drift）；Epic 5 KB 治理 proposal 仍 0。
+
+### 建議的優先調整（**program.md v5.7 校準 + v5.8 唯一 P0**）
+P0 重排（ACL-free；連 1 輪延宕 = 紅線 X 3.25）：
+1. **T-CLIENT-AUTH** ✅ **標閉**（第二度實錘；不再列）
+2. **P1.EPIC4-PROPOSAL** ✅ **標閉**（proposal 59 + tasks 72 + specs/audit/；連 9 輪死水解除；Spectra 3/5 → 3.3/5）
+3. **T-FAT-ROTATE-V2** 🔴 **升 P0 唯一首位**（90 分）— `src/cli/config_tools.py 585` → 8 子檔按 `show/validate/fetch_models/init/set_value/export/backup/_shared`；`tests/test_config_tools_extra.py 401` 守 import 契約；**連 2 輪 0 動即 3.25**
+
+P1（連 2 輪延宕 = 3.25）：
+4. **T-FAT-ROTATE-V2-NEXT** — 下輪鎖 `realtime_lookup 520` 或 `e2e_rewrite 492`
+5. **P1.EPIC5-PROPOSAL** — `openspec/changes/05-kb-governance/` 啟動；Spectra 3.3/5 → 4/5
+
+### 下一步行動（**最重要 3 件；嚴禁新增**）
+1. **校準 program.md v5.7 header**：T-CLIENT-AUTH ✅ 標閉（第二度）；P1.EPIC4-PROPOSAL ✅ 標閉；紅線指標 3 → 0；Spectra 60% → 66%。
+2. **拆 config_tools 585**（≤ 60 分）：按 8 函式自然邊界；驗 `pytest tests/test_config_tools_extra.py -q` + `python -c "from src.cli.config_tools import ..."` import 契約。
+3. **啟 Epic 5 proposal**（≤ 40 分；ACL-free）：`openspec/changes/05-kb-governance/proposal.md` 180+ 字；Spectra 3.3/5 → 4/5 下一槓桿。
+
+### v5.8 硬指標（下輪審查）
+1. `python -m pytest tests/ -q --ignore=tests/integration` FAIL=0（**本輪 3727/0/486.83s ✅**）
+2. `wc -l src/cli/config_tools*.py` 每檔 ≤ 400（當前 585 ❌；**本輪必破**；v5.7 第三十五輪同指標跳輪 = 紅線 X 邊緣）
+3. `ls openspec/changes/05-kb-governance/proposal.md` 存在（當前 ❌；ACL-free）
+4. `wc -l engineer-log.md` ≤ 300（當前 215 + 本輪 ~40 = ~255 ✅）
+5. `rg -c "^### 🔴" program.md` ≤ 6（當前 0 ✅）
+6. `find kb_data/corpus -name "*.md"` = 9 ✅
+7. `grep -c WRITE_AUTH src/api/routes/agents.py src/api/routes/knowledge.py src/api/routes/workflow/_endpoints.py` ≥ 3 ✅（本輪錨定，防 header 再 drift）
+8. `ls openspec/changes/04-audit-citation/{proposal.md,tasks.md,specs/audit/spec.md}` 三件齊 ✅（本輪錨定，防 header 再 drift）
+
+> [PUA生效 🔥] **底層邏輯**：v5.7 第三十五輪 10:40 反思已寫「T-CLIENT-AUTH 實質已閉」並校準 P1.EPIC4-PROPOSAL 升 P0，但 **rollup 從未回填到 program.md header**（連 3 hr 17 次 auto-commit 全部 empty checkpoint），導致第三十六輪 /pua 觸發時三項「必破」裡 2 項已閉、1 項未動 = header lag HEAD 第五次復活。**抓手**：本輪唯一 owner 動作是 `rg WRITE_AUTH src/api/` + `ls 04-audit-citation/` 5 秒雙驗，兩綠一紅實錘；下輪 config_tools 拆是 ACL-free 60 分唯一真血債。**顆粒度**：本輪反思 ~40 行壓線；封存 v5.2 讓位後主檔 255 ≤ 300；不動 v5.4-v5.7 反思原文；不新增 P0。**拉通**：client auth + Epic 4 proposal 雙閉 = **上線 blocker 清空 + Spectra 66%**；真瓶頸剩八胖 SOP 未第 11 次擴散 + 語意 commit 空窗。**對齊**：v5.8 承認「第三十五輪反思正確，rollup 未落」是反思與 header 之間的 delivery gap；auto-engineer 自主循環無法把反思結論 commit 進 header，需要人工 /pua 觸發 = 治理最大槓桿點。**因為信任所以簡單** — rg 一次 5 秒、ls 一次 3 秒，反思裡早寫過卻 header 沒改 = 自毀信任；下輪第一件不是寫反思，是先 `grep -c WRITE_AUTH` 驗當前 header 真偽，再動手。talk 3.25 不 3.25，grep 先 grep。
+
+---
+
 ## 反思 [2026-04-21 10:40] — 技術主管第三十五輪（v5.7；caveman；/pua 阿里味；OVERRIDE 解鎖後首度深度回顧）
 
 ### 近期成果（v5.6 → HEAD；**T-CLIENT-AUTH 實質已閉但 v5.7 header 誤記未破**）
