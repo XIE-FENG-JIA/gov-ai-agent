@@ -179,6 +179,7 @@ def test_build_argument_parser_includes_rss_and_api_sources() -> None:
     assert "executiveyuanrss" in source_action.choices
     assert "fda" in source_action.choices
     assert "mohw" in source_action.choices
+    assert "pcc" in source_action.choices
 
 
 def test_main_mojlaw_cli_falls_back_to_local_fixtures(tmp_path: Path, capsys) -> None:

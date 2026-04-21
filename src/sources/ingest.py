@@ -18,6 +18,7 @@ from src.sources.executive_yuan_rss import ExecutiveYuanRssAdapter
 from src.sources.fda_api import FdaApiAdapter
 from src.sources.mohw_rss import MohwRssAdapter
 from src.sources.mojlaw import MojLawAdapter
+from src.sources.pcc import PccAdapter
 
 
 DEFAULT_BASE_DIR = Path("kb_data")
@@ -136,6 +137,7 @@ def _adapter_registry() -> dict[str, type[BaseSourceAdapter]]:
         "fda": FdaApiAdapter,
         "mohw": MohwRssAdapter,
         "mojlaw": MojLawAdapter,
+        "pcc": PccAdapter,
     }
 
 

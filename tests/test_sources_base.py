@@ -10,6 +10,7 @@ from src.sources.executive_yuan_rss import ExecutiveYuanRssAdapter
 from src.sources.fda_api import FdaApiAdapter
 from src.sources.mohw_rss import MohwRssAdapter
 from src.sources.mojlaw import MojLawAdapter
+from src.sources.pcc import PccAdapter
 
 
 def test_base_source_adapter_is_abstract() -> None:
@@ -35,3 +36,4 @@ def test_source_adapters_expose_common_list_signature() -> None:
     assert tuple(inspect.signature(ExecutiveYuanRssAdapter.list).parameters) == expected
     assert tuple(inspect.signature(FdaApiAdapter.list).parameters) == expected
     assert tuple(inspect.signature(MohwRssAdapter.list).parameters) == expected
+    assert tuple(inspect.signature(PccAdapter.list).parameters) == expected
