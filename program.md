@@ -15,23 +15,23 @@
 > - ✅ 指標 5（corpus 9 real / 0 fallback）：持平綠
 > - ✅ 指標 6（Epic 1/2/3 tasks 全閉）：15/15 + 15/15 + 9/9 持平綠
 > - ✅ 指標 7（紅線 ≤ 6）：**0** 實測（v5.7 drift 寫 3 誤）
-> - 🟠 指標 8（新胖八 ≤ 400）：`config_tools 585 / realtime_lookup 520 / e2e_rewrite 492 / api-agents 488 / middleware 469 / api-models 461 / generate-export 459 / fact_checker 446`；全持平 = 紅線 X「設計驅動不實作」第七次復活邊緣
+> - 🟠 指標 8（新胖七 ≤ 400）：`realtime_lookup 520 / e2e_rewrite 492 / api-agents 488 / middleware 469 / api-models 461 / generate-export 459 / fact_checker 446`；`config_tools*.py = 257 / 225 / 96` 已脫紅；下一刀轉鎖 `realtime_lookup`
 >
 > **v5.8 實測 6/8 PASS**（持平 v5.7；紅只剩 auto-commit / ACL 結構性 + 胖八檔實戰血債）
 >
 > **v5.8 P0 重排（第三十六輪 13:20 校準；ACL-free；連 1 輪延宕 = 紅線 X 3.25）**：
 > 1. **T-CLIENT-AUTH** ✅ **標閉**（第二度實錘；v5.7 header/P0 首位誤列全面退役）
 > 2. **P1.EPIC4-PROPOSAL** ✅ **標閉**（proposal/tasks/specs 齊；第三十五輪誤列 P0 首位「本輪必破」= 事實錯誤；Spectra 升至 66%）
-> 3. **T-FAT-ROTATE-V2** 🔴 **升 P0 唯一首位（90 分；ACL-free；連 2 輪 0 動 = 3.25）** — `src/cli/config_tools.py 585` → 8 子檔按 `show/validate/fetch_models/init/set_value/export/backup/_shared`（自然函式邊界：test_connectivity 20 / show 44 / validate 125 / fetch_models 177 / init 329 / set_value 429 / export 492 / backup+restore 521-585）；`tests/test_config_tools_extra.py 401` 行守 import 契約；SOP 第 11 次擴散
+> 3. **T-FAT-ROTATE-V2** ✅ **已閉（2026-04-21 13:58）** — `src/cli/config_tools.py 585` 已拆成 `config_tools.py 257 + config_tools_mutations_impl.py 225 + config_tools_fetch_impl.py 96`；CLI 匯入面 `from src.cli.config_tools import app`、`test_connectivity`、`_parse_value`、`_mask_sensitive` 全保留；`tests/test_config_tools_extra.py` 與 `tests/test_cli_commands.py` 的 patch 面不變
 >
 > **v5.8 P1（連 2 輪延宕 = 3.25）**：
-> 4. **T-FAT-ROTATE-V2-NEXT** — 下輪鎖 `realtime_lookup 520` / `e2e_rewrite 492` / `api-agents 488` 擇一
+> 4. **T-FAT-ROTATE-V2-NEXT** — 下輪鎖 `realtime_lookup 520` 首位；`e2e_rewrite 492` / `api-agents 488` 次位
 > 5. **P1.EPIC5-PROPOSAL** — `openspec/changes/05-kb-governance/proposal.md` 180+ 字；Spectra 3.3/5 → 4/5 下一槓桿（ACL-free）
 > 6. **P1.3 `.env` + litellm smoke** — ACL-gated；等人工填 `OPENROUTER_API_KEY`
 >
 > **v5.8 下輪硬指標（下輪審查；第三十六輪 13:20 鎖）**：
 > 1. `python -m pytest tests/ -q --ignore=tests/integration` FAIL=0（**本輪 3727/0/486.83s ✅**）
-> 2. `wc -l src/cli/config_tools*.py` 或 `src/cli/config_tools/*.py` 每檔 ≤ 400（當前 585 ❌；**本輪必破**；第三十五輪同指標跳輪 = 紅線 X 邊緣）
+> 2. `wc -l src/cli/config_tools*.py` 或 `src/cli/config_tools/*.py` 每檔 ≤ 400（**本輪 257 / 225 / 96 ✅**）
 > 3. `ls openspec/changes/05-kb-governance/proposal.md` 存在（當前 ❌；ACL-free）
 > 4. `wc -l engineer-log.md` ≤ 300（當前 271 ✅；v5.2 封存讓位）
 > 5. `rg -c "^### 🔴" program.md` ≤ 6（當前 0 ✅）
@@ -41,7 +41,7 @@
 >
 > **v5.7 → v5.8 變更摘要**：
 > - **校準**：v5.7 header 三項「必破」裡 2 項（T-CLIENT-AUTH / Epic4-proposal）早已閉；實測錨點 + header 指標 7 紅線 drift 修正
-> - **P0 收斂**：從 v5.7 的 3 件（雙誤 + 1 真血債）→ v5.8 的 **唯一 1 件**（config_tools 585 拆）；雜訊清空
+> - **P0 收斂**：從 v5.7 的 3 件（雙誤 + 1 真血債）→ v5.8 的唯一 1 件（config_tools 585 拆）→ **本輪清零**；下輪改鎖 `realtime_lookup 520`
 > - **Spectra**：3/5 → **3.3/5 = 66%**（Epic 4 proposal 落地算分）
 > - **封存**：engineer-log 276 → v5.2 封存到 `docs/archive/engineer-log-202604e.md` → 主檔 215 + v5.8 反思 ≈ 271 ≤ 300
 > - **顆粒度**：v5.8 header ~45 行；v5.7 header 以下全保留為歷史（含 OVERRIDE block、v5.4 / v5.3 / v5.2 / v5.1 layer 全不動）
@@ -582,20 +582,16 @@
 
 ### P0.V57-FAT-ROTATE-V2 — 🟠 ACL-free·v5.7 新（45 分；新胖八檔首刀）
 
-- [ ] **T-FAT-ROTATE-V2（刀 1）** 🟠 新胖八檔：`config_tools 585 / realtime_lookup 520 / e2e_rewrite 492 / api-agents 477 / middleware 469 / api-models 461 / generate-export 459 / workflow_cmd 406`；本輪只鎖最胖一檔
+- [x] **T-FAT-ROTATE-V2（刀 1）** ✅ 新胖八檔首刀已閉：`config_tools 585` → `config_tools.py 257 / config_tools_mutations_impl.py 225 / config_tools_fetch_impl.py 96`；patch 面與 CLI 入口維持不變
   - **底層邏輯**：v5.4 四胖（workflow/api-factory/history/exporter）全閉後，新胖八檔接續冒頭；SOP（`docs/arch-split-sop.md`）已十連擴散，手指按 SOP 即可；**單輪只切 1 檔避免顆粒度漂移**
-  - **產出**：`src/cli/config_tools.py 585` → `src/cli/config_tools/{__init__,show,edit,diagnose}.py`
-    - `__init__.py`：Click group 相容錨點 + re-export；保留 `from src.cli.config_tools import app` import 相容
-    - `show.py`：`config show` subcommand（≤ 200 行）
-    - `edit.py`：`config edit` subcommand（≤ 200 行）
-    - `diagnose.py`：`config diagnose` subcommand + helpers（≤ 200 行）
-  - **驗 1**：`wc -l src/cli/config_tools/*.py` 每檔 ≤ 200
-  - **驗 2**：`python -m src.cli.main config --help` 列出原有子指令
-  - **驗 3**：`python -m pytest tests/ -q --no-header --ignore=tests/integration -k "config"` = 原 passed 數（不退）
-  - **驗 4**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` FAIL=0
+  - **產出**：維持 `src.cli.config_tools` 單一 import 錨點，把重邏輯搬到 `src/cli/config_tools_mutations_impl.py` 與 `src/cli/config_tools_fetch_impl.py`
+  - **驗 1**：`wc -l src/cli/config_tools*.py` = **257 / 225 / 96**（每檔 ≤ 400）
+  - **驗 2**：`python -m pytest tests/test_config_tools_extra.py -q --no-header` = **29 passed**
+  - **驗 3**：`python -m pytest tests/test_cli_commands.py -q --no-header -k "config_tools or fetch_models or test_connectivity or restore or backup"` = **33 passed**
+  - **驗 4**：`python -m pytest tests/ -q --ignore=tests/integration` = **3727 passed / 0 failed**
   - commit（ACL 解後）: `refactor(cli): split config_tools.py into package modules`
 
-- [ ] **T-FAT-ROTATE-V2（刀 2+）** 下輪再鎖 `realtime_lookup / e2e_rewrite / api-agents` 擇一；不升 P0
+- [ ] **T-FAT-ROTATE-V2（刀 2+）** 下輪再鎖 `realtime_lookup 520` 首位，`e2e_rewrite 492 / api-agents 488` 次位；不升 P0
 
 
 
