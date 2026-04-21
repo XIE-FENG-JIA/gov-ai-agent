@@ -3,24 +3,13 @@ Agent 路由 — 需求分析、撰寫、審查、並行審查、修改
 =================================================
 """
 
-import asyncio
 import logging
 import re
-from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from src.core.constants import (
-    DEFAULT_FAILED_SCORE,
-    DEFAULT_FAILED_CONFIDENCE,
-    MAX_FEEDBACK_LENGTH,
-    MAX_DRAFT_LENGTH,
-    assess_risk_level,
-    escape_prompt_tag,
-)
-from src.core.scoring import calculate_weighted_scores, calculate_risk_scores
+from src.core.constants import MAX_FEEDBACK_LENGTH, MAX_DRAFT_LENGTH, escape_prompt_tag
 from src.core.models import PublicDocRequirement
-from src.core.review_models import ReviewResult
 from src.agents.requirement import RequirementAgent
 from src.agents.writer import WriterAgent
 from src.agents.template import TemplateEngine
@@ -35,6 +24,7 @@ from src.knowledge.manager import KnowledgeBaseManager
 from src.api.auth import require_api_key
 from src.api.dependencies import get_llm, get_kb
 import src.api.dependencies as _deps
+from src.api.routes._agents_parallel import run_parallel_review
 from src.api.helpers import (
     _sanitize_error,
     _get_error_code,
@@ -287,19 +277,6 @@ async def review_compliance(request: ReviewRequest) -> ReviewResponse:
         )
 
 
-# ------------------------------------------------------------
-# 4. Parallel Review (All Agents)
-# ------------------------------------------------------------
-
-def _run_format_audit(
-    draft: str, doc_type: str, llm: Any, kb: KnowledgeBaseManager | None
-) -> ReviewResult:
-    """輔助函式：執行格式審查並轉換為 ReviewResult。"""
-    auditor = FormatAuditor(llm, kb)
-    fmt_raw = auditor.audit(draft, doc_type)
-    return format_audit_to_review_result(fmt_raw)
-
-
 @router.post(
     "/api/v1/agent/review/parallel",
     response_model=ParallelReviewResponse,
@@ -315,99 +292,18 @@ async def parallel_review(
     彙整加權分數與風險等級。
     """
     try:
-        results: dict[str, SingleAgentReviewResponse] = {}
-        llm = get_llm()
-        kb = get_kb()
-
-        # 各 Agent 執行函式映射
-        agent_map = {
-            "format": lambda: _run_format_audit(request.draft, request.doc_type, llm, kb),
-            "style": lambda: StyleChecker(llm).check(request.draft),
-            "fact": lambda: FactChecker(llm).check(request.draft, doc_type=request.doc_type),
-            "consistency": lambda: ConsistencyChecker(llm).check(request.draft),
-            "compliance": lambda: ComplianceChecker(llm, kb).check(request.draft),
-        }
-
-        # Agent 短名稱 → 人類可讀名稱（確保成功/失敗回應一致）
-        _AGENT_DISPLAY_NAMES: dict[str, str] = {
-            "format": "Format Auditor",
-            "style": "Style Checker",
-            "fact": "Fact Checker",
-            "consistency": "Consistency Checker",
-            "compliance": "Compliance Checker",
-        }
-
-        # 使用 asyncio + 執行緒池並行執行
-        loop = asyncio.get_running_loop()
-        tasks: list[asyncio.Future] = []
-        agent_names: list[str] = []
-
-        for agent_name in request.agents:
-            if agent_name in agent_map:
-                agent_names.append(agent_name)
-                tasks.append(
-                    loop.run_in_executor(_deps.executor, agent_map[agent_name])
-                )
-
-        review_results = await asyncio.wait_for(
-            asyncio.gather(*tasks, return_exceptions=True),
-            timeout=ENDPOINT_TIMEOUT,
+        return await run_parallel_review(
+            request,
+            llm=get_llm(),
+            kb=get_kb(),
+            executor=_deps.executor,
+            format_auditor_cls=FormatAuditor,
+            style_checker_cls=StyleChecker,
+            fact_checker_cls=FactChecker,
+            consistency_checker_cls=ConsistencyChecker,
+            compliance_checker_cls=ComplianceChecker,
+            formatter=format_audit_to_review_result,
         )
-
-        # 處理結果：分離成功與失敗
-        successful_results: list[ReviewResult] = []
-        any_agent_failed = False
-
-        for i, result in enumerate(review_results):
-            agent_name = agent_names[i]
-
-            if isinstance(result, Exception):
-                any_agent_failed = True
-                logger.warning("Agent %s 執行失敗: %s", agent_name, result)
-                display_name = _AGENT_DISPLAY_NAMES.get(agent_name, agent_name)
-                results[agent_name] = SingleAgentReviewResponse(
-                    agent_name=display_name,
-                    score=DEFAULT_FAILED_SCORE,
-                    confidence=DEFAULT_FAILED_CONFIDENCE,
-                    issues=[
-                        {
-                            "category": agent_name,
-                            "severity": "error",
-                            "risk_level": "high",
-                            "location": "Agent 執行",
-                            "description": f"{display_name} 執行失敗，請稍後再試。",
-                            "suggestion": None,
-                        }
-                    ],
-                    has_errors=True,
-                )
-            else:
-                results[agent_name] = review_result_to_dict(result)
-                successful_results.append(result)
-
-        # 使用 scoring.py 共用函式計算加權分數（與 EditorInChief 一致）
-        weighted_score, total_weight = calculate_weighted_scores(successful_results)
-        weighted_error_score, weighted_warning_score = calculate_risk_scores(successful_results)
-        avg_score = weighted_score / total_weight if total_weight > 0 else 0.0
-
-        # 風險等級判定
-        if total_weight == 0.0:
-            risk = "Critical"
-        else:
-            risk = assess_risk_level(
-                weighted_error_score, weighted_warning_score, avg_score
-            )
-            # 若有 Agent 執行失敗，風險至少為 "High"
-            if any_agent_failed and risk in ("Safe", "Low", "Moderate"):
-                risk = "High"
-
-        return ParallelReviewResponse(
-            success=True,
-            results=results,
-            aggregated_score=round(avg_score, 3),
-            risk_summary=risk,
-        )
-
     except _AGENT_ROUTE_EXCEPTIONS as e:
         _log_agent_warning("並行審查", e)
         return ParallelReviewResponse(
