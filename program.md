@@ -1385,7 +1385,8 @@
 - [x] **T4.1** `src/agents/citation_checker.py`（新；2026-04-21 11:27）— 已落 repo-owned citation traceability seam；整合 `check_citation_level` / `check_evidence_presence` / `check_citation_integrity`，並對「參考來源無法解析」「缺少 URL/Hash」直接報錯；驗證 `python -m pytest tests/test_citation_level.py tests/test_validators.py -q` = 111 passed
 - [x] **T4.2** `src/agents/fact_checker.py` 強化：repo evidence + `realtime_lookup` verification state
   - **完成（2026-04-21 12:16）**：`FactChecker` 先用 repo-owned 規則合併 `realtime_lookup` 與 `extract_reference_entries()` 結果，再交給 LLM 補充其他 fact 問題；當 verifier 掛掉或 cache 空掉時，會明確報「不能視為 citation-clean」，避免 silent downgrade；只對具體法規引用升格不存在/條號錯誤/缺 repo evidence finding，generic placeholder 不誤炸。
-- [ ] **T4.3** `src/agents/auditor.py` 整合 2 checker
+- [x] **T4.3** `src/agents/auditor.py` / editor aggregation 整合 citation checker
+  - **完成（2026-04-21 12:30）**：`EditorInChief` 審查流程現加入 `CitationChecker`，並在 targeted review 僅重跑 citation 問題；`src/core/scoring.py` 同步把 `Citation Checker` 歸到 `fact` 權重，避免 audit aggregation 低估引用風險。驗證 `python -m pytest tests/test_editor.py tests/test_editor_coverage.py tests/test_review_parser.py -q` = 144 passed、`python -m pytest tests/test_scoring.py -q` = 36 passed
 
 ---
 

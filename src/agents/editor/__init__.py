@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from rich.console import Console
 
 from src.agents.auditor import FormatAuditor
+from src.agents.citation_checker import CitationChecker
 from src.agents.compliance_checker import ComplianceChecker
 from src.agents.consistency_checker import ConsistencyChecker
 from src.agents.fact_checker import FactChecker
@@ -55,6 +56,7 @@ class EditorInChief(EditorFlowMixin, EditorRefineMixin, EditorSegmentMixin, Edit
             logger.warning("即時查詢服務初始化失敗: %s", exc)
 
         self.format_auditor = FormatAuditor(llm, kb_manager)
+        self.citation_checker = CitationChecker()
         self.style_checker = StyleChecker(llm)
         self.fact_checker = FactChecker(llm, law_verifier=law_verifier)
         self.consistency_checker = ConsistencyChecker(llm)
@@ -153,6 +155,7 @@ class EditorInChief(EditorFlowMixin, EditorRefineMixin, EditorSegmentMixin, Edit
         results = [format_result]
         timed_out_agents: list[str] = []
         parallel_tasks = {
+            "Citation Checker": lambda: self.citation_checker.check(draft),
             "Style Checker": lambda: self.style_checker.check(draft),
             "Fact Checker": lambda: self.fact_checker.check(draft, doc_type=doc_type),
             "Consistency Checker": lambda: self.consistency_checker.check(draft),

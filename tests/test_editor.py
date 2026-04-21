@@ -40,6 +40,7 @@ def test_editor_category_detection():
     editor = EditorInChief(MagicMock())
 
     assert editor._get_agent_category("Format Auditor") == "format"
+    assert editor._get_agent_category("Citation Checker") == "fact"
     assert editor._get_agent_category("Style Checker") == "style"
     assert editor._get_agent_category("Fact Checker") == "fact"
     assert editor._get_agent_category("Consistency Checker") == "consistency"
@@ -182,6 +183,35 @@ def test_editor_parallel_agent_exception_handling(mock_llm):
     assert len(failed_results) == 1
     assert failed_results[0].score == DEFAULT_FAILED_SCORE
     assert failed_results[0].confidence == DEFAULT_FAILED_CONFIDENCE
+
+
+def test_editor_review_includes_citation_checker(mock_llm):
+    """Citation Checker 應被納入審查聚合。"""
+    mock_llm.generate.return_value = '{"errors": [], "warnings": []}'
+
+    editor = EditorInChief(mock_llm)
+    editor.citation_checker.check = MagicMock(
+        return_value=ReviewResult(
+            agent_name="Citation Checker",
+            issues=[ReviewIssue(
+                category="fact",
+                severity="error",
+                risk_level="high",
+                location="參考來源段落",
+                description="引用不可追溯",
+                suggestion="補上 URL",
+            )],
+            score=0.6,
+            confidence=1.0,
+        )
+    )
+
+    _, qa_report = editor.review_and_refine("### 主旨\n測試主旨\n### 說明\n測試說明", "函")
+
+    citation_results = [r for r in qa_report.agent_results if r.agent_name == "Citation Checker"]
+    assert len(citation_results) == 1
+    assert citation_results[0].has_errors
+    assert "Citation Checker" in qa_report.audit_log
 
 
 def test_auto_refine_no_issues_returns_original(mock_llm):
@@ -368,6 +398,35 @@ class TestTimeoutPartialResults:
         report = editor._generate_qa_report(results)
         assert isinstance(report, QAReport)
         assert "逾時未完成的 Agent" not in report.audit_log
+
+    def test_targeted_review_reruns_citation_checker(self, mock_llm):
+        """targeted review 應能重跑 Citation Checker。"""
+        editor = EditorInChief(mock_llm)
+        editor.citation_checker.check = MagicMock(
+            return_value=ReviewResult(agent_name="Citation Checker", issues=[], score=1.0)
+        )
+
+        prev = [
+            ReviewResult(
+                agent_name="Citation Checker",
+                issues=[ReviewIssue(
+                    category="fact",
+                    severity="error",
+                    risk_level="high",
+                    location="引用 [^1]",
+                    description="引用不可追溯",
+                )],
+                score=0.4,
+                confidence=1.0,
+            ),
+            ReviewResult(agent_name="Style Checker", issues=[], score=0.9, confidence=0.9),
+        ]
+
+        results, timed_out = editor._execute_targeted_review("### 主旨\n測試", "函", prev, "error")
+
+        assert timed_out == []
+        editor.citation_checker.check.assert_called_once_with("### 主旨\n測試")
+        assert any(r.agent_name == "Citation Checker" and r.score == 1.0 for r in results)
 
 
 # ==================== 迭代審查測試 ====================

@@ -29,7 +29,7 @@ def get_agent_category(agent_name: str) -> str:
         return "format"
     elif "compliance" in name_lower or "policy" in name_lower:
         return "compliance"
-    elif "fact" in name_lower:
+    elif "fact" in name_lower or "citation" in name_lower:
         return "fact"
     elif "consistency" in name_lower:
         return "consistency"

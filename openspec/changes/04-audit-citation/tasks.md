@@ -25,12 +25,13 @@
   Commit: `feat(agents): tighten fact checker citation verification`
   - **完成（2026-04-21 12:16）**：`FactChecker` 現改為先產生 repo-owned citation finding，再讓 LLM 補日期/數字類問題；當 `realtime_lookup` 掛掉或 law cache 為空時，會留下單一 loud-failure error，不再靜默降級；只有具體法規引用才會升格成「法規不存在 / 條號不存在 / 缺少 repo evidence」finding，generic placeholder（如「相關法規」）不再誤判。新增回歸測試覆蓋 verifier failure、repo-owned nonexistent-law error、missing repo evidence warning、reference match、generic placeholder guard。驗證 `python -m pytest tests/test_fact_checker_coverage.py tests/test_fact_checker_enhanced.py tests/test_realtime_lookup.py -q` = 91 passed
 
-- [ ] **T4.3** Integrate citation-checker findings into
+- [x] **T4.3** Integrate citation-checker findings into
   `src/agents/auditor.py` and downstream audit aggregation.
   Requirements:
   - Citation audit failures fail loudly before export handoff
   Validation: `pytest tests/test_editor.py tests/test_editor_coverage.py tests/test_review_parser.py -q`
   Commit: `feat(auditor): aggregate citation audit results`
+  - **完成（2026-04-21 12:30）**：`EditorInChief` 現於 format audit 後同步納入 `CitationChecker`，並在 targeted review 中重跑 citation findings；`src/core/scoring.py` 另把 `Citation Checker` 映射到 `fact` 權重，避免被誤算成 `style` 弱化風險。新增回歸測試鎖定 aggregation、targeted rerun 與權重映射。驗證 `python -m pytest tests/test_editor.py tests/test_editor_coverage.py tests/test_review_parser.py -q` = 144 passed、`python -m pytest tests/test_scoring.py -q` = 36 passed
 
 - [ ] **T4.4** Add a citation-audit failure matrix covering orphan footnotes,
   missing evidence, unverifiable legal claims, and degraded verification

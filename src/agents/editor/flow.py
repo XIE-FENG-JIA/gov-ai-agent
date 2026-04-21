@@ -275,6 +275,7 @@ class EditorFlowMixin:
             "Format Auditor": lambda: format_audit_to_review_result(
                 self.format_auditor.audit(draft, doc_type)
             ),
+            "Citation Checker": lambda: self.citation_checker.check(draft),
             "Style Checker": lambda: self.style_checker.check(draft),
             "Fact Checker": lambda: self.fact_checker.check(draft, doc_type=doc_type),
             "Consistency Checker": lambda: self.consistency_checker.check(draft),

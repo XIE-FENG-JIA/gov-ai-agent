@@ -66,6 +66,7 @@ class TestGetAgentCategory:
             ("Auditor Agent", "format"),
             ("Compliance Checker", "compliance"),
             ("Policy Verifier", "compliance"),
+            ("Citation Checker", "fact"),
             ("Fact Checker", "fact"),
             ("fact_verifier", "fact"),
             ("Consistency Checker", "consistency"),
