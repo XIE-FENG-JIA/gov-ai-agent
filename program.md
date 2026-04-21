@@ -423,7 +423,7 @@
 
 - [x] **T-PROGRAM-MD-ARCHIVE** ✅（2026-04-21）— 主檔瘦身；`v4.3-v5.4` 歷史 header 與已關閉 bundle 封存到 `docs/archive/program-history-202604g.md`；主檔改為只留現行目標、活任務、近期完成。
 - [ ] **T9.6-REOPEN-v5** — 封存 `engineer-log.md` 的 `v5.7/v5.8` 到 `docs/archive/engineer-log-202604g.md`；主檔目標 ≤ 300 行。
-- [ ] **T-PYTEST-PROFILE** — 跑 `python -m pytest tests/ --ignore=tests/integration --durations=30`；交付 `docs/pytest-profile-v6.4.md`；定位 915s 全量 pytest 慢點。
+- [x] **T-PYTEST-PROFILE** — 已跑 `python -m pytest tests/ --ignore=tests/integration --durations=30`；交付 `docs/pytest-profile-v6.4.md`；實測 `3741 passed / 841.51s`，慢點集中在 `cite_cmd cp950`、KB search、agent timeout path、fetcher network-error retry。
 - [ ] **T-ROLLUP-SYNC** — 校正 `v6.1` header 對 `engineer-log` 封存後的實際狀態，清掉 rollup/header drift。
 - [ ] **T-FAT-ROTATE-V2（刀 6）** — 只切 1 檔；候選：`src/api/models.py 461`、`src/cli/generate/export.py 459`、`src/agents/fact_checker.py 446`、`src/sources/datagovtw.py 410`、`src/cli/workflow_cmd.py 406`。
 
@@ -460,7 +460,7 @@
 - [ ] **T1.6** — 已併入 corpus 擴量路線；保留原編號方便追歷史。
 ## 已完成
 
-- [x] **近期閉環（2026-04-21）** — `T9.6-REOPEN-v4`、`T-FAT-ROTATE-V2` 刀 3/4/5、`T-BARE-EXCEPT-AUDIT` 刀 1/2、`P1-PCC-ADAPTER`、`P0.1-FDA-LIVE-DIAG`、`P0.3-CORPUS-SCALE`、`EPIC5-TASKS-SPECS`、`T5.1`、`T5.2`、`T5.3`、`T5.4`。
+- [x] **近期閉環（2026-04-22）** — `T-PROGRAM-MD-ARCHIVE`、`T-PYTEST-PROFILE`、`T9.6-REOPEN-v4`、`T-FAT-ROTATE-V2` 刀 3/4/5、`T-BARE-EXCEPT-AUDIT` 刀 1/2、`P1-PCC-ADAPTER`、`P0.1-FDA-LIVE-DIAG`、`P0.3-CORPUS-SCALE`、`EPIC5-TASKS-SPECS`、`T5.1`、`T5.2`、`T5.3`、`T5.4`。
 - [x] **較早完成項** — 已移到 [docs/archive/program-history-202604g.md](docs/archive/program-history-202604g.md)。
 
 ## 備註
