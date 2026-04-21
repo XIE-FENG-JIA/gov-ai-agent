@@ -516,7 +516,7 @@
 
 ### P0.V57-EPIC4-PROPOSAL — 🔴 ACL-free·v5.7 升 P0（40 分；連 8 輪 0 動紅線邊緣）
 
-- [ ] **P1.EPIC4-PROPOSAL** 🔴 v5.3 起列 P1 連 8 輪 0 動；「設計驅動不實作」子條款邊緣
+- [x] **P1.EPIC4-PROPOSAL** 🔴 v5.3 起列 P1 連 8 輪 0 動；本輪已補齊 `openspec/changes/04-audit-citation/{proposal.md,tasks.md,specs/audit/spec.md}`
   - **底層邏輯**：Spectra 3/5 = 60% 死水連 8 輪；`openspec/changes/04-audit-citation/` 零檔 → T7.1.d 一直掛 `[ ]`；Epic 4 proposal 是**升格 4/5 = 80%** 的唯一槓桿
   - **產出**：
     - (a) `openspec/changes/04-audit-citation/proposal.md`：what/why/scope 三段；對齊既有 `src/agents/citation_checker.py` / `fact_checker.py` / `auditor.py`
@@ -527,6 +527,7 @@
   - **驗 3**：`spectra analyze 04-audit-citation` findings ≤ 3（可留 design.md 缺口）
   - **延宕懲罰**：連 1 輪 0 動 = 紅線 X 3.25（從 P1 升 P0，不再給緩衝）
   - commit（ACL 解後）: `feat(openspec): add 04-audit-citation change proposal + tasks + spec`
+  - **完成（2026-04-21 10:59）**：新增 Epic 4 change package，明確把 citation audit 從 export-format 規格切成 review-layer 規格；proposal 對齊 `fact_checker` / `auditor` / `validators` / `realtime_lookup` 現況，`tasks.md` 收斂 `citation_checker` seam、fact-checker 強化、auditor 整合與 failure matrix，`specs/audit/spec.md` 寫死 source-grounded audit / verification-state / loud-fail handoff 三條 requirement。
 
 ### P0.V57-FAT-ROTATE-V2 — 🟠 ACL-free·v5.7 新（45 分；新胖八檔首刀）
 
@@ -1413,7 +1414,8 @@
 - [x] **T7.1.b** `02-open-notebook-fork` proposal（v2.9 P0.G 閉；specs/tasks 延後）
 - [x] **T7.1.c** `03-citation-tw-format`（Epic 3）
   - **完成（2026-04-21 01:47）**：`openspec/changes/03-citation-tw-format/{proposal.md,tasks.md,specs/citation/spec.md}` 已齊，`spectra analyze 03-citation-tw-format` = 0 findings；Epic 3 規格鍊閉環。
-- [ ] **T7.1.d** `04-audit-citation`（Epic 4）
+- [x] **T7.1.d** `04-audit-citation`（Epic 4）
+  - **完成（2026-04-21 10:59）**：`openspec/changes/04-audit-citation/{proposal.md,tasks.md,specs/audit/spec.md}` 已齊；Epic 4 現在有正式 proposal、requirements 與 task mapping，可直接接 `T4.1-T4.4` 實作。
 - [x] **T7.2** → 已升 P1.2（v2.4 閉環）
 - [ ] **T7.3** `engineer-log.md` 進版控 + 每輪反思 append 規範
 - [x] **T7.4（v3.8 NEW）✅ ACL-free** Spectra coverage 補洞：兩個 change 的 spec requirement → tasks.md 對應

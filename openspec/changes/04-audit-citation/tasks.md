@@ -1,0 +1,62 @@
+# Tasks: 04-audit-citation
+
+- [x] **T4.0** Finalize the citation-audit change package with proposal, tasks,
+  and spec coverage for the Epic 4 review boundary.
+  Requirements:
+  - Citation audit stays repo-owned and source-grounded
+  - Citation audit failures fail loudly before export handoff
+  Validation: `spectra analyze 04-audit-citation`
+  Commit: `docs(spec): bootstrap citation audit change`
+
+- [ ] **T4.1** Add a repo-owned `src/agents/citation_checker.py` seam for
+  citation traceability review.
+  Requirements:
+  - Citation audit stays repo-owned and source-grounded
+  Validation: `pytest tests/test_citation_level.py tests/test_validators.py -q`
+  Commit: `feat(agents): add citation checker seam`
+
+- [ ] **T4.2** Strengthen `src/agents/fact_checker.py` so legal-claim review
+  consumes repo evidence and `realtime_lookup` results without silently
+  downgrading citation failures.
+  Requirements:
+  - Citation audit uses repo evidence and verification state
+  Validation: `pytest tests/test_fact_checker_coverage.py tests/test_fact_checker_enhanced.py tests/test_realtime_lookup.py -q`
+  Commit: `feat(agents): tighten fact checker citation verification`
+
+- [ ] **T4.3** Integrate citation-checker findings into
+  `src/agents/auditor.py` and downstream audit aggregation.
+  Requirements:
+  - Citation audit failures fail loudly before export handoff
+  Validation: `pytest tests/test_editor.py tests/test_editor_coverage.py tests/test_review_parser.py -q`
+  Commit: `feat(auditor): aggregate citation audit results`
+
+- [ ] **T4.4** Add a citation-audit failure matrix covering orphan footnotes,
+  missing evidence, unverifiable legal claims, and degraded verification
+  upstreams.
+  Requirements:
+  - Citation audit failures fail loudly before export handoff
+  Validation: `pytest tests/test_validators.py tests/test_fact_checker_enhanced.py tests/test_writer_agent_failure.py -q`
+  Commit: `test(audit): cover citation audit failure matrix`
+
+- [ ] **T4.5** Requirement coverage: repo-owned citation audit is satisfied by
+  `T4.0`, `T4.1`, and `T4.3`.
+  Validation: `spectra analyze 04-audit-citation`
+
+- [ ] **T4.6** Requirement coverage: citation audit uses repo evidence and
+  verification state is satisfied by `T4.1`, `T4.2`, and `T4.4`.
+  Validation: `spectra analyze 04-audit-citation`
+
+- [ ] **T4.7** Requirement coverage: citation audit failures fail loudly before
+  export handoff is satisfied by `T4.2`, `T4.3`, and `T4.4`.
+  Validation: `spectra analyze 04-audit-citation`
+
+## Requirement Mapping
+
+- Requirement: Citation audit stays repo-owned and source-grounded
+  Tasks: `T4.0`, `T4.1`, `T4.3`, `T4.5`
+
+- Requirement: Citation audit uses repo evidence and verification state
+  Tasks: `T4.1`, `T4.2`, `T4.4`, `T4.6`
+
+- Requirement: Citation audit failures fail loudly before export handoff
+  Tasks: `T4.0`, `T4.2`, `T4.3`, `T4.4`, `T4.7`
