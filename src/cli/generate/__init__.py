@@ -52,9 +52,8 @@ _FORMAT_OPTION_DEFS: tuple[tuple[str, str, dict[str, str], str | None, str | Non
 )
 
 from .cli import generate
+from .content_metadata import _apply_content_metadata, _display_format_options
 from .export import (
-    _apply_content_metadata,
-    _display_format_options,
     _display_summary,
     _export_document,
     _export_qa_report,
