@@ -84,7 +84,7 @@ def _build_pin_warning(vendor_path: Path) -> str:
     head = _resolve_git_head(vendor_path)
     if not head:
         return ""
-    if head == pinned:
+    if head == pinned or head.startswith(pinned) or pinned.startswith(head):
         return ""
     return f"pinned {pinned[:12]} but vendor HEAD is {head[:12]}"
 
