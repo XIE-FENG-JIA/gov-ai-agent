@@ -80,6 +80,13 @@ Anti-bloat guard：待辦 > 20 禁新增，待辦 > 80 進化輪 skip（`auto-en
   - `D:/Users/Administrator/Desktop/公司/auto-dev/scripts/auto-engineer-keeper.sh` 改為優先讀 `state` heartbeat，並對 `codex` 套 `project cooldown + 1800s` grace
   - keeper log 會輸出 `source=state|log` 與 `threshold=`，方便直接看判活依據
 - 修後觀察：round 106-110 正常推進，剩餘任務 `30 -> 27 -> 26 -> 24 -> 23`；keeper 已能寫出 `alive (age=359s, source=state, threshold=2700s)`
+- 2026-04-22 03:48 驗證摘要：
+  - 舊主 worker `PID 71760` 已在 round 111 實質收尾後受控停下，新主 worker `PID 54596` 已平滑接手
+  - 新 worker 啟動時另踩到 `auto-engineer.sh` 的 `TASK_APPEND_THRESHOLD` 未預設 bug；已修成「prompt 展開前先給預設值」，否則 `set -u` 會讓新 worker 秒退
+  - 新 heartbeat 已實測生效：`.auto-engineer.state.json` 在同一個 `phase=reflect` 內從 `2026-04-22T03:48:33+08:00` 刷到 `2026-04-22T03:49:35+08:00`
+  - keeper 判活已回到正常：`alive (age=27s, source=state, threshold=2700s)`、`alive (age=59s, source=state, threshold=2700s)`
+  - 新增 `D:/Users/Administrator/Desktop/公司/auto-dev/scripts/start-auto-engineer-keeper.ps1`；`-Restart` 已實測強制走 `C:\Program Files\Git\bin\bash.exe`，不再掉到 WSL `C:\Windows\System32\bash.exe`
+  - 舊 round 111 內部實際工作已完成：`src/knowledge/manager.py` 例外降級修補 + `python -m pytest tests/ -q --ignore=tests/integration -x` = `3745 passed`；結果已寫回 `results.log`
 
 ---
 
@@ -104,11 +111,13 @@ Anti-bloat guard：待辦 > 20 禁新增，待辦 > 80 進化輪 skip（`auto-en
 auto-dev 工具：D:/Users/Administrator/Desktop/公司/auto-dev/
   auto-engineer.sh                 ← 主 loop（IDLE/FAIL 分離 + anti-bloat guard）
                                     2026-04-22 hotfix：輪內 heartbeat（避免 keeper 誤判）
+                                    2026-04-22 hotfix：TASK_APPEND_THRESHOLD 預設值前置（避免新 worker 秒退）
   scripts/rescue-daemon.sh         ← 通用 ACL 救火 + watcher
   scripts/gov-ai-auto-commit.sh    ← Admin 代 commit
   scripts/reconcile-results.sh     ← BLOCKED-ACL → PASS-RESCUED 對帳
   scripts/auto-engineer-keeper.sh  ← auto-engineer liveness 守護
                                     2026-04-22 hotfix：state heartbeat 優先 + codex 長輪 grace
+  scripts/start-auto-engineer-keeper.ps1 ← Windows 啟動入口；強制 Git Bash，不碰 WSL bash.exe
   scripts/copilot-engineer-loop.sh ← Copilot 批次 agent（暫停）
   docs/troubleshooting-acl.md      ← ACL 手冊
   watchdog.conf                    ← 3 專案監控清單（gov-ai 在列）
@@ -155,10 +164,8 @@ Get-CimInstance Win32_Process |
     if ($_.ProcessId -ne $keepPid) { cmd /c "taskkill /PID $($_.ProcessId) /T /F" }
   }
 
-# 注意：keeper 必須用 Git Bash 啟動，不要用 C:\Windows\System32\bash.exe
-Remove-Item 'C:\Users\Administrator\.auto-engineer-keeper.pid' -Force -ErrorAction SilentlyContinue
-Start-Process -FilePath 'C:\Program Files\Git\bin\bash.exe' `
-  -ArgumentList '-lc', 'cd /d/Users/Administrator/Desktop/公司/auto-dev && ./scripts/auto-engineer-keeper.sh'
+# keeper 重啟入口（會強制 Git Bash，不碰 WSL bash.exe）
+& 'D:\Users\Administrator\Desktop\公司\auto-dev\scripts\start-auto-engineer-keeper.ps1' -Restart
 ```
 
 ### ACL 一次清（Admin bash elevated 才能）
