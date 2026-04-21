@@ -9,24 +9,24 @@
 > - 🟠 指標 4（新胖六 ≤ 400）：`realtime_lookup 386 ✅ / e2e_rewrite 492 / api-agents 488 / middleware 469 / api-models 461 / generate-export 459 / fact_checker 446` **六檔 > 400**（v5.8 cluster 七檔 → **-1**）
 > - ✅ 指標 5（openspec proposal 齊）：Epic 4/5 `proposal.md / tasks.md / specs/*` 三件齊；Spectra 3/5 → **4/5 = 80%**（v5.8 66% → +14pp）
 > - ✅ 指標 6（核心紅線）：`grep -c "^### 🔴" program.md` = 0 ≤ 6 ✅
-> - ❌ 指標 7（fda / mohw live fetch）：adapter 已註冊（`src/sources/ingest.py:131-139` registry 含 `fda / mohw`），但 `python scripts/live_ingest.py --sources fda --limit 3 --require-live` 回 FAIL（`source_id=FDA-001 used fixture fallback`）= **v5.6 OVERRIDE P0.1 描述過期，真因非 registry 缺件**
+> - 🟠 指標 7（fda / mohw live fetch）：`fda` 已修復；`python scripts/live_ingest.py --sources fda --limit 3 --require-live` = **PASS / live_count=3 / fixture_remaining=0**。真因已定位為 **`/tc/DataAction.aspx` endpoint 過期 + live schema 改為中文 key + FDA TLS verify fail 後 fallback**；`mohw` 另留 `P0.1-MOHW-LIVE-DIAG`
 > - ✅ 指標 8（client auth / rate-limit / CORS / body limit / metrics / DOCX safe parse）：上線 blocker 清空（v5.7-v5.8 實錘）
 >
-> **v5.9 實測 6/8 PASS + 1 🟠 警**（持平 v5.8 技術指標；新增 corpus 60 / pytest 223s 雙綠；紅線僅 fat 7 + fda live fetch）
+> **v5.9 實測 6/8 PASS + 1 🟠 警**（fat-file cluster 仍在；`fda` live fetch 已綠，`mohw` 尚待單獨驗）
 >
 > **v5.6 OVERRIDE 事實校準（P0.1 真因改寫）**：
 > 1. **P0.1（原描述）**："DEFAULT_SOURCES 含 mohw, fda 但執行時報 `unsupported source(s)`" → **錯**；`_adapter_registry()` 已掛 `FdaApiAdapter + MohwRssAdapter`；21/21 live_ingest 相關 pytest 綠。
-> 2. **P0.1（實況）**：`docs/live-ingest-report.md` → fda status=FAIL 原因 `live ingest required for fdaapi, but source_id=FDA-001 used fixture fallback`；即 FDA openAPI endpoint 連線或 schema 異動導致抓不到新鮮 live data，`--require-live` 擋下 fixture → 真問題 = **FdaApiAdapter live fetch 斷線 + MohwRssAdapter 類似**。
-> 3. **P0.1（新處置）**：非 dispatcher bug；改接 P1 FDA/MOHW 實際 feed 驗證（curl HEAD + schema diff），不是 registry 修法。
+> 2. **P0.1（實況）**：`docs/live-ingest-report.md` 原先 fda status=FAIL；本輪 probe 證實真因不是 registry，而是 **`https://www.fda.gov.tw/tc/DataAction.aspx` 已改回 HTML API 文件頁、真正 JSON feed 在 `https://www.fda.gov.tw/DataAction`、payload schema 變成 `標題/內容/附檔連結/發布日期`，且 FDA HTTPS 在本機 `requests` 會先 hit TLS verify fail**。
+> 3. **P0.1（本輪處置）**：`FdaApiAdapter` 已改接新 live endpoint、兼容新舊 schema、無 `Id/Link` 時生成穩定 `source_id` 與 query-backed `source_url`，並把 SSL fallback **限縮在 FDA adapter**；交付 `docs/fda-endpoint-probe.md`。
 >
 > **v5.9 P0 重排（ACL-free；連 1 輪延宕 = 紅線 X 3.25）**：
-> 1. **P0.3-CORPUS-SCALE** 🔴 **P0 首位**（30 分）— corpus 60 → 300；跑 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --prune-fixture-fallback` 三源擴量；fda/mohw 擇另項修復。
+> 1. **P0.3-CORPUS-SCALE** 🔴 **P0 首位**（30 分）— corpus **63** → 300；跑 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --prune-fixture-fallback` 三源擴量；`fda` 已解，`mohw` 擇另項診斷。
 > 2. **P2-CHROMA-NEMOTRON-VALIDATE** 🟠 **P0 次位**（60 分）— corpus ≥ 100 後跑 `gov-ai kb rebuild --only-real`（nvidia/llama-nemotron dim=2048）；交付 `docs/embedding-validation.md`（5 E2E 需求 top-K 真公文召回率）。
 > 3. **T-FAT-ROTATE-V2（刀 3+）** 🟠 **P0 三位** — 下輪鎖 `e2e_rewrite 492 / api-agents 488 / middleware 469`。
 >
 > **v5.9 P1（連 2 輪延宕 = 3.25）**：
 > 4. **P1-PCC-ADAPTER** ✅（2026-04-21 16:06）— `src/sources/pcc.py` 已落地；official `web.pcc.gov.tw` fixture-backed adapter + registry + tests 全綠。
-> 5. **P0.1-FDA-LIVE-DIAG** — FdaApiAdapter 真因定位（curl `https://data.fda.gov.tw/` / endpoint schema / auth 檢查）；15 分診斷 + fix or downgrade 到 P2。
+> 5. **P0.1-FDA-LIVE-DIAG** ✅（2026-04-21 16:36）— FdaApiAdapter 真因已定位並修復；`docs/fda-endpoint-probe.md` 已落，`python scripts/live_ingest.py --sources fda --limit 3 --require-live` = PASS / live_count=3。
 >
 > **v5.9 下輪硬指標**：
 > 1. `python -m pytest tests/ -q --ignore=tests/integration` FAIL=0（**本輪 3728/0 ✅**）
@@ -53,11 +53,11 @@
 >
 > **✅ v5.5 E2E 已通過（T5.4 PASS at 05:08）** — 解鎖下一階段
 >
-> **🎯 P0.1（v5.9 校準）— FdaApiAdapter / MohwRssAdapter live fetch 斷線**
+> **🎯 P0.1（v5.9 校準）— FDA live fetch 已閉；MOHW 另列**
 > - `_adapter_registry()`（`src/sources/ingest.py:131`）已註冊 fda + mohw；**非** dispatcher / registry bug
-> - 真因：`docs/live-ingest-report.md` → `fda status=FAIL｜source_id=FDA-001 used fixture fallback`；live endpoint 取不到新鮮資料
-> - 處置：curl FDA openAPI endpoint + schema diff（P0.1-FDA-LIVE-DIAG，15 分診斷）
-> - 驗：`python scripts/live_ingest.py --sources fda --limit 3 --require-live` → status=PASS 且 live_count > 0
+> - FDA 真因：舊 `tc/DataAction.aspx` 只回 HTML；新 feed 在 `DataAction`，schema 變為中文 key，且本機 `requests` 需先做 FDA-only SSL fallback 才能拿 live payload
+> - 處置：`src/sources/fda_api.py` 已改接 `https://www.fda.gov.tw/DataAction`，並補 `docs/fda-endpoint-probe.md`
+> - 驗：`python scripts/live_ingest.py --sources fda --limit 3 --require-live` → **status=PASS / live_count=3 / fixture_remaining=0**
 >
 > **✅ P0.2 已閉（2026-04-21 15:00）— datagovtw adapter 改抓真實公文（非 metadata）**
 > - 現況：`src/sources/datagovtw.py` 會展開 dataset resource，解析 CSV/JSON 真實公文列；metadata-only resource 直接跳過
@@ -65,7 +65,7 @@
 > - 驗 2：`python -m pytest tests/ -q --ignore=tests/integration` = **3728 passed / 0 failed**
 >
 > **🎯 P0.3 — live_ingest 擴大規模到 ≥ 300 份**
-> - 修完 P0.1 後跑 `python scripts/live_ingest.py --sources all --limit 100 --require-live`
+> - 已解 `fda` 後，下一步跑 `python scripts/live_ingest.py --sources all --limit 100 --require-live`
 > - 目標 kb_data/corpus 累計 ≥ 300 份真實資料
 >
 > **✅ P1 已閉（2026-04-21 16:06）— PccAdapter（政府採購網）**
@@ -645,8 +645,11 @@
 
 > **v5.9 第三十七輪重排理由**：v5.9 header 下發 28 min 後 0 動 → 紅線 X 連 1 輪；corpus 60 / pytest 3728 / Spectra 80% 實測已錨；**P0.1-FDA-LIVE-DIAG 從 P1 升 P0 次位**（15 分診斷先於修法，解 corpus 300 三源之一路障）；**T-FAT-ROTATE-V2 刀 3 從 T 段搬到 V59 頂位可見**；**新增 T-BARE-EXCEPT-AUDIT + T9.6-REOPEN-v4 雙 P1**（code smell 盤點 + engineer-log 309 > 300 封存）。
 
-- [ ] **P0.3-CORPUS-SCALE** 🔴 **v5.9 P0 首位（30 分；連 1 輪 0 動；下輪必破）** — corpus 60 → 300；執行 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --prune-fixture-fallback`；驗 `find kb_data/corpus -name "*.md" | wc -l` ≥ 150
-- [ ] **P0.1-FDA-LIVE-DIAG** 🟠 **v5.9 P0 次位（第三十七輪升格；15 分）** — `FdaApiAdapter` live fetch 斷線診斷：curl FDA openAPI endpoint + schema diff + auth check；交付 `docs/fda-endpoint-probe.md`；若 endpoint 變更 → 修 adapter，否則降 P2
+- [ ] **P0.3-CORPUS-SCALE** 🔴 **v5.9 P0 首位（30 分；連 1 輪 0 動；下輪必破）** — corpus **63** → 300；執行 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --prune-fixture-fallback`；驗 `find kb_data/corpus -name "*.md" | wc -l` ≥ 150
+- [x] **P0.1-FDA-LIVE-DIAG** ✅（2026-04-21 16:36）— `FdaApiAdapter` live fetch 斷線已修；`API_URL` 改為 `https://www.fda.gov.tw/DataAction`、兼容中文 schema、無顯式 ID 時生成穩定 `source_id/source_url`、SSL fallback 限縮在 FDA；交付 `docs/fda-endpoint-probe.md`
+  - **驗 1**：`python -m pytest tests/test_fda_api_adapter.py tests/test_sources_ingest.py tests/test_live_ingest_script.py -q` = **27 passed**
+  - **驗 2**：`python scripts/live_ingest.py --sources fda --limit 3 --require-live --report-path docs/live-ingest-report.md` = **PASS / live_count=3 / fixture_remaining=0**
+  - **驗 3**：`python -m pytest tests/ -q --ignore=tests/integration -x` = **3733 passed / 0 failed**
 - [ ] **T-FAT-ROTATE-V2（刀 3）** 🟠 **v5.9 P0 三位（45 分；第三十七輪從 T 段移上）** — 首刀鎖 `src/e2e_rewrite.py 492`；按 `rewrite / assemble / cli` 自然邊界拆成 `src/e2e_rewrite/{__init__,rewrite,assemble,cli}.py`；SOP 第 13 次擴散；`tests/test_e2e_rewrite.py` + `tests/integration/test_e2e_rewrite.py` import 契約守；次刀 `api-agents 488`、三刀 `middleware 469`
 - [ ] **P2-CHROMA-NEMOTRON-VALIDATE** 🟡 v5.9 P1（60 分；**等 corpus ≥ 100 後執行**）— `gov-ai kb rebuild --only-real`（nvidia/llama-nemotron dim=2048）；交付 `docs/embedding-validation.md`（5 E2E 需求 top-K 真公文召回率 + dim 驗證 + cost）
 - [ ] **T-BARE-EXCEPT-AUDIT** 🆕 **v5.9 P1 新增（第三十七輪；30 分）** — `rg "except Exception|except:" src/` 實測 118 處分佈 50 檔；高密度 3 檔 `src/api/routes/agents.py 9 / src/cli/org_memory_cmd.py 7 / src/cli/kb/stats.py 6` 至少一檔轉 typed except + `logger.warning`；避免 production logging 吞根因
