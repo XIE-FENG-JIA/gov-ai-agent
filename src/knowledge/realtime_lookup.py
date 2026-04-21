@@ -1,23 +1,12 @@
-"""即時法規引用驗證與政策查詢服務。
-
-LawVerifier: 下載全國法規資料庫全量資料，快取於記憶體，
-            從草稿中提取法規引用並逐一比對驗證。
-
-RecentPolicyFetcher: 下載近期行政院公報 XML，
-                     按關鍵字過濾後回傳相關政策摘要。
-"""
+"""即時法規引用驗證與政策查詢服務。"""
 from __future__ import annotations
 
-import io
-import json
 import logging
 import re
 import threading
 import time
 import defusedxml.ElementTree as ET
-import zipfile
 from dataclasses import dataclass, field
-from difflib import SequenceMatcher
 
 import requests
 
@@ -27,17 +16,21 @@ from src.knowledge.fetchers.constants import (
     LAW_DETAIL_URL,
 )
 from src.core.constants import HTTP_DEFAULT_TIMEOUT
+from src.knowledge._realtime_lookup_laws import (
+    check_article as _check_article_impl,
+    fuzzy_match as _fuzzy_match_impl,
+    parse_laws as _parse_laws_impl,
+)
+from src.knowledge._realtime_lookup_policy import (
+    filter_relevant_records as _filter_relevant_records,
+    parse_gazette_xml as _parse_gazette_xml,
+)
 
 logger = logging.getLogger(__name__)
 
 _HTTP_TIMEOUT = HTTP_DEFAULT_TIMEOUT
 _MAX_RETRIES = 2
 _BACKOFF_BASE = 2
-
-
-# ---------------------------------------------------------------------------
-# 資料類別
-# ---------------------------------------------------------------------------
 
 @dataclass
 class Citation:
@@ -59,11 +52,6 @@ class CitationCheck:
     confidence: float
     closest_match: str | None = None
 
-
-# ---------------------------------------------------------------------------
-# HTTP 工具
-# ---------------------------------------------------------------------------
-
 def _request_with_retry(url: str, *, timeout: int = _HTTP_TIMEOUT) -> requests.Response:
     """帶重試的 HTTP GET（獨立於 BaseFetcher，供本模組使用）。"""
     last_exc: Exception | None = None
@@ -84,11 +72,6 @@ def _request_with_retry(url: str, *, timeout: int = _HTTP_TIMEOUT) -> requests.R
                 time.sleep(_BACKOFF_BASE ** attempt)
     raise last_exc  # type: ignore[misc]
 
-
-# ---------------------------------------------------------------------------
-# LawVerifier
-# ---------------------------------------------------------------------------
-
 # 法規引用正則
 _CITATION_PATTERN = re.compile(
     r'(?:依據|依|按|遵照|援引)\s*[「「]?'
@@ -103,7 +86,6 @@ _STANDALONE_CITATION_PATTERN = re.compile(
     r'[「「]?([\u4e00-\u9fff]{2,20}(?:法|條例|辦法|規則|細則|規程|標準|準則|綱要|通則))[」」]?'
     r'\s*第\s*(\d+(?:-\d+)?)\s*條'
 )
-
 
 @dataclass
 class _LawCacheEntry:
@@ -229,46 +211,8 @@ class LawVerifier:
 
     @staticmethod
     def _parse_laws(data: bytes) -> list[dict]:
-        """解析法規 API 回傳（ZIP 或 JSON）— 重用 LawFetcher 的邏輯。"""
-        raw_list: list[dict] = []
-
-        def _unwrap(parsed):
-            if isinstance(parsed, dict):
-                if "Laws" in parsed and isinstance(parsed["Laws"], list):
-                    return parsed["Laws"]
-                return [parsed]
-            if isinstance(parsed, list):
-                return parsed
-            return []
-
-        try:
-            with zipfile.ZipFile(io.BytesIO(data)) as zf:
-                for name in zf.namelist():
-                    if name.endswith(".json"):
-                        raw = zf.read(name)
-                        try:
-                            parsed = json.loads(raw)
-                        except (json.JSONDecodeError, ValueError):
-                            logger.warning("ZIP 內 JSON 解析失敗：%s", name)
-                            continue
-                        raw_list.extend(_unwrap(parsed))
-        except zipfile.BadZipFile:
-            try:
-                parsed = json.loads(data)
-            except (json.JSONDecodeError, ValueError):
-                logger.warning("法規 API 回傳資料非合法 ZIP 亦非合法 JSON（%d bytes）", len(data))
-                return raw_list
-            raw_list.extend(_unwrap(parsed))
-
-        # 從 LawURL 提取 PCode
-        for law in raw_list:
-            if "PCode" not in law:
-                url = law.get("LawURL", "")
-                m = re.search(r"pcode=([A-Z0-9]+)", url, re.IGNORECASE)
-                if m:
-                    law["PCode"] = m.group(1)
-
-        return raw_list
+        """解析法規 API 回傳（ZIP 或 JSON）。"""
+        return _parse_laws_impl(data)
 
     def _verify_single(self, citation: Citation) -> CitationCheck:
         """驗證單一法規引用。"""
@@ -308,46 +252,7 @@ class LawVerifier:
         cache: dict[str, dict],
     ) -> CitationCheck:
         """法規已確認存在，進一步檢查條文號。"""
-        law_data = cache[matched_name]
-        pcode = law_data["pcode"]
-        articles = law_data["articles"]
-
-        if citation.article_no is None:
-            return CitationCheck(
-                citation=citation,
-                law_exists=True,
-                article_exists=None,
-                actual_content=None,
-                pcode=pcode,
-                confidence=1.0,
-            )
-
-        # 正規化引用條文號
-        normalized_art = re.sub(r'[第條\s]', '', citation.article_no)
-
-        if normalized_art in articles:
-            return CitationCheck(
-                citation=citation,
-                law_exists=True,
-                article_exists=True,
-                actual_content=articles[normalized_art],
-                pcode=pcode,
-                confidence=1.0,
-            )
-
-        # 條文號不存在
-        max_art = max(
-            (int(re.sub(r'-.*', '', k)) for k in articles if re.match(r'\d+', k)),
-            default=0,
-        )
-        return CitationCheck(
-            citation=citation,
-            law_exists=True,
-            article_exists=False,
-            actual_content=f"此法規共 {max_art} 條" if max_art > 0 else None,
-            pcode=pcode,
-            confidence=0.0,
-        )
+        return _check_article_impl(citation, matched_name, cache, CitationCheck)
 
     @staticmethod
     def _fuzzy_match(
@@ -355,23 +260,7 @@ class LawVerifier:
         candidates: object,
     ) -> tuple[str | None, float]:
         """模糊比對法規名稱，回傳最佳匹配和相似度。"""
-        best_name: str | None = None
-        best_ratio = 0.0
-
-        for name in candidates:
-            # 優先檢查包含關係（短字串至少 2 字元才啟用，避免單字如「法」匹配所有法規）
-            shorter = min(len(target), len(name))
-            if shorter >= 2 and (target in name or name in target):
-                ratio = len(min(target, name, key=len)) / len(max(target, name, key=len))
-                ratio = max(ratio, 0.8)  # 包含關係至少給 0.8
-            else:
-                ratio = SequenceMatcher(None, target, name).ratio()
-
-            if ratio > best_ratio:
-                best_ratio = ratio
-                best_name = name
-
-        return best_name, best_ratio
+        return _fuzzy_match_impl(target, candidates)
 
 
 def format_verification_results(checks: list[CitationCheck]) -> str:
@@ -488,33 +377,10 @@ class RecentPolicyFetcher:
     def _parse_xml(data: bytes) -> list[dict]:
         """解析公報 XML，回傳 Record 字典清單。"""
         root = ET.fromstring(data)
-        records: list[dict] = []
-        for record_elem in root.iter("Record"):
-            rec: dict[str, str] = {}
-            for child in record_elem:
-                rec[child.tag] = child.text or ""
-            records.append(rec)
-        return records
+        return _parse_gazette_xml(root)
 
     @staticmethod
     def _filter_relevant(records: list[dict], query: str) -> list[dict]:
         """按關鍵字過濾公報記錄。"""
-        if not query:
-            return records[:10]
-
-        # 抽取關鍵字（去除常見停用詞）
         keywords = re.findall(r'[\u4e00-\u9fff]{2,}', query)
-        if not keywords:
-            return records[:10]
-
-        scored: list[tuple[int, dict]] = []
-        for rec in records:
-            title = rec.get("Title", "")
-            category = rec.get("Category", "")
-            text = f"{title} {category}"
-            score = sum(1 for kw in keywords if kw in text)
-            if score > 0:
-                scored.append((score, rec))
-
-        scored.sort(key=lambda x: x[0], reverse=True)
-        return [rec for _, rec in scored]
+        return _filter_relevant_records(records, query, keywords)
