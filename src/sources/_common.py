@@ -57,14 +57,25 @@ def request_with_proxy_bypass(
     method: str,
     /,
     *args: Any,
+    allow_ssl_fallback: bool = False,
     **kwargs: Any,
 ) -> requests.Response:
-    """Retry one direct request when env-configured proxies reject the connection."""
+    """Retry direct and optional SSL-fallback requests for brittle public endpoints."""
     request_fn = getattr(session, method)
-    try:
-        return request_fn(*args, **kwargs)
-    except requests.exceptions.ProxyError:
-        if not getattr(session, "trust_env", False):
-            raise
-        session.trust_env = False
-        return request_fn(*args, **kwargs)
+    request_kwargs = dict(kwargs)
+    bypassed_proxy = False
+    bypassed_ssl = False
+
+    while True:
+        try:
+            return request_fn(*args, **request_kwargs)
+        except requests.exceptions.ProxyError:
+            if bypassed_proxy or not getattr(session, "trust_env", False):
+                raise
+            session.trust_env = False
+            bypassed_proxy = True
+        except requests.exceptions.SSLError:
+            if bypassed_ssl or not allow_ssl_fallback or request_kwargs.get("verify") is False:
+                raise
+            request_kwargs["verify"] = False
+            bypassed_ssl = True

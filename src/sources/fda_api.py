@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import time
 from collections import deque
 from collections.abc import Iterable
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import urlencode, urljoin
 
 import requests
 
@@ -23,7 +24,7 @@ class FdaApiAdapter(BaseSourceAdapter):
     """Adapter for public Taiwan FDA notice listings."""
 
     SOURCE_AGENCY = "衛生福利部食品藥物管理署"
-    API_URL = "https://www.fda.gov.tw/tc/DataAction.aspx"
+    API_URL = "https://www.fda.gov.tw/DataAction"
     DEFAULT_FIXTURE_PATH = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "fda_api" / "notices.json"
 
     def __init__(
@@ -125,6 +126,7 @@ class FdaApiAdapter(BaseSourceAdapter):
             self.session,
             "get",
             self.api_url,
+            allow_ssl_fallback=True,
             params=self.query_params or None,
             headers=build_headers(accept="application/json, text/plain, */*"),
             timeout=self.timeout,
@@ -167,7 +169,7 @@ class FdaApiAdapter(BaseSourceAdapter):
 
     @classmethod
     def _extract_notice_id(cls, raw: dict[str, Any]) -> str:
-        return cls._extract_first_text(
+        explicit_id = cls._extract_first_text(
             raw,
             "Id",
             "ID",
@@ -178,6 +180,18 @@ class FdaApiAdapter(BaseSourceAdapter):
             "SerialNo",
             "No",
         )
+        if explicit_id:
+            return explicit_id
+
+        title = cls._extract_title(raw)
+        source_date = cls._extract_source_date(raw)
+        if not title:
+            return ""
+
+        seed = f"{source_date.isoformat() if source_date else 'unknown'}|{title}".encode("utf-8")
+        digest = hashlib.sha1(seed).hexdigest()[:10]
+        date_prefix = source_date.strftime("%Y%m%d") if source_date else "unknown"
+        return f"FDA-{date_prefix}-{digest}"
 
     @classmethod
     def _extract_title(cls, raw: dict[str, Any]) -> str:
@@ -187,7 +201,16 @@ class FdaApiAdapter(BaseSourceAdapter):
     def _extract_source_url(cls, raw: dict[str, Any]) -> str:
         value = cls._extract_first_text(raw, "Link", "link", "Url", "url", "DetailUrl", "detail_url", "Href", "href")
         if not value:
-            return ""
+            query: dict[str, str] = {}
+            title = cls._extract_title(raw)
+            source_date = cls._extract_source_date(raw)
+            if title:
+                query["keyword"] = title
+            if source_date is not None:
+                query_date = source_date.strftime("%Y/%m/%d")
+                query["startdate"] = query_date
+                query["enddate"] = query_date
+            return f"{cls.API_URL}?{urlencode(query)}" if query else cls.API_URL
         return urljoin(cls.API_URL, value)
 
     @classmethod
@@ -204,6 +227,7 @@ class FdaApiAdapter(BaseSourceAdapter):
             "ModifyDate",
             "modify_date",
             "公告日期",
+            "發布日期",
         ):
             value = raw.get(key)
             if not value:
@@ -225,9 +249,19 @@ class FdaApiAdapter(BaseSourceAdapter):
         title = cls._extract_title(raw)
         source_url = cls._extract_source_url(raw)
         published_at = cls._extract_source_date(raw)
-        summary = cls._extract_first_text(raw, "Summary", "summary", "Description", "description", "Content", "content")
+        summary = cls._extract_first_text(
+            raw,
+            "Summary",
+            "summary",
+            "Description",
+            "description",
+            "Content",
+            "content",
+            "內容",
+        )
         category = cls._extract_first_text(raw, "Category", "category", "Type", "type_name")
         doc_no = cls._extract_first_text(raw, "DocNo", "doc_no", "No", "NoticeNo", "SerialNo")
+        attachment_url = cls._extract_first_text(raw, "附檔連結")
 
         lines = [f"# {title}"]
         if published_at is not None:
@@ -238,6 +272,8 @@ class FdaApiAdapter(BaseSourceAdapter):
             lines.append(f"**公告編號**：{doc_no}")
         if source_url:
             lines.append(f"**原文連結**：{source_url}")
+        if attachment_url:
+            lines.append(f"**附檔連結**：{attachment_url.rstrip(',')}")
         if summary:
             lines.append(f"## 摘要\n{html_to_markdown(summary)}")
         return "\n\n".join(lines)
