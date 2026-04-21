@@ -641,11 +641,16 @@
 
 ## P0 — 阻斷性回歸（v4.3：指標 1 回綠·P0.AA 三連跳警報）
 
-### P0.V59-NEW — 🔴 ACL-free·v5.9 新增（2026-04-21 15:10；3 件 P0 + 3 件 P1）
+### P0.V59-NEW — 🔴 ACL-free·v5.9 新增（2026-04-21 15:10；**第三十七輪 15:38 校準重排**；3 件 P0 + 4 件 P1）
 
-- [ ] **P0.3-CORPUS-SCALE** 🟠 v5.9 P0 次位（30 分）— corpus 60 → 300；執行 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --prune-fixture-fallback`；驗 `find kb_data/corpus -name "*.md" | wc -l ≥ 150`
-- [ ] **P2-CHROMA-NEMOTRON-VALIDATE** 🟠 v5.9 P0 三位（60 分）— corpus ≥ 100 後跑 `gov-ai kb rebuild --only-real`（nvidia/llama-nemotron dim=2048）；交付 `docs/embedding-validation.md`（5 E2E 需求 top-K 真公文召回率 + dim 驗證 + cost）
-- [ ] **P0.1-FDA-LIVE-DIAG** 🟡 v5.9 P1（15 分）— `FdaApiAdapter` live fetch 斷線診斷：curl FDA openAPI endpoint + schema diff + auth check；若 endpoint 變更 → 修 adapter，否則降 P2
+> **v5.9 第三十七輪重排理由**：v5.9 header 下發 28 min 後 0 動 → 紅線 X 連 1 輪；corpus 60 / pytest 3728 / Spectra 80% 實測已錨；**P0.1-FDA-LIVE-DIAG 從 P1 升 P0 次位**（15 分診斷先於修法，解 corpus 300 三源之一路障）；**T-FAT-ROTATE-V2 刀 3 從 T 段搬到 V59 頂位可見**；**新增 T-BARE-EXCEPT-AUDIT + T9.6-REOPEN-v4 雙 P1**（code smell 盤點 + engineer-log 309 > 300 封存）。
+
+- [ ] **P0.3-CORPUS-SCALE** 🔴 **v5.9 P0 首位（30 分；連 1 輪 0 動；下輪必破）** — corpus 60 → 300；執行 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --prune-fixture-fallback`；驗 `find kb_data/corpus -name "*.md" | wc -l` ≥ 150
+- [ ] **P0.1-FDA-LIVE-DIAG** 🟠 **v5.9 P0 次位（第三十七輪升格；15 分）** — `FdaApiAdapter` live fetch 斷線診斷：curl FDA openAPI endpoint + schema diff + auth check；交付 `docs/fda-endpoint-probe.md`；若 endpoint 變更 → 修 adapter，否則降 P2
+- [ ] **T-FAT-ROTATE-V2（刀 3）** 🟠 **v5.9 P0 三位（45 分；第三十七輪從 T 段移上）** — 首刀鎖 `src/e2e_rewrite.py 492`；按 `rewrite / assemble / cli` 自然邊界拆成 `src/e2e_rewrite/{__init__,rewrite,assemble,cli}.py`；SOP 第 13 次擴散；`tests/test_e2e_rewrite.py` + `tests/integration/test_e2e_rewrite.py` import 契約守；次刀 `api-agents 488`、三刀 `middleware 469`
+- [ ] **P2-CHROMA-NEMOTRON-VALIDATE** 🟡 v5.9 P1（60 分；**等 corpus ≥ 100 後執行**）— `gov-ai kb rebuild --only-real`（nvidia/llama-nemotron dim=2048）；交付 `docs/embedding-validation.md`（5 E2E 需求 top-K 真公文召回率 + dim 驗證 + cost）
+- [ ] **T-BARE-EXCEPT-AUDIT** 🆕 **v5.9 P1 新增（第三十七輪；30 分）** — `rg "except Exception|except:" src/` 實測 118 處分佈 50 檔；高密度 3 檔 `src/api/routes/agents.py 9 / src/cli/org_memory_cmd.py 7 / src/cli/kb/stats.py 6` 至少一檔轉 typed except + `logger.warning`；避免 production logging 吞根因
+- [ ] **T9.6-REOPEN-v4** 🆕 **v5.9 P1 新增（第三十七輪；10 分）** — engineer-log 271 + v5.9 反思 ~38 = **309 > 300 hard cap**；封存 v5.4/v5.5/v5.6 段到 `docs/archive/engineer-log-202604f.md`；主檔留 v5.7/v5.8/v5.9
 - [ ] **P1-PCC-ADAPTER** 🟡 v5.9 P1（90 分）— `src/sources/pcc.py` 政府採購網 adapter；按 `base.py` 抽象實作 `list / fetch / normalize`；接入 `_adapter_registry`；≥ 3 fixture + 驗 `pytest tests/test_pcc_adapter.py -q`
 - [ ] **P0.1-MOHW-LIVE-DIAG** 🟡 v5.9 P2（15 分）— `MohwRssAdapter` live fetch 斷線診斷（同 FDA SOP）
 

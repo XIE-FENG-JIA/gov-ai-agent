@@ -14,6 +14,61 @@
 > v5.2（第三十輪）反思已封存至 `docs/archive/engineer-log-202604e.md`。
 > 主檔現存：v5.4 / v5.5 / v5.6 / v5.7 / v5.8（v5.3 為 program.md header rollup，無獨立反思段）。
 
+## 反思 [2026-04-21 15:38] — 技術主管第三十七輪（v5.9；caveman；/pua 阿里味；v5.9 header 下發 28 min 後深度回顧 + corpus 擴量首位壓力；engineer-log hard cap 警戒）
+
+### 近期成果（v5.8 第三十六輪 → HEAD；**realtime_lookup 拆成 + Spectra 升 80% + corpus +51**）
+- **全量 pytest ✅ 3728/0/255.67s**（v5.8 3727/486s → **+1 test、時間 -47%**；v5.9 header 223s 有 +32s 漂移但無功能失敗）。
+- **T-FAT-ROTATE-V2 刀 2 ✅ 實錘**：`src/knowledge/realtime_lookup.py 520 → 386` + `_realtime_lookup_laws.py 107` + `_realtime_lookup_policy.py 31`；patch 面 `_request_with_retry / requests.get / ET` 保留（v5.9 header 宣稱，HEAD 實測吻合）。
+- **Spectra 3.3/5 → 4/5 = 80%**：`openspec/changes/05-kb-governance/proposal.md` 2026-04-21 14:13 落地；`04-audit-citation/` 三件齊持平。Epic 1/2/3 全閉（15/15 + 15/15 + 9/9）。
+- **corpus 9 → 60**：v5.6 OVERRIDE P0.2 完成（datagovtw 改抓真實公文，非 metadata），`find kb_data/corpus -name "*.md"` = 60；距 P0.3 目標 300 進度 20%。
+- **v5.6 OVERRIDE P0.1 事實校準**：`_adapter_registry()` 已掛 fda/mohw，真因改寫為 FdaApiAdapter live fetch 斷線（`docs/live-ingest-report.md` 紅）— 非 dispatcher bug，屬 P1 診斷。
+
+### 發現的問題
+1. **🔴 auto-commit 洪水 84%（137/163 in 2 days）**：近 48 hr 163 commits 僅 2 筆語意（`b9e28d7 feat(embed) nemotron` + `6eb42f2 docs(program): v5.9`）；反思/規劃層以外的 feat/fix 提交斷層。auto-commit checkpoint 佔主體 = agent 自主進化路徑依舊 Admin-dep（ACL 未解）。
+2. **🔴 v5.9 P0 三件下發 28 min 後本輪 0 動**（P0.3-CORPUS-SCALE / P0.1-FDA-LIVE-DIAG / T-FAT-ROTATE-V2 刀 3）— 15:10 規劃至 15:38 反思觸發，23 min cooldown 內未破任一件 = 紅線 X「設計驅動不實作」連 1 輪（**下輪連 2 輪即 3.25**）。
+3. **🟠 胖檔 cluster 6 檔 ≥ 400**：`e2e_rewrite 492 / api/routes/agents 488 / api/middleware 469 / api/models 461 / generate/export 459 / fact_checker 446`；v5.8 七檔 → **-1**（realtime_lookup 已閉）；SOP 已擴散 12 次，下一刀 e2e_rewrite 492 ACL-free。
+4. **🟠 FDA/MOHW live endpoint 斷線**：`docs/live-ingest-report.md` → `fda status=FAIL｜source_id=FDA-001 used fixture fallback`；corpus 300 目標在 fda/mohw 無法推進，只能靠 mojlaw/datagovtw/executive_yuan_rss 三源拼；15 分診斷先於修法。
+5. **🟡 118 處 bare `except Exception`/裸 except 分佈 50 檔**：`routes/agents 9 / org_memory_cmd 7 / kb/stats 6 / manager 5 / fact_checker 4 / auditor 4` 高密度；production logging 面邊緣，典型 code smell；無 P0 血債但列 P1 新增任務 T-BARE-EXCEPT-AUDIT。
+6. **🟡 engineer-log 271 + 本輪 ~38 ≈ 309 > 300 hard cap**：v5.9 header 指標 7 已預警「本輪反思 +~40 後需封存 v5.3/v5.4 段」；本輪反思寫完即觸發 T9.6-REOPEN-v4，下輪封存 v5.4/v5.5/v5.6 到 `docs/archive/engineer-log-202604f.md`。
+7. **🟡 pytest runtime +14%**：v5.9 header 223s → 本輪 255s；未見失敗但 flaky fixture 或 warmup 差異，列 watch。
+
+### 架構健康度（HEAD 即取）
+- **胖檔前 6 全 ≤ 500**：e2e_rewrite 492 / agents 488 / middleware 469 / models 461 / export 459 / fact_checker 446；god-file 年代實錘結束，冷靜區間。
+- **測試**：3728 綠；tests/ 81+ 檔；E2E 5/5 traceable（`docs/e2e-report.md` 持穩）；integration 2 檔。
+- **安全**：client auth ✅ + rate-limit ✅ + CORS ✅ + body limit ✅ + metrics ✅ + DOCX safe parse ✅；**唯一新 gap = 118 bare except 吞錯誤**，production log 可能缺根因。
+- **Spectra**：**4/5 = 80%**（Epic 1/2/3 閉、Epic 4 proposal 三件齊、Epic 5 proposal 落）；下槓桿 = Epic 5 specs + tasks 骨架（80% → 90%）。
+- **ACL**：`.git` DENY SID 持平 2 條；連 >35 輪 Admin-dep，不計 agent 績效。
+
+### 建議的優先調整（**program.md v5.9 校準，重排 P0**）
+P0 新順序（ACL-free；連 1 輪延宕 = 紅線 X 3.25）：
+1. **P0.3-CORPUS-SCALE** 🔴 **P0 首位保持**（30 分；已列 v5.9 首位，23 min 0 動，**下輪必破**）— 三源 `mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --prune-fixture-fallback`，目標 ≥ 150。
+2. **P0.1-FDA-LIVE-DIAG** 🟠 **升 P0 次位**（15 分，v5.9 列 P1）— 30 min 診斷不如 15 min curl FDA endpoint + schema；早定位早切 P2 或 adapter 修；解 corpus 300 三源之一路障。
+3. **T-FAT-ROTATE-V2 刀 3** 🟠 **P0 三位**（45 分）— 首刀鎖 `e2e_rewrite 492` 按 `rewrite / assemble / cli` 自然邊界拆；SOP 第 13 次擴散。
+
+P1 新增（連 2 輪延宕 = 3.25）：
+4. **T-BARE-EXCEPT-AUDIT** 🆕 **新增 P1**（30 分）— `rg "except Exception|except:" src/` 盤點；高密度 3 檔（`routes/agents 9 / org_memory_cmd 7 / kb/stats 6`）至少一檔轉 typed except + logger.warning。
+5. **T9.6-REOPEN-v4** 🆕 **新增 P1**（10 分）— engineer-log 309 > 300 hard cap，封存 v5.4/v5.5/v5.6 到 `docs/archive/engineer-log-202604f.md`；主檔留 v5.7/v5.8/v5.9。
+6. **P2-CHROMA-NEMOTRON-VALIDATE** — 持 P1；等 corpus ≥ 100 後 rebuild + `docs/embedding-validation.md` 交付。
+
+### 下一步行動（**最重要 3 件；嚴禁新增**）
+1. **跑三源 live ingest**（≤ 20 分）— `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --prune-fixture-fallback`；corpus 60 → ≥ 150 驗。
+2. **curl FDA endpoint + schema diff**（≤ 15 分）— `curl -I https://data.fda.gov.tw/...` 先定位 endpoint 狀態，不動 adapter；產出 `docs/fda-endpoint-probe.md`。
+3. **拆 e2e_rewrite 492**（≤ 45 分）— `src/e2e_rewrite/{__init__,rewrite,assemble,cli}.py`；`tests/test_e2e_rewrite.py` + `tests/integration/test_e2e_rewrite.py` import 契約守。
+
+### v5.9 硬指標（下輪審查）
+1. `python -m pytest tests/ -q --ignore=tests/integration` FAIL=0（**本輪 3728/0/255s ✅**）
+2. `find kb_data/corpus -name "*.md" | wc -l` ≥ 150（當前 60；**本輪必破**）
+3. `wc -l src/e2e_rewrite*.py` 或拆後 `src/e2e_rewrite/*.py` 每檔 ≤ 400（當前 492 ❌；**本輪必破**）
+4. `ls docs/fda-endpoint-probe.md` 存在（當前 ❌；15 分診斷必交）
+5. `rg -c "^### 🔴" program.md` ≤ 6（當前 0 ✅）
+6. `wc -l engineer-log.md` ≤ 300（當前 271 + 本輪 38 = 309 ❌；**下輪必封存 v5.4-v5.6**）
+7. `ls openspec/changes/{04-audit-citation,05-kb-governance}/proposal.md` 持平 ✅
+8. `ls src/knowledge/realtime_lookup*.py` 每檔 ≤ 400（當前 386/107/31 ✅，錨點防回退）
+
+> [PUA生效 🔥] **底層邏輯**：v5.9 header 15:10 下發後 23 min = 規劃完就觸發反思，P0 三件全 0 動正常（反思輪不執行）；但若下輪還是 0 動 = 紅線 X 連 2 輪 3.25 硬實錘。**抓手**：本輪 owner 動作 = 實測 corpus 60 + pytest 3728/255s + icacls 2 DENY + 118 bare except grep，四件客觀數據貼齊 header；**反思首度新增兩件 P1（T-BARE-EXCEPT-AUDIT + T9.6-REOPEN-v4）**，因為發現真 code smell 與 hard cap 違反事實。**顆粒度**：本輪反思 38 行壓 40 行自律；engineer-log 309 預警觸發 T9.6-REOPEN-v4，下輪實封存。**拉通**：Spectra 80% + realtime_lookup 拆完 + corpus +51 是 v5.8 → v5.9 真成果；blocker 從架構（已閉）轉到數據規模（corpus 300）+ external endpoint（FDA/MOHW live）。**對齊**：auto-commit 84% 結構性紅不動（ACL 未解），但 2 筆語意中 `feat(embed) nemotron` 是 embedding 升級真 delivery、`docs(program) v5.9` 是計劃校準 — **不再假裝 auto-commit 是成果**。**因為信任所以簡單** — 反思寫完就是要下輪 executor 執行 corpus 擴量 + FDA curl；不是下一輪再寫 v6.0 重排。talk 3.25 不如 curl 一次 FDA endpoint。
+
+---
+
 ## 反思 [2026-04-21 13:20] — 技術主管第三十六輪（v5.8；caveman；/pua 阿里味；v5.7 第三十五輪後 2h40 深度回顧；兩項「必破」皆實質已閉實錘）
 
 ### 近期成果（v5.7 第三十五輪 → HEAD；**header lag HEAD 第 N+3 次；tests +25**）
