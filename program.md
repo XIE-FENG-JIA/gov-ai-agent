@@ -134,7 +134,6 @@
 - [x] **T-PROGRAM-MD-ARCHIVE-REAL**（2026-04-22；本輪）— 頭部 v5.5-v6.4 歷史 header 真封存至 `docs/archive/program-history-202604g.md`；主檔收斂到 v7.0 單 header + 規則 + 活任務。
 - [ ] **T9.6-REOPEN-v5**（10 分；ACL-free）— engineer-log.md 336 > 300 hard cap；封存 v5.7/v5.8/v6.0 / 早於 v6.1 的反思到 `docs/archive/engineer-log-202604g.md`；主檔留 v6.1/v6.3/v6.4/v7.0。
 - [ ] **T-FAT-ROTATE-V2 刀 7**（40 分；ACL-free）— `src/api/models.py 461` 按 request/response schema 邊界拆 `src/api/models/{__init__, requests, responses}.py`；`from src.api.models import *` 匯入面守；`tests/test_api_*.py` 契約守。
-- [ ] **T-BARE-EXCEPT-AUDIT 刀 3**（45 分；ACL-free；三檔合併）— `src/web_preview/app.py 7` + `src/cli/kb/stats.py 6` + `src/knowledge/manager.py 5` = 18 處 / 3 檔；typed bucket + `logger.warning` SOP 複製 `routes/agents.py` v6.3 刀 2。
 - [ ] **T-PYTEST-RUNTIME-FIX**（30 分）— 根據 `docs/pytest-profile-v6.4.md` 前 30 慢點（`cite_cmd cp950`、KB search、agent timeout path、fetcher network-error retry）對症下藥；目標 runtime ≤ 500s；CI 體感 blocker。
 
 ### P1（連 2 輪延宕 = 3.25）
@@ -177,7 +176,7 @@
 
 ## 已完成
 
-- [x] **近期閉環（2026-04-22）** — `T-PROGRAM-MD-ARCHIVE`、`T-PROGRAM-MD-ARCHIVE-REAL`、`T-PYTEST-PROFILE`、`T-ROLLUP-SYNC`、`T-FAT-ROTATE-V2` 刀 3/4/5/6、`T9.6-REOPEN-v4`、`T-BARE-EXCEPT-AUDIT` 刀 1/2、`P1-PCC-ADAPTER`、`P0.1-FDA-LIVE-DIAG`、`P0.3-CORPUS-SCALE`、`EPIC5-TASKS-SPECS`、`T5.1`、`T5.2`、`T5.3`、`T5.4`。
+- [x] **近期閉環（2026-04-22）** — `T-PROGRAM-MD-ARCHIVE`、`T-PROGRAM-MD-ARCHIVE-REAL`、`T-PYTEST-PROFILE`、`T-ROLLUP-SYNC`、`T-FAT-ROTATE-V2` 刀 3/4/5/6、`T9.6-REOPEN-v4`、`T-BARE-EXCEPT-AUDIT` 刀 1/2/3、`P1-PCC-ADAPTER`、`P0.1-FDA-LIVE-DIAG`、`P0.3-CORPUS-SCALE`、`EPIC5-TASKS-SPECS`、`T5.1`、`T5.2`、`T5.3`、`T5.4`。
 - [x] **Openspec 收官** — 01-real-sources / 02-open-notebook-fork / 03-citation-tw-format / 04-audit-citation / 05-kb-governance 五件 proposal + tasks + specs 全齊；tasks 全 `[x]` = 15 + 15 + 9 + 8 + 8 = 55 件。
 - [x] **較早完成項** — 已移到 [docs/archive/program-history-202604g.md](docs/archive/program-history-202604g.md)。
 
