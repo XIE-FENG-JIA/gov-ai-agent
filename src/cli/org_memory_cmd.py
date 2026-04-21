@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 
 app = typer.Typer()
 console = Console()
+_ORG_MEMORY_LOAD_EXCEPTIONS = (ImportError, OSError, ValueError, RuntimeError)
+_ORG_MEMORY_WRITE_EXCEPTIONS = (OSError, ValueError, RuntimeError)
 
 
 def _get_org_memory() -> None:
@@ -35,8 +37,9 @@ def list_agencies(
     """列出所有已記錄的機構及其偏好摘要。"""
     try:
         om = _get_org_memory()
-    except Exception as e:
-        console.print(f"[red]無法載入組織記憶：{e}[/red]")
+    except _ORG_MEMORY_LOAD_EXCEPTIONS as exc:
+        logger.warning("載入組織記憶失敗（list）: %s", exc)
+        console.print(f"[red]無法載入組織記憶：{exc}[/red]")
         raise typer.Exit(1)
 
     if not om.preferences:
@@ -82,8 +85,9 @@ def show_agency(
     """顯示特定機構的詳細偏好設定。"""
     try:
         om = _get_org_memory()
-    except Exception as e:
-        console.print(f"[red]無法載入組織記憶：{e}[/red]")
+    except _ORG_MEMORY_LOAD_EXCEPTIONS as exc:
+        logger.warning("載入組織記憶失敗（show %s）: %s", name, exc)
+        console.print(f"[red]無法載入組織記憶：{exc}[/red]")
         raise typer.Exit(1)
 
     if name not in om.preferences:
@@ -131,8 +135,9 @@ def set_preference(
     try:
         om = _get_org_memory()
         om.update_preference(agency_name, key, value)
-    except Exception as e:
-        console.print(f"[red]設定失敗：{e}[/red]")
+    except _ORG_MEMORY_WRITE_EXCEPTIONS as exc:
+        logger.warning("更新組織記憶失敗（set %s/%s）: %s", agency_name, key, exc)
+        console.print(f"[red]設定失敗：{exc}[/red]")
         raise typer.Exit(1)
 
 
@@ -150,8 +155,9 @@ def add_term(
         terms[old_term] = new_term
         om.update_preference(agency_name, "preferred_terms", terms)
         console.print(f"[green]已新增：「{old_term}」-> 「{new_term}」[/green]")
-    except Exception as e:
-        console.print(f"[red]設定失敗：{e}[/red]")
+    except _ORG_MEMORY_WRITE_EXCEPTIONS as exc:
+        logger.warning("更新組織記憶失敗（add-term %s）: %s", agency_name, exc)
+        console.print(f"[red]設定失敗：{exc}[/red]")
         raise typer.Exit(1)
 
 
@@ -164,16 +170,18 @@ def export_memory(
     """匯出所有機構記憶為 JSON 檔案。"""
     try:
         om = _get_org_memory()
-    except Exception as e:
-        console.print(f"[red]無法載入組織記憶：{e}[/red]")
+    except _ORG_MEMORY_LOAD_EXCEPTIONS as exc:
+        logger.warning("載入組織記憶失敗（export）: %s", exc)
+        console.print(f"[red]無法載入組織記憶：{exc}[/red]")
         raise typer.Exit(1)
 
     try:
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(om.preferences, f, ensure_ascii=False, indent=2)
         console.print(f"[green]已匯出 {len(om.preferences)} 個機構的記憶至：{output_path}[/green]")
-    except OSError as e:
-        console.print(f"[red]匯出失敗：{e}[/red]")
+    except (OSError, TypeError, ValueError) as exc:
+        logger.warning("匯出組織記憶失敗（%s）: %s", output_path, exc)
+        console.print(f"[red]匯出失敗：{exc}[/red]")
         raise typer.Exit(1)
 
 
@@ -182,8 +190,9 @@ def report() -> None:
     """顯示機構記憶統計報告。"""
     try:
         om = _get_org_memory()
-    except Exception as e:
-        console.print(f"[red]無法載入組織記憶：{e}[/red]")
+    except _ORG_MEMORY_LOAD_EXCEPTIONS as exc:
+        logger.warning("載入組織記憶失敗（report）: %s", exc)
+        console.print(f"[red]無法載入組織記憶：{exc}[/red]")
         raise typer.Exit(1)
 
     report_text = om.export_report()
@@ -210,7 +219,7 @@ def org_memory_search(
             continue
         try:
             content = fp.read_text(encoding="utf-8")
-        except Exception as exc:
+        except (OSError, UnicodeDecodeError) as exc:
             logger.warning("讀取機構記憶檔案 %s 失敗：%s", fp.name, exc)
             continue
         matched_lines = [
