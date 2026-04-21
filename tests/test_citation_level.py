@@ -449,3 +449,47 @@ class TestCitationFormatter:
 
         assert "[^1]:" not in block
         assert "[^2]: [Level B] 來源二" in block
+
+
+class TestCitationChecker:
+    """Repo-owned citation checker seam tests."""
+
+    def test_check_passes_traceable_citations(self):
+        from src.agents.citation_checker import CitationChecker
+
+        checker = CitationChecker()
+        result = checker.check(
+            "依據《行政程序法》辦理[^1]。\n\n"
+            "### 參考來源 (AI 引用追蹤)\n"
+            "[^1]: [Level A] 行政程序法 | URL: https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0010004"
+        )
+
+        assert result.agent_name == "Citation Checker"
+        assert result.issues == []
+        assert result.score > 0.9
+
+    def test_check_flags_unparseable_reference_block(self):
+        from src.agents.citation_checker import CitationChecker
+
+        checker = CitationChecker()
+        result = checker.check(
+            "依據《行政程序法》辦理[^1]。\n\n"
+            "### 參考來源 (AI 引用追蹤)\n"
+            "[^1] 行政程序法"
+        )
+
+        assert any("無法解析" in issue.description for issue in result.issues)
+        assert result.has_errors
+
+    def test_check_flags_untraceable_reference_entry(self):
+        from src.agents.citation_checker import CitationChecker
+
+        checker = CitationChecker()
+        result = checker.check(
+            "依據《行政程序法》辦理[^1]。\n\n"
+            "### 參考來源 (AI 引用追蹤)\n"
+            "[^1]: [Level A] 行政程序法"
+        )
+
+        assert any("不可追溯" in issue.description for issue in result.issues)
+        assert result.has_errors

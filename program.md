@@ -1382,7 +1382,7 @@
 
 ## Epic 4 — 審查層加「溯源完整性」
 
-- [ ] **T4.1** `src/agents/citation_checker.py`（新）
+- [x] **T4.1** `src/agents/citation_checker.py`（新；2026-04-21 11:27）— 已落 repo-owned citation traceability seam；整合 `check_citation_level` / `check_evidence_presence` / `check_citation_integrity`，並對「參考來源無法解析」「缺少 URL/Hash」直接報錯；驗證 `python -m pytest tests/test_citation_level.py tests/test_validators.py -q` = 111 passed
 - [ ] **T4.2** `src/agents/fact_checker.py` 強化：引文句對照 `kb_data/regulations/`
 - [ ] **T4.3** `src/agents/auditor.py` 整合 2 checker
 
@@ -1416,6 +1416,7 @@
   - **完成（2026-04-21 01:47）**：`openspec/changes/03-citation-tw-format/{proposal.md,tasks.md,specs/citation/spec.md}` 已齊，`spectra analyze 03-citation-tw-format` = 0 findings；Epic 3 規格鍊閉環。
 - [x] **T7.1.d** `04-audit-citation`（Epic 4）
   - **完成（2026-04-21 10:59）**：`openspec/changes/04-audit-citation/{proposal.md,tasks.md,specs/audit/spec.md}` 已齊；Epic 4 現在有正式 proposal、requirements 與 task mapping，可直接接 `T4.1-T4.4` 實作。
+- [x] **T4.1（2026-04-21）** citation checker seam：`src/agents/citation_checker.py` 已落；會對 citation level / evidence presence / integrity 與 reference traceability（URL/Hash）做 repo-owned 檢查，`python -m pytest tests/test_citation_level.py tests/test_validators.py -q` = 111 passed
 - [x] **T7.2** → 已升 P1.2（v2.4 閉環）
 - [ ] **T7.3** `engineer-log.md` 進版控 + 每輪反思 append 規範
 - [x] **T7.4（v3.8 NEW）✅ ACL-free** Spectra coverage 補洞：兩個 change 的 spec requirement → tasks.md 對應

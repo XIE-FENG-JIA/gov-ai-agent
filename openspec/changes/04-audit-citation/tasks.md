@@ -8,12 +8,13 @@
   Validation: `spectra analyze 04-audit-citation`
   Commit: `docs(spec): bootstrap citation audit change`
 
-- [ ] **T4.1** Add a repo-owned `src/agents/citation_checker.py` seam for
+- [x] **T4.1** Add a repo-owned `src/agents/citation_checker.py` seam for
   citation traceability review.
   Requirements:
   - Citation audit stays repo-owned and source-grounded
   Validation: `pytest tests/test_citation_level.py tests/test_validators.py -q`
   Commit: `feat(agents): add citation checker seam`
+  - **完成（2026-04-21 11:27）**：新增 `src/agents/citation_checker.py`，以 repo-owned 規則檢查 citation level / evidence presence / citation integrity，並補 traceability guard：參考來源定義無法解析或缺少 `URL/Hash` 時直接報錯；同步匯出 `CitationChecker` 並補 `tests/test_citation_level.py` seam 測試。驗證 `python -m pytest tests/test_citation_level.py tests/test_validators.py -q` = 111 passed
 
 - [ ] **T4.2** Strengthen `src/agents/fact_checker.py` so legal-claim review
   consumes repo evidence and `realtime_lookup` results without silently
