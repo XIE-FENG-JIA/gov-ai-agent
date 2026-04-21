@@ -71,6 +71,16 @@ Anti-bloat guard：待辦 > 20 禁新增，待辦 > 80 進化輪 skip（`auto-en
 - 目前 `fast`（實測穩定）
 - 省 quota 改 `model_reasoning_effort medium` / `cooldown 延長` 不動 tier
 
+### 4. auto-engineer keeper 誤判 stale（已於 2026-04-22 熱修）
+- 根因 1：`scripts/auto-engineer-keeper.sh` 原本只看「最後 log / state 更新」，base stale threshold 只有 600s；但 `codex` 一輪常跑 20-45 分，健康中的 round 會被誤判成 dead
+- 根因 2：keeper 若被 `C:\Windows\System32\bash.exe`（WSL bash）拉起，讀不到 Windows 專案路徑，`state` 解析會失敗並 fallback 成 epoch 0，直接出現超大 age（例：`1776798967s`）
+- 症狀：同一專案同時出現多條 `auto-engineer.sh "D:/.../公文ai agent"`；`program.md` 被多 worker 輪流重排，剩餘任務數會假性卡住或回彈
+- 已套修補：
+  - `D:/Users/Administrator/Desktop/公司/auto-dev/auto-engineer.sh` 新增輪內 heartbeat（`reflect/evolve/execute` 每 60s 刷新 `.auto-engineer.state.json`）
+  - `D:/Users/Administrator/Desktop/公司/auto-dev/scripts/auto-engineer-keeper.sh` 改為優先讀 `state` heartbeat，並對 `codex` 套 `project cooldown + 1800s` grace
+  - keeper log 會輸出 `source=state|log` 與 `threshold=`，方便直接看判活依據
+- 修後觀察：round 106-110 正常推進，剩餘任務 `30 -> 27 -> 26 -> 24 -> 23`；keeper 已能寫出 `alive (age=359s, source=state, threshold=2700s)`
+
 ---
 
 ## 🛠 關鍵檔案路徑
@@ -93,10 +103,12 @@ Anti-bloat guard：待辦 > 20 禁新增，待辦 > 80 進化輪 skip（`auto-en
 
 auto-dev 工具：D:/Users/Administrator/Desktop/公司/auto-dev/
   auto-engineer.sh                 ← 主 loop（IDLE/FAIL 分離 + anti-bloat guard）
+                                    2026-04-22 hotfix：輪內 heartbeat（避免 keeper 誤判）
   scripts/rescue-daemon.sh         ← 通用 ACL 救火 + watcher
   scripts/gov-ai-auto-commit.sh    ← Admin 代 commit
   scripts/reconcile-results.sh     ← BLOCKED-ACL → PASS-RESCUED 對帳
   scripts/auto-engineer-keeper.sh  ← auto-engineer liveness 守護
+                                    2026-04-22 hotfix：state heartbeat 優先 + codex 長輪 grace
   scripts/copilot-engineer-loop.sh ← Copilot 批次 agent（暫停）
   docs/troubleshooting-acl.md      ← ACL 手冊
   watchdog.conf                    ← 3 專案監控清單（gov-ai 在列）
@@ -129,6 +141,24 @@ nohup bash scripts/rescue-daemon.sh >/dev/null 2>&1 & disown
 nohup bash scripts/auto-engineer-keeper.sh >/dev/null 2>&1 & disown
 nohup bash scripts/gov-ai-status-loop.sh >/dev/null 2>&1 & disown
 # auto-engineer 由 keeper 自動 respawn
+```
+
+### keeper / duplicate worker 受控清場
+```powershell
+$state = Get-Content 'D:\Users\Administrator\Desktop\公文ai agent\.auto-engineer.state.json' | ConvertFrom-Json
+$keepPid = [int]$state.pid
+
+# 清掉同專案的舊 auto-engineer，只保留 state 指向的主進程
+Get-CimInstance Win32_Process |
+  Where-Object { $_.CommandLine -like '*auto-engineer.sh*公文ai agent*' } |
+  ForEach-Object {
+    if ($_.ProcessId -ne $keepPid) { cmd /c "taskkill /PID $($_.ProcessId) /T /F" }
+  }
+
+# 注意：keeper 必須用 Git Bash 啟動，不要用 C:\Windows\System32\bash.exe
+Remove-Item 'C:\Users\Administrator\.auto-engineer-keeper.pid' -Force -ErrorAction SilentlyContinue
+Start-Process -FilePath 'C:\Program Files\Git\bin\bash.exe' `
+  -ArgumentList '-lc', 'cd /d/Users/Administrator/Desktop/公司/auto-dev && ./scripts/auto-engineer-keeper.sh'
 ```
 
 ### ACL 一次清（Admin bash elevated 才能）

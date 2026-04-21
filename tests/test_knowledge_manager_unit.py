@@ -172,6 +172,19 @@ class TestInit:
         assert mgr._available is False
         assert mgr.client is None
 
+    def test_init_chromadb_collection_config_key_error(self, mock_llm):
+        """損壞的 persisted collection config 應降級，不應向外拋 KeyError。"""
+        from src.knowledge.manager import KnowledgeBaseManager
+        import src.knowledge.manager as mgr_module
+
+        mock_client = MagicMock()
+        mock_client.get_or_create_collection.side_effect = KeyError("_type")
+        mgr_module.chromadb.PersistentClient = MagicMock(return_value=mock_client)
+
+        mgr = KnowledgeBaseManager("/tmp/test", mock_llm)
+        assert mgr._available is False
+        assert mgr.client is None
+
 
 # =====================================================================
 # is_available / get_stats

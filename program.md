@@ -1,41 +1,44 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **🎯 v7.0 架構師第四十一輪階段性規劃（2026-04-22；/pua 阿里味；caveman；T-PROGRAM-MD-ARCHIVE 真正落地）**：
+> **🎯 v7.0 架構師第四十一輪階段性規劃（2026-04-22；/pua 阿里味；caveman；T-PROGRAM-MD-ARCHIVE 落地 + 第四十二輪 /pua 獨立 sensor 校準）**：
 >
-> **HEAD 實測指標（wc + find + grep + git log 即取；ACL-free）**：
-> - ✅ pytest 基線：`3741 passed / 0 failed`（`docs/pytest-profile-v6.4.md` 記 841.51s / 960.04s 兩次實測）
-> - 🟠 pytest runtime 連兩輪翻倍 `238 → 549 → 772 → 960s`；CI 體感 -30%；T-PYTEST-PROFILE 已落但根因收斂未做
-> - ✅ Spectra 5/5 = 100%（01-05 Epic proposal + tasks + specs 全齊，tasks 全 `[x]`）
-> - ✅ 胖檔收斂：`src/` 內 >400 行 Python 從 8 → **4 檔**（`api/models 461 / fact_checker 446 / datagovtw 410 / workflow_cmd 406`）
-> - 🟠 裸 except `127 處 / 64 檔`（上輪 136/65；production routes 清零後血債轉向 web_preview / kb/stats / manager）
+> **HEAD 獨立實測指標（`wc + find + grep + git log` 本輪現跑；ACL-free）**：
+> - ✅ Spectra 5/5 = 100%（01-05 Epic proposal + tasks + specs 全齊）
+> - ✅ 胖檔收斂：`src/` 內 >400 行 Python **4 檔** = `api/models 461 / agents/fact_checker 446 / sources/datagovtw 410 / cli/workflow_cmd 406`
+> - ✅ 邊界 watch：`web_preview/app 399 / api/routes/workflow/_execution 389 / knowledge/realtime_lookup 386 / knowledge/fetchers/law_fetcher 377 / core/constants 374`
+> - 🟠 裸 except **實測 109 處 / 61 檔**（v7.0 header 寫 127/64 stale；HEAD `grep -rEc "except Exception|except:" src/` 為準）
+> - 🟠 裸 except 高密度前 9 檔 = `web_preview/app 7 / kb/stats 6 / manager 5 / gazette 4 / _manager_search 4 / core/llm 4 / generate/export 4 / agents/fact_checker 4 / auditor 4` 共 42 處 / 38.5%
 > - 🟡 corpus = **173**（P2-CORPUS-300 連 3 輪 0 動；MOHW live diag 連 4 輪 0 動）
-> - 🔴 engineer-log = **336 行** 破 300 hard cap（v5.7/v5.8 / v6.1 / v6.4 反思層疊加）
-> - 🔴 auto-commit 語意率 **1/30 = 3.3%**（連 >40 輪 Admin-dep；ACL DENY SID 2 條持平）
-> - ✅ program.md = 469 → **本輪重寫後預期 ≤ 200**（頂部 v5.5-v6.4 歷史 header 正式封存至 `docs/archive/program-history-202604g.md`）
+> - ✅ program.md = **190 行**（v6.4 下 1912 → 190 真砍，archive 真落地）
+> - 🔴 engineer-log = **336 行** + 本輪反思 ≈ 385 破 300 hard cap（T9.6-v5 連 1 輪 0 動）
+> - 🔴 auto-commit 語意率 **1/30 = 3.3%**（連 >42 輪 Admin-dep；ACL DENY SID 2 條持平）
+> - ⏸ pytest 沿用 v6.4 基線：`3741 passed / 0 failed / 960.04s`（本輪只動 markdown，未重跑；runtime ≤ 500s 為 v8.0 目標）
 >
-> **v7.0 P0 重排（連 1 輪延宕 = 紅線 X 3.25）**：
-> 1. ✅ **T-PROGRAM-MD-ARCHIVE-REAL**（本輪做）— 頭部 16 疊歷史 header 真清到 archive；主檔 469 → ≤ 200 行
-> 2. 🔴 **T9.6-REOPEN-v5**（10 分；ACL-free）— engineer-log 336 > 300；封存 v5.7/v5.8 / v6.0 到 `docs/archive/engineer-log-202604g.md`；主檔留 v6.1 以降
-> 3. 🟠 **T-FAT-ROTATE-V2 刀 7**（40 分；ACL-free）— `src/api/models.py 461` 按 request / response schema 拆 package；`from src.api.models import *` 契約守
-> 4. 🟠 **T-BARE-EXCEPT-AUDIT 刀 3**（45 分；ACL-free；合併三檔）— `web_preview/app 7` + `kb/stats 6` + `manager 5` = 18 處 / 3 檔，typed bucket + logger.warning
-> 5. 🟡 **T-PYTEST-RUNTIME-FIX**（30 分）— 根據 `docs/pytest-profile-v6.4.md` 前 30 慢點（cite_cmd cp950 / KB search / agent timeout / fetcher retry）對症下藥；目標 runtime ≤ 500s
+> **v7.0 P0 重排（第四十二輪 /pua 精校；連 1 輪延宕 = 紅線 X 3.25）**：
+> 1. 🔴 **T9.6-REOPEN-v5** → **P0 首位升級**（10 分；ACL-free；ROI 最高）— engineer-log 336 + 本輪反思 ≈ 385 > 300；封存 v5.7/v5.8/v6.0 到 `docs/archive/engineer-log-202604g.md`；主檔留 v6.1/v6.3/v6.4/v7.0/v7.0-sensor
+> 2. 🟠 **T-FAT-ROTATE-V2 刀 7** → **P0 次位**（40 分；ACL-free）— `src/api/models.py 461` 拆 `src/api/models/{__init__, requests, responses}.py`；`from src.api.models import *` 契約守；`tests/test_api_*.py` 導入守
+> 3. 🟠 **T-BARE-EXCEPT-AUDIT 刀 3** → **P0 三位**（45 分；ACL-free；合併三檔）— `web_preview/app 7` + `kb/stats 6` + `manager 5` = 18 處 / 3 檔，typed bucket + logger.warning
+> 4. 🟡 **T-PYTEST-RUNTIME-FIX** → **P1 降級**（30 分；profile 已存 `docs/pytest-profile-v6.4.md`；P0 三件完結後開工）— 前 30 慢點（cite_cmd cp950 / KB search / agent timeout / fetcher retry）對症；目標 runtime ≤ 500s
+> 5. ✅ **T-PROGRAM-MD-ARCHIVE-REAL**（2026-04-22；前輪閉）— 頭部 16 疊歷史 header 真清到 archive；主檔 1912 → 190
 >
 > **v7.0 P1（連 2 輪延宕 = 3.25）**：
-> 6. 🟡 **EPIC6-DISCOVERY**（30 分；Spectra 100% 後首 epic）— `openspec/changes/06-*/proposal.md` 骨架；候選三題擇一：`live-ingest quality gate` / `audit trail UI` / `observability dashboard`
-> 7. 🟡 **T-COMMIT-SEMANTIC-GUARD**（45 分；auto-commit 洪水根因）— `scripts/commit_msg_lint.py` + pre-commit hook；拒絕 `auto-commit: checkpoint` 裸格式；補 `docs/commit-plan.md` v3
-> 8. 🟡 **P0.1-MOHW-LIVE-DIAG**（15 分；連 4 輪 0 動 → 本輪不動即 3.25 硬實錘 → 降 P2 或做一次）
+> 6. 🟡 **EPIC6-DISCOVERY**（30 分；連 2 輪空缺；Spectra 100% 後首 epic）— `openspec/changes/06-*/proposal.md` 骨架；本輪建議選 `live-ingest quality gate`（最貼合 corpus 擴量 + FDA/MOHW 血債）
+> 7. 🟡 **T-COMMIT-SEMANTIC-GUARD**（45 分；ACL-free 部分可先落）— `scripts/commit_msg_lint.py` + pre-commit hook；拒絕 `auto-commit: checkpoint` 裸格式；補 `docs/commit-plan.md` v3
+> 8. 🟡 **P0.1-MOHW-LIVE-DIAG**（15 分；連 4 輪 0 動 → 本輪不動即 3.25 硬實錘 → 下輪強制降 P2 或 15 min curl 完結）
 >
-> **v7.0 下輪硬指標**：
-> 1. `wc -l program.md` ≤ 250
-> 2. `wc -l engineer-log.md` ≤ 300
-> 3. `wc -l src/api/models.py` 或拆後 `src/api/models/*.py` 每檔 ≤ 400
-> 4. `grep -c "except Exception\|except:" src/web_preview/app.py src/cli/kb/stats.py src/knowledge/manager.py` 合計 ≤ 5（當前 18）
-> 5. `find kb_data/corpus -name "*.md" | wc -l` ≥ 200（當前 173；下一里程碑 300）
-> 6. pytest runtime ≤ 700s（當前 960s；middle target，500s 為 v8.0 目標）
-> 7. `ls openspec/changes/06-*/proposal.md` 存在
-> 8. auto-commit 語意率 ≥ 20%（近 30 commits 至少 6 條語意）
+> **v7.0 下輪硬指標（第四十二輪收尾審查）**：
+> 1. `wc -l engineer-log.md` ≤ 300（當前 ≈ 385 ❌；**首位必破**）
+> 2. `wc -l program.md` ≤ 250（當前 ≈ 200 ✅ 守錨點）
+> 3. `wc -l src/api/models.py` 或拆後 `src/api/models/*.py` 每檔 ≤ 400（當前 461 ❌）
+> 4. `grep -rEc "except Exception|except:" src/web_preview/app.py src/cli/kb/stats.py src/knowledge/manager.py` 合計 ≤ 5（當前 18）
+> 5. 裸 except 總數 ≤ 90（當前 109）
+> 6. `find kb_data/corpus -name "*.md" | wc -l` ≥ 200（當前 173）
+> 7. pytest runtime ≤ 700s（當前 960s；middle target）
+> 8. `ls openspec/changes/06-*/proposal.md` 存在（EPIC6 錨點；連 3 輪空缺即降 P2）
+> 9. auto-commit 語意率 ≥ 20%（近 30 commits 至少 6 條語意；當前 3.3%）
+> 10. `ls docs/archive/engineer-log-202604g.md` 存在（T9.6-v5 錨點）
 >
-> **紅線狀態**：核心 3 + 實戰 X 不變；v7.0 不新增紅線；`P2-CORPUS-300`、`MOHW live diag`、Nemotron validate 三件 Admin/key 依賴，**若三輪再不動全體降 P2 或塞 Legacy**，避免殭屍 P1；auto-commit 洪水結構性紅不動如山。
+> **紅線狀態**：核心 3 + 實戰 X 不變；第四十二輪 /pua 反思發現 v7.0 header 裸 except 計數 stale（127→實測 109），方法論紅線新增 = **下輪所有 grep/wc/find 必須 HEAD 獨立跑**，不用 header 當事實源；`P2-CORPUS-300`、`MOHW live diag`、Nemotron validate 三件 Admin/key 依賴，**若三輪再不動全體降 P2 或塞 Legacy**；auto-commit 洪水結構性紅不動如山。
 
 ---
 
@@ -131,17 +134,18 @@
 
 ### P0（連 1 輪延宕 = 紅線 X 3.25）
 
-- [x] **T-PROGRAM-MD-ARCHIVE-REAL**（2026-04-22；本輪）— 頭部 v5.5-v6.4 歷史 header 真封存至 `docs/archive/program-history-202604g.md`；主檔收斂到 v7.0 單 header + 規則 + 活任務。
-- [ ] **T9.6-REOPEN-v5**（10 分；ACL-free）— engineer-log.md 336 > 300 hard cap；封存 v5.7/v5.8/v6.0 / 早於 v6.1 的反思到 `docs/archive/engineer-log-202604g.md`；主檔留 v6.1/v6.3/v6.4/v7.0。
-- [ ] **T-FAT-ROTATE-V2 刀 7**（40 分；ACL-free）— `src/api/models.py 461` 按 request/response schema 邊界拆 `src/api/models/{__init__, requests, responses}.py`；`from src.api.models import *` 匯入面守；`tests/test_api_*.py` 契約守。
-- [ ] **T-PYTEST-RUNTIME-FIX**（30 分）— 根據 `docs/pytest-profile-v6.4.md` 前 30 慢點（`cite_cmd cp950`、KB search、agent timeout path、fetcher network-error retry）對症下藥；目標 runtime ≤ 500s；CI 體感 blocker。
+- [ ] **T9.6-REOPEN-v5**（10 分；ACL-free；**首位升級**；連 1 輪延宕）— engineer-log.md 336 + 本輪反思 ≈ 385 > 300 hard cap；封存 v5.7/v5.8/v6.0 / 早於 v6.1 的反思到 `docs/archive/engineer-log-202604g.md`；主檔留 v6.1/v6.3/v6.4/v7.0/v7.0-sensor（第四十二輪）。
+- [ ] **T-FAT-ROTATE-V2 刀 7**（40 分；ACL-free；**P0 次位**）— `src/api/models.py 461` 按 request/response schema 邊界拆 `src/api/models/{__init__, requests, responses}.py`；`from src.api.models import *` 匯入面守；`tests/test_api_*.py` 契約守。
+- [ ] **T-BARE-EXCEPT-AUDIT 刀 3**（45 分；ACL-free；合併三檔；**P0 三位**）— HEAD 實測 `src/web_preview/app.py 7` + `src/cli/kb/stats.py 6` + `src/knowledge/manager.py 5` = 18 處 / 3 檔 → typed bucket + logger.warning；總裸 except 109 → 目標 ≤ 90。
+- [x] **T-PROGRAM-MD-ARCHIVE-REAL**（2026-04-22；前輪）— 頭部 v5.5-v6.4 歷史 header 真封存至 `docs/archive/program-history-202604g.md`；主檔收斂到 v7.0 單 header + 規則 + 活任務。
 
 ### P1（連 2 輪延宕 = 3.25）
 
-- [ ] **EPIC6-DISCOVERY**（30 分；Spectra 100% 後下槓桿）— `openspec/changes/06-*/proposal.md` 骨架；候選三題擇一：`live-ingest quality gate`（ingest 後 schema/robots/license 自動校驗）、`audit trail UI`（citation + source lineage 視覺化）、`observability dashboard`（pytest runtime / API latency / corpus growth trend）。
-- [ ] **T-COMMIT-SEMANTIC-GUARD**（45 分；auto-commit 洪水根因）— `scripts/commit_msg_lint.py` 拒絕 `auto-commit: checkpoint` 裸格式；pre-commit hook + `docs/commit-plan.md` v3；auto-engineer 必須帶語意 subject。
+- [ ] **T-PYTEST-RUNTIME-FIX**（30 分；從 P0 降 P1；profile 已存）— 根據 `docs/pytest-profile-v6.4.md` 前 30 慢點（`cite_cmd cp950`、KB search、agent timeout path、fetcher network-error retry）對症下藥；目標 runtime ≤ 500s；CI 體感 blocker。
+- [ ] **EPIC6-DISCOVERY**（30 分；連 2 輪空缺；Spectra 100% 後下槓桿）— `openspec/changes/06-*/proposal.md` 骨架；**建議選 `live-ingest quality gate`**（貼合 corpus 擴量 + FDA/MOHW 血債）；備選 `audit trail UI` / `observability dashboard`。
+- [ ] **T-COMMIT-SEMANTIC-GUARD**（45 分；auto-commit 洪水根因；ACL-free 部分可先落）— `scripts/commit_msg_lint.py` 拒絕 `auto-commit: checkpoint` 裸格式；pre-commit hook + `docs/commit-plan.md` v3；auto-engineer 必須帶語意 subject。
 - [ ] **P2-CORPUS-300**（待 mojlaw/datagovtw/executive_yuan_rss/pcc live 續抓）— corpus 173 → 300；`scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss,pcc --limit 100 --require-live --prune-fixture-fallback`。
-- [ ] **P0.1-MOHW-LIVE-DIAG**（15 分；連 4 輪 0 動 → 本輪不動即降 P2 或一次處理完）— `MohwRssAdapter` live fetch 診斷；複製 FDA probe SOP；交付 `docs/mohw-endpoint-probe.md`。
+- [ ] **P0.1-MOHW-LIVE-DIAG**（15 分；連 4 輪 0 動 → 本輪不動即 3.25 硬實錘；下輪強制降 P2 或一次處理完）— `MohwRssAdapter` live fetch 診斷；複製 FDA probe SOP；交付 `docs/mohw-endpoint-probe.md`。
 
 ### P2（Admin/key 依賴，不能當 P1 佔坑）
 

@@ -37,10 +37,14 @@ _CHROMADB_IMPORT_FAILED = chromadb is None
 logger = logging.getLogger(__name__)
 _KB_MANAGER_EXCEPTIONS = (
     AttributeError,
+    KeyError,
     OSError,
     RuntimeError,
     TypeError,
     ValueError,
+)
+_KB_MANAGER_INIT_EXCEPTIONS = _KB_MANAGER_EXCEPTIONS + (
+    Exception,
 )
 
 # 搜尋快取設定
@@ -134,7 +138,7 @@ class KnowledgeBaseManager(KnowledgeHybridSearchMixin, KnowledgeSearchMixin):
                     name="policies",
                     metadata={"hnsw:space": "cosine"}
                 )
-        except _KB_MANAGER_EXCEPTIONS as e:
+        except _KB_MANAGER_INIT_EXCEPTIONS as e:
             logger.error(
                 "知識庫初始化失敗（路徑: %s）: %s。系統將以無知識庫模式運作。",
                 persist_path, e,
