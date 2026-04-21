@@ -1,6 +1,63 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
-> **🚨 v5.5 USER OVERRIDE（2026-04-21 人工鎖，優先於任何 auto-engineer 自主重排）**：
+> **🎯 v5.7 架構師階段性規劃（2026-04-21 09:45；/pua 人工觸發；阿里味；caveman；USER OVERRIDE 人工解鎖）**：
+>
+> **🔓 OVERRIDE 解鎖條件達成**：
+> - T5.4 E2E ✅ PASS（2026-04-21 05:08，5/5 docx / citation_count=2 / source_doc_ids traceable）
+> - v5.5 OVERRIDE 條款「通過 T5.4 後才解鎖」已履約；人工本輪 /pua 觸發即為解鎖訊號
+> - 保留 OVERRIDE block 於下方作**歷史紀錄**；規則從「人工鎖」改為「架構師依 v5.7 正常排序」
+>
+> **HEAD 實測指標（wc + ls + grep + git log 即取）**：
+> - ✅ 指標 1（pytest 全綠）：v5.7 本輪重跑 **3702 passed / 0 failed / 674.55s**（v5.6 反思 3697 → **+5**；含 E2E 2 件）
+> - ❌ 指標 2（近 25 commits auto-commit ≤ 12）：**24/25** 持平紅（連 >33 輪 Admin-dep 結構性）
+> - ❌ 指標 3（.git DENY ACL = 0）：**2** 持平紅（連 >33 輪 Admin-dep）
+> - ✅ 指標 4（engineer-log ≤ 300 hard cap）：**181 行**（v5.6 追加後；本輪不再反思，維持綠）
+> - ✅ 指標 5（corpus 9 real / 0 fallback）：持平綠；`T-CORPUS-GUARD` regression 已落
+> - ✅ 指標 6（Epic 1/2/3 tasks 全閉）：15/15 + 15/15 + 9/9 持平綠
+> - ✅ 指標 7（紅線 ≤ 6）：`rg -c "^### 🔴" program.md` = 3 持平綠
+> - 🟠 指標 8（新胖七 ≤ 400）：`config_tools 585 / realtime_lookup 520 / e2e_rewrite 492 / api-agents 477 / middleware 469 / api-models 461 / generate-export 459 / workflow_cmd 406`；**八檔 > 400** 需輪拆（SOP 已寫好 10 次擴散）
+>
+> **v5.7 實測 6/8 PASS**（持平 v5.6；紅點仍 auto-commit / ACL 結構性 + 新胖八檔）
+>
+> **v5.7 事實校準（v5.4 header 過期項）**：
+> 1. `T9.6-REOPEN-v3`（P0.LOGARCHIVE-V3）**實質已閉** — engineer-log 181 ≤ 300 hard cap（v5.6 封存 v5.0/v5.1 到 `docs/archive/engineer-log-202604d.md` 後維持）
+> 2. `T-API-ROUTERS`（P0.ARCH-DEBT-NEW-CLUSTER）**實質已閉** — `api_server.py` 529 → **92 行 shim**；`src/api/app.py::create_app()` factory 承接組裝
+> 3. `T-INTEGRATION-GATE`（P1 v4.3 新增）**實質已閉** — `scripts/run_nightly_integration.{py,sh,ps1}` + `docs/integration-nightly.md` 已落（P0.INTEGRATION-GATE 同件已勾）
+> 4. v5.6 反思「api_server rate-limit 未補」= **錯誤**；實測 `src/api/middleware.py:108` 已落 rate-limiter + 5 處 header 注入；**真缺口 = client auth（HTTPBearer / API key）**
+>
+> **v5.7 P0 重排（ACL-free；連 1 輪延宕 = 紅線 X 3.25）**：
+> 1. **T-CLIENT-AUTH** 🔴（40 分；ACL-free）— `src/api/middleware.py` 或 `src/api/auth.py` 新增 HTTPBearer + `API_CLIENT_KEY` env；FastAPI `Depends(require_api_key)` 掛 `src/api/routes/{agents,workflow,knowledge}.py` 寫操作端點；健康檢查與 `/docs` 保開；`.env.example` 補 `API_CLIENT_KEY=` placeholder；`tests/test_api_auth.py` 覆蓋 401 / 200 / disabled fallback。**上線 blocker，v5.5 OVERRIDE 已標註為 D1**
+> 2. **P1.EPIC4-PROPOSAL** 🔴（40 分；ACL-free，升 P0）— `openspec/changes/04-audit-citation/{proposal.md,tasks.md,specs/audit/spec.md}` 首版；**連 8 輪 0 動 = 紅線 X「設計驅動不實作」邊緣**；Spectra 3/5 → 3.3/5 唯一槓桿
+> 3. **T-FAT-ROTATE-V2** 🟠（90 分；ACL-free，輪拆首刀）— v5.7 首刀砍 **`src/cli/config_tools.py 585`** → `config_tools/{__init__,show,edit,diagnose}.py`（SOP 第 11 次擴散）；本輪只鎖 1 檔，其餘 7 檔下輪再輪
+>
+> **v5.7 P1（連 2 輪延宕 = 3.25）**：
+> 4. **T-FAT-ROTATE-V2-NEXT** — 次輪鎖 `src/knowledge/realtime_lookup.py 520`、`src/e2e_rewrite.py 492`、`src/api/routes/agents.py 477` 擇一
+> 5. **P1.EPIC5-PROPOSAL** — `openspec/changes/05-kb-governance/` Epic 5 KB 治理 proposal（連 8 輪 0 動；Spectra 升 4/5）
+> 6. **P1.3 `.env` + litellm smoke** — ACL-gated；等人工填 `OPENROUTER_API_KEY` 後驗
+>
+> **v5.7 下輪硬指標（下輪審查）**：
+> 1. `python -m pytest tests/ -q --ignore=tests/integration` FAIL=0（當前 ✅ 3702/0）
+> 2. `grep -c "HTTPBearer\|API_CLIENT_KEY" src/api/*.py src/api/routes/*.py` ≥ 3（當前 **0 ❌**；本輪必破）
+> 3. `ls openspec/changes/04-audit-citation/proposal.md` 存在（當前 ❌；本輪必破）
+> 4. `wc -l src/cli/config_tools.py` 或拆後 `src/cli/config_tools/*.py` 每檔 ≤ 400（當前 585 ❌；本輪必破）
+> 5. `wc -l engineer-log.md` ≤ 300（當前 181 ✅）
+> 6. `rg -c "^### 🔴" program.md` ≤ 6（當前 3 ✅）
+> 7. `find kb_data/corpus -name "*.md"` = 9（持平 ✅）
+> 8. `ls tests/integration/test_e2e_rewrite.py scripts/run_e2e.py docs/e2e-report.md` 三檔齊（持平 ✅）
+>
+> **v5.6 → v5.7 變更摘要**：
+> - **OVERRIDE 解鎖**：T5.4 PASS + 人工 /pua = 解鎖雙條件齊；v5.5 OVERRIDE block 保留為歷史
+> - **事實校準**：3 項過期 `[ ]` 轉 ✅（T9.6-REOPEN-v3 / T-API-ROUTERS / T-INTEGRATION-GATE）
+> - **新 P0 三件**：T-CLIENT-AUTH（真 blocker，非 rate-limit）/ P1.EPIC4-PROPOSAL 升 P0（紅線 X 邊緣）/ T-FAT-ROTATE-V2（新胖 8 檔首刀）
+> - **Spectra 策略**：Epic 4 proposal 優先於 Epic 5（連 8 輪死水更重）
+> - **顆粒度**：本輪 header 約 50 行；引用 v5.6 反思事實不再重寫一輪反思
+> - **歷史保留**：v5.5/v5.4/v5.3… header 全部不動
+>
+> **紅線狀態**：核心 3 + 實戰 X 不變；v5.7 不新增紅線；「設計驅動不實作」子條款對 P1.EPIC4-PROPOSAL 連 8 輪 0 動加壓。
+
+---
+
+> **🚨 v5.5 USER OVERRIDE（2026-04-21 人工鎖；已於 v5.7 人工解鎖，保留歷史；優先於任何 auto-engineer 自主重排）**：
 >
 > **🔴 禁止事項（auto-engineer 違反即回滾）**：
 > 1. **禁新增 Epic / task**：進化輪禁止 `append` 新任務到 program.md（反思可，但僅重排不增加）
@@ -435,6 +492,55 @@
 
 ## P0 — 阻斷性回歸（v4.3：指標 1 回綠·P0.AA 三連跳警報）
 
+### P0.V57-CLIENT-AUTH — 🔴 ACL-free·v5.7 首位（40 分；真 blocker，非 rate-limit）
+
+- [ ] **T-CLIENT-AUTH** 🔴 inbound API 無驗證機制；v5.6 反思誤記「rate-limit 未補」，實測 `src/api/middleware.py:108` rate-limit 已落，**真缺口 = client auth**
+  - **底層邏輯**：T5.4 E2E 已驗通，Epic 上線前 blocker 只剩 client auth；`/agents/{rewrite,verify}`、`/knowledge/{upload,delete}`、`/workflow/{run,batch}` 寫端點任何人匿名即可打，生產部署即破
+  - **產出**：
+    - (a) `src/api/auth.py`（新檔 ≤ 120 行）：`HTTPBearer()` scheme + `require_api_key(credentials)` FastAPI `Depends`；讀 `API_CLIENT_KEY` env（multi-key 以 `,` 分隔）；env 空值 = dev mode 放行（記 warning）
+    - (b) `src/api/routes/{agents,workflow,knowledge}.py` 寫端點全掛 `Depends(require_api_key)`；`/health`、`/docs`、`/openapi.json` 保開放
+    - (c) `.env.example` 補 `API_CLIENT_KEY=` placeholder + 註解
+    - (d) `tests/test_api_auth.py`：覆蓋 401 無 header / 401 錯 key / 200 對 key / dev-mode 空 env 放行 / `/health` 匿名 200 五條
+    - (e) `docs/api-auth.md`（≤ 60 行）：`API_CLIENT_KEY=abc` 設定、`curl -H "Authorization: Bearer abc"` 範例、multi-key 輪換 SOP
+  - **驗 1**：`grep -rn "HTTPBearer\|require_api_key\|API_CLIENT_KEY" src/api/` ≥ 6 處
+  - **驗 2**：`python -m pytest tests/test_api_auth.py -q` ≥ 5 passed
+  - **驗 3**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` FAIL=0（新測加入後不破 3702）
+  - **延宕懲罰**：ACL-free 連 1 輪延宕 = 紅線 X 3.25（Epic 上線 blocker 不容拖）
+  - commit（ACL 解後）: `feat(api): enforce bearer api-key auth on write endpoints`
+
+### P0.V57-EPIC4-PROPOSAL — 🔴 ACL-free·v5.7 升 P0（40 分；連 8 輪 0 動紅線邊緣）
+
+- [ ] **P1.EPIC4-PROPOSAL** 🔴 v5.3 起列 P1 連 8 輪 0 動；「設計驅動不實作」子條款邊緣
+  - **底層邏輯**：Spectra 3/5 = 60% 死水連 8 輪；`openspec/changes/04-audit-citation/` 零檔 → T7.1.d 一直掛 `[ ]`；Epic 4 proposal 是**升格 4/5 = 80%** 的唯一槓桿
+  - **產出**：
+    - (a) `openspec/changes/04-audit-citation/proposal.md`：what/why/scope 三段；對齊既有 `src/agents/citation_checker.py` / `fact_checker.py` / `auditor.py`
+    - (b) `openspec/changes/04-audit-citation/tasks.md`：4-6 條（T4.1 citation_checker / T4.2 fact_checker 強化 / T4.3 auditor 整合 / T4.4 failure matrix）
+    - (c) `openspec/changes/04-audit-citation/specs/audit/spec.md`：citation 溯源完整性 SHALL 語氣 requirement
+  - **驗 1**：`ls openspec/changes/04-audit-citation/proposal.md` 存在
+  - **驗 2**：`grep -c "^- \[ \]" openspec/changes/04-audit-citation/tasks.md` ≥ 4
+  - **驗 3**：`spectra analyze 04-audit-citation` findings ≤ 3（可留 design.md 缺口）
+  - **延宕懲罰**：連 1 輪 0 動 = 紅線 X 3.25（從 P1 升 P0，不再給緩衝）
+  - commit（ACL 解後）: `feat(openspec): add 04-audit-citation change proposal + tasks + spec`
+
+### P0.V57-FAT-ROTATE-V2 — 🟠 ACL-free·v5.7 新（45 分；新胖八檔首刀）
+
+- [ ] **T-FAT-ROTATE-V2（刀 1）** 🟠 新胖八檔：`config_tools 585 / realtime_lookup 520 / e2e_rewrite 492 / api-agents 477 / middleware 469 / api-models 461 / generate-export 459 / workflow_cmd 406`；本輪只鎖最胖一檔
+  - **底層邏輯**：v5.4 四胖（workflow/api-factory/history/exporter）全閉後，新胖八檔接續冒頭；SOP（`docs/arch-split-sop.md`）已十連擴散，手指按 SOP 即可；**單輪只切 1 檔避免顆粒度漂移**
+  - **產出**：`src/cli/config_tools.py 585` → `src/cli/config_tools/{__init__,show,edit,diagnose}.py`
+    - `__init__.py`：Click group 相容錨點 + re-export；保留 `from src.cli.config_tools import app` import 相容
+    - `show.py`：`config show` subcommand（≤ 200 行）
+    - `edit.py`：`config edit` subcommand（≤ 200 行）
+    - `diagnose.py`：`config diagnose` subcommand + helpers（≤ 200 行）
+  - **驗 1**：`wc -l src/cli/config_tools/*.py` 每檔 ≤ 200
+  - **驗 2**：`python -m src.cli.main config --help` 列出原有子指令
+  - **驗 3**：`python -m pytest tests/ -q --no-header --ignore=tests/integration -k "config"` = 原 passed 數（不退）
+  - **驗 4**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` FAIL=0
+  - commit（ACL 解後）: `refactor(cli): split config_tools.py into package modules`
+
+- [ ] **T-FAT-ROTATE-V2（刀 2+）** 下輪再鎖 `realtime_lookup / e2e_rewrite / api-agents` 擇一；不升 P0
+
+
+
 > **v4.3 狀態（2026-04-20 18:45 技術主管第二十一輪深度回顧）**：P0.FF 回綠 `pytest tests/test_knowledge_manager_cache.py -q` = **19 passed / 56.73s**，AUTO-RESCUE d671661 已把 `KnowledgeBaseManager.__init__` 的 `PersistentClient(...)` + 三個 `get_or_create_collection(...)` 包進 `suppress_known_third_party_deprecations_temporarily()`；`pytest --co` 收集 **3660 tests** 持平；近 20 commits `auto-commit:` = **18 / 20（90%）** 未改善 ❌；`.git` DENY ACL = 2 持平 ❌；`kb_data/corpus/**/*.md` 9/9 real md 維持 ✅；`src/agents/editor.py` = **1065 行**（P0.AA 第三輪跳票）；`src/cli/kb.py` = **1614 行**；`src/cli/generate.py` = **1263 行**。**八指標 6/8 PASS（收回 +1 vs v4.2）**：指標 1 由紅轉綠。
 > **v4.3 升級 P0 優先序**：(1) **P0.AA editor.py 拆三** 🔴🔴 第三輪跳 = 紅線 5 雙連實錘 3.25 → (2) **P0.S-REBASE-APPLY** 本機實跑 `--apply` 或明示 EXIT_CODE=2 → (3) **P0.EE Epic 3 proposal** 啟動規格鏈 → (4) **P0.GG Windows gotchas** 連 2 輪 0 動 → (5) **T9.6-REOPEN** engineer-log 930 行 > 500 紅線 → (6) P0.FF-HOTFIX [x] / P0.S-REBASE [x] / P0.D / P0.T-LIVE（Admin-dep 末段 + 已閉項尾）。
 > **v4.3 新增紅線 8**：「**focused smoke 偷換全綠 = 3.25**」— focused smoke 108 passed 不等於 3660 tests 全綠；每輪驗收必跑全量 `pytest tests/ -q` 且 FAIL=0；在 Windows 用 `PYTHONUNBUFFERED=1 python -u -m pytest ... 2>&1 | tee` 防 output truncation。
@@ -451,13 +557,11 @@
 
 ### P0.LOGARCHIVE-V3 — 🔴 ACL-free·v5.2 首要（10 分；第四次封存 + hard cap 300）
 
-- [ ] **T9.6-REOPEN-v3** 🔴 v5.1 封存後 engineer-log 252 → **699 行** 單輪膨脹 +447 > 500 紅線；「單輪反思 ≤ 80」規則首輪即破 → 升級硬 cap 300
-  - **根因**：反思驅動治理迴圈 — 每輪把 drift / 藉口 / 檢討都貼進主檔，缺「反思字數守門」
-  - **修法**：(a) 主檔僅留最近 **2 輪** v5.x 反思（v5.1 + v5.2）；(b) v5.0 與前段搬至 `docs/archive/engineer-log-202604d.md`；(c) header 加 **hard cap 300** + 單輪反思 **40 行** 上限；(d) 破 cap 之輪下輪立即封存（不給第二次緩衝）
-  - **驗 1**：`wc -l engineer-log.md` ≤ 300
-  - **驗 2**：`ls docs/archive/engineer-log-202604d.md` 存在且 ≥ 150 行
-  - **驗 3**：主檔 header 含「hard cap 300」「單輪反思 ≤ 40 行」字樣
-  - **延宕懲罰**：ACL-free 連 1 輪延宕 = 紅線 X 3.25
+- [x] **T9.6-REOPEN-v3** ✅（v5.7 校準，2026-04-21 09:45）— engineer-log 已於 v5.4/v5.6 兩輪封存後維持 **181 行 ≤ 300 hard cap**
+  - **完成**：(a) `docs/archive/engineer-log-202604d.md` 已封存 v5.0+v5.1 區段；(b) 主檔 header 含「hard cap 300 + 單輪反思 ≤ 40 行」；(c) v5.2/v5.4/v5.5/v5.6 反思全數 ≤ 40 行自律
+  - **驗 1**：`wc -l engineer-log.md` = **181**（≤ 300 ✅）
+  - **驗 2**：`ls docs/archive/engineer-log-202604d.md` 已存在
+  - **驗 3**：主檔 header 含對應字樣 ✅
   - commit（ACL 解後）: `chore(log): fourth archive — enforce hard 300-line cap`
 
 ### P0.ARCH-DEBT-ROTATE — 🔴 ACL-free·v5.2 首要（60 分；v5.1 P1 輪值升 P0）
@@ -512,9 +616,9 @@
   - **驗 1**：`python -m pytest tests/test_template_cmd.py tests/test_agents.py tests/test_agents_extended.py tests/test_e2e.py tests/test_golden_suite.py tests/test_robustness.py -q --no-header` = **997 passed**
   - **驗 2**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3682 passed / 0 failed**
   - **行數**：`src/agents/template/engine.py 247`、`helpers.py 132`、`parser.py 74`、`src/cli/template_cmd/__init__.py 169`、`catalog.py 350`
-- [ ] **T-API-ROUTERS**（v5.0 列 P1；v5.2 drift 持平 529）— `api_server.py 529` FastAPI 單檔
-  - **拆法建議**：`src/api/routers/{generate, verify, health, kb}.py` + `api_server.py` 僅留 app factory
-  - **延宕懲罰**：未上線不急；連 3 輪 0 動 3.25
+- [x] **T-API-ROUTERS** ✅（v5.7 校準，2026-04-21 09:45）— `api_server.py` **529 → 92 shim**；`src/api/app.py::create_app()` 承接 FastAPI factory；`src/api/routes/{agents,health,knowledge,workflow}.py` 已拆
+  - **完成**：T-API-APP-FACTORY（v5.4 P0）已閉；api_server.py 92 行純 shim 保留 `from api_server import app` 與 `python api_server.py` 相容入口
+  - **驗**：`wc -l api_server.py` = **92**；`wc -l src/api/app.py` = 319
 - [x] **P0.VERIFY-DOCX-SCHEMA**（2026-04-21 03:34；v5.0 P1·v5.2 升 P0）— `src/document/citation_metadata.py` 對 DOCX custom properties 補 safe JSON list parse 與型別過濾；invalid / non-list payload 不再炸 `verify`
   - **完成**：`source_doc_ids` 僅接受 list 項並轉字串，`citation_sources_json` 僅接受 dict list；bad ZIP / bad XML / bad JSON 一律 graceful fallback
   - **驗 1**：`python -m pytest tests/test_export_citation_metadata.py -q --no-header` = **5 passed**
@@ -1115,8 +1219,8 @@
 
 ### P1 v5.3 新增（Spectra 對齊度 ＋ Epic 4 啟動）
 
-- [ ] **P1.EPIC4-PROPOSAL**（v5.3 新增；40 分鐘）✅ ACL-free·Epic 4 writer 改寫策略 openspec change 啟動
-  - **底層邏輯**：Spectra 對齊度卡 3/5 = 60% 連 5 輪不動；`openspec/changes/04-audit-citation/` 零檔 → T7.1.d 一直掛 `[ ]`；Epic 4 proposal 是**升格 4/5 = 80%** 的唯一槓桿
+- [~] **P1.EPIC4-PROPOSAL**（v5.3 新增；v5.7 升 P0.V57-EPIC4-PROPOSAL 獨立追蹤）— 連 8 輪 0 動；歷史視角保留
+  - **底層邏輯**：Spectra 對齊度卡 3/5 = 60% 連 8 輪不動；`openspec/changes/04-audit-citation/` 零檔 → T7.1.d 一直掛 `[ ]`；Epic 4 proposal 是**升格 4/5 = 80%** 的唯一槓桿
   - **產出**：(a) `openspec/changes/04-audit-citation/proposal.md`：what/why/scope 三段，對齊既有 `src/agents/citation_checker.py`（若無則新建 stub）/ `fact_checker.py` / `auditor.py`；(b) `tasks.md` 4-6 條（T4.1 citation_checker / T4.2 fact_checker 強化 / T4.3 auditor 整合 / T4.4 failure matrix）；(c) `specs/audit/spec.md`：citation 溯源完整性 requirement（SHALL 語氣）
   - **驗 1**：`ls openspec/changes/04-audit-citation/proposal.md` 存在
   - **驗 2**：`spectra analyze 04-audit-citation` findings ≤ 3（可留 design.md 缺口）
@@ -1133,13 +1237,9 @@
   - **驗 2**：`python -m pytest tests/ -q --no-header --ignore=tests/integration` = **3697 passed / 0 failed**
   - commit（ACL 解後）: `test(corpus): guard kb_data/corpus provenance (synthetic=false, fixture_fallback=false)`
 
-- [ ] **T-INTEGRATION-GATE**（v4.3 新增；20 分鐘）✅ ACL-free·nightly integration smoke gate 制度化
-  - **底層邏輯**：`tests/integration/test_sources_smoke.py` 有 `GOV_AI_RUN_INTEGRATION=1` gate，但無 nightly runner；live upstream 若壞 ≥1 週無人知
-  - **產出**：(a) `docs/integration-runner.md`：記錄本機 nightly cron SOP（Windows Task Scheduler / WSL cron / GitHub Actions nightly）；(b) `scripts/run_integration_gate.sh`（或 .ps1）：`GOV_AI_RUN_INTEGRATION=1 pytest tests/integration -m integration -q` 包 log 寫 `docs/integration-runner-log.md`
-  - **驗 1**：`wc -l docs/integration-runner.md` ≥ 30
-  - **驗 2**：`bash scripts/run_integration_gate.sh` 或 `.ps1` 本機可手跑（預設 skip 除非 env 開）
-  - **延宕懲罰**：ACL-free 連 2 輪延宕 = 3.25
-  - commit（ACL 解後）: `feat(scripts): add integration runner gate + SOP doc`
+- [x] **T-INTEGRATION-GATE** ✅（v5.7 校準，2026-04-21 09:45）— P0.INTEGRATION-GATE 同件已閉
+  - **完成**：`scripts/run_nightly_integration.{py,sh,ps1}` + `docs/integration-nightly.md`（≥ 40 行，含執行頻率 / 失敗通知 / 復原 SOP）；`GOV_AI_RUN_INTEGRATION=1 bash scripts/run_nightly_integration.sh --dry-run` 退 0
+  - **驗**：三檔齊 + doc ≥ 40 行 ✅
 
 - [x] **T2.3-PIN**（2026-04-21 08:37）✅ ACL-free·vendor/open-notebook commit pin
   - **底層邏輯**：`vendor/open-notebook` 目前以 `--depth 1` clone 無 pin；upstream 若 force-push 或刪 branch，本機 smoke 隨時炸；T2.3 資料層遷移前必須先 pin
