@@ -22,6 +22,25 @@ from src.knowledge.fetchers.constants import (
 
 logger = logging.getLogger(__name__)
 
+_GAZETTE_PARSE_EXCEPTIONS = (
+    ET.ParseError,
+    TypeError,
+    ValueError,
+    Exception,
+)
+_GAZETTE_ZIP_MEMBER_EXCEPTIONS = (
+    OSError,
+    ValueError,
+    zipfile.BadZipFile,
+    Exception,
+)
+_GAZETTE_PDF_EXCEPTIONS = (
+    OSError,
+    RuntimeError,
+    ValueError,
+    Exception,
+)
+
 
 def _category_to_collection(category: str) -> str:
     """依據公報 Category 分配目標集合。"""
@@ -64,7 +83,7 @@ class GazetteFetcher(BaseFetcher):
 
         try:
             records = self._parse_xml(resp.content)
-        except Exception as exc:
+        except _GAZETTE_PARSE_EXCEPTIONS as exc:
             logger.error("解析公報 XML 失敗：%s", exc)
             return []
 
@@ -176,7 +195,7 @@ class GazetteFetcher(BaseFetcher):
                             meta_id = rec.get("MetaId", "")
                             if meta_id:
                                 xml_records[meta_id] = rec
-                    except Exception as exc:
+                    except _GAZETTE_ZIP_MEMBER_EXCEPTIONS as exc:
                         logger.warning("解析 ZIP 內 XML %s 失敗：%s", name, exc)
 
             # 收集 PDF bytes，以檔名（不含副檔名）為 key
@@ -190,7 +209,7 @@ class GazetteFetcher(BaseFetcher):
                             # 以檔名 stem 作為 key（嘗試用 MetaId 匹配）
                             stem = Path(name).stem
                             pdf_texts[stem] = text
-                        except Exception as exc:
+                        except _GAZETTE_ZIP_MEMBER_EXCEPTIONS as exc:
                             logger.warning("讀取 ZIP 內 PDF %s 失敗：%s", name, exc)
 
         cutoff = datetime.now() - timedelta(days=self.days)
@@ -293,7 +312,7 @@ class GazetteFetcher(BaseFetcher):
                 return "\n\n".join(
                     page.extract_text() or "" for page in pdf.pages
                 ).strip()
-        except Exception as exc:
+        except _GAZETTE_PDF_EXCEPTIONS as exc:
             logger.warning("PDF 全文提取失敗：%s", exc)
             return ""
 

@@ -11,6 +11,17 @@ from src.core.constants import LLM_GENERATION_TIMEOUT, LLM_CHECK_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
+# LiteLLM 與 provider adapters 常將底層錯誤包成通用 Exception；
+# 集中 bucket，避免散落裸 except。
+_LLM_PROVIDER_EXCEPTIONS = (
+    ConnectionError,
+    OSError,
+    RuntimeError,
+    TimeoutError,
+    ValueError,
+    Exception,
+)
+
 
 # ============================================================
 # LLM 自訂例外類別
@@ -105,7 +116,7 @@ class LiteLLMProvider(LLMProvider):
                 max_tokens=1,
             )
             return True, ""
-        except Exception as e:
+        except _LLM_PROVIDER_EXCEPTIONS as e:
             logger.debug("LLM 連線測試失敗：%s", e)
             error_msg = str(e)
             if "ConnectionError" in error_msg or "10061" in error_msg or "拒絕連線" in error_msg:
@@ -179,7 +190,7 @@ class LiteLLMProvider(LLMProvider):
                 **kwargs
             )
             return response.choices[0].message.content or ""
-        except Exception as e:
+        except _LLM_PROVIDER_EXCEPTIONS as e:
             error_msg = str(e)
             # 提供更清楚的錯誤訊息並拋出對應的自訂例外
             if "ConnectionError" in error_msg or "10061" in error_msg or "拒絕連線" in error_msg:
@@ -208,7 +219,7 @@ class LiteLLMProvider(LLMProvider):
             try:
                 embedder = _LocalEmbedder.get(self.emb_model)
                 return embedder.embed(text)
-            except Exception as e:
+            except _LLM_PROVIDER_EXCEPTIONS as e:
                 logger.warning("本地 embedding 失敗: %s", e)
                 return []
 
@@ -237,7 +248,7 @@ class LiteLLMProvider(LLMProvider):
                 logger.warning("Embedding 回應中無資料")
                 return []
             return response.data[0]['embedding']
-        except Exception as e:
+        except _LLM_PROVIDER_EXCEPTIONS as e:
             error_msg = str(e)
             if "ConnectionError" in error_msg or "拒絕連線" in error_msg or "10061" in error_msg:
                 with self._error_lock:

@@ -399,6 +399,12 @@ class TestSearchMethods:
         manager.examples_collection.query.side_effect = Exception("query fail")
         assert manager.search_examples("query") == []
 
+    def test_search_examples_query_exception_logs_warning(self, manager, caplog):
+        manager.examples_collection.query.side_effect = Exception("query fail")
+        with caplog.at_level("WARNING"):
+            assert manager.search_examples("query") == []
+        assert "範例搜尋查詢失敗: query fail" in caplog.text
+
     def test_search_regulations_basic(self, manager):
         results = manager.search_regulations("法規查詢")
         assert len(results) == 2
@@ -442,6 +448,12 @@ class TestSearchMethods:
     def test_search_policies_query_exception(self, manager):
         manager.policies_collection.query.side_effect = Exception("fail")
         assert manager.search_policies("query") == []
+
+    def test_search_policies_query_exception_logs_warning(self, manager, caplog):
+        manager.policies_collection.query.side_effect = Exception("fail")
+        with caplog.at_level("WARNING"):
+            assert manager.search_policies("query") == []
+        assert "政策搜尋查詢失敗: fail" in caplog.text
 
 
 # =====================================================================
@@ -776,6 +788,13 @@ class TestResetDB:
         manager.client.delete_collection.side_effect = Exception("not found")
         manager.reset_db()  # 不應拋異常
         assert manager.client.get_or_create_collection.call_count == 3
+
+    def test_reset_db_delete_nonexistent_logs_warning(self, manager, caplog):
+        """刪除失敗時應記錄 warning 後繼續重建。"""
+        manager.client.delete_collection.side_effect = Exception("not found")
+        with caplog.at_level("WARNING"):
+            manager.reset_db()
+        assert "集合 public_doc_examples 不存在或刪除失敗，跳過刪除: not found" in caplog.text
 
     def test_reset_db_invalidates_cache(self, manager):
         from cachetools import TTLCache

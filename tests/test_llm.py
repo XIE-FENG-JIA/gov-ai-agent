@@ -534,6 +534,15 @@ class TestCheckConnectivity:
         assert ok is False
         assert "Something went wrong" in msg
 
+    @patch("src.core.llm.litellm")
+    def test_connectivity_bucket_accepts_generic_provider_exception(self, mock_litellm):
+        """第三方 provider 若只丟通用 Exception，仍應被 bucket 吃住。"""
+        mock_litellm.completion.side_effect = Exception("provider boom")
+        provider = LiteLLMProvider({"provider": "ollama", "model": "mistral"})
+        ok, msg = provider.check_connectivity()
+        assert ok is False
+        assert "provider boom" in msg
+
 
 # ==================== _LocalEmbedder fallback ====================
 

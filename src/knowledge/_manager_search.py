@@ -18,6 +18,24 @@ suppress_known_third_party_deprecations_temporarily = getattr(
 
 logger = logging.getLogger(__name__)
 
+_KB_QUERY_EXCEPTIONS = (
+    AttributeError,
+    KeyError,
+    RuntimeError,
+    TypeError,
+    ValueError,
+    Exception,
+)
+
+_KB_DELETE_EXCEPTIONS = (
+    AttributeError,
+    KeyError,
+    RuntimeError,
+    TypeError,
+    ValueError,
+    Exception,
+)
+
 
 class KnowledgeSearchMixin:
     """搜尋與統計相關方法。"""
@@ -69,8 +87,8 @@ class KnowledgeSearchMixin:
                     n_results=min(n_results, count),
                     where=where_filter,
                 )
-        except Exception as e:
-            logger.error("政策搜尋查詢失敗: %s", e)
+        except _KB_QUERY_EXCEPTIONS as e:
+            logger.warning("政策搜尋查詢失敗: %s", e)
             return []
 
         return self._format_query_results(results)
@@ -110,8 +128,8 @@ class KnowledgeSearchMixin:
                     n_results=min(n_results, count),
                     where=safe_filter,
                 )
-        except Exception as e:
-            logger.error("範例搜尋查詢失敗: %s", e)
+        except _KB_QUERY_EXCEPTIONS as e:
+            logger.warning("範例搜尋查詢失敗: %s", e)
             return []
 
         return self._format_query_results(results)
@@ -156,8 +174,8 @@ class KnowledgeSearchMixin:
                     n_results=min(n_results, count),
                     where=where_filter,
                 )
-        except Exception as e:
-            logger.error("法規搜尋查詢失敗: %s", e)
+        except _KB_QUERY_EXCEPTIONS as e:
+            logger.warning("法規搜尋查詢失敗: %s", e)
             return []
 
         return self._format_query_results(results)
@@ -195,8 +213,8 @@ class KnowledgeSearchMixin:
             try:
                 with suppress_known_third_party_deprecations_temporarily():
                     self.client.delete_collection(name)
-            except Exception as e:
-                logger.debug("集合 %s 不存在，跳過刪除: %s", name, e)
+            except _KB_DELETE_EXCEPTIONS as e:
+                logger.warning("集合 %s 不存在或刪除失敗，跳過刪除: %s", name, e)
         with suppress_known_third_party_deprecations_temporarily():
             new_examples = self.client.get_or_create_collection(
                 name="public_doc_examples",

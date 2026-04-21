@@ -519,6 +519,22 @@ class TestGazetteFetcher:
         results = fetcher.fetch()
         assert results == []
 
+    @patch("src.knowledge.fetchers.gazette_fetcher.requests.get")
+    def test_invalid_xml_logs_error(self, mock_get, tmp_path, caplog):
+        """XML 解析失敗應記錄錯誤並安全回傳空列表。"""
+        from src.knowledge.fetchers.gazette_fetcher import GazetteFetcher
+
+        mock_resp = MagicMock()
+        mock_resp.content = b"<not-xml"
+        mock_resp.raise_for_status = MagicMock()
+        mock_get.return_value = mock_resp
+
+        fetcher = GazetteFetcher(output_dir=tmp_path, rate_limit=0)
+        with caplog.at_level("ERROR"):
+            results = fetcher.fetch()
+        assert results == []
+        assert "解析公報 XML 失敗" in caplog.text
+
     def test_name(self, tmp_path):
         from src.knowledge.fetchers.gazette_fetcher import GazetteFetcher
         f = GazetteFetcher(output_dir=tmp_path, rate_limit=0)
