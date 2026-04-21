@@ -1,34 +1,13 @@
 from pathlib import Path
 
 import typer
-import yaml
 from rich.console import Console
 from rich.table import Table
 
 from src.document import read_docx_citation_metadata
+from src.knowledge.corpus_provenance import is_active_corpus_metadata, read_markdown_frontmatter
 
 console = Console()
-
-
-def _read_frontmatter(path: Path) -> dict:
-    try:
-        raw = path.read_text(encoding="utf-8")
-    except OSError:
-        return {}
-
-    if not raw.startswith("---\n"):
-        return {}
-
-    parts = raw.split("---\n", 2)
-    if len(parts) < 3:
-        return {}
-
-    data = yaml.safe_load(parts[1]) or {}
-    return data if isinstance(data, dict) else {}
-
-
-def _is_fixture_backed(meta: dict) -> bool:
-    return bool(meta.get("synthetic") or meta.get("fixture_fallback"))
 
 
 def _load_corpus_entries(base_dir: Path) -> list[dict[str, str]]:
@@ -37,8 +16,11 @@ def _load_corpus_entries(base_dir: Path) -> list[dict[str, str]]:
         return entries
 
     for path in sorted(base_dir.rglob("*.md")):
-        meta = _read_frontmatter(path)
-        if not meta or _is_fixture_backed(meta):
+        try:
+            meta, _ = read_markdown_frontmatter(path)
+        except OSError:
+            continue
+        if not meta or not is_active_corpus_metadata(meta):
             continue
         entries.append(
             {

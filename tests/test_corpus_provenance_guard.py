@@ -4,6 +4,8 @@ from pathlib import Path
 
 import yaml
 
+from src.knowledge.corpus_provenance import is_active_corpus_metadata
+
 
 def _read_frontmatter(path: Path) -> dict:
     raw = path.read_text(encoding="utf-8")
@@ -33,3 +35,10 @@ def test_corpus_provenance_guard() -> None:
 
     assert not synthetic_paths, f"synthetic corpus files found: {synthetic_paths}"
     assert not fixture_fallback_paths, f"fixture-backed corpus files found: {fixture_fallback_paths}"
+
+
+def test_kb_rebuild_and_verify_provenance_rule_rejects_untrusted_metadata() -> None:
+    assert is_active_corpus_metadata({"synthetic": False, "fixture_fallback": False}) is True
+    assert is_active_corpus_metadata({"synthetic": True, "fixture_fallback": False}) is False
+    assert is_active_corpus_metadata({"synthetic": False, "fixture_fallback": True}) is False
+    assert is_active_corpus_metadata({"deprecated": True, "synthetic": False, "fixture_fallback": False}) is False

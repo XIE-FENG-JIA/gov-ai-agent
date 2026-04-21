@@ -9,14 +9,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from src.agents.auditor import FormatAuditor
 from src.agents.requirement import RequirementAgent
 from src.agents.template import TemplateEngine
 from src.agents.writer import WriterAgent
 from src.document.citation_metadata import read_docx_citation_metadata
 from src.document.exporter import DocxExporter
+from src.knowledge.corpus_provenance import is_active_corpus_metadata, read_markdown_frontmatter
 from src.core.models import PublicDocRequirement
 
 
@@ -135,30 +134,13 @@ SCENARIOS: tuple[RewriteScenario, ...] = (
         source_ids=("A0000002", "6d5edda8-43b5-4e9a-84f8-c57798989ad0"),
     ),
 )
-
-
-def _read_frontmatter(path: Path) -> tuple[dict[str, Any], str]:
-    raw = path.read_text(encoding="utf-8")
-    if not raw.startswith("---\n"):
-        return {}, raw
-    parts = raw.split("---\n", 2)
-    if len(parts) < 3:
-        return {}, raw
-    meta = yaml.safe_load(parts[1]) or {}
-    return (meta if isinstance(meta, dict) else {}), parts[2].strip()
-
-
-def _is_fixture_backed(meta: dict[str, Any]) -> bool:
-    return bool(meta.get("synthetic") or meta.get("fixture_fallback"))
-
-
 def load_real_corpus(base_dir: str | Path = "kb_data/corpus") -> dict[str, dict[str, Any]]:
     corpus_dir = Path(base_dir)
     corpus: dict[str, dict[str, Any]] = {}
     for path in sorted(corpus_dir.rglob("*.md")):
-        meta, content = _read_frontmatter(path)
+        meta, content = read_markdown_frontmatter(path)
         source_id = str(meta.get("source_id") or meta.get("source_doc_no") or "").strip()
-        if not source_id or _is_fixture_backed(meta):
+        if not source_id or not is_active_corpus_metadata(meta):
             continue
         source_level = "A" if path.parts[-2] == "mojlaw" else "B"
         corpus[source_id] = {

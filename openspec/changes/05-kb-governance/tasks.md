@@ -9,7 +9,7 @@
   Validation: `spectra analyze 05-kb-governance`
   Commit: `docs(spec): bootstrap kb governance change`
 
-- [ ] **T5.1** Consolidate corpus-eligibility helpers so rebuild, rewrite, and
+- [x] **T5.1** Consolidate corpus-eligibility helpers so rebuild, rewrite, and
   verify share one repo-owned rule for excluding `synthetic` and
   `fixture_fallback` corpus entries.
   Requirements:

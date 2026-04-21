@@ -2,6 +2,8 @@ from pathlib import Path
 
 import typer
 
+from src.knowledge.corpus_provenance import is_active_corpus_metadata
+
 from ._shared import app, console
 from .corpus import _ingest_fetch_results, _load_full_document, _sanitize_metadata, parse_markdown_with_metadata
 
@@ -29,7 +31,7 @@ def _should_skip_rebuild_file(metadata: dict, only_real: bool) -> bool:
         return True
     if not only_real:
         return False
-    return bool(metadata.get("synthetic")) or bool(metadata.get("fixture_fallback"))
+    return not is_active_corpus_metadata(metadata)
 
 
 @app.command("rebuild")
