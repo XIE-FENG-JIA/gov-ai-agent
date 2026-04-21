@@ -191,6 +191,48 @@ def test_write_report_renders_markdown_table(tmp_path: Path) -> None:
     assert "- archived_count: 1" in content
 
 
+def test_main_reports_existing_real_corpus_when_no_new_docs_ingested(tmp_path: Path, monkeypatch) -> None:
+    class FakeAdapter:
+        pass
+
+    def fake_ingest(adapter, *, limit, base_dir, require_live):  # type: ignore[no-untyped-def]
+        corpus_root = base_dir / "corpus" / "mojlaw"
+        corpus_root.mkdir(parents=True, exist_ok=True)
+        (corpus_root / "existing-live.md").write_text(
+            "---\n"
+            "source_url: https://example.test/existing-live\n"
+            "synthetic: false\n"
+            "fixture_fallback: false\n"
+            "---\n"
+            "# Existing live doc\n\n既有真資料。\n",
+            encoding="utf-8",
+        )
+        return []
+
+    monkeypatch.setattr(live_ingest, "_available_sources", lambda: {"mojlaw": FakeAdapter})
+    monkeypatch.setattr(live_ingest, "_load_ingest_function", lambda: fake_ingest)
+
+    report_path = tmp_path / "docs" / "live-ingest-report.md"
+    exit_code = live_ingest.main(
+        [
+            "--sources",
+            "mojlaw",
+            "--limit",
+            "3",
+            "--base-dir",
+            str(tmp_path),
+            "--report-path",
+            str(report_path),
+        ]
+    )
+
+    content = report_path.read_text(encoding="utf-8")
+    assert exit_code == 0
+    assert "- count: 1" in content
+    assert "- live_count: 1" in content
+    assert "- ingested_count: 0" in content
+
+
 def test_run_live_ingest_ignores_malformed_corpus_files(tmp_path: Path, monkeypatch) -> None:
     class FakeAdapter:
         pass

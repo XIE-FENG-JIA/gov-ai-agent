@@ -812,13 +812,11 @@
   - **驗 1**：`python -m src.cli.main kb rebuild --help` 正常顯示，不再是 `No such command 'rebuild'`
   - **驗 2**：`python -m pytest tests/test_cli_commands.py -q --no-header -k "kb_rebuild"` = 綠
 
-- [ ] **T-REPORT** ✅ 不依賴 ACL·v4.2 新增（10 分鐘）：`scripts/live_ingest.py --report-path` enumeration 修 count=0 誤報
-  - **現況**：`docs/live-ingest-report.md` 實寫 9 份 real md 但 report 記 `count=0`；enumeration 僅算本輪 `ingested`，歷次 idempotent 寫入被吞
-  - **修法**：`scripts/live_ingest.py` 產 report 時改掃 `kb_data/corpus/**/*.md` 或合併 `ingested + existing_real` 計數；保留本輪 `ingested` 子欄位
-  - **驗 1**：`python scripts/live_ingest.py --sources mojlaw --limit 3 --report-path docs/live-ingest-report.md --base-dir kb_data` 後，`rg "count=[^0]" docs/live-ingest-report.md` 至少 1 行
-  - **驗 2**：`pytest tests/test_live_ingest_script.py -q` 零退
-  - **延宕懲罰**：ACL-free 連 2 輪延宕 = 3.25
-  - commit（ACL 解除後）: `fix(scripts): live_ingest report enumerates existing kb_data/corpus real md`
+- [x] **T-REPORT** ✅ 不依賴 ACL·v4.2 新增（10 分鐘）：`scripts/live_ingest.py --report-path` enumeration 修 count=0 誤報
+  - **完成（2026-04-21）**：校準後確認腳本已改以磁碟既有 live corpus 列舉 `count`，不再只看本輪 `ingested_count`；補 `tests/test_live_ingest_script.py::test_main_reports_existing_real_corpus_when_no_new_docs_ingested` 鎖 idempotent run regression
+  - **驗 1**：既有 `docs/live-ingest-report.md` 仍可見 `count: 3` / `ingested_count: 0`；新增 regression test 以既有 live corpus + 本輪 ingest=0 重現 idempotent 情境
+  - **驗 2**：`python -m pytest tests/test_live_ingest_script.py -q --no-header` = 綠
+  - commit（ACL 解除後）: `test(scripts): lock live_ingest report count for idempotent runs`
 
 - [x] **P0.EE** ✅ 不依賴 ACL / 不依賴 Epic 2：`openspec/changes/03-citation-tw-format/proposal.md`（Epic 3 觸發器）
   - **v4.1 升格理由**：`openspec/changes/` 目前只有 01 / 02 / archive；Epic 3（T3.1-T3.4）規格全空，Spectra baseline 斷鏈；proposal 180+ 字即可啟動後續 specs + tasks
