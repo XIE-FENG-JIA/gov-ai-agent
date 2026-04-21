@@ -25,7 +25,7 @@
 > 3. **T-FAT-ROTATE-V2（刀 3+）** 🟠 **P0 三位** — 下輪鎖 `e2e_rewrite 492 / api-agents 488 / middleware 469`。
 >
 > **v5.9 P1（連 2 輪延宕 = 3.25）**：
-> 4. **P1-PCC-ADAPTER** — `src/sources/pcc.py`（政府採購網）按 `base.py` 抽象實作；v5.6 OVERRIDE 列連 0 動。
+> 4. **P1-PCC-ADAPTER** ✅（2026-04-21 16:06）— `src/sources/pcc.py` 已落地；official `web.pcc.gov.tw` fixture-backed adapter + registry + tests 全綠。
 > 5. **P0.1-FDA-LIVE-DIAG** — FdaApiAdapter 真因定位（curl `https://data.fda.gov.tw/` / endpoint schema / auth 檢查）；15 分診斷 + fix or downgrade 到 P2。
 >
 > **v5.9 下輪硬指標**：
@@ -68,10 +68,10 @@
 > - 修完 P0.1 後跑 `python scripts/live_ingest.py --sources all --limit 100 --require-live`
 > - 目標 kb_data/corpus 累計 ≥ 300 份真實資料
 >
-> **🎯 P1 — 新增 PccAdapter（政府採購網）**
-> - `src/sources/pcc.py` 按 base.py 抽象實作
-> - `web.pcc.gov.tw` robots 無擋，採購公告可達
-> - 接入 live_ingest registry
+> **✅ P1 已閉（2026-04-21 16:06）— PccAdapter（政府採購網）**
+> - `src/sources/pcc.py` 已實作 `list / fetch / normalize`
+> - official `web.pcc.gov.tw` HTML fixture path 已落，未使用 openfun mirror
+> - 已接入 live_ingest registry + `pytest tests/test_pcc_adapter.py -q` 全綠
 >
 > **⚠ 禁爬清單（robots.txt 實測確認）**：
 > - `gazette.nat.gov.tw` 行政院公報 → robots `*: Disallow: /`，**禁止**
@@ -641,7 +641,7 @@
 
 ## P0 — 阻斷性回歸（v4.3：指標 1 回綠·P0.AA 三連跳警報）
 
-### P0.V59-NEW — 🔴 ACL-free·v5.9 新增（2026-04-21 15:10；**第三十七輪 15:38 校準重排**；3 件 P0 + 4 件 P1）
+### P0.V59-NEW — 🔴 ACL-free·v5.9 新增（2026-04-21 15:10；**第三十七輪 15:38 校準重排**；3 件 P0 + 3 件 P1）
 
 > **v5.9 第三十七輪重排理由**：v5.9 header 下發 28 min 後 0 動 → 紅線 X 連 1 輪；corpus 60 / pytest 3728 / Spectra 80% 實測已錨；**P0.1-FDA-LIVE-DIAG 從 P1 升 P0 次位**（15 分診斷先於修法，解 corpus 300 三源之一路障）；**T-FAT-ROTATE-V2 刀 3 從 T 段搬到 V59 頂位可見**；**新增 T-BARE-EXCEPT-AUDIT + T9.6-REOPEN-v4 雙 P1**（code smell 盤點 + engineer-log 309 > 300 封存）。
 
@@ -651,7 +651,10 @@
 - [ ] **P2-CHROMA-NEMOTRON-VALIDATE** 🟡 v5.9 P1（60 分；**等 corpus ≥ 100 後執行**）— `gov-ai kb rebuild --only-real`（nvidia/llama-nemotron dim=2048）；交付 `docs/embedding-validation.md`（5 E2E 需求 top-K 真公文召回率 + dim 驗證 + cost）
 - [ ] **T-BARE-EXCEPT-AUDIT** 🆕 **v5.9 P1 新增（第三十七輪；30 分）** — `rg "except Exception|except:" src/` 實測 118 處分佈 50 檔；高密度 3 檔 `src/api/routes/agents.py 9 / src/cli/org_memory_cmd.py 7 / src/cli/kb/stats.py 6` 至少一檔轉 typed except + `logger.warning`；避免 production logging 吞根因
 - [ ] **T9.6-REOPEN-v4** 🆕 **v5.9 P1 新增（第三十七輪；10 分）** — engineer-log 271 + v5.9 反思 ~38 = **309 > 300 hard cap**；封存 v5.4/v5.5/v5.6 段到 `docs/archive/engineer-log-202604f.md`；主檔留 v5.7/v5.8/v5.9
-- [ ] **P1-PCC-ADAPTER** 🟡 v5.9 P1（90 分）— `src/sources/pcc.py` 政府採購網 adapter；按 `base.py` 抽象實作 `list / fetch / normalize`；接入 `_adapter_registry`；≥ 3 fixture + 驗 `pytest tests/test_pcc_adapter.py -q`
+- [x] **P1-PCC-ADAPTER** ✅（2026-04-21 16:06）— `src/sources/pcc.py` 政府採購網 adapter 已落地；official HTML fixture search/detail + `list / fetch / normalize` 完成，並接入 `_adapter_registry`
+  - **完成**：新增 `src/sources/pcc.py`、`tests/fixtures/pcc/{search,PCC-001,PCC-002,PCC-003}.html`、`tests/test_pcc_adapter.py`；`tests/test_sources_base.py` 與 `tests/test_sources_ingest.py` 已補 registry / signature coverage
+  - **驗 1**：`python -m pytest tests/test_pcc_adapter.py tests/test_sources_base.py tests/test_sources_ingest.py -q` = **19 passed**
+  - **驗 2**：`python -m pytest tests/ -q --ignore=tests/integration -x` = **3732 passed / 0 failed**
 - [ ] **P0.1-MOHW-LIVE-DIAG** 🟡 v5.9 P2（15 分）— `MohwRssAdapter` live fetch 斷線診斷（同 FDA SOP）
 
 ### P0.V57-CLIENT-AUTH — 🔴 ACL-free·v5.7 首位（40 分；真 blocker，非 rate-limit）
