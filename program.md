@@ -1,5 +1,24 @@
 # Auto-Dev Program — 公文 AI Agent（真實公開公文改寫系統）
 
+> **🎯 v6.2 值班增量（2026-04-21 20:33；/pua；caveman；單刀只砍 fat file）**：
+>
+> **HEAD 實測指標（pytest + wc 即取）**：
+> - ✅ `python -m pytest tests/ -q --ignore=tests/integration -x` = **3738 passed / 0 failed / 535.52s**
+> - ✅ `wc -l src/e2e_rewrite/*.py` = **146 / 189 / 43 / 122**（全數 ≤ 400；`src/e2e_rewrite.py` 單檔已拆除）
+> - ✅ `wc -l engineer-log.md` = **284**（hard cap 內）
+> - 🟠 剩餘胖檔 **7**：`api-agents 489 / middleware 470 / api-models 462 / generate/export 460 / fact_checker 447 / datagovtw 411 / workflow_cmd 407`
+>
+> **本輪只做一件事**：
+> - ✅ **T-FAT-ROTATE-V2（刀 3）** 完成 — `src/e2e_rewrite.py 475` 拆成 `src/e2e_rewrite/{__init__,fixtures,reporting,scenarios}.py`；`run_rewrite_e2e` / `run_e2e_suite` / `load_real_corpus` / `_find_scenario` / `SCENARIOS` 對外契約保留，`tests/test_e2e_rewrite.py` monkeypatch 面維持可用
+> - ✅ 驗證：`python -m pytest tests/test_e2e_rewrite.py -q` = **4 passed**；`python -m pytest tests/integration/test_e2e_rewrite.py -q --import-mode=importlib` = **1 passed**；`python -m pytest tests/test_cli_commands.py -q -k "kb_rebuild or rewrite"` = **11 passed**
+> - 🟠 新發現：`src/sources/datagovtw.py 411`、`src/cli/workflow_cmd.py 407` 也已跨 400，併入後續 fat-file 輪拆名單
+>
+> **下輪首選**：
+> 1. `src/api/routes/agents.py` 裸 `except` 刀 2
+> 2. `api-agents / middleware / api-models` fat-file 續拆
+
+---
+
 > **🎯 v6.1 架構師第三十九輪階段性規劃（2026-04-21 19:15；/pua 阿里味；caveman；v6.0 下發後 2hr 四件 Epic 5 落 + Spectra 破 100% + hard cap 再爆）**：
 >
 > **HEAD 實測指標（pytest + wc + ls + grep 即取；ACL-free）**：
@@ -691,10 +710,10 @@
 > **v6.1 第三十九輪重排理由**：v6.0 下發 2hr 內落 Epic 5 四件（EPIC5-TASKS-SPECS / T5.1 / T5.2 / T5.3）→ Spectra 4/5 80% → **5/5 100%**；但 v6.0 P0 三件（T-FAT 刀 3 / T9.6-REOPEN-v4 / T-BARE-EXCEPT-AUDIT 刀 2）連 2 輪 0 動；engineer-log 326 → **384**（再破 58 行，hard cap 連 2 輪破 = 紅線 X 子條款實錘）。**v6.1 P0 順序改寫**：① **T9.6-REOPEN-v4 升 P0 首位**（10 分 ACL-free 最輕鬆破；連 2 輪 hard cap 破實錘）② T-FAT-ROTATE-V2 刀 3 降 P0 次位（連 3 輪 0 動 = 超實錘）③ T-BARE-EXCEPT-AUDIT 刀 2 保持 P0 三位。新增 P1：T-FAT 刀 4+（五胖檔輪拆）。
 
 - [x] **T9.6-REOPEN-v4** ✅（2026-04-21 19:43）— 已封存 `engineer-log.md` 的 v5.4/v5.5/v5.6 段到 `docs/archive/engineer-log-202604f.md`；主檔改為只留 v5.7/v5.8/v5.9/v6.0，`wc -l engineer-log.md` 已回到 hard cap 內
-- [ ] **T-FAT-ROTATE-V2（刀 3）** 🔴 **v6.2 P0 首位（45 分；T9.6 ✅ 後自動晉升；連 3 輪 0 動 3.25 超實錘；下輪再 0 動升級核心紅線 = 年度紅）** — 鎖 `src/e2e_rewrite.py 474`（v5.9 492 → v6.1 474，T5.1 抽出 provenance 邏輯讓 18 行；**未實切**）；按 `rewrite / assemble / cli` 自然邊界拆成 `src/e2e_rewrite/{__init__,rewrite,assemble,cli}.py`；SOP 第 13 次擴散；`tests/test_e2e_rewrite.py` + `tests/integration/test_e2e_rewrite.py` import 契約守；次刀 `api-agents 488`、三刀 `middleware 469`
+- [x] **T-FAT-ROTATE-V2（刀 3）** ✅（2026-04-21 20:33）— `src/e2e_rewrite.py 475` 已拆為 `src/e2e_rewrite/{__init__,fixtures,reporting,scenarios}.py`；保留 `run_rewrite_e2e` / `run_e2e_suite` / `load_real_corpus` / `_find_scenario` / `SCENARIOS` 與 `read_docx_citation_metadata` monkeypatch 契約；驗證 `python -m pytest tests/test_e2e_rewrite.py -q` = **4 passed**、`python -m pytest tests/integration/test_e2e_rewrite.py -q --import-mode=importlib` = **1 passed**、`python -m pytest tests/test_cli_commands.py -q -k "kb_rebuild or rewrite"` = **11 passed**、`python -m pytest tests/ -q --ignore=tests/integration -x` = **3738 passed / 0 failed**
 - [ ] **T-BARE-EXCEPT-AUDIT（刀 2）** 🟠 **v6.2 P0 次位（30 分；production handler 血債）** — `src/api/routes/agents.py 9 處裸 except` 是 inbound API handler 吞錯誤最危險點；複製 `org_memory_cmd.py` SOP（typed buckets + `logger.warning`）；刀 3 留 `web_preview/app.py 7 / kb/stats.py 6 / knowledge/manager.py 5 / fact_checker.py 4 / auditor.py 4 / core/llm.py 4 / generate/export.py 4`；`tests/test_agents_api*.py` + `tests/test_api_auth.py` 回歸守
 - [ ] **T-ROLLUP-SYNC** 🟠 **v6.2 P0 三位新（5 分；ACL-free；反思 vs rollup delivery gap 連 N+3 輪）** — v6.1 header 指標 7 寫「engineer-log 384」但 T9.6-REOPEN-v4 19:43 封存後 working tree 實測 **228 ≤ 300** ✅；動作已做未 commit（`git diff HEAD engineer-log.md` -162 deletions）；ACL 解後 AUTO-RESCUE 將封存狀態落版，或反思層主動校準 v6.1 header 為 228；T9.6 關閉不是結束，rollup 同步才是
-- [ ] **T-FAT-ROTATE-V2（刀 4+）** 🟡 **v6.2 P1（輪拆；連 2 輪延宕 = 3.25）** — 剩 5 胖檔 > 400：`api-agents 488 / middleware 469 / api-models 461 / generate/export 459 / fact_checker 446`；SOP 第 14/15/16/17/18 刀輪到哪刀哪；單輪只切 1 檔避免顆粒度漂移
+- [ ] **T-FAT-ROTATE-V2（刀 4+）** 🟡 **v6.2 P1（輪拆；連 2 輪延宕 = 3.25）** — 剩 **7** 胖檔 > 400：`api-agents 489 / middleware 470 / api-models 462 / generate/export 460 / fact_checker 447 / datagovtw 411 / workflow_cmd 407`；SOP 第 14/15/16/17/18/19/20 刀輪到哪刀哪；單輪只切 1 檔避免顆粒度漂移
 - [ ] **P2-CORPUS-300** 🟡 **v6.2 P1 新（corpus 擴量續推；連 2 輪延宕 = 3.25）** — corpus 173 → 300（缺 127，40% 進度）；`scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss,pcc --limit 100 --require-live --prune-fixture-fallback`；PCC adapter 已在 registry 可四源並行；同步推 MOHW live diag（連 2 輪 0 動邊緣）
 - [ ] **EPIC6-DISCOVERY** 🟡 **v6.2 P1 新（Spectra 100% 後首度下一槓桿；60 分；ACL-free）** — `openspec/changes/06-*/proposal.md` 180+ 字骨架；候選三題：(a) live-ingest quality gate（active corpus mint rate / dedup / staleness SLA）(b) audit trail UI（governance evidence 可視化）(c) observability dashboard（Spectra violation + red line count）；proposal 先定題再拆 tasks/specs
 - [ ] **T-PYTEST-PROFILE** 🟠 **v6.2 P1 新（15 分 ACL-free；runtime regression 抓手）** — v6.0 T5.3 19:10 pytest 238s → v6.2 20:14 pytest **549.93s = +131%**；tests 數守恆 3738/0 故無功能 regression，但 CI 時間翻倍；`python -m pytest tests/ --ignore=tests/integration --durations=20` 定位 top-20 慢測試；候選根因：Epic 5 `test_corpus_provenance_guard.py` fixture / `test_live_ingest_script.py` 擴量 retained_audit_evidence、或 /pua 併發污染；下輪確認 regression 真偽 + 交付 `docs/pytest-profile.md`
@@ -761,7 +780,8 @@
 
 - [x] **T-FAT-ROTATE-V2（刀 2）** ✅ `src/knowledge/realtime_lookup.py` 已由 **520** 壓到 **386**，並抽出 `_realtime_lookup_laws.py 107`、`_realtime_lookup_policy.py 31`；`LawVerifier` / `RecentPolicyFetcher` / `_request_with_retry` / `requests` / `ET` 的公開 patch 面維持不變
   - **完成（2026-04-21 15:30）**：純函式邏輯外移到 helper modules，主檔保留公開入口與測試 patch 路徑；驗證 `python -m pytest tests/test_realtime_lookup.py -q` = **48 passed**、`python -m pytest tests/test_realtime_lookup.py tests/test_fact_checker_enhanced.py tests/test_fact_checker_coverage.py -q` = **93 passed**、`python -m pytest tests/ -q --ignore=tests/integration -x` = **3728 passed / 0 failed**
-- [ ] **T-FAT-ROTATE-V2（刀 3+）** 🔴 下輪再鎖 `e2e_rewrite 492 / api-agents 488 / middleware 469`；v5.9 P0 三位
+- [x] **T-FAT-ROTATE-V2（刀 3）** ✅（2026-04-21 20:33）`src/e2e_rewrite.py 475` → `src/e2e_rewrite/{__init__ 146,fixtures 189,reporting 43,scenarios 122}.py`；`tests/test_e2e_rewrite.py`、`tests/integration/test_e2e_rewrite.py --import-mode=importlib`、`tests/test_cli_commands.py -k "kb_rebuild or rewrite"` 全綠
+- [ ] **T-FAT-ROTATE-V2（刀 4+）** 🔴 下輪再鎖 `api-agents 489 / middleware 470 / api-models 462 / generate/export 460 / fact_checker 447 / datagovtw 411 / workflow_cmd 407`
 - [x] **P1.EPIC5-PROPOSAL** ✅（2026-04-21 14:13）已新增 `openspec/changes/05-kb-governance/proposal.md`
   - **底層邏輯**：Epic 5 的 E2E 與 real corpus 護欄都已落，但 KB 治理規則還散在 `src/sources/ingest.py`、`src/cli/kb/rebuild.py`、`src/e2e_rewrite.py`、`src/cli/verify_cmd.py`；沒有 proposal，後續 rebuild/retire/governance 任務會繼續漂
   - **完成**：
