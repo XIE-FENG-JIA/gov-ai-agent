@@ -16,13 +16,14 @@
   Commit: `feat(agents): add citation checker seam`
   - **完成（2026-04-21 11:27）**：新增 `src/agents/citation_checker.py`，以 repo-owned 規則檢查 citation level / evidence presence / citation integrity，並補 traceability guard：參考來源定義無法解析或缺少 `URL/Hash` 時直接報錯；同步匯出 `CitationChecker` 並補 `tests/test_citation_level.py` seam 測試。驗證 `python -m pytest tests/test_citation_level.py tests/test_validators.py -q` = 111 passed
 
-- [ ] **T4.2** Strengthen `src/agents/fact_checker.py` so legal-claim review
+- [x] **T4.2** Strengthen `src/agents/fact_checker.py` so legal-claim review
   consumes repo evidence and `realtime_lookup` results without silently
   downgrading citation failures.
   Requirements:
   - Citation audit uses repo evidence and verification state
   Validation: `pytest tests/test_fact_checker_coverage.py tests/test_fact_checker_enhanced.py tests/test_realtime_lookup.py -q`
   Commit: `feat(agents): tighten fact checker citation verification`
+  - **完成（2026-04-21 12:16）**：`FactChecker` 現改為先產生 repo-owned citation finding，再讓 LLM 補日期/數字類問題；當 `realtime_lookup` 掛掉或 law cache 為空時，會留下單一 loud-failure error，不再靜默降級；只有具體法規引用才會升格成「法規不存在 / 條號不存在 / 缺少 repo evidence」finding，generic placeholder（如「相關法規」）不再誤判。新增回歸測試覆蓋 verifier failure、repo-owned nonexistent-law error、missing repo evidence warning、reference match、generic placeholder guard。驗證 `python -m pytest tests/test_fact_checker_coverage.py tests/test_fact_checker_enhanced.py tests/test_realtime_lookup.py -q` = 91 passed
 
 - [ ] **T4.3** Integrate citation-checker findings into
   `src/agents/auditor.py` and downstream audit aggregation.

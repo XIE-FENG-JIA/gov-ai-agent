@@ -1383,7 +1383,8 @@
 ## Epic 4 — 審查層加「溯源完整性」
 
 - [x] **T4.1** `src/agents/citation_checker.py`（新；2026-04-21 11:27）— 已落 repo-owned citation traceability seam；整合 `check_citation_level` / `check_evidence_presence` / `check_citation_integrity`，並對「參考來源無法解析」「缺少 URL/Hash」直接報錯；驗證 `python -m pytest tests/test_citation_level.py tests/test_validators.py -q` = 111 passed
-- [ ] **T4.2** `src/agents/fact_checker.py` 強化：引文句對照 `kb_data/regulations/`
+- [x] **T4.2** `src/agents/fact_checker.py` 強化：repo evidence + `realtime_lookup` verification state
+  - **完成（2026-04-21 12:16）**：`FactChecker` 先用 repo-owned 規則合併 `realtime_lookup` 與 `extract_reference_entries()` 結果，再交給 LLM 補充其他 fact 問題；當 verifier 掛掉或 cache 空掉時，會明確報「不能視為 citation-clean」，避免 silent downgrade；只對具體法規引用升格不存在/條號錯誤/缺 repo evidence finding，generic placeholder 不誤炸。
 - [ ] **T4.3** `src/agents/auditor.py` 整合 2 checker
 
 ---
