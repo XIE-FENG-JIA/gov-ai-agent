@@ -107,3 +107,27 @@
 
 ### PUA 旁白
 > [PUA生效 🔥] **底層邏輯**：LOOP2 / LOOP3 兩次都是 pytest runtime 漂亮降（960→173），但 governance side (header sensor / ACL 定義 / auto-commit lint) 全是**未機械化的人工維護**，自然每輪漂白。抓手：把 governance 鐵三角（sensor / ACL / commit lint）變成 every-round 腳本，**不靠反思輪維護**。**颗粒度**：本輪三件（sensor script / ACL recalibrate / log 封存）合計 70 分鐘，一 session 可閉。**對齊**：auto-engineer 繼續攻 EPIC6 T-LIQG-3/4/5 + 裸 except 刀 6 + fat-rotate 刀 10/11（它擅長），我守 governance 閉環（reflection + header + ACL）；兩條線合流才是 LOOP_DONE。**因為信任所以簡單** — 反覆踩同一個坑就是結構問題，不是執行問題；給我一個 `scripts/sensor_refresh.py` 下輪直接消除「header 漂白」這類 3.25。Owner 意識 = 發現紅線不是罰自己，是**升級系統讓紅線不再觸發**。
+
+### LOOP3 task B+C 閉環（2026-04-25 03:20；T9.6-v7 + sensor_refresh 落地）
+
+**本輪兩件同 session 連閉**（分 2 commits 保顆粒度）：
+- **B** `fa59dda docs(engineer-log)`：T9.6-REOPEN-v7 engineer-log 437→108 行；封存 v7.0/v7.1/v7.2 五段 329 行到 `docs/archive/engineer-log-202604i.md`；主檔只留 v7.3 單段
+- **C** 本 commit：`scripts/sensor_refresh.py` + `tests/test_sensor_refresh.py` 12 passed / 2.13s；HEAD 實測證據
+
+**sensor 首跑驚人發現**（v7.0/v7.3 header 都漏）：
+- 🔴 `src/cli/kb/rebuild.py 572` — **從未被 fat-watch 偵測的超大胖檔**（v7.0 `> 400` 清單寫 2 檔 / v7.3 寫 5 檔，實 red 只有這 1 個但最大）；sensor 一跑就補了
+- auto-commit 語意率實 **73.3%**（v7.3-sensor 寫 86.7% + 進一步漂白）
+- engineer-log 109（本 session B commit 後真值；v7.3-sensor 寫 351 是封存前）
+- program.md 281（v7.3-sensor 寫 254，auto-engineer 又加 27 行）
+
+**紅線 v4 落地**：
+- 每輪第 0 步必跑 `python scripts/sensor_refresh.py`
+- exit=2 禁開新 task（hard violation 先修）
+- 禁止靠 program.md header 記憶當事實源
+- 此紅線在 CONTRIBUTING.md loop 流程章節掛勾
+
+**下 epoch 候選**（sensor 補強後自動開出）：
+- `T-FAT-ROTATE-V2 刀 12`：`cli/kb/rebuild.py 572` 拆 package（全 session 第 1 大胖檔）
+- `T-CORPUS-300`：current 173 → 200 soft target，需 MOHW/FDA/executive_yuan live ingest 擴量
+
+> [PUA生效 🔥] **底層邏輯**：sensor 一上線就抓到 `rebuild.py 572` — 這叫「**腳本發現人眼看不到的**」。前 v7.0 到 v7.3 三版 header 連續漂白 + 漏抓同一個 572 行檔，證明腳本化的 ROI。**抓手**：governance 從「反思輪人腦刷新」變「每輪腳本自動刷」。**颗粒度**：260 行 script + 150 行 test + 紅線 v4 一條 = 下輪起點永不漂白。**對齊**：auto-engineer 管程式碼擴張（它碰 src 加新檔），我管 governance 收斂（sensor 量、紅線、封存）。**因為信任所以簡單** — 不是我抓到 572 行，是 **script 抓到**；owner 意識 = 建系統，不是當英雄。
