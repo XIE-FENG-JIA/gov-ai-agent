@@ -1,4 +1,5 @@
 import copy
+import importlib
 import logging
 import pytest
 import sys
@@ -133,8 +134,37 @@ def make_mock_kb(**overrides) -> MagicMock:
     return kb
 
 
-@pytest.fixture
-def mock_llm():
+def rebind_local(monkeypatch, module: str, attr: str, value) -> None:
+    """Re-bind a locally-imported symbol in *module* to *value*.
+
+    Type 1 iceberg fix: when ``src.B`` does ``from src.A import foo`` at load
+    time, a plain ``patch("src.A.foo")`` only replaces the reference in
+    ``src.A`` — the copy already bound into ``src.B`` is untouched.
+
+    This helper imports *module* and sets ``module.attr = value`` so the
+    consumer sees the mock regardless of how it imported the symbol.
+
+    Canonical commits: ``adb531c`` (get_config preflight), ``6b41335``
+    (workflow get_llm / get_kb local binding).
+
+    Usage::
+
+        def test_something(monkeypatch):
+            mock_cfg = {"llm": {"provider": "mock"}}
+            rebind_local(monkeypatch, "src.api.routes.workflow._endpoints", "get_config", lambda: mock_cfg)
+
+    Args:
+        monkeypatch: pytest monkeypatch fixture (handles teardown / undo).
+        module: Dotted module path of the *consuming* module, e.g.
+            ``"src.api.routes.workflow._endpoints"``.
+        attr: Name of the locally-bound symbol, e.g. ``"get_config"``.
+        value: Replacement value (mock, callable, constant, …).
+    """
+    mod = importlib.import_module(module)
+    monkeypatch.setattr(mod, attr, value)
+
+
+
     """回傳一個 mock LLM 提供者。"""
     return make_mock_llm()
 
