@@ -1,6 +1,13 @@
-# ADDED Requirements
+# Spec: Citation Taiwan Format
 
-## Requirement: Citation output uses one canonical section marker
+## Summary
+
+Canonical `## 引用來源` section marker, metadata preservation through export,
+and DOCX verification against repo evidence — deltas to the citation contract.
+
+## ADDED Requirements
+
+### Requirement: Citation output uses one canonical section marker
 
 Generated public-document drafts MUST use `## 引用來源` as the canonical section
 marker for reviewed source citations.
