@@ -164,7 +164,8 @@ def rebind_local(monkeypatch, module: str, attr: str, value) -> None:
     monkeypatch.setattr(mod, attr, value)
 
 
-
+@pytest.fixture
+def mock_llm():
     """回傳一個 mock LLM 提供者。"""
     return make_mock_llm()
 

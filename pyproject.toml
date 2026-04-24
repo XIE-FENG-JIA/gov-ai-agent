@@ -34,6 +34,7 @@ local-embedding = ["sentence-transformers>=2.0,<4.0.0"]
 dev = [
     "pytest>=7.0.0,<9.0.0",
     "pytest-cov>=4.0.0,<8.0.0",
+    "pytest-xdist>=3.0,<4.0",
     "httpx>=0.25.0,<1.0.0",
     "ruff>=0.1.0,<1.0.0",
     "mypy>=1.0.0,<2.0.0",
@@ -58,7 +59,7 @@ select = ["E", "F", "W"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
-addopts = "-v"
+addopts = "-v -n auto"
 markers = [
     "integration: live upstream smoke tests for public source adapters",
 ]

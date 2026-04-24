@@ -209,6 +209,12 @@ class KnowledgeHybridSearchMixin:
             logger.debug("jieba 未安裝，跳過 BM25 搜尋")
             return []
 
+        # Early-exit before jieba init when no docs exist — avoids 5-7s jieba
+        # cold-start for empty KB / mock collections.
+        all_docs = self._fetch_filtered_docs(collections, source_level, doc_type, source_type)
+        if not all_docs:
+            return []
+
         # Query length cap: 防 jieba O(n) 分詞對 30k+ 字 query 爆炸
         _MAX_QUERY_CHARS = 500
         if len(query) > _MAX_QUERY_CHARS:
@@ -221,10 +227,6 @@ class KnowledgeHybridSearchMixin:
         query_tokens = list(jieba.cut(query))
         query_tokens = [t for t in query_tokens if len(t.strip()) > 1]
         if not query_tokens:
-            return []
-
-        all_docs = self._fetch_filtered_docs(collections, source_level, doc_type, source_type)
-        if not all_docs:
             return []
 
         doc_count = len(all_docs)
