@@ -2631,6 +2631,8 @@ class TestProductionReadinessIteration1:
     def test_preflight_check_warns_missing_api_key(self, caplog):
         """雲端 provider 缺少 API key 時應記錄 WARNING"""
         import api_server
+        import src.api.app as _api_app
+        import src.api.dependencies as _api_deps
 
         # 保存原始狀態
         original_config = api_server._config
@@ -2638,14 +2640,26 @@ class TestProductionReadinessIteration1:
             "llm": {"provider": "openrouter", "model": "test-model", "api_key": ""},
             "knowledge_base": {"path": "./kb_data"},
         }
-
+        # TestScenario5 fixture 漏 patch src.api.app.get_config（只 patch 了 dependencies+middleware），
+        # 跨 class 跑時 src.api.app.get_config 可能殘留前面測試的 Mock，回傳 _BASE_API_CONFIG（auth_enabled=False、
+        # provider=mock），導致 PREFLIGHT API key 警告永遠不觸發。明確 re-bind 回真函式守 contract。
+        original_app_get_config = _api_app.get_config
+        _api_app.get_config = _api_deps.get_config
+        # lifespan setup_logging(force=True) 會抹掉 root handlers（caplog 自己的 LogCaptureHandler 在內），
+        # 顯式把 caplog handler 掛回 src.api.app logger，確保 PREFLIGHT WARNING 一定被捕捉。
+        target_logger = logging.getLogger("src.api.app")
+        if caplog.handler not in target_logger.handlers:
+            target_logger.addHandler(caplog.handler)
         try:
-            with caplog.at_level(logging.WARNING):
+            with caplog.at_level(logging.WARNING, logger="src.api.app"):
                 api_server._preflight_check()
             assert any("PREFLIGHT" in r.message and "API key" in r.message
                         for r in caplog.records)
         finally:
             api_server._config = original_config
+            _api_app.get_config = original_app_get_config
+            if caplog.handler in target_logger.handlers:
+                target_logger.removeHandler(caplog.handler)
 
     def test_preflight_check_no_warning_for_ollama(self, caplog):
         """本地 provider (ollama) 不需要 API key，不應報警"""
@@ -2669,20 +2683,31 @@ class TestProductionReadinessIteration1:
     def test_preflight_check_warns_missing_kb_path(self, caplog):
         """知識庫路徑不存在時應記錄 WARNING"""
         import api_server
+        import src.api.app as _api_app
+        import src.api.dependencies as _api_deps
 
         original_config = api_server._config
         api_server._config = {
             "llm": {"provider": "ollama", "model": "mistral"},
             "knowledge_base": {"path": "/nonexistent/path/kb_data_xxx"},
         }
+        # 同 test_preflight_check_warns_missing_api_key，re-bind src.api.app.get_config 守 contract
+        original_app_get_config = _api_app.get_config
+        _api_app.get_config = _api_deps.get_config
 
+        target_logger = logging.getLogger("src.api.app")
+        if caplog.handler not in target_logger.handlers:
+            target_logger.addHandler(caplog.handler)
         try:
-            with caplog.at_level(logging.WARNING):
+            with caplog.at_level(logging.WARNING, logger="src.api.app"):
                 api_server._preflight_check()
             assert any("PREFLIGHT" in r.message and "不存在" in r.message
                         for r in caplog.records)
         finally:
             api_server._config = original_config
+            _api_app.get_config = original_app_get_config
+            if caplog.handler in target_logger.handlers:
+                target_logger.removeHandler(caplog.handler)
 
     def test_preflight_check_logs_config_summary(self, caplog):
         """Preflight 應記錄配置摘要（不含敏感值）"""
