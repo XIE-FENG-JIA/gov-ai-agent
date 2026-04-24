@@ -161,7 +161,7 @@
 
 ### P1（連 2 輪延宕 = 3.25）
 
-- [x] **T-PYTEST-RUNTIME-FIX**（2026-04-22 ~ 04-24 多輪閉；LOOP2 條件達標）— 2026-04-22 11:03 auto-engineer 加 `src/cli/main.py` help-only boot gate + `_is_help_only_invocation`（help 啟動 28.84s → 0.43s）；第四十一輪 `f2fc2ad fix(cli+tests)` + `adb531c fix(test): preflight re-bind` 把 StopIteration flake 修正；基線從 **773s → 547s**（LOOP_DONE 記錄；3755 passed / 547.08s / -30%）。**LOOP2 條件 ≤ 700s 達標**（547 < 700）；內部 ≤ 500s 目標延到下 epoch `T-PYTEST-RUNTIME-FIX-v2`（剩 47s ~10% 空間，需跑 `--durations=30` 對症 KB search / agent timeout / fetcher retry 等 slow path）。
+- [x] **T-PYTEST-RUNTIME-FIX**（2026-04-24 16:55 本輪全量驗證；兩個目標都達標）— 三段對症：(1) 2026-04-22 11:03 `src/cli/main.py` help-only boot gate (28.84s → 0.43s)；(2) 第四十一輪 `f2fc2ad fix(cli+tests)` + `adb531c fix(test): preflight re-bind` 修 StopIteration flake；(3) **2026-04-24 本輪 `cc5ac3c perf(tests)` autouse `_no_fetcher_backoff_sleep` monkey-patch `src.knowledge.fetchers.base.time.sleep` 清 6 × 7s retry backoff = 42s**。實測 runtime 演進：773s → 547s → **461.20s (3790 passed, 7:41)**。**LOOP2 條件 ≤ 700s 達標**（461 < 700 有 239s 裕量）+ **內部目標 ≤ 500s 達標**（461 < 500）。Top 1 慢點 `test_meeting_exporter_failure_returns_error` **111.88s (24% 總時間)** 留給下 epoch `T-PYTEST-RUNTIME-FIX-v2`（需看 LLM mock 結構決定 meeting_exporter 為什麼 pure-mock 還跑到 111s，懷疑真實 LLM 或 rate_limit 誤觸發；不塞本輪）。
 - [ ] **P2-CORPUS-300**（待 mojlaw/datagovtw/executive_yuan_rss/pcc live 續抓）— corpus 173 → 300；`scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss,pcc --limit 100 --require-live --prune-fixture-fallback`。
 - [ ] **P0.1-MOHW-LIVE-DIAG**（15 分；連 5 輪 0 動 → 本輪不動即強制降 P2 或一次處理完）— `MohwRssAdapter` live fetch 診斷；複製 FDA probe SOP；交付 `docs/mohw-endpoint-probe.md`。
 
