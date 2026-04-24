@@ -161,7 +161,7 @@
 
 ### P1（連 2 輪延宕 = 3.25）
 
-- [ ] **T-PYTEST-RUNTIME-FIX**（30 分；2026-04-22 11:30 本輪實跑 773s；vs 09:00 基線 630s 退 +23% → 從 P2 拉回 P1）— 先 `pytest --durations=30 -p no:randomly -q` 確認是併發污染還是 post-刀 8 真退化；若真退化對症 `docs/pytest-profile-v6.4.md` 前 30 慢點；目標 runtime ≤ 500s。
+- [x] **T-PYTEST-RUNTIME-FIX**（2026-04-22 ~ 04-24 多輪閉；LOOP2 條件達標）— 2026-04-22 11:03 auto-engineer 加 `src/cli/main.py` help-only boot gate + `_is_help_only_invocation`（help 啟動 28.84s → 0.43s）；第四十一輪 `f2fc2ad fix(cli+tests)` + `adb531c fix(test): preflight re-bind` 把 StopIteration flake 修正；基線從 **773s → 547s**（LOOP_DONE 記錄；3755 passed / 547.08s / -30%）。**LOOP2 條件 ≤ 700s 達標**（547 < 700）；內部 ≤ 500s 目標延到下 epoch `T-PYTEST-RUNTIME-FIX-v2`（剩 47s ~10% 空間，需跑 `--durations=30` 對症 KB search / agent timeout / fetcher retry 等 slow path）。
 - [ ] **P2-CORPUS-300**（待 mojlaw/datagovtw/executive_yuan_rss/pcc live 續抓）— corpus 173 → 300；`scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss,pcc --limit 100 --require-live --prune-fixture-fallback`。
 - [ ] **P0.1-MOHW-LIVE-DIAG**（15 分；連 5 輪 0 動 → 本輪不動即強制降 P2 或一次處理完）— `MohwRssAdapter` live fetch 診斷；複製 FDA probe SOP；交付 `docs/mohw-endpoint-probe.md`。
 
