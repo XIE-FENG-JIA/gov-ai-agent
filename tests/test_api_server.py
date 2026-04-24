@@ -1274,13 +1274,13 @@ class TestReviewExceptionHandling:
         FormatAuditor 內部會捕捉 LLM 異常，因此需要讓端點層級的程式碼拋出異常。
         透過讓 get_kb() 拋出異常觸發端點的 except 塊。
         """
-        import src.api.routes.agents as _agents_mod
-        original_get_kb = _agents_mod.get_kb
+        import src.api.routes.agents._review_routes as _review_routes_mod
+        original_get_kb = _review_routes_mod.get_kb
 
         def broken_get_kb():
             raise RuntimeError("KB 初始化失敗")
 
-        _agents_mod.get_kb = broken_get_kb
+        _review_routes_mod.get_kb = broken_get_kb
 
         try:
             response = client.post("/api/v1/agent/review/format", json={
@@ -1293,9 +1293,7 @@ class TestReviewExceptionHandling:
             assert data["agent_name"] == "format"
             assert data["error"] is not None
         finally:
-            _agents_mod.get_kb = original_get_kb
-
-    def test_review_style_exception(self, client, mock_api_deps):
+            _review_routes_mod.get_kb = original_get_kb
         """測試文風審查端點 LLM 異常時優雅降級（回傳 score=0.0 而非失敗）"""
         mock_api_deps["llm"].generate.side_effect = RuntimeError("文風審查失敗")
 
@@ -1346,13 +1344,13 @@ class TestReviewExceptionHandling:
         ComplianceChecker 內部會捕捉 LLM 異常，因此需要讓端點層級的程式碼拋出異常。
         透過讓 get_kb() 拋出異常觸發端點的 except 塊。
         """
-        import src.api.routes.agents as _agents_mod
-        original_get_kb = _agents_mod.get_kb
+        import src.api.routes.agents._review_routes as _review_routes_mod
+        original_get_kb = _review_routes_mod.get_kb
 
         def broken_get_kb():
             raise RuntimeError("KB 初始化失敗")
 
-        _agents_mod.get_kb = broken_get_kb
+        _review_routes_mod.get_kb = broken_get_kb
 
         try:
             response = client.post("/api/v1/agent/review/compliance", json={
@@ -1365,7 +1363,7 @@ class TestReviewExceptionHandling:
             assert data["agent_name"] == "compliance"
             assert data["error"] is not None
         finally:
-            _agents_mod.get_kb = original_get_kb
+            _review_routes_mod.get_kb = original_get_kb
 
 
 # ==================== Parallel Review Exception ====================
@@ -2412,8 +2410,8 @@ class TestOuterExceptionHandlers:
 
     def test_review_style_outer_exception(self, client, mock_api_deps):
         """測試 style 端點外層例外處理（agent 構造失敗）"""
-        with patch("src.api.routes.agents.StyleChecker", side_effect=RuntimeError("init failed")), \
-             patch("src.api.routes.agents.logger.warning") as mock_warning:
+        with patch("src.api.routes.agents._review_routes.StyleChecker", side_effect=RuntimeError("init failed")), \
+             patch("src.api.routes.agents._review_routes.logger.warning") as mock_warning:
             response = client.post("/api/v1/agent/review/style", json={
                 "draft": "### 主旨\n這是一份測試公文的草稿內容",
                 "doc_type": "函"
@@ -2429,7 +2427,7 @@ class TestOuterExceptionHandlers:
 
     def test_review_fact_outer_exception(self, client, mock_api_deps):
         """測試 fact 端點外層例外處理（agent 構造失敗）"""
-        with patch("src.api.routes.agents.FactChecker", side_effect=RuntimeError("init failed")):
+        with patch("src.api.routes.agents._review_routes.FactChecker", side_effect=RuntimeError("init failed")):
             response = client.post("/api/v1/agent/review/fact", json={
                 "draft": "### 主旨\n這是一份測試公文的草稿內容",
                 "doc_type": "函"
@@ -2442,7 +2440,7 @@ class TestOuterExceptionHandlers:
 
     def test_review_consistency_outer_exception(self, client, mock_api_deps):
         """測試 consistency 端點外層例外處理（agent 構造失敗）"""
-        with patch("src.api.routes.agents.ConsistencyChecker", side_effect=RuntimeError("init failed")):
+        with patch("src.api.routes.agents._review_routes.ConsistencyChecker", side_effect=RuntimeError("init failed")):
             response = client.post("/api/v1/agent/review/consistency", json={
                 "draft": "### 主旨\n測試\n### 說明\n一致的內容",
                 "doc_type": "函"
