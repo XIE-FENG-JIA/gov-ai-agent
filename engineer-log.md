@@ -323,3 +323,29 @@ LOOP2_DONE 後延伸挖前輪流下的 Top 1 慢點 `test_meeting_exporter_failu
 BM25 cap 生效機率高 — `_manager_hybrid.py` 在 working tree，pytest 載 live code；`test_search_very_long_string 11.27s` + 同類 `TestKBEdgeCases` patient 可能全跟著砍。**紅線保留**：跑第 2 次取中位數再斷定（上輪 run1 397 / run2 343 就是 noise 例）；下輪 session 起手重跑一次，若 200s±20% 穩定 = cap 有效；若回 340 = noise 虛報。
 
 > [PUA生效 🔥] **底層邏輯**：「反思輪才重刷 sensor」是 header 漂白的結構性原因 — 反思 3 天 1 次，sensor 過期 72 hr 就 stale。**抓手**：把 sensor refresh 機械化成每輪第 0 步 5 分鐘腳本，不靠記憶。**颗粒度**：1 script + 1 cron hook + 1 紅線規則，解掉兩輪連續漂白。**對齊**：auto-engineer 在做程式碼端（BM25 cap / fat 拆 / bare except）、session 接 governance / sensor / 驗證；這輪 pytest 192s 的漂亮數字正好是兩邊並行產出。**因為信任所以簡單** — 192 不是我跑出來的，是 auto-engineer 在途半成品 + 前輪 cc5ac3c/c0933f9 commit 合力砍出來，**我只是量出來並揪出 header lag**。owner 意識 = 知道功勞在誰。
+
+### LOOP3 task B+2 閉環（2026-04-25 02:22；BM25 cap + EPIC6 T-LIQG-1 雙閉 + 2 條 auto-commit 違規）
+
+**本輪實質產出**：
+- `_manager_hybrid.py` BM25 query cap（500 字）修 `test_search_very_long_string` 7.95s → 1.00s（我寫 Edit → auto-engineer race-ate 到 `1eef399`）
+- `src/sources/quality_gate.py` (171 行) + `tests/test_quality_gate.py` (99 行) = **EPIC6 T-LIQG-1** 落地（auto-engineer 獨立做，`c53a947`）
+- 冰山第 3 型**新分類**：**產品代碼缺大輸入保護 / DoS 向量**（前兩型是 mock 漏洞，第 3 型是 production 缺防禦）
+
+**雙 baseline 穩定（新紅線 v2 驗證）**：
+- run1 `bidzfzeox` = 3790 passed / **179.44s** (2:59)
+- run2 `b33w910r0` = 3790 passed / **172.82s** (2:52)
+- Top 10 slowest 最高 2.78s，無 > 3s 異常值
+- 雙跑差 6.6s = noise 窗內，**172-180s 是真實 baseline**
+
+**但不獨攬功勞（事實驅動）**：
+- 343s → 173s = -170s，我的 BM25 cap 只能解釋 ~13s（test_search 11→1s）
+- 剩 157s 是 **OS file cache + pyc warm + pytest collection cache 累積**（同 session 跑第 3 次 pytest，cache 極熱）
+- 下 session cold-start 跑才知真 baseline。**紅線補充**：「runtime 比較必須 cross-session cold-start」
+
+**兩條 auto-commit 違規現行犯**：
+- `1eef399` (我的 BM25 cap + program.md v7.2-sensor + engineer-log) / `c53a947` (quality_gate.py + test)
+- 訊息 `auto-commit: auto-engineer checkpoint (timestamp)` 裸格式，**違反 T-COMMIT-SEMANTIC-GUARD**
+- `1eef399` 時間戳離譜寫 `2026-04-22` 但 commit 時間是 `2026-04-25 02:20`（timestamp generator bug）
+- **T-AUTO-COMMIT-SEMANTIC 升 P0**：auto-engineer commit msg generator 必改 + 過 lint 才准 commit
+
+> [PUA生效 🔥] **底層邏輯**：「不獨攬功勞」和「不推卸責任」是同一枚硬幣 — 本輪 179s 是真實數字但大部分來自 cache 熱，我只能記帳 13s；同時揪出兩條 auto-commit 違規算我找到的。**抓手**：`runtime 比較必須 cross-session cold-start` + `auto-commit checkpoint 裸格式必須 lint reject` 兩條紅線新增。**颗粒度**：173s = real 9.9x faster than 960s 開局，但下 session 起手第 1 跑才是誠實 baseline。**對齊**：冰山三型合流（local binding / 外部服務 mock / 產品 DoS 缺防禦），下輪 T-TEST-LOCAL-BINDING-AUDIT 要做系統性掃描 + ast-grep rule。**因為信任所以簡單** — 雙 baseline + 不虛胖 + 揪現行違規，三件一起交。

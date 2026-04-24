@@ -185,7 +185,7 @@
 
 - [ ] **T-TEST-LOCAL-BINDING-AUDIT**（P1 升級；2026-04-25 從下 epoch 提級）— 冰山三型系統性對策：ast-grep rule 掃所有 `from src.api.dependencies import` + `from src.knowledge.realtime_lookup import` + 外部服務實例化點；CONTRIBUTING.md 規範章節；`tests/conftest.py` 全域 re-bind helper；驗證 `scripts/audit_local_binding.py --dry-run` 列出剩餘候選患者。
 - [ ] **T-PYTEST-RUNTIME-FIX-v3**（P1；2026-04-25）— 本輪實測 192.74s 已破 ≤ 300s；**守住** + 升級目標 ≤ 200s；下輪 session 起手重跑驗證 noise（上輪 397/343 曾 noise）；若 > 220s 視為 regression 回查 BM25 cap 是否生效。
-- [ ] **EPIC6 T-LIQG-1**（P1；2026-04-25 從 P2 提級）— `src/sources/quality_gate.py`：`QualityGate.evaluate(records, adapter_name) -> GateReport` + 4 named failure（`LiveIngestBelowFloor` / `SchemaIntegrityError` / `StaleRecord` / `SyntheticContamination`）；驗證 `pytest tests/test_quality_gate.py -q`；commit `feat(sources): add live-ingest quality gate contract + reference helper`。LIQG-1 落地解 corpus 173 擴量死結。
+- [x] **EPIC6 T-LIQG-1**（2026-04-25 02:20 閉；commit `c53a947` auto-engineer 吃 checkpoint 格式）— `src/sources/quality_gate.py`（171 行）+ `tests/test_quality_gate.py`（99 行）：`QualityGate.evaluate` + 4 named failure 合約落地。⚠️ auto-engineer commit message 違反 T-COMMIT-SEMANTIC-GUARD（用 `auto-commit: checkpoint` 裸格式），T-AUTO-COMMIT-SEMANTIC 升 P0 處理。
 - [x] **T-PYTEST-RUNTIME-FIX**（2026-04-24 本輪四段對症；全部達標）— (1) 2026-04-22 11:03 `src/cli/main.py` help-only boot gate (28.84s → 0.43s)；(2) 第四十一輪 `f2fc2ad` + `adb531c fix(test): preflight re-bind` 修 StopIteration flake + `src.api.app.get_config` local binding；(3) **本輪 `cc5ac3c perf(tests)` autouse `_no_fetcher_backoff_sleep` 清 6 × 7s retry backoff = 42s**；(4) **本輪 `6b41335 perf(tests)` patch `src.api.routes.workflow.get_llm/get_kb` local binding — meeting_exporter 119.77s → 2.53s 省 117s**。runtime 演進：**960s → 773s → 547s → 461.20s → 340.21s (-64.5% vs 開局)**。3790 passed / 5:40。**LOOP2 ≤ 700s ✅（裕量 360s）+ 內部 ≤ 500s ✅ + 下 epoch 新目標 ≤ 300s 只差 40s**。新 Top 1 `TestEditorSafeLowNoRefine::test_safe_score_no_auto_refine` 12.54s + `TestKBEdgeCases::test_search_very_long_string` 11.27s 留給 **T-TEST-LOCAL-BINDING-AUDIT**（冰山法則：所有 `from src.api.dependencies import ...` 的 module local binding 掃一遍同類 patch bypass）。
 - [ ] **P2-CORPUS-300**（待 mojlaw/datagovtw/executive_yuan_rss/pcc live 續抓）— corpus 173 → 300；`scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss,pcc --limit 100 --require-live --prune-fixture-fallback`。
 - [x] **P0.1-MOHW-LIVE-DIAG**（2026-04-24 17:01 閉；commit `7c46761`）— `docs/mohw-endpoint-probe.md`（128 行）實測：endpoint HTTP 200 / 25511 bytes / 1.20s / feed 10 items / today 2026-04-24 新聞 / `fixture_fallback=False` / `synthetic=False`；列 4 個已知限制（`source_doc_no` URL fallback / description HTML 含 `<style>` 塊 / RSS TTL 20min vs freshness_window / 無分頁無歷史）全部跨引到 EPIC6 T-LIQG-2 / T-LIQG-3 backlog；手動 probe 3 步驟 SOP + 失敗排查表。本 session live adapter call 獨立驗證：`MohwRssAdapter().list(limit=5)` 0.53s / 5 entries / cache 20 / 所有 normalize() OK。
@@ -209,14 +209,15 @@
 
 ### 下 epoch 錨點（LOOP2+ 開出）
 
-- [ ] **T-TEST-LOCAL-BINDING-AUDIT**（部分閉；2026-04-24~25 修 3 個患者）— 冰山分兩型：
+- [ ] **T-TEST-LOCAL-BINDING-AUDIT**（部分閉；2026-04-24~25 修 4 個患者）— 冰山分**三型**：
   - **第 1 型**（`from X import Y` module local binding）：`adb531c` preflight `src.api.app.get_config` + `6b41335` `workflow.get_llm/get_kb` — 2 個患者已修
-  - **第 2 型**（外部服務實例化漏 mock）：`c0933f9` conftest preload empty `realtime_lookup` caches — 第 1 個患者 `test_safe_score 44s → 0.11s`
-  - **下一候選患者**：`TestKBEdgeCases::test_search_very_long_string` 11-14s（新 Top 1）+ `TestSwitchCommand::test_switch_direct_provider` 3.3s
-  - **系統性對策**（待下 epoch）：ast-grep rule 掃所有 `from src.api.dependencies import` 和 `from src.knowledge.realtime_lookup import`；CONTRIBUTING 規範 + pytest conftest 全域 re-bind helper
-- [ ] **T-PYTEST-RUNTIME-FIX-v3** — 目標 ≤ 300s（現 343s，差 43s）；待 T-TEST-LOCAL-BINDING-AUDIT 掃完剩餘患者
-- [ ] **T-AUTO-COMMIT-SEMANTIC** — auto-engineer checkpoint 訊息改 `chore(auto-engineer): <timestamp> + 檔案摘要` 格式
-- [ ] **EPIC6 T-LIQG-1..5** — live-ingest quality gate 實作層（骨架 `33bf8ce` 已落）
+  - **第 2 型**（外部服務實例化 `_ensure_cache` 漏 HTTP mock）：`c0933f9` conftest preload empty `realtime_lookup` caches — 1 個患者 `test_safe_score 44s → 0.11s`
+  - **第 3 型**（產品代碼缺大輸入保護 / DoS 向量）：`1eef399` `_manager_hybrid.py` BM25 query length cap 500 字 — 1 個患者 `test_search_very_long_string 7.95s → 1.00s`（**production + test 同時受惠**）
+  - **剩餘候選**：`TestSwitchCommand::test_switch_direct_provider` 2.4-3.3s / `TestWebUIGenerate` 系列 2.5-3.2s（需分類為哪一型再對症）
+  - **系統性對策**（下 epoch）：ast-grep rule 掃 `from src.api.dependencies import` + `from src.knowledge.realtime_lookup import` + 外部服務 `__init__` 內 HTTP 調用 + production 函式缺 input length cap；CONTRIBUTING.md 規範章節；`tests/conftest.py` 全域 re-bind helper；`scripts/audit_local_binding.py --dry-run` 列候選
+- [ ] **T-PYTEST-RUNTIME-FIX-v3** — 目標 ≤ 300s（現雙 baseline **179/173s** 已破；守穩住下輪 cold-start 若 > 220s = regression）
+- [ ] **T-AUTO-COMMIT-SEMANTIC** ⬆ **升 P0**（2026-04-25 auto-engineer 再犯 2 次 `1eef399 / c53a947` checkpoint 裸格式）— auto-engineer commit msg generator 改吐 `chore(auto-engineer): <type>-<summary> @<timestamp>`；過 `scripts/commit_msg_lint.py` 才准 commit；hook 強制執行
+- [ ] **EPIC6 T-LIQG-2..5** — T-LIQG-1 已落（見上），剩 4 條待 epoch：quality_config.py per-adapter floor / `gov-ai kb gate-check` CLI / `gov-ai kb rebuild --quality-gate` flag / `docs/quality-gate-failure-matrix.md`
 
 ### Legacy / Frozen
 
