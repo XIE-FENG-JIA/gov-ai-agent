@@ -163,11 +163,11 @@
 
 - [x] **T-PYTEST-RUNTIME-FIX**（2026-04-24 16:55 本輪全量驗證；兩個目標都達標）— 三段對症：(1) 2026-04-22 11:03 `src/cli/main.py` help-only boot gate (28.84s → 0.43s)；(2) 第四十一輪 `f2fc2ad fix(cli+tests)` + `adb531c fix(test): preflight re-bind` 修 StopIteration flake；(3) **2026-04-24 本輪 `cc5ac3c perf(tests)` autouse `_no_fetcher_backoff_sleep` monkey-patch `src.knowledge.fetchers.base.time.sleep` 清 6 × 7s retry backoff = 42s**。實測 runtime 演進：773s → 547s → **461.20s (3790 passed, 7:41)**。**LOOP2 條件 ≤ 700s 達標**（461 < 700 有 239s 裕量）+ **內部目標 ≤ 500s 達標**（461 < 500）。Top 1 慢點 `test_meeting_exporter_failure_returns_error` **111.88s (24% 總時間)** 留給下 epoch `T-PYTEST-RUNTIME-FIX-v2`（需看 LLM mock 結構決定 meeting_exporter 為什麼 pure-mock 還跑到 111s，懷疑真實 LLM 或 rate_limit 誤觸發；不塞本輪）。
 - [ ] **P2-CORPUS-300**（待 mojlaw/datagovtw/executive_yuan_rss/pcc live 續抓）— corpus 173 → 300；`scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss,pcc --limit 100 --require-live --prune-fixture-fallback`。
-- [ ] **P0.1-MOHW-LIVE-DIAG**（15 分；連 5 輪 0 動 → 本輪不動即強制降 P2 或一次處理完）— `MohwRssAdapter` live fetch 診斷；複製 FDA probe SOP；交付 `docs/mohw-endpoint-probe.md`。
+- [x] **P0.1-MOHW-LIVE-DIAG**（2026-04-24 17:01 閉；commit `7c46761`）— `docs/mohw-endpoint-probe.md`（128 行）實測：endpoint HTTP 200 / 25511 bytes / 1.20s / feed 10 items / today 2026-04-24 新聞 / `fixture_fallback=False` / `synthetic=False`；列 4 個已知限制（`source_doc_no` URL fallback / description HTML 含 `<style>` 塊 / RSS TTL 20min vs freshness_window / 無分頁無歷史）全部跨引到 EPIC6 T-LIQG-2 / T-LIQG-3 backlog；手動 probe 3 步驟 SOP + 失敗排查表。本 session live adapter call 獨立驗證：`MohwRssAdapter().list(limit=5)` 0.53s / 5 entries / cache 20 / 所有 normalize() OK。
 
 ### P2（Admin/key 依賴，不能當 P1 佔坑）
 
-- [ ] **EPIC6-DISCOVERY**（連 3 輪空缺降 P2；Spectra 5/5 已 8 hr+；下 epoch 規模線開始再回 P1）— `openspec/changes/06-*/proposal.md` 骨架；建議 `live-ingest quality gate`；備選 `audit trail UI` / `observability dashboard`。
+- [x] **EPIC6-DISCOVERY**（2026-04-24 16:58 閉；commit `33bf8ce`）— `openspec/changes/06-live-ingest-quality-gate/` proposal (43) + tasks (82) + `specs/quality-gate/spec.md` (111) = 236 行骨架；3 dimensions（volume floor / schema integrity / provenance signal）× 4 named failures（LiveIngestBelowFloor / SchemaIntegrityError / StaleRecord / SyntheticContamination）+ 5 個 T-LIQG-1..5 後續 tasks（gate 模組 + CLI + 失敗矩陣 doc）。
 - [ ] **P2-CHROMA-NEMOTRON-VALIDATE** — 待人工填 `OPENROUTER_API_KEY` 後跑 `gov-ai kb rebuild --only-real` + `docs/embedding-validation.md`。
 - [ ] **T6.1** — blind eval baseline：`run_blind_eval.py --limit 30` + `benchmark/baseline_v2.1.json` + `docs/benchmark-baseline.md`。
 - [ ] **T6.2** — benchmark trend：每次 T2.x 後追加 `benchmark/trend.jsonl`；跌幅 >10% 即 regression gate。

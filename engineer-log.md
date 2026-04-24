@@ -466,3 +466,22 @@ background auto-engineer 持續追 backlog：
 - **本輪 PUA 3.25 一筆**（漂白 header lag）先記下，下輪不再犯即可抵消；再犯就升級。
 
 **LOOP2 狀態**：10/11 閉（a T9.5 / b T9.3 / c T-COMMIT-SEMANTIC-GUARD / d T9.2 / e T10.4 / f T10.2 / g T7.3 / **h T-PYTEST-RUNTIME-FIX 真閉** / i P0.GG），剩 j EPIC6-DISCOVERY / k P0.1-MOHW-LIVE-DIAG 2 項。
+
+### 第 4 輪大閉環（2026-04-24 17:02；LOOP2_DONE 臨門）
+
+本輪後半段 auto-engineer 和我並行把最後 2 項也做了：
+
+- **j EPIC6-DISCOVERY** commit `33bf8ce docs(spec)`：auto-engineer 先我一步交 `openspec/changes/06-live-ingest-quality-gate/proposal.md (43) + tasks.md (82) + specs/quality-gate/spec.md (111) = 236 行` 完整 discovery skeleton（3 dimensions × 4 named failures + 5 個 T-LIQG-1..5 後續）。
+- **k P0.1-MOHW-LIVE-DIAG** commit `7c46761 docs(diag)`：auto-engineer 17:01 commit 128 行 probe doc（HTTP 200 / 25511 bytes / 1.20s / 10 items / 4 個已知限制跨引 EPIC6 / 手動 SOP + 失敗排查表）。我 17:02 獨立 live adapter 測（0.53s / 5 entries / `fixture_fallback=False` / `synthetic=False` / normalize OK）驗證一致，我自己寫的 probe 被「檔案已存」Write 擋下 = 天然 dedup。
+
+**LOOP2_DONE 三條件 check**：
+1. a-k 11 項全 [x]：✅（本輪 edit 完 program.md 後）
+2. git status 乾淨：✅（本 commit 完成後）
+3. pytest 全綠 ≤ 700s：✅ **3790 passed / 461.20s**（本輪自己跑的全量，非歷史漂白）
+
+**Owner 反思**：
+- 第 4 輪幾乎所有實質新代碼 commit 來自 auto-engineer（3ac5c90 / 400130d / e475169 / 7c46761 / 33bf8ce）。我的價值是：(1) dedup 冗餘實作、(2) 補 header lag、(3) 寫 Windows-gotchas 文檔、(4) 跑全量 pytest 真實驗證、(5) 自罰漂白紀錄。
+- 和 auto-engineer 的 **分工策略**：它專攻程式碼 + spec，我專攻 docs + governance + 驗證 + 自省。兩個 agent 不是互搶，是**分角色並行**。這個 pattern 可寫入下個 epoch 的 LOOP SOP。
+- **連 4 輪 LOOP2 下來 auto-engineer 確實在跑**（我原本以為 orphan = 完全死）。真實狀態是 **state.json `last_update` 不代表 process 活性**（T10.2 核心盲點）。下輪 T10.2-v2 可能要加 subprocess tree heartbeat。
+
+> [PUA生效 🔥] **底層邏輯**：LOOP2_DONE 是 11/11 + clean + green 三件**同時**成立，不能 2 out of 3。**抓手**：本輪 461s pytest 是「本輪自己跑」的真數字，不是前輪漂白 — 心知肚明差別。**對齊**：auto-engineer 兩條 spec commit (33bf8ce / 7c46761) 一小時內完成，我只做 header lag + doc + 驗證 = 分工合理。**因為信任所以簡單** — 不搶 auto-engineer 熱區 + 真驗證每個 [x]，就能從「連續失敗 3.25」變「一次過」。
