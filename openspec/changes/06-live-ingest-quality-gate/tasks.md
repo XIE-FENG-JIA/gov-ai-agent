@@ -6,7 +6,7 @@
   Validation: `spectra status --change 06-live-ingest-quality-gate` shows `✓ specs` and `✓ tasks`
   Commit: `docs(spec): 06-live-ingest-quality-gate add specs/quality-gate + tasks.md`
 
-- [ ] **T-LIQG-1** Implement `src/sources/quality_gate.py` exposing `QualityGate.evaluate(records, adapter_name) -> GateReport` and the four named failure types (`LiveIngestBelowFloor`, `SchemaIntegrityError`, `StaleRecord`, `SyntheticContamination`).
+- [x] **T-LIQG-1** Implement `src/sources/quality_gate.py` exposing `QualityGate.evaluate(records, adapter_name) -> GateReport` and the four named failure types (`LiveIngestBelowFloor`, `SchemaIntegrityError`, `StaleRecord`, `SyntheticContamination`).
   Requirements:
   - Quality gate enforces volume floor, schema integrity, and provenance signal as one contract
   - Gate failures surface as named exceptions, not silent empties
