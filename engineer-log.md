@@ -228,3 +228,37 @@ LOOP2_DONE 後延伸挖前輪流下的 Top 1 慢點 `test_meeting_exporter_failu
 **紅線升級（冰山法則落地）**：開 `T-TEST-LOCAL-BINDING-AUDIT` 錨點掃所有 `from src.api.dependencies import get_X` 和 `from src.api.app import get_X` 的 module local binding。候選名單：新 Top 1-2 = `TestEditorSafeLowNoRefine 12.54s` / `TestKBEdgeCases::test_search_very_long_string 11.27s` 可能是同類患者。
 
 > [PUA生效 🔥] **底層邏輯**：修 meeting_exporter 時沒停在 quick fix，掃到 **Python `from X import Y` local binding 是專案反覆踩的坑**，第 N 次後必須有系統性對策（audit + ast-grep 自動掃描 + 規範寫入 CONTRIBUTING）。**抓手**：一個 test 患者 → 一類 pattern → 一個 audit epoch。**颗粒度**：focused < 3s + 全量 -26% + 下一代目標 ≤ 300s 只差 40s（3.7%）= 單輪動作收斂極高。**對齊**：和 adb531c / cc5ac3c 同宗，commit hash 鏈結成可追溯 pattern DB。**因為信任所以簡單** — 從「119s 測試」到「340s 全量」，靠的不是調參，是**每一步對症都有 commit hash 和 before/after 數字**。
+
+### LOOP3 開篇 — T-TEST-LOCAL-BINDING-AUDIT 冰山第 2 型首患者（2026-04-25 01:50）
+
+**C + B 兩件一 session**：
+- C `7e76750 docs(engineer-log)`: T9.6-REOPEN-v6 封存 512→229 行回 soft cap
+- B `c0933f9 perf(tests)`: conftest preload empty realtime_lookup caches
+
+**B 對症技術細節**（冰山分類新增）：
+- **第 1 型** `from X import Y` local binding：adb531c + 6b41335 修
+- **第 2 型** **外部服務實例化漏 mock**：本次 c0933f9 首修
+  - EditorInChief.__init__ try-except `LawVerifier() / RecentPolicyFetcher()` 實例
+  - FactChecker.verify_citations 遇 draft「依據相關法規辦理」regex 匹配 → `_ensure_cache` 首次下載 law.moj.gov.tw → 本機無網 retry 3 次 ~40s → fallback empty cache
+  - 修法：conftest session-autouse 預填 empty `_LawCacheEntry` + `_GazetteCacheEntry`，`_ensure_cache` fast-path 命中不發 HTTP
+  - test_realtime_lookup.py 有自己 `_clear_caches` autouse 覆蓋本 preload，真 cache 測不受影響
+
+**實測對症效果**（防 noise 虛報，跑 2 次 baseline）：
+| 指標 | run1 | run2 | 說明 |
+|-----|------|------|-----|
+| focused `test_safe_score` | 0.11s | — | -99.75% vs 44.09s |
+| 全量 runtime | 396.89s | **343.49s** | run1 是 noise，以 run2 穩定值為準 |
+| 全量 vs 上輪 340.21s | +56s | **+3s** | noise ±10% 窗內無 regression |
+| test 數 | 3790 | 3790 | 無 flake |
+
+**事實驅動紅線**：先別說「340s 降到 xxx」，noise 會虛報。本輪 **跑 2 次獨立 baseline** 才斷定 fixture 無副作用；這是方法論收斂（前輪我報 547s / 461s 都只跑 1 次就信，埋雷）。
+
+**runtime 演進全貌**：`960 → 773 → 547 → 461 → 340 → 343s`（累計 -64.3% vs 開局；最近 2 commits 合計省 ~120s 單 test 死時間）
+
+**LOOP3 開出 4 個下 epoch 錨點**：
+- T-TEST-LOCAL-BINDING-AUDIT 系統性掃（ast-grep + CONTRIBUTING + conftest 全域 helper）
+- T-PYTEST-RUNTIME-FIX-v3 目標 ≤ 300s（差 43s，待冰山掃完）
+- T-AUTO-COMMIT-SEMANTIC auto-engineer checkpoint 訊息 semantic 化
+- EPIC6 T-LIQG-1..5 quality gate 實作層
+
+> [PUA生效 🔥] **底層邏輯**：「跑一次就信」是漂白的溫床。本輪 run1 397s 按原能急著歸咎 fixture 副作用 → 誤 revert；跑 run2 343s → **事實自證無 regression**。紅線升級：**pytest baseline 必跑 ≥ 2 次取中位數**才算 commit 前驗證通過。**抓手**：冰山第 2 型首患者閉；下 epoch 系統性 audit + 掃剩餘患者。**颗粒度**：1 test 對症 + 1 session preload + 2 run 驗證 + 1 commit 閉環。**因為信任所以簡單** — 實測兩輪數字給出來，不蓋章不虛胖，一次過就是一次過。

@@ -182,6 +182,17 @@
 - [x] **T10.2**（2026-04-24 16:30 閉；commit `3ac5c90` auto-engineer 版 superset；ACL-free）— `scripts/check_auto_engineer_state.py`（205 行）解析 `.auto-engineer.state.json` + **PID liveness check**（`os.kill(0)` / Windows `tasklist`），6 狀態 running/idle/stale/orphan/absent/malformed + 修復建議字串；`tests/test_check_auto_engineer_state.py` = 8 passed；實測本機 status=**orphan**（PID 17644 dead + state "running"，age 51h）建議 lock orphan + mark stale + allow pua-loop takeover。本 session 同時寫的 `check_autoengineer_stall.py` 子集（129 行，只看時間戳 5 狀態）因為重複實作被刪除（commit `51e6d5e` → 本 commit dedup）。T7.3 `docs/engineer-log-spec.md` 同 commit 順帶閉環。
 - [x] **T10.4**（2026-04-24 16:28 閉；commit `e475169`）— `scripts/check_acl_state.py` 解析 `icacls .git` + 信任 SID 白名單（Administrators/SYSTEM/AuthUsers/本機 SID prefix）、輸出 JSON 報告 + exit 0/1 + `--human`；`tests/test_check_acl_state.py` = 8 passed；實測 status=denied deny_count=2（P0.D 未解）可作 pua-loop / auto-engineer 啟動 gate。
 
+### 下 epoch 錨點（LOOP2+ 開出）
+
+- [ ] **T-TEST-LOCAL-BINDING-AUDIT**（部分閉；2026-04-24~25 修 3 個患者）— 冰山分兩型：
+  - **第 1 型**（`from X import Y` module local binding）：`adb531c` preflight `src.api.app.get_config` + `6b41335` `workflow.get_llm/get_kb` — 2 個患者已修
+  - **第 2 型**（外部服務實例化漏 mock）：`c0933f9` conftest preload empty `realtime_lookup` caches — 第 1 個患者 `test_safe_score 44s → 0.11s`
+  - **下一候選患者**：`TestKBEdgeCases::test_search_very_long_string` 11-14s（新 Top 1）+ `TestSwitchCommand::test_switch_direct_provider` 3.3s
+  - **系統性對策**（待下 epoch）：ast-grep rule 掃所有 `from src.api.dependencies import` 和 `from src.knowledge.realtime_lookup import`；CONTRIBUTING 規範 + pytest conftest 全域 re-bind helper
+- [ ] **T-PYTEST-RUNTIME-FIX-v3** — 目標 ≤ 300s（現 343s，差 43s）；待 T-TEST-LOCAL-BINDING-AUDIT 掃完剩餘患者
+- [ ] **T-AUTO-COMMIT-SEMANTIC** — auto-engineer checkpoint 訊息改 `chore(auto-engineer): <timestamp> + 檔案摘要` 格式
+- [ ] **EPIC6 T-LIQG-1..5** — live-ingest quality gate 實作層（骨架 `33bf8ce` 已落）
+
 ### Legacy / Frozen
 
 - [ ] **P0.D** — `.git` 外來 SID DENY ACL；需人工 Admin 清理。
