@@ -43,6 +43,34 @@ def cleanup_repo_root_atomic_tmps():
     cleanup_orphan_tmps(str(repo_root), max_age_seconds=None)
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _preload_empty_realtime_lookup_caches():
+    """預先以 empty cache 佔位，阻止 LawVerifier / RecentPolicyFetcher 首次 cold-boot
+    對 law.moj.gov.tw / www.ey.gov.tw 發 HTTP 請求（本機無網路時 ~40s retry 死時間）。
+
+    命中 draft: EditorInChief 全鏈路 test 只要 draft 含「依據相關法規辦理」等模糊
+    citation 片段，`_CITATION_PATTERN` 會匹配 → `verify_citations` → `_ensure_cache`
+    → download → `Max retries exceeded` 等 40s。
+
+    test_realtime_lookup.py 有自己的 autouse `_clear_caches` 會把 `_cache = None`
+    覆蓋本 preload，真正驗 cache 行為的測試不受影響。
+
+    對症源: T-TEST-LOCAL-BINDING-AUDIT 冰山第 2 型（外部服務實例化漏 mock）。
+    """
+    from src.knowledge.realtime_lookup import (
+        LawVerifier,
+        RecentPolicyFetcher,
+        _LawCacheEntry,
+        _GazetteCacheEntry,
+    )
+
+    if LawVerifier._cache is None:
+        LawVerifier._cache = _LawCacheEntry(data={})
+    if RecentPolicyFetcher._cache is None:
+        RecentPolicyFetcher._cache = _GazetteCacheEntry(records=[])
+    yield
+
+
 def make_api_config(**overrides) -> dict:
     """建立 API 測試配置（auth 預設關閉）。
 
