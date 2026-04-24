@@ -19,13 +19,13 @@
   Validation: `pytest tests/test_quality_config.py -q`
   Commit: `feat(sources): add per-adapter quality config and defaults`
 
-- [ ] **T-LIQG-3** Wire `gov-ai kb gate-check --source <name>` CLI subcommand that runs the gate against a fresh fetch and emits a structured report (JSON + human modes).
+- [x] **T-LIQG-3** Wire `gov-ai kb gate-check --source <name>` CLI subcommand that runs the gate against a fresh fetch and emits a structured report (JSON + human modes).
   Requirements:
   - Operators can probe a single source through the gate without a full rebuild
   Validation: `pytest tests/test_kb_gate_check_cli.py -q`
   Commit: `feat(cli): add gov-ai kb gate-check subcommand`
 
-- [ ] **T-LIQG-4** Add `--quality-gate` flag to `gov-ai kb rebuild`; when set, every adapter's output is gated before merging into the staging corpus. Default off until Epic 6 lands fully.
+- [x] **T-LIQG-4** Add `--quality-gate` flag to `gov-ai kb rebuild`; when set, every adapter's output is gated before merging into the staging corpus. Default off until Epic 6 lands fully.
   Requirements:
   - kb rebuild can opt-in to gate enforcement without breaking existing flows
   Validation: `pytest tests/test_kb_rebuild_cli.py -q -k gate`
