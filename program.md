@@ -241,7 +241,7 @@
   - **系統性對策**（下 epoch）：ast-grep rule 掃 `from src.api.dependencies import` + `from src.knowledge.realtime_lookup import` + 外部服務 `__init__` 內 HTTP 調用 + production 函式缺 input length cap；CONTRIBUTING.md 規範章節；`tests/conftest.py` 全域 re-bind helper；`scripts/audit_local_binding.py --dry-run` 列候選
 - [ ] **T-PYTEST-RUNTIME-FIX-v3** — 目標 ≤ 300s（現雙 baseline **179/173s** 已破；守穩住下輪 cold-start 若 > 220s = regression）
 - [ ] **T-AUTO-COMMIT-SEMANTIC** ⬆ **升 P0**（2026-04-25 auto-engineer 再犯 2 次 `1eef399 / c53a947` checkpoint 裸格式）— auto-engineer commit msg generator 改吐 `chore(auto-engineer): <type>-<summary> @<timestamp>`；過 `scripts/commit_msg_lint.py` 才准 commit；hook 強制執行
-- [ ] **EPIC6 coverage 收尾** — T-LIQG-1..5 已落（見上），剩 spectra requirement-coverage（T-LIQG-6..12）收尾
+- [x] **EPIC6 coverage 收尾**（2026-04-25 閉；本輪）— `openspec/changes/06-live-ingest-quality-gate/tasks.md` T-LIQG-0 + T-LIQG-6..12 全收尾；`spectra status --change 06-live-ingest-quality-gate` = proposal/specs/tasks ✓；`python -m pytest tests/ -q --ignore=tests/integration -x` = 3821 passed / 151.44s。
 
 ### Legacy / Frozen
 

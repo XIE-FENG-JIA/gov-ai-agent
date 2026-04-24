@@ -1,6 +1,6 @@
 # Tasks: 06-live-ingest-quality-gate
 
-- [ ] **T-LIQG-0** Finalize the live-ingest quality-gate change package with proposal, tasks, and one spec module under `specs/quality-gate/`.
+- [x] **T-LIQG-0** Finalize the live-ingest quality-gate change package with proposal, tasks, and one spec module under `specs/quality-gate/`.
   Requirements:
   - The first quality-gate slice is contract + reference helper, not a full rewrite
   Validation: `spectra status --change 06-live-ingest-quality-gate` shows `✓ specs` and `✓ tasks`
@@ -37,25 +37,25 @@
   Validation: `rg -n "LiveIngestBelowFloor|SchemaIntegrityError|StaleRecord|SyntheticContamination" docs/quality-gate-failure-matrix.md`
   Commit: `docs(governance): add quality-gate failure matrix`
 
-- [ ] **T-LIQG-6** Requirement coverage: Quality gate enforces volume floor, schema integrity, and provenance signal as one contract is satisfied by `T-LIQG-1`, `T-LIQG-2`, and `T-LIQG-4`.
+- [x] **T-LIQG-6** Requirement coverage: Quality gate enforces volume floor, schema integrity, and provenance signal as one contract is satisfied by `T-LIQG-1`, `T-LIQG-2`, and `T-LIQG-4`.
   Validation: `spectra analyze 06-live-ingest-quality-gate`
 
-- [ ] **T-LIQG-7** Requirement coverage: Gate failures surface as named exceptions, not silent empties is satisfied by `T-LIQG-1`, `T-LIQG-3`, and `T-LIQG-5`.
+- [x] **T-LIQG-7** Requirement coverage: Gate failures surface as named exceptions, not silent empties is satisfied by `T-LIQG-1`, `T-LIQG-3`, and `T-LIQG-5`.
   Validation: `spectra analyze 06-live-ingest-quality-gate`
 
-- [ ] **T-LIQG-8** Requirement coverage: Each adapter declares its own quality policy is satisfied by `T-LIQG-2` and `T-LIQG-4`.
+- [x] **T-LIQG-8** Requirement coverage: Each adapter declares its own quality policy is satisfied by `T-LIQG-2` and `T-LIQG-4`.
   Validation: `spectra analyze 06-live-ingest-quality-gate`
 
-- [ ] **T-LIQG-9** Requirement coverage: The first quality-gate slice is contract + reference helper, not a full rewrite is satisfied by `T-LIQG-0` and `T-LIQG-1`.
+- [x] **T-LIQG-9** Requirement coverage: The first quality-gate slice is contract + reference helper, not a full rewrite is satisfied by `T-LIQG-0` and `T-LIQG-1`.
   Validation: `spectra analyze 06-live-ingest-quality-gate`
 
-- [ ] **T-LIQG-10** Requirement coverage: Operators can probe a single source through the gate without a full rebuild is satisfied by `T-LIQG-3` and `T-LIQG-5`.
+- [x] **T-LIQG-10** Requirement coverage: Operators can probe a single source through the gate without a full rebuild is satisfied by `T-LIQG-3` and `T-LIQG-5`.
   Validation: `spectra analyze 06-live-ingest-quality-gate`
 
-- [ ] **T-LIQG-11** Requirement coverage: kb rebuild can opt-in to gate enforcement without breaking existing flows is satisfied by `T-LIQG-4` and `T-LIQG-5`.
+- [x] **T-LIQG-11** Requirement coverage: kb rebuild can opt-in to gate enforcement without breaking existing flows is satisfied by `T-LIQG-4` and `T-LIQG-5`.
   Validation: `spectra analyze 06-live-ingest-quality-gate`
 
-- [ ] **T-LIQG-12** Requirement coverage: Operators have a single source for triaging gate failures is satisfied by `T-LIQG-5`.
+- [x] **T-LIQG-12** Requirement coverage: Operators have a single source for triaging gate failures is satisfied by `T-LIQG-5`.
   Validation: `spectra analyze 06-live-ingest-quality-gate`
 
 ## Requirement Mapping
