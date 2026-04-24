@@ -177,7 +177,7 @@
 - [ ] **T9.1.a** — benchmark corpus 版控復位（ACL 解後）。
 - [ ] **T9.2** — tmp 再生源頭排查；鎖 `.json_*.tmp` / `.txt_*.tmp`。
 - [ ] **T9.3** — `docs/commit-plan.md` 歸檔到 `docs/archive/commit-plans/2026-04-20-v2.2-split.md`。
-- [ ] **T9.5** — root 遺留 `.ps1/.docx` 歸位。
+- [x] **T9.5**（2026-04-24 閉；commit `a838fd3` 前輪已落）— root 遺留 `.ps1/.docx` 歸位到 `scripts/legacy/`；本輪 `Get-ChildItem *.ps1 *.docx` root count = 0 + `scripts/legacy/` 實存 10 支 `.ps1`，header lag 補勾。
 - [ ] **T7.3** — `engineer-log.md` 版控與 append 規範整理（建議併入 T9.6-REOPEN-v5）。
 - [ ] **T10.2** — auto-engineer 延宕 gate；動 `.auto-engineer.state.json`。
 - [ ] **T10.4** — 啟動先檢 `icacls .git | grep -c DENY`；有 DENY 就切 read-only 任務池。

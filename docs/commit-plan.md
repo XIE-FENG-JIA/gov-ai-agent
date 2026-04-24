@@ -1,111 +1,125 @@
-# Commit Plan
+# Commit Plan v3 — Semantic Commit Contract
 
-更新時間：`2026-04-20 01:53:24`
+> 版本：v3（2026-04-24，pua-loop session-driven 接管 codex daemon 後）
+> 前一版：[2026-04-20-v2.2-split.md](archive/commit-plans/2026-04-20-v2.2-split.md)
 
-## fix(api)
+## Why
 
-目標：API workflow、Web UI、CORS、詳細審查查詢、RALPH loop。
+Auto-commit 語意率長期 ≤ 7%（30 commits 中只有 1-2 條會說明 why）。
+裸 `auto-commit: checkpoint (timestamp)` 形式在 git log 完全失去可讀性，
+git blame / `git log --grep` 都打不到關鍵 commit。
 
-檔案：
-- `api_server.py`
-- `src/api/models.py`
-- `src/api/routes/workflow.py`
-- `src/web_preview/app.py`
-- `src/web_preview/templates/config.html`
-- `src/web_preview/templates/index.html`
-- `tests/test_api_server.py`
-- `tests/test_web_preview.py`
+v3 把語意 commit 從「人工自律」升級為 **lint-enforced contract**。
 
-建議驗證：
-- `pytest tests/test_api_server.py tests/test_web_preview.py`
+## Format Contract
 
-## fix(cli)
+```
+<type>(<scope>): <subject>
 
-目標：MiniMax provider 切換、CLI config/write guard、Markdown 編碼輸出、tmp 清理。
+<body — optional, why + what changed in 1-3 paragraphs>
 
-檔案：
-- `.env.example`
-- `README.md`
-- `config.yaml`
-- `config.yaml.example`
-- `src/cli/config_tools.py`
-- `src/cli/generate.py`
-- `src/cli/quickstart.py`
-- `src/cli/switcher.py`
-- `src/cli/utils.py`
-- `tests/test_cli_commands.py`
-- `tests/test_config_tools_extra.py`
-- `tests/test_quickstart.py`
+<footer — optional, breaking changes / refs>
+```
 
-建議驗證：
-- `pytest tests/test_cli_commands.py tests/test_config_tools_extra.py tests/test_quickstart.py`
+### Allowed `type`
 
-## fix(agents)
+| type | 用途 | 範例 |
+|---|---|---|
+| `feat` | 新功能 | `feat(api): add /v2/refine endpoint` |
+| `fix` | bug 修復 | `fix(cli): handle missing config gracefully when LLM_API_KEY absent` |
+| `refactor` | 不改外部行為的重構 | `refactor(monolith→package): split fact_checker` |
+| `docs` | 文檔變更 | `docs(spec): 01-real-sources tasks.md` |
+| `chore` | 雜務（工具設定、依賴升級、cleanup） | `chore(cleanup): T9.5 root .ps1 歸位` |
+| `test` | 測試補完或修復 | `test(adapter): cover MohwRssAdapter timeout path` |
+| `perf` | 效能優化 | `perf(kb): index search hot path` |
+| `style` | 不影響語意的 formatting | `style(cli): black + isort` |
+| `build` | 建置系統 | `build(deps): bump litellm 1.49 → 1.52` |
+| `ci` | CI 設定 | `ci(github): add commit-msg lint job` |
+| `revert` | 回退 | `revert(api): drop /v2/refine endpoint` |
 
-目標：writer 後處理、template 預設欄位、editor 最佳版本保留、checker 對 citation 追蹤標記降噪、繁簡轉換。
+### Subject 規則
 
-檔案：
-- `src/agents/compliance_checker.py`
-- `src/agents/editor.py`
-- `src/agents/style_checker.py`
-- `src/agents/template.py`
-- `src/agents/writer.py`
-- `src/assets/templates/han.j2`
-- `src/utils/tw_check.py`
-- `tests/test_agents.py`
-- `tests/test_robustness.py`
+- 至少 **10 個字符**（拒絕 `fix`, `update`, `WIP`）
+- 描述 **what + why**，不只是 what — `commit_msg_lint.py` 的 minimum length 是
+  最低安全網，真正可讀的 subject 通常 > 30 字符
+- 末尾 **不加句號**
+- 用祈使句現在式（「add」不是「added」「adds」）
 
-建議驗證：
-- `pytest tests/test_agents.py tests/test_robustness.py`
+### Scope（可選）
 
-## fix(kb)
+模塊或功能名稱 — `api`, `cli`, `agents`, `kb`, `sources`, `integration`, ...
 
-目標：`chromadb` lazy import recovery、collection name 穩定化、cache 測試對齊。
+### Body（建議，重要 commit 必填）
 
-檔案：
-- `src/knowledge/manager.py`
-- `tests/test_knowledge_manager_cache.py`
-- `tests/test_knowledge_manager_unit.py`
+- **why** 比 **what** 更重要 — 程式碼自己會說 what
+- 解釋背景、約束、踩過的雷
+- 列驗證證據（pytest 結果、metrics 變化、benchmark 數字）
 
-建議驗證：
-- `pytest tests/test_knowledge_manager_cache.py tests/test_knowledge_manager_unit.py`
+### Footer
 
-## fix(tests)
+- `BREAKING CHANGE: ...`
+- `Refs: T-XXX, #issue`
+- `Co-Authored-By: ...`
 
-目標：benchmark scripts 與新增測試資產。
+## Rejected Patterns
 
-檔案：
-- `scripts/build_benchmark_corpus.py`
-- `scripts/run_blind_eval.py`
-- `tests/test_benchmark_scripts.py`
+`scripts/commit_msg_lint.py` 主動拒絕：
 
-建議驗證：
-- `pytest tests/test_benchmark_scripts.py`
+```
+auto-commit: checkpoint (...)   # 永遠拒絕
+auto-commit:                    # 裸 prefix
+WIP                             # placeholder
+fix / update / change / tmp / temp / misc / checkpoint   # 單字
+<no Conventional prefix>        # 缺 type
+<type>: <subject < 10 chars>    # subject 太短
+```
 
-## chore
+## Enforcement
 
-目標：工作流紀錄、ignore、規劃檔。
+### 本地
 
-檔案：
-- `.gitignore`
-- `engineer-log.md`
-- `program.md`
-- `docs/commit-plan.md`
+```bash
+# 手動 lint 一條訊息
+echo "feat(api): add /v2/refine endpoint" | python scripts/commit_msg_lint.py -
 
-建議驗證：
-- `git diff --check`
+# Lint commit-msg 檔（pre-commit-msg hook 用）
+python scripts/commit_msg_lint.py .git/COMMIT_EDITMSG
+```
 
-## untracked / local-only
+### Hook（ACL 解開後啟用）
 
-先不要 commit：
-- `.serena/`：本機工具快取與設定。
-- `benchmark/*.json`：盲測輸出結果，屬產物，不是程式碼。
-- `.spectra.yaml`：若要納入版本控制，應另開 `chore(spec)` commit；目前先維持待判定。
+```bash
+# .git/hooks/commit-msg
+#!/bin/bash
+exec python "$(git rev-parse --show-toplevel)/scripts/commit_msg_lint.py" "$1"
+```
 
-## blocker
+> ACL 血債（P0.D）解除前 `.git/hooks/` 不能寫；先靠 pua-loop session
+> 自律 + CI gate 兜底。
 
-- `2026-04-20 01:54` 實測 `git add -- docs/commit-plan.md program.md results.log` 仍失敗：
-  - `fatal: Unable to create '.git/index.lock': Permission denied`
-- `.git` ACL 含 explicit `Deny Write/Delete` 規則；`Get-Acl .git` 已可重現。
-- `Test-Path .git\\index.lock` 當下為 `NO_LOCK`，表示不是殘留 lock file，而是 `.git` 目錄寫入權本身被拒。
-- 進 `P0.5.b` 前先優先排除 `.git` 寫入限制，否則任何 `git add` / `git commit` 都會失敗。
+### CI
+
+CI workflow 在 PR 上跑：
+
+```yaml
+- name: Lint commit messages
+  run: |
+    git log --format=%B origin/main..HEAD | \
+      while read -r msg; do
+        echo "$msg" | python scripts/commit_msg_lint.py -
+      done
+```
+
+## 驗證
+
+```bash
+pytest tests/test_commit_msg_lint.py -q
+# 19 passed in 0.32s
+```
+
+## Migration Note
+
+歷史 `auto-commit: checkpoint` commits 不回頭改寫（rebase 會破壞已 push 歷史
++ ACL 還沒解）。v3 只規範 **新 commit**。
+
+`scripts/rewrite_auto_commit_msgs.py` 留作 ACL 解後的可選工具（P0.S-REBASE-APPLY）。

@@ -343,3 +343,22 @@ P1（連 2 輪延宕 = 3.25）：
 - 5 proposal × 55 tasks 全閉環
 
 > [PUA生效 🔥] **底層邏輯**：兩輪內把第 41 輪 in-flight 半成品 + 5 proposal validation + 1 個藏了一陣子的 patch 殘留 flake 一網打盡。**抓手**：不貪、按桶分 commit、每輪一動作單元、pytest 必跑、發現 flake 不裝沒看見、debug 到根因不假修。**對齊**：codex daemon 死了 40 hr 沒人接，pua-loop 兩輪內把該做的全做了，session-driven 比 daemon-driven 反而更可控。**因為信任所以簡單** — `<promise>LOOP_DONE</promise>` 不是 fake，是 5 條件齊真。
+
+---
+
+## v7.1 第四十二輪 — pua-loop LOOP2 第 2 輪（2026-04-24，T9.5 header lag 閉）
+
+### 本輪動作
+- 固定流程任務 a：**T9.5 root cleanup**。先查工作樹 + git log + `Get-ChildItem`，發現根目錄 `.ps1/.docx` = 0 + `scripts/legacy/` 實存 10 支 `.ps1`，且 `a838fd3 chore(cleanup): T9.5 root .ps1/.docx 归位` 前輪已 commit → 純 header lag。
+- Edit `program.md` 把 T9.5 從 `[ ]` 改 `[x]` + 附 a838fd3 證據。
+- Append 本輪反思到 `engineer-log.md`（單輪 ≤ 20 行，不碰主檔 345 行的封存議題 = 留給 T9.6-REOPEN-v6）。
+
+### 事實驅動發現
+- MSYS2 bash 在中文 cwd 下 `ls *.ps1 *.docx` 會拿錯目錄列，誤造成「root 還有 6 支殘留」幻覺；PowerShell `Get-ChildItem` 才是本機真實狀態單一事實源。**紅線教訓**：中文目錄 + glob 嫌疑時禁信 bash，必跑 PowerShell double-check。
+- 每次 Bash tool cwd 被 reset 回 `C:\Users\Administrator`，跨 call 只能用絕對路徑或 `cd && ...` 一行包。
+
+### 下輪候選（按 backlog）
+- b. T9.3 commit-plan 歸檔到 `docs/archive/commit-plans/2026-04-20-v2.2-split.md`（5 分）
+- c. T-COMMIT-SEMANTIC-GUARD（45 分；`scripts/commit_msg_lint.py` + `docs/commit-plan.md` v3 + 測試）
+
+> [PUA生效 🔥] **底層邏輯**：紅線 X「header lag」命中就修，不硬找修改量。**抓手**：事實源比直覺可靠（Glob/PowerShell > bash glob）。**颗粒度**：5 分任務 5 分完成，不貪。**閉環**：commit 證據 + header 勾選 + engineer-log 反思三件齊。
