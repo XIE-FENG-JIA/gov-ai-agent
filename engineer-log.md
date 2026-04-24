@@ -403,3 +403,21 @@ background auto-engineer 持續追 backlog：
 - k. P0.1-MOHW-LIVE-DIAG（15 分；連 6 輪空缺）
 
 > [PUA生效 🔥] **底層邏輯**：T10.2 不只是 15 分腳本，是給 pua-loop / auto-engineer / 人工三端都用的**延宕 gate 事實源**。**抓手**：一個 script + JSON contract + exit code 分流，所有 consumer 接一份。**對齊**：T10.4 (ACL gate) + T10.2 (stall gate) 是雙胞胎，下輪可寫 `scripts/startup_preflight.sh` 把兩個 gate 串成啟動自檢。**颗粒度**：12 tests 覆蓋 5 狀態 × 3 邊界 = 完整守門。
+
+### 撞車校準（同輪，2026-04-24 16:30）
+
+**事故**：我 commit `51e6d5e feat(governance): T10.2 auto-engineer stall gate` 時 auto-engineer 在一分鐘前（16:30:42）也閉了 T10.2 commit `3ac5c90 feat(governance): T10.2 + T7.3`，兩個人做同一件事 → 典型 race condition。
+
+**兩版比較**：
+| 項目 | 我的 `check_autoengineer_stall.py` 129 行 | auto-engineer `check_auto_engineer_state.py` 205 行 |
+|------|------------------------------------------|---------------------------------------------------|
+| 狀態 | 5 (OK/STALLED/FUTURE/MISSING/CORRUPT) | 6 (running/idle/stale/**orphan**/absent/malformed) |
+| PID liveness | ❌ 不查 | ✅ `os.kill(0)` + Windows `tasklist` |
+| 實測本機 | STALLED 51h | **orphan** (PID 17644 dead + state "running") |
+| tests | 12 passed / 0.66s | 8 passed / 3.58s |
+
+**決策**：功能子集 = 重複實作。主動刪我的 + tests，保留 auto-engineer superset。順帶 T7.3 (`docs/engineer-log-spec.md` 104 行) 也被 3ac5c90 同 commit 閉環，補勾。
+
+**owner 反思**：發現自己實作是子集時不守護 ego，刪是對的；但更根本的問題是 **LOOP 起點的 git status 沒抓到 auto-engineer 的並行進度** — 兩個 agent 跑 race 做同一個 task。下輪啟動第一步應改為 `git fetch` + `git log -n 5` + 查 `.auto-engineer.state.json pid` 是否 alive（用剛上線的 check_auto_engineer_state 本身），避免重做。
+
+**本輪實質清單更新**：f T10.2 + g T7.3 連環閉（+ 我的 cleanup commit），LOOP2 7/11 閉（a/b/c/d/e/f/g）。
