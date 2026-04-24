@@ -66,11 +66,30 @@
 > - 🟡 **EPIC6 T-LIQG-1..12 全 [ ] 連 1 輪 0 動**：骨架 `33bf8ce` 後無實作；與 corpus 173 擴量互為死結
 >
 > **v7.2 P0 精校（本輪新增刀 10/11/12 + sensor refresh）**：
-> 1. 🔴 **T-WORKTREE-CLEAN**（`_manager_hybrid.py` BM25 cap commit 閉環）
+> 1. ✅ **T-WORKTREE-CLEAN**（2026-04-25 02:20 閉；`1eef399` BM25 cap 已入；working tree clean）
 > 2. 🔴 **T-HEADER-SENSOR-REFRESH**（連 2 輪漂白，紅線升級每輪第 0 步）
 > 3. 🟠 **T-BARE-EXCEPT-AUDIT 刀 6**（新熱點 6 檔 × 3 處 = 18 處 → 目標總量 ≤ 80）
 > 4. 🟠 **T-FAT-ROTATE-V2 刀 10**（`datagovtw.py 410` 拆 package）
 > 5. 🟡 **T-ACL-STATE-RECALIBRATE**（ACL DENY 前提校準）
+
+> **v7.3-sensor 校準段（2026-04-25 02:45；第四十四輪深度回顧；HEAD 全獨立跑）**：
+> - ✅ **pytest cross-session cold-start = 3801 passed / 152.98s / exit 0**（破下 epoch ≤ 200s 目標 47s 裕量；BM25 cap 真效非 cache 假象確認；演進 960→773→547→461→340→343→179→173→**153s** 累計 -84%）
+> - 🔴 **engineer-log 351 行** 破 300 hard cap 51 行（T9.6-v6 才閉 4 天就再犯 → v7 強制本輪）
+> - 🔴 **header 連 2 輪漂白**：bare except 寫 109 / 實測 **89 處 / 58 檔**；auto-commit 寫 3.3% / 實測 **86.7%**（26/30；但近 5 條 2/5 惡化）；fat-watch 漏 `api/routes/agents 397`
+> - 🔴 **P0.D ACL 前提錯**：7+ 輪誤歸「SID DENY」，實測 AUTO-RESCUE 每輪代 commit 全通 → T-ACL-STATE-RECALIBRATE 升 P0 硬落
+> - 🟠 **auto-commit 再犯 2 次**（本 session 內）：`6eb9907 / 96c9d05`；共 4 次違規（含 `c53a947 / 1eef399`）→ T-AUTO-COMMIT-SEMANTIC **升 P0**
+> - 🟠 **胖檔破錨點**：`datagovtw 410 / web_preview 399 / api/routes/agents 397 / validators 391 / workflow/_execution 389`
+> - 🟡 **Spectra 06 = 2/13 閉**（T-LIQG-1 quality_gate.py + T-LIQG-2 quality_config.py 已落；T-LIQG-3/4/5 待 → P1 啟動）
+> - 🟡 **T-PYTEST-COLLECT-NAMESPACE 已閉**（`6eb9907`；conftest.py + tests/__init__.py + tests/integration/__init__.py）
+> - 🟡 **synthetic flag 155/192 = 80.7%**（37 份未覆蓋首次入 sensor → P1 T-SYNTHETIC-AUDIT）
+
+> **v7.3 P0（本輪新增 + 升級）**：
+> 1. 🔴 **T9.6-REOPEN-v7**（engineer-log 351→≤100 封存 v7.0/v7.1/v7.2 到 `docs/archive/engineer-log-202604i.md`；T9.6-v6 之後 4 天重犯）
+> 2. 🔴 **T-HEADER-SENSOR-REFRESH**（`scripts/sensor_refresh.py` 本輪必 commit；連 3 輪漂白 = 3.25 X 3）
+> 3. 🔴 **T-ACL-STATE-RECALIBRATE**（升 P0；P0.D 前提錯 7+ 輪）
+> 4. 🔴 **T-AUTO-COMMIT-SEMANTIC**（升 P0；4 次違規現行犯）
+> 5. 🟠 **T-BARE-EXCEPT-AUDIT 刀 6**（沿用）
+> 6. 🟠 **T-FAT-ROTATE-V2 刀 10**（datagovtw）+ **刀 11**（api/routes/agents 397 新加）
 
 ---
 
@@ -166,11 +185,14 @@
 
 ### P0（連 1 輪延宕 = 紅線 X 3.25）
 
-- [ ] **T-WORKTREE-CLEAN**（5 分；P0；2026-04-25 新）— auto-engineer `_manager_hybrid.py` BM25 query cap 500 字 M 狀態未 commit；接手 `perf(knowledge): BM25 query cap 500 chars DoS 保護`（commit msg）或等 auto-engineer 下 round 閉；證據：`git status --short` = 0 行、`git log -n 1` 含 BM25 cap keyword。
-- [ ] **T-HEADER-SENSOR-REFRESH**（15 分；P0；2026-04-25 新；連 2 輪漂白 3.25 X 2）— `scripts/sensor_refresh.py`：wc/rg/git/find 全量跑寫回 program.md 頂部 sensor 區塊；列 bare except 總量/TOP 檔、fat-file top 15、auto-commit 語意率、corpus、pytest 最新；掛 loop starter checklist 第 0 步；證據：script 存在 + dry-run 輸出。
+- [ ] **T9.6-REOPEN-v7**（10 分；P0；2026-04-25 新；v7.3 反思現行）— engineer-log 351 > 300 hard cap；封存 v7.0 第四十二輪 / v7.1 LOOP2 / v7.2 反思 + LOOP3 開篇 + BM25 task B+2 五段到 `docs/archive/engineer-log-202604i.md`；主檔只留 v7.3 單段（≤ 100 行）；驗證：`wc -l engineer-log.md` ≤ 300、`ls docs/archive/engineer-log-202604i.md`。
+- [ ] **T-HEADER-SENSOR-REFRESH**（45 分；P0；2026-04-25 新；連 2 輪漂白 3.25 X 2 → 本輪不落 X 3）— `scripts/sensor_refresh.py`：wc/rg/git/find 全量跑寫回 program.md 頂部 sensor 區塊；列 bare except 總量/TOP 檔、fat-file top 15、auto-commit 語意率、corpus、pytest 最新；掛 loop starter checklist 第 0 步；證據：script 存在 + dry-run 輸出 + 至少一次 commit 重寫 header。
+- [ ] **T-ACL-STATE-RECALIBRATE**（15 分；P0；2026-04-25 升級；P0.D 前提錯 7+ 輪）— `whoami /user` 拿當前 SID + `icacls .git | grep <current-SID>` 比對 + `git commit --dry-run` + `attrib .git/index` 三連查；若 DENY SID 對當前 user 不匹配或被 parent ACL 覆蓋，**降 P0.D 到 P2 Legacy** 並改定義為「`.git/index.lock` 偶發 Permission denied（並行 auto-engineer 競態鎖）」；證據：`docs/acl-recalibrate-2026-04-25.md` + program.md P0.D 重定位。
+- [ ] **T-AUTO-COMMIT-SEMANTIC**（60 分；P0；2026-04-25 升級；4 次違規現行：`6eb9907 / 96c9d05 / c53a947 / 1eef399`）— auto-engineer commit msg generator 改吐 `chore(auto-engineer): <type>-<summary> @<timestamp>`；接 `scripts/commit_msg_lint.py` 驗證（pre-commit hook wire 視 T-ACL-STATE-RECALIBRATE 結果決定 path）；若 ACL 真阻塞，改用 `scripts/validate_auto_commit_msg.py` 在 auto-engineer runtime pre-commit 驗；證據：`git log -n 30 --format=%s | grep -v checkpoint` ≥ 30。
 - [ ] **T-BARE-EXCEPT-AUDIT 刀 6**（45 分；P0；2026-04-25 新）— 新熱點 6 檔 × 3 處 = 18 處：`src/knowledge/_manager_hybrid.py`、`src/graph/nodes/reviewers.py`、`src/cli/config_tools.py`、`src/api/routes/workflow/_endpoints.py`、`src/agents/editor/__init__.py`、`src/agents/compliance_checker.py`；typed bucket + `logger.warning`；驗證 `rg -c 'except Exception|except:' <files>` 全 0、總量 ≤ 80、pytest 對應測試綠。
 - [ ] **T-FAT-ROTATE-V2 刀 10**（30 分；P0；2026-04-25 新）— `src/sources/datagovtw.py 410` 拆 package：`datagovtw/{__init__, reader, normalizer, catalog}.py`；保留 `from src.sources.datagovtw import DataGovTwAdapter` 匯入面；驗證 `pytest tests/test_sources*.py -q` 綠 + 每檔 ≤ 300。
-- [ ] **T-ACL-STATE-RECALIBRATE**（10 分；P0；2026-04-25 新）— `icacls .git` 仍顯示外來 SID DENY，但近 30 commits 100% 落地；跑 `git config --list`、`git commit --dry-run`、`attrib .git/index` 查為何 DENY 無效；若 DENY SID 對當前 user 實際無 deny（SID 不匹配或權限被 parent 覆蓋），更新 P0.D 定義或降 P2 Legacy；證據：`docs/acl-recalibrate-2026-04-25.md`。
+- [ ] **T-FAT-ROTATE-V2 刀 11**（30 分；P0；2026-04-25 新；v7.3 sensor 新發現）— `src/api/routes/agents.py 397` 拆 package：`agents/{__init__, read_routes, write_routes}.py` 或按職責拆；保留 FastAPI router 掛載路徑；驗證 `pytest tests/test_api_server.py -q -k agent` 綠 + 每檔 ≤ 300。
+- [x] **T-WORKTREE-CLEAN**（2026-04-25 02:20 閉；commit `1eef399`）— `_manager_hybrid.py` BM25 query cap 500 字（DoS 保護）已入 AUTO-RESCUE；`git status --short` = 0 行；`git log --format=%s -n 5 | grep -i BM25` 命中 `1eef399` auto-commit checkpoint（訊息違規另計 T-AUTO-COMMIT-SEMANTIC）。冰山第 3 型首患者閉。
 - [x] **T-BARE-EXCEPT-AUDIT 刀 5**（2026-04-22 12:16 閉；ACL-free）— `src/cli/generate/export.py`、`src/agents/auditor.py` 8 處裸 except 改 typed bucket + `logger.warning`；補 `_export_qa_report` / lint / cite / auditor logging 回歸；驗證 `python -m pytest tests/test_export_citation_metadata.py tests/test_exporter_extended.py tests/test_agents.py tests/test_agents_extended.py -q` = 369 passed、`rg -n "except Exception|except:" src/cli/generate/export.py src/agents/auditor.py` = 0 命中。
 - [x] **T-FAT-ROTATE-V2 刀 9**（2026-04-22 13:18 閉；ACL-free）— `src/cli/workflow_cmd.py 345` 拆為 `src/cli/workflow_cmd/{__init__,commands,helpers}.py`（44 / 258 / 66）；保留 `from src.cli.workflow_cmd import app`、`_ensure_dir`、`_workflow_path`、`_validate_workflow_name` 契約與 monkeypatch 面；驗證 `python -m pytest tests/test_workflow_cmd.py -q` = 35 passed、`python -m pytest tests/test_cli_state_dir.py tests/test_cli_commands.py -q -k workflow` = 21 passed。
 - [x] **T-COMMIT-SEMANTIC-GUARD**（2026-04-24 16:22 閉；commit `2678b10`；ACL-free）— `scripts/commit_msg_lint.py`（117 行）拒絕 `auto-commit: checkpoint` / `WIP` / 單字 placeholder，要求 Conventional Commit prefix + subject ≥ 10；`tests/test_commit_msg_lint.py` = 19 passed / 0.56s；`docs/commit-plan.md` 重寫為 v3 正式契約（11 types + enforcement + ACL-blocked hook 路徑）；v2.2 封存至 `docs/archive/commit-plans/2026-04-20-v2.2-split.md`。hook wire 待 P0.D 解 ACL 後落地，短期 CI + session 自律兜底。
@@ -184,7 +206,11 @@
 ### P1（連 2 輪延宕 = 3.25）
 
 - [ ] **T-TEST-LOCAL-BINDING-AUDIT**（P1 升級；2026-04-25 從下 epoch 提級）— 冰山三型系統性對策：ast-grep rule 掃所有 `from src.api.dependencies import` + `from src.knowledge.realtime_lookup import` + 外部服務實例化點；CONTRIBUTING.md 規範章節；`tests/conftest.py` 全域 re-bind helper；驗證 `scripts/audit_local_binding.py --dry-run` 列出剩餘候選患者。
-- [ ] **T-PYTEST-RUNTIME-FIX-v3**（P1；2026-04-25）— 本輪實測 192.74s 已破 ≤ 300s；**守住** + 升級目標 ≤ 200s；下輪 session 起手重跑驗證 noise（上輪 397/343 曾 noise）；若 > 220s 視為 regression 回查 BM25 cap 是否生效。
+- [ ] **T-PYTEST-RUNTIME-FIX-v3**（P1；2026-04-25）— 本輪 **cross-session cold-start = 152.98s / 3801 passed**（新 session 獨立起跑，**破 ≤ 200s 目標 47s 裕量，BM25 cap 真效確認**）；**升級目標 ≤ 120s**（差 33s，待 `test_safe_score / meeting_exporter` 同類患者掃完）；守穩條件：下輪起手 cold-start > 180s 即 regression 回查。
+- [ ] **EPIC6 T-LIQG-3**（P1；2026-04-25 新；T-LIQG-1/2 已落）— `gov-ai kb gate-check --source <name>` CLI subcommand：跑 fresh fetch + gate → JSON/human 報告；驗證 `pytest tests/test_kb_gate_check_cli.py -q`；commit `feat(cli): add gov-ai kb gate-check subcommand`。
+- [ ] **EPIC6 T-LIQG-4**（P1；2026-04-25 新）— `gov-ai kb rebuild --quality-gate` flag；every adapter gate 過才 merge；default off；驗證 `pytest tests/test_kb_rebuild_cli.py -q -k gate`；**解鎖 P2-CORPUS-300 擴量**。
+- [ ] **EPIC6 T-LIQG-5**（P1；2026-04-25 新）— `docs/quality-gate-failure-matrix.md` 4 named error 三角表 + triage + `--require-live` 交互；驗證 `rg -n "LiveIngestBelowFloor|SchemaIntegrityError|StaleRecord|SyntheticContamination" docs/quality-gate-failure-matrix.md` 全命中。
+- [ ] **T-SYNTHETIC-AUDIT**（P1；2026-04-25 新；v7.3 sensor 首入）— `kb_data/examples/` 192 份 vs `synthetic=true` 155 份差 37 份未覆蓋；稽核 37 份真實性並標 `synthetic=true/false` 明確；驗證 `python scripts/audit_synthetic_flag.py --strict` exit 0；與 T-LIQG-1 `SyntheticContamination` 檢測契合，為 CORPUS-300 擴量掃雷。
 - [x] **EPIC6 T-LIQG-1**（2026-04-25 02:20 閉；commit `c53a947` auto-engineer 吃 checkpoint 格式）— `src/sources/quality_gate.py`（171 行）+ `tests/test_quality_gate.py`（99 行）：`QualityGate.evaluate` + 4 named failure 合約落地。⚠️ auto-engineer commit message 違反 T-COMMIT-SEMANTIC-GUARD（用 `auto-commit: checkpoint` 裸格式），T-AUTO-COMMIT-SEMANTIC 升 P0 處理。
 - [x] **T-PYTEST-RUNTIME-FIX**（2026-04-24 本輪四段對症；全部達標）— (1) 2026-04-22 11:03 `src/cli/main.py` help-only boot gate (28.84s → 0.43s)；(2) 第四十一輪 `f2fc2ad` + `adb531c fix(test): preflight re-bind` 修 StopIteration flake + `src.api.app.get_config` local binding；(3) **本輪 `cc5ac3c perf(tests)` autouse `_no_fetcher_backoff_sleep` 清 6 × 7s retry backoff = 42s**；(4) **本輪 `6b41335 perf(tests)` patch `src.api.routes.workflow.get_llm/get_kb` local binding — meeting_exporter 119.77s → 2.53s 省 117s**。runtime 演進：**960s → 773s → 547s → 461.20s → 340.21s (-64.5% vs 開局)**。3790 passed / 5:40。**LOOP2 ≤ 700s ✅（裕量 360s）+ 內部 ≤ 500s ✅ + 下 epoch 新目標 ≤ 300s 只差 40s**。新 Top 1 `TestEditorSafeLowNoRefine::test_safe_score_no_auto_refine` 12.54s + `TestKBEdgeCases::test_search_very_long_string` 11.27s 留給 **T-TEST-LOCAL-BINDING-AUDIT**（冰山法則：所有 `from src.api.dependencies import ...` 的 module local binding 掃一遍同類 patch bypass）。
 - [ ] **P2-CORPUS-300**（待 mojlaw/datagovtw/executive_yuan_rss/pcc live 續抓）— corpus 173 → 300；`scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss,pcc --limit 100 --require-live --prune-fixture-fallback`。

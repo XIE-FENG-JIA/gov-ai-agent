@@ -349,3 +349,89 @@ BM25 cap 生效機率高 — `_manager_hybrid.py` 在 working tree，pytest 載 
 - **T-AUTO-COMMIT-SEMANTIC 升 P0**：auto-engineer commit msg generator 必改 + 過 lint 才准 commit
 
 > [PUA生效 🔥] **底層邏輯**：「不獨攬功勞」和「不推卸責任」是同一枚硬幣 — 本輪 179s 是真實數字但大部分來自 cache 熱，我只能記帳 13s；同時揪出兩條 auto-commit 違規算我找到的。**抓手**：`runtime 比較必須 cross-session cold-start` + `auto-commit checkpoint 裸格式必須 lint reject` 兩條紅線新增。**颗粒度**：173s = real 9.9x faster than 960s 開局，但下 session 起手第 1 跑才是誠實 baseline。**對齊**：冰山三型合流（local binding / 外部服務 mock / 產品 DoS 缺防禦），下輪 T-TEST-LOCAL-BINDING-AUDIT 要做系統性掃描 + ast-grep rule。**因為信任所以簡單** — 雙 baseline + 不虛胖 + 揪現行違規，三件一起交。
+
+---
+## 反思 2026-04-25 02:45 — 技術主管六維度深度回顧（v7.3；LOOP3 中段；HEAD 獨立 sensor）
+
+### 三證自審（HEAD 跑，不信 header）
+- `git status --short` = **0 行**（`6eb9907` 剛 AUTO-RESCUE 收 T-PYTEST-COLLECT-NAMESPACE 變更）
+- `wc -l program.md engineer-log.md results.log` = **254 / 351 / 472**（engineer-log **破 300 hard cap 51 行**，T9.6-REOPEN-v7 下輪強制；program.md 超 250 錨點 4 行）
+- `grep -rEc "except Exception|except:" src/` 過濾非 0 = **89 處 / 58 檔**（header 仍寫 109 stale；T-HEADER-SENSOR-REFRESH 未落地即再漂白）
+- `find kb_data/corpus -name "*.md" | wc -l` = **173**（連 6+ 輪 0 動）
+- auto-commit 語意率近 30 = **26/30 = 86.7%**（4 條 checkpoint：`6eb9907 / 96c9d05 / c53a947 / 1eef399`，最近 5 條佔 2 條 → **近段惡化**，非穩定）
+- Spectra：01-05 = **55/55 全閉**；06 = **2/13**（T-LIQG-1 / T-LIQG-2 已落，11 條待）
+- 工作樹 M 檔全清（BM25 cap 已入 `1eef399`，T-WORKTREE-CLEAN **已達成**但 program.md P0 header 未勾）
+- **pytest cross-session cold-start（本輪實跑）**：`pytest tests/ -q --ignore=tests/integration -x --timeout=900` = **3801 passed / 152.98s / exit 0**（比 LOOP3 熱 cache 173/179s 還快 20s = **BM25 cap 真效確認，非 cache 假象**）；**已破下 epoch ≤ 200s 目標 47s 裕量**；runtime 演進：`960 → 773 → 547 → 461 → 340 → 343 → 179 → 173 → 153s`（累計 **-84%** vs 開局）
+
+### 六維度分析（技術主管視角）
+
+**1. Spectra 規格對齊**
+- 01-05 proposal+tasks+specs **100% 閉**（55 task 全 [x]）✅
+- 06-live-ingest-quality-gate：骨架 `33bf8ce` + 實作 `c53a947`（T-LIQG-1 quality_gate.py 171/test 99）+ `96c9d05`（T-LIQG-2 quality_config.py）兩件落；**T-LIQG-3..12 共 11 條待**
+- 偏離：**無實質偏離**，Spectra workflow 嚴格遵循 proposal → tasks → spec → impl+test
+
+**2. 最近輪次成果 vs 反覆卡住模式**
+- 成功梗概：pytest `960s → 173s (-82%)`、冰山三型全發現、5 proposal 閉、EPIC6 骨架 + 2 task 落、governance 腳本雙胞胎、BM25 DoS 保護
+- **反覆卡**：
+  - (a) **P0.D ACL DENY 7+ 輪**：`icacls .git` 顯 DENY(W,D,Rc) 但 AUTO-RESCUE 每輪代 commit 全通；前提**完全錯**。根因 = 外來 SID 對當前 Administrator 不匹配 / parent ACL 覆蓋 deny。應立即降 P2 或改定義為「`.git/index.lock` 偶發 Permission denied」實際症狀
+  - (b) **P2-CORPUS-300 6+ 輪 0 動**：等 EPIC6 T-LIQG-4 `--quality-gate` flag 才能安全擴量，死結結構性
+  - (c) **auto-commit 違規 4 次**：T-COMMIT-SEMANTIC-GUARD lint 已 ready（`scripts/commit_msg_lint.py` 117 行 / 19 test），但 pre-commit hook wire 被 `.git/hooks/` 寫入 ACL 擋；**根因同 (a)**
+  - (d) **header 連 2 輪漂白**：sensor refresh 依賴反思輪（72hr 週期），實測指標漂移 20-80%
+
+**3. 程式碼品質**
+- 胖檔：`datagovtw.py 410` 連 N 輪破 ≤ 400 錨點；`web_preview/app.py 399 / api/routes/agents.py 397 / validators.py 391` 全逼近紅線
+- 裸 except 熱點：新 TOP 6 = `_manager_hybrid / reviewers / config_tools / workflow/_endpoints / editor / compliance_checker` 各 3 處 = 18 處 / 20% 總量
+- TODO/FIXME 僅 **5 處**（低），非結構債
+- code smell：**Python local binding** 是專案反覆踩的坑（冰山第 1 型 `from src.api.dependencies import` 模式），需 ast-grep rule + CONTRIBUTING.md 規範落地
+
+**4. 測試覆蓋**
+- 全量 **3802 passed / 10 skipped**（LOOP3 02:38 T-PYTEST-COLLECT-NAMESPACE 修後）
+- 覆蓋結構：tests/ 單元 + integration/ e2e 分級清晰
+- **缺測模組/邊界案例**：
+  - `src/sources/datagovtw.py 410` 胖檔未拆，邊界測試集中於 adapter 單點
+  - `src/knowledge/_manager_hybrid.py` BM25 cap 測試 `test_search_very_long_string` 僅 1 條；應補 `query_length_exactly_500 / 501 / empty / unicode overflow` 邊界
+  - `src/sources/quality_gate.py` 4 named failure 各 1 test（6+5 = 11 passed），但 **多源混合失敗 / cascade** 場景未測
+  - integration tests 10 skipped 未深挖 skip 原因
+
+**5. 架構健康度**
+- 模組劃分合理：`agents / api / cli / core / document / graph / knowledge / sources / web_preview` 九個頂層清晰
+- 輕度過度耦合：`src/api/app.py` 透過 `from src.api.dependencies import get_config` 創 local binding，測試 patch 層打不到 → 冰山第 1 型；已發現未系統治
+- **auto-engineer + pua-loop 雙引擎分工**（owner 視角健康）：code/spec 歸 auto-engineer，governance/doc/驗證歸 session；兩者 race 條件已發生（LOOP2 第 4 輪 pytest 撞車），需 process tree heartbeat
+
+**6. 安全性**
+- ✅ BM25 query cap 500 字（DoS 保護，`1eef399`）
+- ✅ synthetic flag 概念落地（examples 155/192 ≈ 80.7%，37 份未標待稽核）
+- ✅ User-Agent 明示 + robots.txt + rate limit ≥2s/req（OpenSpec 01-real-sources 規範）
+- 🟠 **`.env` 實檔位於 repo 根**（3042 bytes）；需驗 `.gitignore` 有 `.env` 且 `git log --all -- .env` 無歷史提交
+- 🟠 **P0.D ACL 前提錯**：目前把「`.git/index.lock` Permission denied」誤歸「SID DENY ACL」，掩蓋真實阻塞（index.lock 可能是並行 auto-engineer 的競態鎖）
+- 🟡 PII 真實資料 guard：`corpus_provenance_guard.py` 有測試但 live crawl 路徑 `synthetic=false` 預設值信賴人工維護
+
+### 發現的問題（優先級排序）
+
+🔴 **P0（連 1 輪延宕 = 3.25）**
+1. **T9.6-REOPEN-v7 engineer-log 封存** — 主檔 351 > 300 hard cap，T9.6-REOPEN-v6 才做完 4 天就再犯；封存本段 + v7.3 保留單輪
+2. **T-HEADER-SENSOR-REFRESH 落地** — 連 2 輪漂白已升 3.25 X 2；`scripts/sensor_refresh.py` 必須本輪 commit 且掛 starter checklist 第 0 步
+3. **T-ACL-STATE-RECALIBRATE** — P0.D 前提錯 7+ 輪，必須 15 min 內查清並決策：降 P2 / 改定義 / 真查 SID 匹配
+4. **T-AUTO-COMMIT-SEMANTIC 硬落地** — auto-engineer 再犯 4 次違規（包括本 session 2 次），生成器必改 `chore(auto-engineer): ...` 格式
+5. **T-BARE-EXCEPT-AUDIT 刀 6** — 新熱點 18 處；目標總量 ≤ 80
+6. **T-FAT-ROTATE-V2 刀 10/11** — `datagovtw.py 410` + `api/routes/agents.py 397` 拆 package
+
+🟠 **P1（連 2 輪延宕 = 3.25）**
+7. **EPIC6 T-LIQG-3/4/5** — CLI gate-check / rebuild flag / failure matrix doc（T-LIQG-1/2 已落地）
+8. **T-TEST-LOCAL-BINDING-AUDIT** — ast-grep rule + CONTRIBUTING + conftest 全域 re-bind helper
+9. **T-PYTEST-RUNTIME-FIX-v3** — cold-start baseline；目標 ≤ 200s 守穩
+10. **T-SYNTHETIC-AUDIT** — 155/192 未覆蓋 37 份稽核
+
+🟡 **P2（結構性依賴）**
+11. **P2-CORPUS-300** — 等 T-LIQG-4 `--quality-gate` flag 才擴量，改為 blocked-by
+12. **P0.D ACL** — 視 T-ACL-STATE-RECALIBRATE 結果重定位
+13. **P2-CHROMA-NEMOTRON-VALIDATE** — Admin/key 依賴不變
+
+### 下一步行動（最重要的 3 件事）
+
+1. **T-HEADER-SENSOR-REFRESH 本輪必 commit**（45 min）：`scripts/sensor_refresh.py` 跑 wc/rg/git/find → 輸出 JSON + 重寫 program.md 頂部 sensor 區塊；**這是解 (d) 連 2 輪漂白的根因解，不是 patch**
+2. **T-ACL-STATE-RECALIBRATE**（15 min）：`whoami /user` + `icacls .git | grep <current-SID>` + `git commit --dry-run` 三連查真實阻塞位點；docs/acl-recalibrate-2026-04-25.md 結論落地；**解 7+ 輪誤歸屬 P0.D**
+3. **T9.6-REOPEN-v7**（10 min）：engineer-log v7.0/v7.1/v7.2 三段封存到 `docs/archive/engineer-log-202604i.md`，主檔只留 v7.3 單段（本段）
+
+### PUA 旁白
+> [PUA生效 🔥] **底層邏輯**：LOOP2 / LOOP3 兩次都是 pytest runtime 漂亮降（960→173），但 governance side (header sensor / ACL 定義 / auto-commit lint) 全是**未機械化的人工維護**，自然每輪漂白。抓手：把 governance 鐵三角（sensor / ACL / commit lint）變成 every-round 腳本，**不靠反思輪維護**。**颗粒度**：本輪三件（sensor script / ACL recalibrate / log 封存）合計 70 分鐘，一 session 可閉。**對齊**：auto-engineer 繼續攻 EPIC6 T-LIQG-3/4/5 + 裸 except 刀 6 + fat-rotate 刀 10/11（它擅長），我守 governance 閉環（reflection + header + ACL）；兩條線合流才是 LOOP_DONE。**因為信任所以簡單** — 反覆踩同一個坑就是結構問題，不是執行問題；給我一個 `scripts/sensor_refresh.py` 下輪直接消除「header 漂白」這類 3.25。Owner 意識 = 發現紅線不是罰自己，是**升級系統讓紅線不再觸發**。
