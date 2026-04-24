@@ -191,7 +191,7 @@
 - [ ] **T2.5** — API 層融合；保留 legacy backlog。
 - [ ] **T2.7-old / T2.8-old / T2.9-old** — 舊 Epic 2 條目；保留追蹤，不列本輪首要。
 - [ ] **T5.2 / T5.3** — Epic 5 長尾：500 份 real corpus 後 rebuild；ChromaDB 停役仍凍結。
-- [ ] **P0.GG** — Windows gotchas 文檔補完；非 blocker。
+- [x] **P0.GG**（2026-04-24 閉；本 commit；ACL-free）— `docs/windows-gotchas.md`（~340 行）匯整 16 項專案實戰 Windows 坑 + loop starter checklist：MSYS2 中文 glob 失真 / bash cwd reset / cp950 / CRLF .bat / schtasks Access Denied → Startup folder / Node 20+ spawn .cmd EINVAL / Tauri CREATE_NO_WINDOW / cmd /c fd 孤兒 / dataclass+importlib sys.modules register / pytest rootdir 中文亂碼 / .git ACL DENY / MSYS2 fork 慢 / taskkill IM 連帶殺 / wscript 偽 orphan / Defender 拖 runtime / 新 session 啟動 4 步自檢。
 - [ ] **P0.SELF-COMMIT-REFLECT** — 仍受 ACL 現況牽制；保留為治理題。
 - [ ] **T1.6** — 已併入 corpus 擴量路線；保留原編號方便追歷史。
 

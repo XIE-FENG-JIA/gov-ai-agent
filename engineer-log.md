@@ -421,3 +421,25 @@ background auto-engineer 持續追 backlog：
 **owner 反思**：發現自己實作是子集時不守護 ego，刪是對的；但更根本的問題是 **LOOP 起點的 git status 沒抓到 auto-engineer 的並行進度** — 兩個 agent 跑 race 做同一個 task。下輪啟動第一步應改為 `git fetch` + `git log -n 5` + 查 `.auto-engineer.state.json pid` 是否 alive（用剛上線的 check_auto_engineer_state 本身），避免重做。
 
 **本輪實質清單更新**：f T10.2 + g T7.3 連環閉（+ 我的 cleanup commit），LOOP2 7/11 閉（a/b/c/d/e/f/g）。
+
+---
+
+## v7.1 第四十二輪 — pua-loop LOOP2 第 4 輪（2026-04-24，task i P0.GG Windows gotchas + task h race-detection）
+
+### 本輪動作
+- 起點自檢（新紅線）：`git status` clean + `python scripts/check_auto_engineer_state.py` = orphan（PID 17644 dead）→ 可獨佔。
+- 計畫 task h T-PYTEST-RUNTIME-FIX → 啟背景 pytest `--durations=30` (task `bd8hzrxua`)。
+- **事故偵測**：5 分鐘後 `Get-CimInstance Win32_Process` 發現**另一組 bash pytest process 早 6 分鐘啟動**（PID 18568/52780/43052, 16:30:52 開工）—— auto-engineer 在我啟動前就在做同一個 task h，pid_alive orphan 結論可能因為 state.json last_update 未 refresh 而誤報。
+- **決策**：`TaskStop bd8hzrxua` 殺我的 pytest，切任務 i P0.GG（純 docs 不會和 pytest 撞車），讓 auto-engineer 獨跑 task h。
+- 寫 `docs/windows-gotchas.md` 340 行匯整 16 項專案踩過的 Windows 坑 + 新 session 4 步啟動 checklist。
+
+### 事實驅動發現
+- **`check_auto_engineer_state.py` 有盲點**：它只看 state.json `last_update` + PID liveness；但 auto-engineer 啟新 subprocess（e.g., pytest）時**不會更新 state.json**。PID 17644（codex daemon 主進程）確實 dead，但 auto-engineer spawn 的 subprocess tree 仍在跑。**下輪紅線升級**：除了 state.json，還要 `Get-CimInstance Win32_Process -Filter "Name='bash.exe' OR Name='python.exe'"` 看最近 15 min 有沒有 pytest/pytest-related 進程。
+- **TaskStop `/T /F` 級聯殺成功**：kill 我的 pytest 3 個 bash 後，`taskkill` 報 "not found" = 已全清，對比上輪 cmd fd 孤兒問題（feedback_windows_cmd_fd_orphan.md），Claude Code Bash tool 的 TaskStop 實作合格。
+
+### 下輪（LOOP2 剩 3 項）
+- h T-PYTEST-RUNTIME-FIX（auto-engineer 在跑，等它 commit；若 90 min 內沒動我接手）
+- j EPIC6-DISCOVERY openspec 骨架（30 分）
+- k P0.1-MOHW-LIVE-DIAG（15 分，連 6 輪空缺）
+
+> [PUA生效 🔥] **底層邏輯**：發現撞車第一反應不是比誰快，是**誰的資源不可替代**（auto-engineer 跑 pytest vs 我寫 docs，明顯我寫 docs 更 parallel-friendly）。**抓手**：1) race 偵測用進程樹而非 state.json；2) 換軌挑「不和現役 pytest 共用 IO/CPU」的 task。**颗粒度**：一個 doc 一次寫完，16 條坑每條 3-10 行含症狀/根因/修法/事故參照，不寫教科書廢話。**對齊**：P0.GG 非 blocker，但新接手 session 有它省 3 分鐘 debug 時間 × N 輪 = 真實 ROI。
