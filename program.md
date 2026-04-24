@@ -187,8 +187,8 @@
 
 - [ ] **T9.6-REOPEN-v7**（10 分；P0；2026-04-25 新；v7.3 反思現行）— engineer-log 351 > 300 hard cap；封存 v7.0 第四十二輪 / v7.1 LOOP2 / v7.2 反思 + LOOP3 開篇 + BM25 task B+2 五段到 `docs/archive/engineer-log-202604i.md`；主檔只留 v7.3 單段（≤ 100 行）；驗證：`wc -l engineer-log.md` ≤ 300、`ls docs/archive/engineer-log-202604i.md`。
 - [ ] **T-HEADER-SENSOR-REFRESH**（45 分；P0；2026-04-25 新；連 2 輪漂白 3.25 X 2 → 本輪不落 X 3）— `scripts/sensor_refresh.py`：wc/rg/git/find 全量跑寫回 program.md 頂部 sensor 區塊；列 bare except 總量/TOP 檔、fat-file top 15、auto-commit 語意率、corpus、pytest 最新；掛 loop starter checklist 第 0 步；證據：script 存在 + dry-run 輸出 + 至少一次 commit 重寫 header。
-- [ ] **T-ACL-STATE-RECALIBRATE**（15 分；P0；2026-04-25 升級；P0.D 前提錯 7+ 輪）— `whoami /user` 拿當前 SID + `icacls .git | grep <current-SID>` 比對 + `git commit --dry-run` + `attrib .git/index` 三連查；若 DENY SID 對當前 user 不匹配或被 parent ACL 覆蓋，**降 P0.D 到 P2 Legacy** 並改定義為「`.git/index.lock` 偶發 Permission denied（並行 auto-engineer 競態鎖）」；證據：`docs/acl-recalibrate-2026-04-25.md` + program.md P0.D 重定位。
-- [ ] **T-AUTO-COMMIT-SEMANTIC**（60 分；P0；2026-04-25 升級；4 次違規現行：`6eb9907 / 96c9d05 / c53a947 / 1eef399`）— auto-engineer commit msg generator 改吐 `chore(auto-engineer): <type>-<summary> @<timestamp>`；接 `scripts/commit_msg_lint.py` 驗證（pre-commit hook wire 視 T-ACL-STATE-RECALIBRATE 結果決定 path）；若 ACL 真阻塞，改用 `scripts/validate_auto_commit_msg.py` 在 auto-engineer runtime pre-commit 驗；證據：`git log -n 30 --format=%s | grep -v checkpoint` ≥ 30。
+- [x] **T-ACL-STATE-RECALIBRATE**（2026-04-25 03:08 閉；ACL/advisory 校準）— 以 PowerShell `WindowsIdentity` 取當前 SID `S-1-5-21-1271297351-773185924-864452041-500`，確認不匹配 `.git` foreign DENY SID `S-1-5-21-541253457-2268935619-321007557-692795393`，且該 SID 不在當前 token；`git commit --dry-run --allow-empty` 仍重現 `.git/index.lock: Permission denied`、`.git/index` 僅 `A` 屬性。結論：**P0.D 前提錯**，foreign SID DENY 降為 advisory / legacy，現行 blocker 改記 `.git/index.lock` 寫鎖問題；`scripts/check_acl_state.py` 已補 token-aware mismatch 判讀，證據見 `docs/acl-recalibrate-2026-04-25.md`。
+- [ ] **T-AUTO-COMMIT-SEMANTIC**（60 分；P0；2026-04-25 升級；4 次違規現行：`6eb9907 / 96c9d05 / c53a947 / 1eef399`）— auto-engineer commit msg generator 改吐 `chore(auto-engineer): <type>-<summary> @<timestamp>`；接 `scripts/commit_msg_lint.py` 驗證（runtime path 視 `index.lock` 問題是否仍阻塞 hook 安裝決定）；若 git 寫鎖真阻塞，改用 `scripts/validate_auto_commit_msg.py` 在 auto-engineer runtime pre-commit 驗；證據：`git log -n 30 --format=%s | grep -v checkpoint` ≥ 30。
 - [ ] **T-BARE-EXCEPT-AUDIT 刀 6**（45 分；P0；2026-04-25 新）— 新熱點 6 檔 × 3 處 = 18 處：`src/knowledge/_manager_hybrid.py`、`src/graph/nodes/reviewers.py`、`src/cli/config_tools.py`、`src/api/routes/workflow/_endpoints.py`、`src/agents/editor/__init__.py`、`src/agents/compliance_checker.py`；typed bucket + `logger.warning`；驗證 `rg -c 'except Exception|except:' <files>` 全 0、總量 ≤ 80、pytest 對應測試綠。
 - [ ] **T-FAT-ROTATE-V2 刀 10**（30 分；P0；2026-04-25 新）— `src/sources/datagovtw.py 410` 拆 package：`datagovtw/{__init__, reader, normalizer, catalog}.py`；保留 `from src.sources.datagovtw import DataGovTwAdapter` 匯入面；驗證 `pytest tests/test_sources*.py -q` 綠 + 每檔 ≤ 300。
 - [ ] **T-FAT-ROTATE-V2 刀 11**（30 分；P0；2026-04-25 新；v7.3 sensor 新發現）— `src/api/routes/agents.py 397` 拆 package：`agents/{__init__, read_routes, write_routes}.py` 或按職責拆；保留 FastAPI router 掛載路徑；驗證 `pytest tests/test_api_server.py -q -k agent` 綠 + 每檔 ≤ 300。
@@ -246,7 +246,7 @@
 
 ### Legacy / Frozen
 
-- [ ] **P0.D** — `.git` 外來 SID DENY ACL；需人工 Admin 清理。
+- [ ] **P2-Legacy-INDEX-LOCK**（原 P0.D；2026-04-25 校準降級）— `.git` foreign SID DENY 仍存在，但 **不匹配當前 token**；現行可重現故障改定義為 `.git/index.lock: Permission denied` 寫鎖問題，疑似 Git/MSYS shell、背景並行程序或宿主機權限異常。保留 legacy/advisory 追蹤，待最小 repro 後再決定是否需 Admin 清理 ACL。
 - [ ] **P0.S-REBASE-APPLY** — 等 ACL 解後才跑 `scripts/rewrite_auto_commit_msgs.py --apply`。
 - [ ] **P1.3（T2.0.a）** — `.env` + litellm smoke；ACL/key gating。
 - [ ] **T2.3** — SurrealDB migration；凍結。

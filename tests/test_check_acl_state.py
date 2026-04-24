@@ -12,6 +12,7 @@ _spec.loader.exec_module(_mod)
 
 parse_deny_aces = _mod.parse_deny_aces
 is_foreign_sid = _mod.is_foreign_sid
+get_current_token_sids = _mod.get_current_token_sids
 check = _mod.check
 
 
@@ -57,6 +58,20 @@ def test_is_foreign_sid_flags_unknown_domain_sid() -> None:
     assert is_foreign_sid("S-1-5-21-541253457-2268935619-321007557-692795393")
 
 
+def test_get_current_token_sids_includes_user(monkeypatch) -> None:
+    outputs = iter(
+        [
+            "S-1-5-21-1271297351-773185924-864452041-500",
+            "S-1-5-11\nS-1-5-32-545",
+        ]
+    )
+    monkeypatch.setattr(_mod, "_run_text_command", lambda _: next(outputs))
+    user_sid, token_sids = get_current_token_sids()
+    assert user_sid == "S-1-5-21-1271297351-773185924-864452041-500"
+    assert user_sid in token_sids
+    assert "S-1-5-11" in token_sids
+
+
 def test_check_returns_clean_for_missing_target(tmp_path) -> None:
     nonexistent = tmp_path / "no-such-dir"
     report = check(nonexistent)
@@ -67,6 +82,7 @@ def test_check_returns_clean_for_missing_target(tmp_path) -> None:
 def test_check_handles_real_dir(tmp_path, monkeypatch) -> None:
     """When icacls returns clean output, status should be 'clean'."""
     monkeypatch.setattr(_mod, "_run_icacls", lambda _: _SAMPLE_CLEAN_OUTPUT)
+    monkeypatch.setattr(_mod, "get_current_token_sids", lambda: ("S-1-5-21-1271297351-773185924-864452041-500", set()))
     report = check(tmp_path)
     assert report["status"] == "clean"
     assert report["foreign_sids"] == []
@@ -76,8 +92,30 @@ def test_check_handles_real_dir(tmp_path, monkeypatch) -> None:
 def test_check_handles_denied_dir(tmp_path, monkeypatch) -> None:
     """When icacls returns DENY ACEs from foreign SIDs, recommend read-only."""
     monkeypatch.setattr(_mod, "_run_icacls", lambda _: _SAMPLE_DENIED_OUTPUT)
+    monkeypatch.setattr(
+        _mod,
+        "get_current_token_sids",
+        lambda: (
+            "S-1-5-21-541253457-2268935619-321007557-692795393",
+            {"S-1-5-21-541253457-2268935619-321007557-692795393"},
+        ),
+    )
     report = check(tmp_path)
     assert report["status"] == "denied"
     assert report["deny_count"] == 2
     assert any(sid.startswith("S-1-5-21-541253457") for sid in report["foreign_sids"])
+    assert report["matched_token_foreign_sids"] == ["S-1-5-21-541253457-2268935619-321007557-692795393"]
+    assert report["recommended_mode"] == "read-only"
+
+
+def test_check_marks_foreign_sid_mismatch_as_advisory(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(_mod, "_run_icacls", lambda _: _SAMPLE_DENIED_OUTPUT)
+    monkeypatch.setattr(
+        _mod,
+        "get_current_token_sids",
+        lambda: ("S-1-5-21-1271297351-773185924-864452041-500", {"S-1-5-11"}),
+    )
+    report = check(tmp_path)
+    assert report["status"] == "advisory-deny"
+    assert report["matched_token_foreign_sids"] == []
     assert report["recommended_mode"] == "read-only"

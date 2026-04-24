@@ -8,12 +8,14 @@ docs work.
 
 Exit codes:
     0 — clean (no foreign DENY); full task pool available
-    1 — DENY present; downstream consumers should run read-only
+    1 — DENY present or advisory mismatch; downstream consumers should inspect
 
 Output (to stdout, machine-parseable JSON):
-    {"status": "clean" | "denied",
+    {"status": "clean" | "denied" | "advisory-deny",
      "deny_count": int,
      "foreign_sids": [str, ...],
+     "matched_token_foreign_sids": [str, ...],
+     "current_user_sid": str | null,
      "recommended_mode": "full" | "read-only"}
 
 Use:
@@ -25,6 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -45,6 +48,55 @@ def _run_icacls(target: Path) -> str:
         cmd, capture_output=True, text=True, timeout=10,
     )
     return result.stdout
+
+
+def _run_text_command(cmd: list[str]) -> str:
+    """Run a fixed command and return stripped stdout."""
+    result = subprocess.run(  # noqa: S603,S607 — fixed OS utilities only
+        cmd,
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    return result.stdout.strip()
+
+
+def _powershell_executable() -> str:
+    """Return an available PowerShell executable."""
+    for candidate in ("powershell.exe", "pwsh.exe", "powershell", "pwsh"):
+        resolved = shutil.which(candidate)
+        if resolved:
+            return resolved
+    raise FileNotFoundError("PowerShell executable not found")
+
+
+def get_current_token_sids() -> tuple[str | None, set[str]]:
+    """Return current user SID plus token group SIDs when available.
+
+    This uses PowerShell/.NET because `whoami /user` is not reliable on this
+    host under MSYS-backed shells.
+    """
+    user_sid = _run_text_command(
+        [
+            _powershell_executable(),
+            "-NoProfile",
+            "-Command",
+            "[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value",
+        ]
+    ) or None
+    groups_output = _run_text_command(
+        [
+            _powershell_executable(),
+            "-NoProfile",
+            "-Command",
+            "[System.Security.Principal.WindowsIdentity]::GetCurrent().Groups | ForEach-Object { $_.Value }",
+        ]
+    )
+    token_sids = {line.strip() for line in groups_output.splitlines() if line.strip()}
+    if user_sid:
+        token_sids.add(user_sid)
+    return user_sid, token_sids
 
 
 def parse_deny_aces(icacls_output: str) -> list[tuple[str, str]]:
@@ -77,24 +129,43 @@ def check(target: Path | None = None) -> dict:
             "status": "clean",
             "deny_count": 0,
             "foreign_sids": [],
+            "matched_token_foreign_sids": [],
+            "current_user_sid": None,
             "recommended_mode": "full",
             "note": f"target {target} not found — assumed clean",
         }
     output = _run_icacls(target)
     deny_aces = parse_deny_aces(output)
     foreign = sorted({sid for sid, _ in deny_aces if is_foreign_sid(sid)})
+    current_user_sid, token_sids = get_current_token_sids()
+    matched = sorted(sid for sid in foreign if sid in token_sids)
 
-    if foreign:
+    if matched:
         return {
             "status": "denied",
             "deny_count": len(deny_aces),
             "foreign_sids": foreign,
+            "matched_token_foreign_sids": matched,
+            "current_user_sid": current_user_sid,
             "recommended_mode": "read-only",
+            "note": "foreign DENY SID is present in the current access token",
+        }
+    if foreign:
+        return {
+            "status": "advisory-deny",
+            "deny_count": len(deny_aces),
+            "foreign_sids": foreign,
+            "matched_token_foreign_sids": [],
+            "current_user_sid": current_user_sid,
+            "recommended_mode": "read-only",
+            "note": "foreign DENY SID does not match the current token; ACL alone does not explain git lock failures",
         }
     return {
         "status": "clean",
         "deny_count": len(deny_aces),
         "foreign_sids": [],
+        "matched_token_foreign_sids": [],
+        "current_user_sid": current_user_sid,
         "recommended_mode": "full",
     }
 
@@ -103,12 +174,20 @@ def _human_print(report: dict) -> None:
     print(f"ACL status: {report['status']}")
     print(f"DENY ACE count: {report['deny_count']}")
     print(f"Foreign SIDs: {report['foreign_sids'] or '(none)'}")
+    print(f"Matched token foreign SIDs: {report['matched_token_foreign_sids'] or '(none)'}")
+    print(f"Current user SID: {report['current_user_sid'] or '(unknown)'}")
     print(f"Recommended mode: {report['recommended_mode']}")
     if report["status"] == "denied":
         print("\n[guard] downstream task pools should switch to read-only:")
         print("  - block: git commit / push / rebase / hooks/* install")
         print("  - allow: pytest / docs / read-only inspection")
         print("\nResolution: P0.D — Admin must remove foreign SID DENY ACEs from .git")
+    elif report["status"] == "advisory-deny":
+        print("\n[guard] foreign DENY ACE exists but does not match the current token:")
+        print("  - keep write-path suspicion high")
+        print("  - stop treating the foreign SID as the proven root cause")
+        print("  - investigate .git/index.lock permission failure separately")
+        print("\nResolution: demote ACL DENY to legacy/advisory, keep git lock issue tracked independently")
 
 
 def main(argv: list[str]) -> int:
