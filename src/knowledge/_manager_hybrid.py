@@ -196,12 +196,26 @@ class KnowledgeHybridSearchMixin:
         doc_type: str | None = None,
         source_type: str | None = None,
     ) -> list[dict]:
-        """使用 jieba 分詞 + 簡化 BM25 評分進行關鍵字搜尋。"""
+        """使用 jieba 分詞 + 簡化 BM25 評分進行關鍵字搜尋。
+
+        query 超過 500 字時截短 — 實際使用者搜尋不會那麼長，過長 query 讓
+        jieba.cut 成為效能漏洞（30k 字 query 約 8s；也是 DoS 向量）。
+        截短不改變 BM25 語意：前 500 字已含足夠 token 做相關性排序。
+        """
         try:
             import jieba
         except ImportError:
             logger.debug("jieba 未安裝，跳過 BM25 搜尋")
             return []
+
+        # Query length cap: 防 jieba O(n) 分詞對 30k+ 字 query 爆炸
+        _MAX_QUERY_CHARS = 500
+        if len(query) > _MAX_QUERY_CHARS:
+            logger.debug(
+                "BM25 query 截短 %d → %d 字元（jieba 效能保護）",
+                len(query), _MAX_QUERY_CHARS,
+            )
+            query = query[:_MAX_QUERY_CHARS]
 
         query_tokens = list(jieba.cut(query))
         query_tokens = [t for t in query_tokens if len(t.strip()) > 1]

@@ -55,6 +55,23 @@
 > 3. ✅ **T-BARE-EXCEPT-AUDIT 刀 4** 已閉（`core/llm` / `gazette_fetcher` / `_manager_search` 裸 except = 0）
 > 4. ✅ **T-FAT-ROTATE-V2 刀 8** 已閉（fact_checker 已拆 package；`__init__ 30 / checks 257 / pipeline 205`）
 
+> **v7.2-sensor 校準段（2026-04-25 02:18；第四十三輪深度回顧 HEAD 獨立 sensor；header 連 2 輪漂白抓現行）**：
+> - ✅ **pytest 本輪全量 3790 passed / 192.74s / exit 0**（上輪 340 → -43.6%；**內部目標 ≤ 300s 達標**，裕量 107s）— 推斷 auto-engineer `_manager_hybrid.py` BM25 cap + 前輪 `cc5ac3c`/`c0933f9` 合力砍出；下輪 session 起手重跑驗證 noise
+> - 🔴 **header 連 2 輪漂白**：bare except 實測 **89 處 / 61 檔**（header 寫 109；-18% 未同步）；auto-commit 語意率 **25/30 = 83.3%**（header 寫 3.3% = 完全離譜）；fat-watch 名單漏 `api/routes/agents 397`
+> - 🔴 **工作樹 M `_manager_hybrid.py` 未 commit**：auto-engineer BM25 query cap 500 字（DoS 保護）diff 清晰；違反「M 檔案不過夜」北極星規則
+> - 🟠 **裸 except 熱點再遷移（新 TOP）**：`_manager_hybrid 3 / reviewers 3 / config_tools 3 / workflow/_endpoints 3 / editor/__init__ 3 / compliance_checker 3` = 18 處；前輪刀 1-5 清掉舊熱點後集中於這 6 檔
+> - 🟠 **胖檔連 N 輪破錨點**：`datagovtw.py 410` 仍 > 400（v7.0 硬指標 ≤ 400）；新現 `api/routes/agents.py 397` 逼近紅線
+> - 🟡 **冰山第 3 型新分類**（T-TEST-LOCAL-BINDING-AUDIT）：auto-engineer BM25 query cap = **DoS / 效能漏洞型**；補前輪第 1 型（`from X import Y`）/ 第 2 型（外部服務漏 mock）分類
+> - 🟡 **ACL DENY vs commit 成功矛盾**：`icacls .git` 仍顯示外來 SID DENY，但近 30 commits 100% 落地 → P0.D 前提錯；需校準或降 P2
+> - 🟡 **EPIC6 T-LIQG-1..12 全 [ ] 連 1 輪 0 動**：骨架 `33bf8ce` 後無實作；與 corpus 173 擴量互為死結
+>
+> **v7.2 P0 精校（本輪新增刀 10/11/12 + sensor refresh）**：
+> 1. 🔴 **T-WORKTREE-CLEAN**（`_manager_hybrid.py` BM25 cap commit 閉環）
+> 2. 🔴 **T-HEADER-SENSOR-REFRESH**（連 2 輪漂白，紅線升級每輪第 0 步）
+> 3. 🟠 **T-BARE-EXCEPT-AUDIT 刀 6**（新熱點 6 檔 × 3 處 = 18 處 → 目標總量 ≤ 80）
+> 4. 🟠 **T-FAT-ROTATE-V2 刀 10**（`datagovtw.py 410` 拆 package）
+> 5. 🟡 **T-ACL-STATE-RECALIBRATE**（ACL DENY 前提校準）
+
 ---
 
 ## 🚨 北極星指令（優先於所有判斷）
@@ -149,6 +166,11 @@
 
 ### P0（連 1 輪延宕 = 紅線 X 3.25）
 
+- [ ] **T-WORKTREE-CLEAN**（5 分；P0；2026-04-25 新）— auto-engineer `_manager_hybrid.py` BM25 query cap 500 字 M 狀態未 commit；接手 `perf(knowledge): BM25 query cap 500 chars DoS 保護`（commit msg）或等 auto-engineer 下 round 閉；證據：`git status --short` = 0 行、`git log -n 1` 含 BM25 cap keyword。
+- [ ] **T-HEADER-SENSOR-REFRESH**（15 分；P0；2026-04-25 新；連 2 輪漂白 3.25 X 2）— `scripts/sensor_refresh.py`：wc/rg/git/find 全量跑寫回 program.md 頂部 sensor 區塊；列 bare except 總量/TOP 檔、fat-file top 15、auto-commit 語意率、corpus、pytest 最新；掛 loop starter checklist 第 0 步；證據：script 存在 + dry-run 輸出。
+- [ ] **T-BARE-EXCEPT-AUDIT 刀 6**（45 分；P0；2026-04-25 新）— 新熱點 6 檔 × 3 處 = 18 處：`src/knowledge/_manager_hybrid.py`、`src/graph/nodes/reviewers.py`、`src/cli/config_tools.py`、`src/api/routes/workflow/_endpoints.py`、`src/agents/editor/__init__.py`、`src/agents/compliance_checker.py`；typed bucket + `logger.warning`；驗證 `rg -c 'except Exception|except:' <files>` 全 0、總量 ≤ 80、pytest 對應測試綠。
+- [ ] **T-FAT-ROTATE-V2 刀 10**（30 分；P0；2026-04-25 新）— `src/sources/datagovtw.py 410` 拆 package：`datagovtw/{__init__, reader, normalizer, catalog}.py`；保留 `from src.sources.datagovtw import DataGovTwAdapter` 匯入面；驗證 `pytest tests/test_sources*.py -q` 綠 + 每檔 ≤ 300。
+- [ ] **T-ACL-STATE-RECALIBRATE**（10 分；P0；2026-04-25 新）— `icacls .git` 仍顯示外來 SID DENY，但近 30 commits 100% 落地；跑 `git config --list`、`git commit --dry-run`、`attrib .git/index` 查為何 DENY 無效；若 DENY SID 對當前 user 實際無 deny（SID 不匹配或權限被 parent 覆蓋），更新 P0.D 定義或降 P2 Legacy；證據：`docs/acl-recalibrate-2026-04-25.md`。
 - [x] **T-BARE-EXCEPT-AUDIT 刀 5**（2026-04-22 12:16 閉；ACL-free）— `src/cli/generate/export.py`、`src/agents/auditor.py` 8 處裸 except 改 typed bucket + `logger.warning`；補 `_export_qa_report` / lint / cite / auditor logging 回歸；驗證 `python -m pytest tests/test_export_citation_metadata.py tests/test_exporter_extended.py tests/test_agents.py tests/test_agents_extended.py -q` = 369 passed、`rg -n "except Exception|except:" src/cli/generate/export.py src/agents/auditor.py` = 0 命中。
 - [x] **T-FAT-ROTATE-V2 刀 9**（2026-04-22 13:18 閉；ACL-free）— `src/cli/workflow_cmd.py 345` 拆為 `src/cli/workflow_cmd/{__init__,commands,helpers}.py`（44 / 258 / 66）；保留 `from src.cli.workflow_cmd import app`、`_ensure_dir`、`_workflow_path`、`_validate_workflow_name` 契約與 monkeypatch 面；驗證 `python -m pytest tests/test_workflow_cmd.py -q` = 35 passed、`python -m pytest tests/test_cli_state_dir.py tests/test_cli_commands.py -q -k workflow` = 21 passed。
 - [x] **T-COMMIT-SEMANTIC-GUARD**（2026-04-24 16:22 閉；commit `2678b10`；ACL-free）— `scripts/commit_msg_lint.py`（117 行）拒絕 `auto-commit: checkpoint` / `WIP` / 單字 placeholder，要求 Conventional Commit prefix + subject ≥ 10；`tests/test_commit_msg_lint.py` = 19 passed / 0.56s；`docs/commit-plan.md` 重寫為 v3 正式契約（11 types + enforcement + ACL-blocked hook 路徑）；v2.2 封存至 `docs/archive/commit-plans/2026-04-20-v2.2-split.md`。hook wire 待 P0.D 解 ACL 後落地，短期 CI + session 自律兜底。

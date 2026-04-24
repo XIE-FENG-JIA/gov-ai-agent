@@ -262,3 +262,64 @@ LOOP2_DONE 後延伸挖前輪流下的 Top 1 慢點 `test_meeting_exporter_failu
 - EPIC6 T-LIQG-1..5 quality gate 實作層
 
 > [PUA生效 🔥] **底層邏輯**：「跑一次就信」是漂白的溫床。本輪 run1 397s 按原能急著歸咎 fixture 副作用 → 誤 revert；跑 run2 343s → **事實自證無 regression**。紅線升級：**pytest baseline 必跑 ≥ 2 次取中位數**才算 commit 前驗證通過。**抓手**：冰山第 2 型首患者閉；下 epoch 系統性 audit + 掃剩餘患者。**颗粒度**：1 test 對症 + 1 session preload + 2 run 驗證 + 1 commit 閉環。**因為信任所以簡單** — 實測兩輪數字給出來，不蓋章不虛胖，一次過就是一次過。
+
+---
+
+## 反思 2026-04-25 02:18 — v7.2 第四十三輪深度回顧（/pua 阿里味；第二次 sensor 漂白抓現行）
+
+### 三證自審（全 HEAD 獨立跑，不信 header）
+- **pytest 實跑**：`3790 passed / 192.74s / exit 0`（上輪 340 → 本輪 192 = **-43.6%**）— **已破下 epoch 目標 ≤ 300s**（裕量 107s）
+- **胖檔 wc 實測**：datagovtw 410 / web_preview 399 / **api/routes/agents 397（header 未列）** / validators 391 / workflow/_execution 389 / realtime_lookup 386 / law_fetcher 377
+- **裸 except `rg`**：**89 處 / 61 檔**（header 109 stale / 127 更 stale；-18% 卻未同步）
+- **auto-commit 語意率**：近 30 commits `rg -cE '^(feat|fix|refactor|perf|docs|chore|test)'` = **25/30 = 83.3%**（header 寫 3.3% = 離譜失真）
+- **ACL**：`icacls .git` 仍顯 `(DENY)(W,D,Rc,DC)`，但近 30 commits 100% 落地；P0.D 前提校準錯
+- **工作樹**：`M src/knowledge/_manager_hybrid.py`（auto-engineer BM25 query cap 500 字，DoS 保護；diff 清晰）
+- **auto-engineer 活性**：PID 54136 / round 121 / phase=reflect / last_update 2026-04-25T02:13（session 開工前 5min 剛 reflect 完）
+
+### 近期成果（LOOP2/3 合計）
+- **LOOP2 11/11 閉環**：a-k 全勾 + pytest 461s → 340s → **192s**（-58.3% vs LOOP2 起點）
+- **T-TEST-LOCAL-BINDING-AUDIT 冰山三型全發現**：
+  - 第 1 型 `from X import Y` local binding（`adb531c` preflight + `6b41335` workflow.get_llm）
+  - 第 2 型 外部服務實例化漏 mock（`c0933f9` realtime_lookup preload）
+  - 第 3 型 **DoS / 效能漏洞**（auto-engineer BM25 query cap — 本輪新分類）
+- **Spectra 01-05 = 100%**（55 task 全 [x]）+ EPIC6 236 行骨架（`33bf8ce`）
+- **T-COMMIT-SEMANTIC-GUARD 實效**：auto-engineer 訊息生成器產 `feat/fix/refactor/perf` 合格 commit = 25/30 條
+- **governance 腳本雙胞胎**：`check_acl_state.py` + `check_auto_engineer_state.py` 啟動前 gate 備齊
+
+### 發現的問題（HEAD sensor 為準）
+1. **🔴 P0 — program.md header 全面漂白**（連續第 2 輪）— bare except 109/實測 89、auto-commit 3.3%/實測 83.3%、fat-watch 名單缺 `api/routes/agents 397`；紅線升級 **sensor refresh 必須每輪第 0 步跑，不得靠反思輪重寫**
+2. **🔴 P0 — `_manager_hybrid.py` BM25 cap 未 commit**：auto-engineer 已改，但仍 M 狀態；違反「M 檔案不過夜」北極星規則
+3. **🟠 P0 — 胖檔 `datagovtw.py 410` 連 N 輪破錨點**：v7.0 硬指標 ≤ 400 第幾次違反
+4. **🟠 P0 — 裸 except 新熱點 6 檔 × 3 處 = 18 處**：`_manager_hybrid / reviewers / config_tools / workflow/_endpoints / editor / compliance_checker`；占總量 20%，前輪刀 1-5 清完後熱點遷移
+5. **🟡 P1 — EPIC6 T-LIQG-1..12 全 [ ] 連 1 輪 0 動**：骨架 `33bf8ce` 後無實作 commit；與 corpus 173 擴量互為死結
+6. **🟡 P1 — corpus 173 連 5+ 輪 0 動**：待 EPIC6 T-LIQG-1 `quality_gate.py` 落地才能安全 --require-live 擴量
+7. **🟡 P2 — ACL DENY 狀態失真**：P0.D 寫「需人工 Admin 清理」但實測 commits 都通；應降級或改定義
+8. **⚪ P2 — synthetic flag 覆蓋 155/192**：37 檔可能非 .md 或未標，需一次性稽核
+9. **⚪ 新 sensor — TODO/FIXME 3 檔**（前輪首入 sensor，量低暫觀察）
+
+### 建議的優先調整（program.md 重排）
+**P0（連 1 輪延宕 = 3.25）**
+1. **T-WORKTREE-CLEAN** — 讓 auto-engineer 閉 `_manager_hybrid.py` BM25 cap；或 session 接手 `perf(knowledge): BM25 query cap 500 chars DoS 保護` commit
+2. **T-HEADER-SENSOR-REFRESH** — 5 min 掃 script：wc/rg/git 全跑覆蓋 program.md 頭部所有指標；**每輪第 0 步**
+3. **T-BARE-EXCEPT-AUDIT 刀 6** — 新熱點 6 檔 × 3 處 = 18 處 typed bucket + logger.warning；目標總量 ≤ 80
+4. **T-FAT-ROTATE-V2 刀 10** — `src/sources/datagovtw.py 410` 拆 package（reader / normalizer / catalog）
+5. **T-ACL-STATE-RECALIBRATE** — `icacls .git` DENY vs 實測 commit 成功矛盾查清；更新 P0.D 定義或降 P2
+
+**P1（連 2 輪延宕 = 3.25）**
+6. **T-TEST-LOCAL-BINDING-AUDIT** — ast-grep 系統性掃；CONTRIBUTING.md + conftest 全域 re-bind helper
+7. **T-PYTEST-RUNTIME-FIX-v3** — 目標 ≤ 200s（本輪 192 已破；守住即可升級）
+8. **EPIC6 T-LIQG-1** — `src/sources/quality_gate.py` + 4 named failure + reference helper
+9. **T-HEADER-SENSOR-SCRIPT** — `scripts/sensor_refresh.py` 自動化 header 寫回
+
+**P2（Admin/key 依賴）**
+10. P2-CORPUS-300（等 T-LIQG-1 閉再擴）／ P2-CHROMA-NEMOTRON-VALIDATE ／ T6.1/T6.2 benchmark
+
+### 下一步行動（最重要的 3 件事）
+1. **worktree 閉環 BM25 cap**：接手 `_manager_hybrid.py` M 狀態或等 auto-engineer 下一 round；**不可跨輪累積**
+2. **header sensor 刷新**：program.md 頭部所有 stale 指標一次性重寫（bare except 89 / auto-commit 83.3% / fat-watch +agents 397 / pytest 192s 新基線）
+3. **裸 except 刀 6**：新熱點 18 處對症；完成後檢核總量 ≤ 80
+
+### pytest 192.74s 根因推斷（下輪驗證）
+BM25 cap 生效機率高 — `_manager_hybrid.py` 在 working tree，pytest 載 live code；`test_search_very_long_string 11.27s` + 同類 `TestKBEdgeCases` patient 可能全跟著砍。**紅線保留**：跑第 2 次取中位數再斷定（上輪 run1 397 / run2 343 就是 noise 例）；下輪 session 起手重跑一次，若 200s±20% 穩定 = cap 有效；若回 340 = noise 虛報。
+
+> [PUA生效 🔥] **底層邏輯**：「反思輪才重刷 sensor」是 header 漂白的結構性原因 — 反思 3 天 1 次，sensor 過期 72 hr 就 stale。**抓手**：把 sensor refresh 機械化成每輪第 0 步 5 分鐘腳本，不靠記憶。**颗粒度**：1 script + 1 cron hook + 1 紅線規則，解掉兩輪連續漂白。**對齊**：auto-engineer 在做程式碼端（BM25 cap / fat 拆 / bare except）、session 接 governance / sensor / 驗證；這輪 pytest 192s 的漂亮數字正好是兩邊並行產出。**因為信任所以簡單** — 192 不是我跑出來的，是 auto-engineer 在途半成品 + 前輪 cc5ac3c/c0933f9 commit 合力砍出來，**我只是量出來並揪出 header lag**。owner 意識 = 知道功勞在誰。
