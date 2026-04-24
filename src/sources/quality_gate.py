@@ -10,6 +10,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from src.core.models import PublicGovDoc
+from src.sources.quality_config import get_quality_policy
 
 
 class QualityGateError(RuntimeError):
@@ -84,6 +85,17 @@ class QualityGate:
         self.expected_min_records = expected_min_records
         self.freshness_window_days = freshness_window_days
         self.allow_fallback = allow_fallback
+
+    @classmethod
+    def from_adapter_name(cls, adapter_name: str) -> QualityGate:
+        """Build a gate from configured per-adapter policy."""
+
+        policy = get_quality_policy(adapter_name)
+        return cls(
+            expected_min_records=policy.expected_min_records,
+            freshness_window_days=policy.freshness_window_days,
+            allow_fallback=policy.allow_fallback,
+        )
 
     def evaluate(self, records: list[PublicGovDoc | dict[str, Any]], adapter_name: str) -> GateReport:
         """Validate one adapter batch and return a success report."""

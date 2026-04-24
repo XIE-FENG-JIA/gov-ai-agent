@@ -13,7 +13,7 @@
   Validation: `pytest tests/test_quality_gate.py -q`
   Commit: `feat(sources): add live-ingest quality gate contract + reference helper`
 
-- [ ] **T-LIQG-2** Add per-adapter quality config in `src/sources/quality_config.py` mapping adapter name → `{expected_min_records, freshness_window_days, allow_fallback}`. Include defaults for the seven Epic 1 adapters.
+- [x] **T-LIQG-2** Add per-adapter quality config in `src/sources/quality_config.py` mapping adapter name → `{expected_min_records, freshness_window_days, allow_fallback}`. Include defaults for the seven Epic 1 adapters.
   Requirements:
   - Each adapter declares its own quality policy
   Validation: `pytest tests/test_quality_config.py -q`

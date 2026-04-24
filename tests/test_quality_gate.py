@@ -58,6 +58,14 @@ def test_quality_gate_raises_when_batch_is_below_floor() -> None:
     assert exc_info.value.expected_min_records == 2
 
 
+def test_quality_gate_from_adapter_name_uses_quality_policy_defaults() -> None:
+    gate = QualityGate.from_adapter_name("ExecutiveYuanRSS")
+
+    assert gate.expected_min_records == 5
+    assert gate.freshness_window_days == 14
+    assert gate.allow_fallback is False
+
+
 def test_quality_gate_raises_schema_integrity_error_for_missing_provenance_fields() -> None:
     gate = QualityGate()
     invalid_doc = _make_doc(source_doc_no=None, source_date=None)
