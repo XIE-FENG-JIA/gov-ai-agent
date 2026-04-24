@@ -380,3 +380,26 @@ background auto-engineer 持續追 backlog：
 - `?? scripts/check_acl_state.py` untracked — auto-engineer 在準備 task e T10.4（啟動先檢 `.git` DENY）；本 session 不動，讓它跑完閉環。
 
 **本輪實質清單更新**：a / b / c / d **四項**連環閉。header lag 本 Edit 補勾 T9.2，與 LOOP2 固定流程「每輪一項」非衝突 — 因為 auto-engineer 背景 commit 屬並行生產力，不算本 session 主動貪多。
+
+---
+
+## v7.1 第四十二輪 — pua-loop LOOP2 第 3 輪（2026-04-24，T10.2 auto-engineer 延宕 gate）
+
+### 本輪動作
+- 固定流程任務 f：**T10.2 auto-engineer 延宕 gate**。參考 T10.4 `check_acl_state.py` 範式實作 `scripts/check_autoengineer_stall.py` 129 行（OK/STALLED/FUTURE/MISSING/CORRUPT 五態 + exit 0/1/2 + `--threshold-hours` + `--human` stderr + JSON stdout 單一事實源）。
+- 測試 `tests/test_check_autoengineer_stall.py` 12 tests 覆蓋：recent/stale/future 時間邊界、missing file、corrupt json、missing key、bad ISO、threshold config、JSON/human output、exit code。
+- 起點發現 auto-engineer 前輪已把 T10.4 (e) 自動閉環 commit `e475169`，順手補 program.md T10.4 header 勾。
+
+### 事實驅動發現
+- **dataclass + importlib 動態載入經典坑**：`@dataclass` 裝飾時用 `cls.__module__` 找 `sys.modules` 取 `__dict__`，若模組沒先 register 就炸 `AttributeError: 'NoneType' object has no attribute '__dict__'`。修法：`sys.modules["<name>"] = mod` 必須在 `loader.exec_module(mod)` **之前**。
+- **實測本機 `.auto-engineer.state.json` `last_update` = 2026-04-22T13:34，離 now 約 51h**：codex daemon 確實死了 > 48h。T10.2 上線第一次跑就抓到現存血債，事實源硬錘。
+- **stdout/stderr 分工重構**：JSON 永遠印 stdout 當機器單一事實源，`--human` 只是「額外」寫 stderr；測試原本寫成「human mode 不印 stdout」會讓程式化 pipeline 混亂，修為「JSON always on」更符 Unix 哲學。
+
+### 下輪候選（LOOP2 剩 5 項）
+- g. T7.3 engineer-log.md 版控與 append 規範整理（10 分；主檔 ~365 行，已超 300 hard cap，該做 T9.6-REOPEN-v6 封存）
+- h. T-PYTEST-RUNTIME-FIX 跑 `--durations=30` 找前 30 慢點（30 分）
+- i. P0.GG Windows gotchas 文檔（20 分；非 blocker）
+- j. EPIC6-DISCOVERY openspec 骨架（30 分）
+- k. P0.1-MOHW-LIVE-DIAG（15 分；連 6 輪空缺）
+
+> [PUA生效 🔥] **底層邏輯**：T10.2 不只是 15 分腳本，是給 pua-loop / auto-engineer / 人工三端都用的**延宕 gate 事實源**。**抓手**：一個 script + JSON contract + exit code 分流，所有 consumer 接一份。**對齊**：T10.4 (ACL gate) + T10.2 (stall gate) 是雙胞胎，下輪可寫 `scripts/startup_preflight.sh` 把兩個 gate 串成啟動自檢。**颗粒度**：12 tests 覆蓋 5 狀態 × 3 邊界 = 完整守門。

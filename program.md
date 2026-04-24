@@ -179,8 +179,8 @@
 - [x] **T9.3**（2026-04-24 閉；commit `2678b10`）— `docs/commit-plan.md` v2.2 已封存至 `docs/archive/commit-plans/2026-04-20-v2.2-split.md`（111 行）；主檔原位重寫為 v3 搭配 T-COMMIT-SEMANTIC-GUARD。
 - [x] **T9.5**（2026-04-24 閉；commit `a838fd3` 前輪已落）— root 遺留 `.ps1/.docx` 歸位到 `scripts/legacy/`；本輪 `Get-ChildItem *.ps1 *.docx` root count = 0 + `scripts/legacy/` 實存 10 支 `.ps1`，header lag 補勾。
 - [ ] **T7.3** — `engineer-log.md` 版控與 append 規範整理（建議併入 T9.6-REOPEN-v5）。
-- [ ] **T10.2** — auto-engineer 延宕 gate；動 `.auto-engineer.state.json`。
-- [ ] **T10.4** — 啟動先檢 `icacls .git | grep -c DENY`；有 DENY 就切 read-only 任務池。
+- [x] **T10.2**（2026-04-24 閉；本 commit；ACL-free）— `scripts/check_autoengineer_stall.py` 讀 `.auto-engineer.state.json` → 狀態機 OK/STALLED/FUTURE/MISSING/CORRUPT、exit 0/1/2 分流、threshold 可調 (default 2h)；`tests/test_check_autoengineer_stall.py` = 12 passed / 0.66s；實測本機 state last_update=2026-04-22T13:34 = STALLED 51h（exit 1）確認 codex daemon 已死。
+- [x] **T10.4**（2026-04-24 16:28 閉；commit `e475169`）— `scripts/check_acl_state.py` 解析 `icacls .git` + 信任 SID 白名單（Administrators/SYSTEM/AuthUsers/本機 SID prefix）、輸出 JSON 報告 + exit 0/1 + `--human`；`tests/test_check_acl_state.py` = 8 passed；實測 status=denied deny_count=2（P0.D 未解）可作 pua-loop / auto-engineer 啟動 gate。
 
 ### Legacy / Frozen
 
