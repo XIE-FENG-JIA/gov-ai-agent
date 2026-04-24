@@ -10,12 +10,28 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 from xml.etree.ElementTree import Element, SubElement, tostring
 
+import pytest
 from typer.testing import CliRunner
 
 from src.knowledge.fetchers.base import BaseFetcher, FetchResult, html_to_markdown
 
 
 runner = CliRunner()
+
+
+@pytest.fixture(autouse=True)
+def _no_fetcher_backoff_sleep(monkeypatch, request):
+    """關閉 fetcher 的 retry backoff sleep，避免 mock 出網路錯誤的測試吃 7s 真實退避。
+
+    `_request_with_retry` 預設 max_retries=3 + base=2 → sleep 1+2+4 = 7s；
+    test_*_network_error 系列每個原本 7.01s，autouse mock 後 < 0.1s。
+    （T-PYTEST-RUNTIME-FIX：top 5 慢點裡 6 個 network_error 共 42s）
+
+    Skip 對「test_throttle_delays_requests」— 該測試本身就在驗證 sleep 行為。
+    """
+    if "throttle" in request.node.name:
+        return
+    monkeypatch.setattr("src.knowledge.fetchers.base.time.sleep", lambda *_: None)
 
 
 # ========== Bulk 測試用 Fixture 工廠 ==========
