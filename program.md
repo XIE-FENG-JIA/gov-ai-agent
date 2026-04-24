@@ -151,7 +151,7 @@
 
 - [x] **T-BARE-EXCEPT-AUDIT 刀 5**（2026-04-22 12:16 閉；ACL-free）— `src/cli/generate/export.py`、`src/agents/auditor.py` 8 處裸 except 改 typed bucket + `logger.warning`；補 `_export_qa_report` / lint / cite / auditor logging 回歸；驗證 `python -m pytest tests/test_export_citation_metadata.py tests/test_exporter_extended.py tests/test_agents.py tests/test_agents_extended.py -q` = 369 passed、`rg -n "except Exception|except:" src/cli/generate/export.py src/agents/auditor.py` = 0 命中。
 - [x] **T-FAT-ROTATE-V2 刀 9**（2026-04-22 13:18 閉；ACL-free）— `src/cli/workflow_cmd.py 345` 拆為 `src/cli/workflow_cmd/{__init__,commands,helpers}.py`（44 / 258 / 66）；保留 `from src.cli.workflow_cmd import app`、`_ensure_dir`、`_workflow_path`、`_validate_workflow_name` 契約與 monkeypatch 面；驗證 `python -m pytest tests/test_workflow_cmd.py -q` = 35 passed、`python -m pytest tests/test_cli_state_dir.py tests/test_cli_commands.py -q -k workflow` = 21 passed。
-- [ ] **T-COMMIT-SEMANTIC-GUARD**（45 分；ACL-free 先落 lint；連 2 輪延宕 3.25 邊緣）— `scripts/commit_msg_lint.py` 拒絕 `auto-commit: checkpoint` 裸格式 + `docs/commit-plan.md` v3；pre-commit hook 備胎；近 30 commits 語意率 2/30 = 6.7% 連 2 輪持平。
+- [x] **T-COMMIT-SEMANTIC-GUARD**（2026-04-24 16:22 閉；commit `2678b10`；ACL-free）— `scripts/commit_msg_lint.py`（117 行）拒絕 `auto-commit: checkpoint` / `WIP` / 單字 placeholder，要求 Conventional Commit prefix + subject ≥ 10；`tests/test_commit_msg_lint.py` = 19 passed / 0.56s；`docs/commit-plan.md` 重寫為 v3 正式契約（11 types + enforcement + ACL-blocked hook 路徑）；v2.2 封存至 `docs/archive/commit-plans/2026-04-20-v2.2-split.md`。hook wire 待 P0.D 解 ACL 後落地，短期 CI + session 自律兜底。
 - [x] **T9.6-REOPEN-v5**（2026-04-22 04:05 閉；ACL-free）— 封存 `v5.7 / v5.8 / v5.9 / v6.0` 反思到 `docs/archive/engineer-log-202604g.md`；`engineer-log.md` 主檔收斂為 `v6.1→v6.2 / v6.3 / v7.0 / v7.0-sensor`；`wc -l engineer-log.md` = 208。
 - [x] **T-BARE-EXCEPT-AUDIT 刀 3**（2026-04-22 03:06 閉；ACL-free）— `src/web_preview/app.py 7` + `src/cli/kb/stats.py 6` + `src/knowledge/manager.py 5` = 18 處 / 3 檔已收斂 typed bucket + `logger.warning`；補 logging 回歸測試；pytest 3741 / 0 / 778s 全綠；結構性 typed-bucket 模板沿用刀 1/2 成熟。
 - [x] **T-BARE-EXCEPT-AUDIT 刀 4**（2026-04-22 04:29 閉；ACL-free）— `src/core/llm.py`、`src/knowledge/fetchers/gazette_fetcher.py`、`src/knowledge/_manager_search.py` 12 處裸 except 已收斂為 typed bucket + `logger.warning`；`rg -n "except Exception|except:"` 三檔 = 0 命中。
@@ -175,8 +175,8 @@
 ### Repo / Governance
 
 - [ ] **T9.1.a** — benchmark corpus 版控復位（ACL 解後）。
-- [ ] **T9.2** — tmp 再生源頭排查；鎖 `.json_*.tmp` / `.txt_*.tmp`。
-- [ ] **T9.3** — `docs/commit-plan.md` 歸檔到 `docs/archive/commit-plans/2026-04-20-v2.2-split.md`。
+- [x] **T9.2**（2026-04-24 16:25 閉；commit `400130d`）— atomic tmp source/lock/cleanup audit 三層（`src/cli/utils.py` atomic_text/json/yaml_write；root `.gitignore` `.json_*.tmp` / `.txt_*.tmp` / `.yaml_*.tmp` pattern；`tests/conftest.py` session-autouse `_cleanup_stale_atomic_tmps` fixture）寫成 `docs/atomic-tmp-audit.md`；pytest `test_cli_utils_tmp_cleanup.py` = 3 passed / 0.31s。
+- [x] **T9.3**（2026-04-24 閉；commit `2678b10`）— `docs/commit-plan.md` v2.2 已封存至 `docs/archive/commit-plans/2026-04-20-v2.2-split.md`（111 行）；主檔原位重寫為 v3 搭配 T-COMMIT-SEMANTIC-GUARD。
 - [x] **T9.5**（2026-04-24 閉；commit `a838fd3` 前輪已落）— root 遺留 `.ps1/.docx` 歸位到 `scripts/legacy/`；本輪 `Get-ChildItem *.ps1 *.docx` root count = 0 + `scripts/legacy/` 實存 10 支 `.ps1`，header lag 補勾。
 - [ ] **T7.3** — `engineer-log.md` 版控與 append 規範整理（建議併入 T9.6-REOPEN-v5）。
 - [ ] **T10.2** — auto-engineer 延宕 gate；動 `.auto-engineer.state.json`。

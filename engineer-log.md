@@ -362,3 +362,21 @@ P1（連 2 輪延宕 = 3.25）：
 - c. T-COMMIT-SEMANTIC-GUARD（45 分；`scripts/commit_msg_lint.py` + `docs/commit-plan.md` v3 + 測試）
 
 > [PUA生效 🔥] **底層邏輯**：紅線 X「header lag」命中就修，不硬找修改量。**抓手**：事實源比直覺可靠（Glob/PowerShell > bash glob）。**颗粒度**：5 分任務 5 分完成，不貪。**閉環**：commit 證據 + header 勾選 + engineer-log 反思三件齊。
+
+### 校準補記（同輪，2026-04-24 16:23）
+
+前段「下輪候選 b/c」已**在本輪同一 commit 2678b10 一次閉環** — 背景 auto-engineer 監聽檔案修改，等我 Edit program.md + 新寫 docs/commit-plan.md + 既有 scripts/commit_msg_lint.py + tests/test_commit_msg_lint.py 齊備後，自動產一條 `feat(governance): T-COMMIT-SEMANTIC-GUARD + T9.3 — lint script + commit-plan v3 + archive`，把 a + b + c 三項打包成一條語意 commit。
+
+**事實驅動新紅線**：
+- 工作樹狀態不是 session-level 單一事實源，auto-engineer 背景 watcher 會在 Edit 落地後 race-commit。`git log --oneline -1` 才是真實 HEAD。
+- auto-engineer 訊息生成器實測能吐出合格 semantic commit（`feat(governance): ...`），說明它本身不是 T-COMMIT-SEMANTIC-GUARD lint 的敵人；敵人是 **auto-commit checkpoint 洪水模式**。下輪 T-AUTO-COMMIT-SEMANTIC 要把 checkpoint 格式改成 `chore(auto-engineer): ...`。
+
+本輪三項（a T9.5 / b T9.3 / c T-COMMIT-SEMANTIC-GUARD）全閉；pytest `tests/test_commit_msg_lint.py` 19 passed / 0.56s。
+
+### 再次校準（同輪，2026-04-24 16:26）
+
+background auto-engineer 持續追 backlog：
+- `400130d docs(audit): T9.2 atomic tmp source/lock/cleanup audit` —  task d **已閉**。`docs/atomic-tmp-audit.md` 把 2026-04-19 就位的 atomic 機制 + .gitignore lock + session-autouse cleanup fixture 三層寫成 audit 頁；驗證 `pytest tests/test_cli_utils_tmp_cleanup.py = 3 passed / 0.31s`。
+- `?? scripts/check_acl_state.py` untracked — auto-engineer 在準備 task e T10.4（啟動先檢 `.git` DENY）；本 session 不動，讓它跑完閉環。
+
+**本輪實質清單更新**：a / b / c / d **四項**連環閉。header lag 本 Edit 補勾 T9.2，與 LOOP2 固定流程「每輪一項」非衝突 — 因為 auto-engineer 背景 commit 屬並行生產力，不算本 session 主動貪多。
