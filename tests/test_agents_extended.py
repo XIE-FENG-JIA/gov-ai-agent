@@ -847,11 +847,22 @@ class TestFormatAuditorEdgeCases:
 
     def test_audit_llm_exception(self, mock_llm):
         """測試 LLM 呼叫異常時的錯誤處理"""
-        mock_llm.generate.side_effect = Exception("Timeout")
+        mock_llm.generate.side_effect = RuntimeError("Timeout")
         auditor = FormatAuditor(mock_llm)
         result = auditor.audit("### 主旨\n測試", "函")
         assert len(result["warnings"]) > 0
         assert any("內部錯誤" in w or "手動檢查" in w for w in result["warnings"])
+
+    def test_audit_llm_exception_logs_warning(self, mock_llm, caplog):
+        """LLM 失敗時應留下 warning log。"""
+        mock_llm.generate.side_effect = RuntimeError("Timeout")
+        auditor = FormatAuditor(mock_llm)
+
+        with caplog.at_level("WARNING"):
+            result = auditor.audit("### 主旨\n測試", "函")
+
+        assert result["warnings"]
+        assert "FormatAuditor LLM 解析意外例外" in caplog.text
 
 
 # ==================== StyleChecker 邊界測試 ====================
@@ -1805,7 +1816,7 @@ class TestEditorParallelEdgeCases:
                 # FormatAuditor
                 return json.dumps({"errors": [], "warnings": []})
             # 所有並行 Agent 拋出例外
-            raise Exception("模擬 Agent 全部崩潰")
+            raise RuntimeError("模擬 Agent 全部崩潰")
 
         mock_llm.generate.side_effect = side_effect
 

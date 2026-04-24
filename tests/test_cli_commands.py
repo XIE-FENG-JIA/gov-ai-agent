@@ -2523,6 +2523,16 @@ class TestMeetingEarlyExit:
 class TestCLILogging:
     """CLI logging 配置的測試"""
 
+    def test_help_only_boot_detection(self):
+        """頂層 help/version/completion 應走輕量 boot。"""
+        from src.cli.main import _is_help_only_invocation
+
+        assert _is_help_only_invocation(["--help"]) is True
+        assert _is_help_only_invocation(["-v"]) is True
+        assert _is_help_only_invocation(["--show-completion"]) is True
+        assert _is_help_only_invocation(["cite", "--help"]) is False
+        assert _is_help_only_invocation([]) is False
+
     @patch("src.cli.utils.configure_state_dir")
     def test_main_callback_configures_state_dir(self, mock_configure_state_dir):
         """main callback 應先設定 state dir 再配置 logging。"""
@@ -3131,10 +3141,23 @@ class TestExportQaReport:
         from src.cli.generate import _export_qa_report
 
         qa_report = MagicMock(audit_log="log")
-        # 指向不存在的目錄
-        report_path = str(tmp_path / "nonexistent_dir" / "report.txt")
-        # 不應 raise
-        _export_qa_report(qa_report, report_path)
+        report_path = str(tmp_path / "report.txt")
+        with patch("src.cli.generate.atomic_text_write", side_effect=OSError("disk full")):
+            # 不應 raise
+            _export_qa_report(qa_report, report_path)
+
+    def test_export_failure_logs_warning(self, tmp_path, caplog):
+        """匯出失敗時應留下 warning log。"""
+        from src.cli.generate import _export_qa_report
+
+        qa_report = MagicMock(audit_log="log")
+        report_path = str(tmp_path / "report.txt")
+
+        with caplog.at_level("WARNING"):
+            with patch("src.cli.generate.atomic_text_write", side_effect=OSError("disk full")):
+                _export_qa_report(qa_report, report_path)
+
+        assert "QA 報告匯出失敗" in caplog.text
 
 
 class TestResolveInputEdgeCases:
@@ -12520,6 +12543,31 @@ class TestShowLintResults:
             gen = importlib.import_module("src.cli.generate")
             with patch("src.cli.lint_cmd._run_lint", side_effect=RuntimeError("模擬失敗")):
                 gen._show_lint_results("任何內容")  # 不應拋出
+
+    def test_lint_runtime_error_logs_warning(self, caplog):
+        """lint 摘要失敗時應記 warning log，但不拋出。"""
+        import importlib
+
+        gen = importlib.import_module("src.cli.generate")
+        with caplog.at_level("WARNING"):
+            with patch("src.cli.lint_cmd._run_lint", side_effect=RuntimeError("模擬失敗")):
+                gen._show_lint_results("任何內容")
+
+        assert "Lint 摘要顯示失敗" in caplog.text
+
+    def test_cite_missing_mapping_logs_warning(self, tmp_path, caplog):
+        """引用建議缺映射檔時應記 warning log，但不拋出。"""
+        import importlib
+        from unittest.mock import patch
+
+        gen = importlib.import_module("src.cli.generate")
+        nonexistent = tmp_path / "no_such_file.yaml"
+
+        with caplog.at_level("WARNING"):
+            with patch("src.cli.cite_cmd._MAPPING_PATH", nonexistent):
+                gen._show_cite_suggestions("函")
+
+        assert "引用建議顯示失敗" in caplog.text
 
     def test_max_five_issues_shown(self):
         """issues 超過 5 個時，面板只顯示前 5 個並提示剩餘數量。"""
