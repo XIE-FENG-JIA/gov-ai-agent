@@ -1134,7 +1134,7 @@ class TestGracefulDegradation:
     def test_auditor_with_kb_failure(self, mock_llm):
         """測試 FormatAuditor 知識庫查詢失敗時的處理"""
         mock_kb = MagicMock()
-        mock_kb.search_regulations.side_effect = Exception("KB error")
+        mock_kb.search_regulations.side_effect = RuntimeError("KB error")
         mock_llm.generate.return_value = '{"errors": [], "warnings": []}'
 
         auditor = FormatAuditor(mock_llm, mock_kb)

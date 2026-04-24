@@ -368,7 +368,7 @@ class TestScenario1_GenerateHan:
             # ComplianceChecker
             json.dumps({"issues": [], "score": 0.95, "confidence": 0.9}),
         ]
-        refined_draft, qa_report = editor.review_and_refine(formatted, "函")
+        refined_draft, qa_report = editor.review_and_refine(formatted, "函", max_rounds=1)
 
         assert qa_report is not None
         assert isinstance(qa_report, QAReport)
@@ -1225,7 +1225,7 @@ class TestScenario8_ParallelReviewTimeout:
         ]
 
         editor = EditorInChief(mock_llm, mock_kb)
-        refined, report = editor.review_and_refine("不完整的草稿", "函")
+        refined, report = editor.review_and_refine("不完整的草稿", "函", max_rounds=1)
 
         # 應觸發自動修改
         assert report.risk_summary in ["Critical", "High", "Moderate"]
@@ -1676,7 +1676,7 @@ class TestIntegration:
         formatted = engine.apply_template(requirement, sections)
 
         editor = EditorInChief(mock_llm, mock_kb)
-        refined, report = editor.review_and_refine(formatted, "函")
+        refined, report = editor.review_and_refine(formatted, "函", max_rounds=1)
 
         # 匯出
         output_file = tmp_path / "integration_test.docx"
@@ -1816,7 +1816,7 @@ class TestFullIntegrationFlow:
 
         # === 步驟 4：審查 + 自動修改 ===
         editor = EditorInChief(mock_llm, mock_kb)
-        refined_draft, qa_report = editor.review_and_refine(formatted, "函")
+        refined_draft, qa_report = editor.review_and_refine(formatted, "函", max_rounds=1)
 
         assert qa_report is not None
         assert isinstance(qa_report, QAReport)
@@ -2161,7 +2161,7 @@ class TestUserSimulation:
         assert "函" in formatted
 
         editor = EditorInChief(mock_llm, mock_kb)
-        refined, report = editor.review_and_refine(formatted, "函")
+        refined, report = editor.review_and_refine(formatted, "函", max_rounds=1)
 
         assert report is not None
         assert isinstance(report, QAReport)
@@ -2351,7 +2351,7 @@ class TestUserSimulation:
         formatted = engine.apply_template(requirement, sections)
 
         editor = EditorInChief(mock_llm, mock_kb)
-        refined, report = editor.review_and_refine(formatted, "函")
+        refined, report = editor.review_and_refine(formatted, "函", max_rounds=1)
 
         assert report is not None
         assert report.overall_score > 0

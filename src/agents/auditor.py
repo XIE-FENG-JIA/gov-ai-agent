@@ -11,6 +11,10 @@ from src.agents.validators import validator_registry
 logger = logging.getLogger(__name__)
 console = Console()
 
+_AUDITOR_KB_EXCEPTIONS = (AttributeError, OSError, RuntimeError, TypeError, ValueError)
+_AUDITOR_VALIDATOR_EXCEPTIONS = (AttributeError, OSError, RuntimeError, TypeError, ValueError)
+_AUDITOR_LLM_EXCEPTIONS = (AttributeError, OSError, RuntimeError, TypeError, ValueError)
+
 
 def _normalize_audit_items(items: list) -> list[dict | str]:
     """將 LLM 回傳的審查項目正規化。
@@ -74,7 +78,8 @@ class FormatAuditor:
                     rule_metadata = regs[0].get('metadata', {})
                     rule_title = rule_metadata.get('title', '未知') if isinstance(rule_metadata, dict) else '未知'
                     console.print(f"[green]已載入規則：{rule_title}[/green]")
-            except Exception as e:
+            except _AUDITOR_KB_EXCEPTIONS as e:
+                logger.warning("FormatAuditor 規則查詢失敗（%s）: %s", doc_type, e)
                 console.print(f"[yellow]知識庫查詢失敗：{str(e)[:50]}，將使用通用規則。[/yellow]")
 
         # 2. Execute Custom Validators (Function Calls)
@@ -107,7 +112,7 @@ class FormatAuditor:
                     validation_errors = func(draft_text)
                     errors.extend(validation_errors)
                     executed_validators.add(func_name)
-                except Exception as e:
+                except _AUDITOR_VALIDATOR_EXCEPTIONS as e:
                     logger.warning("通用驗證器 %s 執行失敗: %s", func_name, e)
 
         # 2b. 規則觸發驗證器：掃描 rule_context 中的 [Call: func_name]
@@ -126,7 +131,7 @@ class FormatAuditor:
                         validation_errors = func(draft_text)
                         errors.extend(validation_errors)
                         executed_validators.add(func_name)
-                    except Exception as e:
+                    except _AUDITOR_VALIDATOR_EXCEPTIONS as e:
                         logger.warning("驗證器 %s 執行失敗: %s", func_name, e)
                         console.print(f"[red]驗證器 {func_name} 失敗[/red]")
                 else:
@@ -248,7 +253,7 @@ IMPORTANT: Each item MUST include a concrete "suggestion" that tells the user ex
 
         except json.JSONDecodeError:
             warnings.append("審查系統無法解析 JSON，請手動檢查。")
-        except Exception as e:
+        except _AUDITOR_LLM_EXCEPTIONS as e:
             logger.warning("FormatAuditor LLM 解析意外例外 (%s): %s", type(e).__name__, e)
             warnings.append("審查系統發生內部錯誤，請手動檢查。")
 

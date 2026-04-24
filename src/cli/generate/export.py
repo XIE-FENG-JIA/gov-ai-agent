@@ -1,4 +1,13 @@
 import importlib
+import logging
+
+
+logger = logging.getLogger(__name__)
+
+_EXPORT_DOCUMENT_EXCEPTIONS = (OSError, RuntimeError, ValueError)
+_QA_REPORT_EXPORT_EXCEPTIONS = (OSError, TypeError, ValueError, RuntimeError)
+_LINT_DISPLAY_EXCEPTIONS = (ImportError, AttributeError, OSError, RuntimeError, TypeError, ValueError)
+_CITE_SUGGESTION_EXCEPTIONS = (ImportError, AttributeError, OSError, RuntimeError, TypeError, ValueError)
 
 from .content_metadata import _apply_content_metadata, _display_format_options
 
@@ -51,7 +60,8 @@ def _export_document(
             citation_metadata=citation_metadata,
         )
         console.print(f"[bold green]完成！文件已儲存至：[/bold green] {final_path}")
-    except Exception as exc:
+    except _EXPORT_DOCUMENT_EXCEPTIONS as exc:
+        logger.warning("DOCX 匯出失敗: %s", exc)
         console.print(f"[red]匯出失敗：{runtime._sanitize_error(exc)}[/red]")
         raise runtime.typer.Exit(1)
 
@@ -150,7 +160,8 @@ def _export_qa_report(qa_report, report_path: str):
         else:
             runtime.atomic_text_write(report_path, qa_report.audit_log)
         runtime.console.print(f"  [green]QA 報告已匯出至：{report_path}[/green]")
-    except Exception as exc:
+    except _QA_REPORT_EXPORT_EXCEPTIONS as exc:
+        logger.warning("QA 報告匯出失敗 (%s): %s", report_path, exc)
         runtime.console.print(f"  [yellow]QA 報告匯出失敗：{runtime._sanitize_error(exc)}[/yellow]")
 
 
@@ -189,8 +200,8 @@ def _show_lint_results(content: str) -> None:
                 padding=(0, 2),
             )
         )
-    except Exception:
-        pass
+    except _LINT_DISPLAY_EXCEPTIONS as exc:
+        logger.warning("Lint 摘要顯示失敗: %s", exc)
 
 
 def _show_cite_suggestions(doc_type: str) -> None:
@@ -214,8 +225,8 @@ def _show_cite_suggestions(doc_type: str) -> None:
                 padding=(0, 2),
             )
         )
-    except Exception:
-        pass
+    except _CITE_SUGGESTION_EXCEPTIONS as exc:
+        logger.warning("引用建議顯示失敗（%s）: %s", doc_type, exc)
 
 
 def _display_summary(
