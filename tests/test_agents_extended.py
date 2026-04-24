@@ -2973,8 +2973,15 @@ class TestMeetingExportFailure:
             "subject": "配合辦理事項",
         })
 
+        # `src.api.routes.workflow` 用 `from src.api.dependencies import get_llm, get_kb`
+        # 創 local binding, 只 patch src.api.dependencies 影響不到；必須同時 patch
+        # workflow package 的 local binding, 否則 workflow.get_llm() 會拿到 real LLM,
+        # 一輪 document workflow 打 litellm 6+ 次 ~20s/次 = 120s+ 死時間。
+        # （修法來自 adb531c 的 preflight re-bind 教訓；T-PYTEST-RUNTIME-FIX-v2 對症）
         with patch("src.api.dependencies.get_llm", return_value=mock_llm), \
              patch("src.api.dependencies.get_kb", return_value=MagicMock()), \
+             patch("src.api.routes.workflow.get_llm", return_value=mock_llm), \
+             patch("src.api.routes.workflow.get_kb", return_value=MagicMock()), \
              patch("src.api.routes.workflow.DocxExporter") as mock_exporter_cls:
             mock_exporter_cls.return_value.export.side_effect = IOError("磁碟已滿")
 
