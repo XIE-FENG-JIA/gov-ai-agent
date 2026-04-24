@@ -13,6 +13,7 @@ from typing import Any, Callable
 from src.graph.state import GovDocState
 
 logger = logging.getLogger(__name__)
+_REVIEW_NODE_EXCEPTIONS = (AttributeError, ImportError, RuntimeError, TypeError, ValueError, Exception)
 
 
 def _serialize_review_result(result: Any) -> dict[str, Any]:
@@ -45,7 +46,7 @@ def _review_node(agent_name: str) -> Callable:
             try:
                 result = fn(state)
                 return {"review_results": [_serialize_review_result(result)]}
-            except Exception as exc:
+            except _REVIEW_NODE_EXCEPTIONS as exc:
                 logger.exception("%s 失敗: %s", agent_name, exc)
                 return {
                     "review_results": [{
@@ -109,7 +110,7 @@ def review_fact(state: GovDocState):
     try:
         from src.knowledge.realtime_lookup import LawVerifier
         law_verifier = LawVerifier()
-    except Exception as exc:
+    except _REVIEW_NODE_EXCEPTIONS as exc:
         logger.warning("LawVerifier 初始化失敗，略過即時法規驗證：%s", exc)
 
     return FactChecker(get_llm(), law_verifier=law_verifier).check(draft, doc_type=doc_type)
@@ -145,7 +146,7 @@ def review_compliance(state: GovDocState):
     try:
         from src.knowledge.realtime_lookup import RecentPolicyFetcher
         policy_fetcher = RecentPolicyFetcher()
-    except Exception as exc:
+    except _REVIEW_NODE_EXCEPTIONS as exc:
         logger.warning("RecentPolicyFetcher 初始化失敗，略過即時政策查詢：%s", exc)
 
     return ComplianceChecker(llm, kb, policy_fetcher=policy_fetcher).check(draft)

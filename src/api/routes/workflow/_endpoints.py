@@ -17,6 +17,7 @@ from src.api.models import BatchItemResult, BatchRequest, BatchResponse, Meeting
 from ._state import logger, router
 
 WRITE_AUTH = [Depends(require_api_key)]
+_WORKFLOW_ENDPOINT_EXCEPTIONS = (AttributeError, OSError, RuntimeError, TimeoutError, TypeError, ValueError, Exception)
 
 
 def _workflow_package():
@@ -60,7 +61,7 @@ async def run_meeting(request: MeetingRequest) -> MeetingResponse:
                     ),
                     timeout=workflow.MEETING_TIMEOUT,
                 )
-            except Exception as graph_err:
+            except _WORKFLOW_ENDPOINT_EXCEPTIONS as graph_err:
                 logger.warning("LangGraph 執行失敗，fallback 到傳統路徑: %s", graph_err)
                 llm = workflow.get_llm()
                 kb = workflow.get_kb()
@@ -123,7 +124,7 @@ async def run_meeting(request: MeetingRequest) -> MeetingResponse:
             output_path=output_filename,
             rounds_used=rounds_used,
         )
-    except Exception as exc:
+    except _WORKFLOW_ENDPOINT_EXCEPTIONS as exc:
         logger.exception("開會流程失敗")
         return workflow.MeetingResponse(
             success=False,
@@ -250,7 +251,7 @@ async def run_batch(request: BatchRequest) -> BatchResponse:
                     output_path=output_filename,
                     rounds_used=rounds_used,
                 )
-            except Exception as exc:
+            except _WORKFLOW_ENDPOINT_EXCEPTIONS as exc:
                 logger.exception("批次處理項目失敗")
                 item_duration = round((time.monotonic() - item_start) * 1000, 2)
                 sanitized = workflow._sanitize_error(exc)

@@ -19,6 +19,7 @@ suppress_known_third_party_deprecations_temporarily = getattr(
 )
 
 logger = logging.getLogger(__name__)
+_KB_HYBRID_EXCEPTIONS = (AttributeError, KeyError, RuntimeError, TypeError, ValueError, Exception)
 
 
 class KnowledgeHybridSearchMixin:
@@ -89,7 +90,7 @@ class KnowledgeHybridSearchMixin:
                         where=where_filter,
                     )
                 vector_results.extend(self._format_query_results(results))
-            except Exception as e:
+            except _KB_HYBRID_EXCEPTIONS as e:
                 logger.warning("混合搜尋向量查詢失敗: %s", e)
                 continue
 
@@ -103,7 +104,7 @@ class KnowledgeHybridSearchMixin:
                 doc_type=doc_type,
                 source_type=source_type,
             )
-        except Exception as e:
+        except _KB_HYBRID_EXCEPTIONS as e:
             logger.warning("混合搜尋 BM25 查詢失敗，回退至純向量搜尋: %s", e)
 
         if bm25_results:
@@ -179,7 +180,7 @@ class KnowledgeHybridSearchMixin:
                     if source_type and meta.get("source") != source_type:
                         continue
                     all_docs.append({"id": doc_id, "content": content, "metadata": meta})
-            except Exception as e:
+            except _KB_HYBRID_EXCEPTIONS as e:
                 logger.warning("集合文件拉取失敗 (%s): %s", coll_name, e)
                 continue
 

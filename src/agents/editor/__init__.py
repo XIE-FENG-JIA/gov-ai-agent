@@ -26,6 +26,8 @@ from src.core.review_models import QAReport, ReviewResult
 from src.knowledge.manager import KnowledgeBaseManager
 
 logger = logging.getLogger(__name__)
+_EDITOR_REVIEW_EXCEPTIONS = (AttributeError, ImportError, RuntimeError, TypeError, ValueError, Exception)
+_EDITOR_SHUTDOWN_EXCEPTIONS = (AttributeError, RuntimeError, Exception)
 console = Console()
 
 
@@ -52,7 +54,7 @@ class EditorInChief(EditorFlowMixin, EditorRefineMixin, EditorSegmentMixin, Edit
 
             law_verifier = LawVerifier()
             policy_fetcher = RecentPolicyFetcher()
-        except Exception as exc:
+        except _EDITOR_REVIEW_EXCEPTIONS as exc:
             logger.warning("即時查詢服務初始化失敗: %s", exc)
 
         self.format_auditor = FormatAuditor(llm, kb_manager)
@@ -81,7 +83,7 @@ class EditorInChief(EditorFlowMixin, EditorRefineMixin, EditorSegmentMixin, Edit
         # 安全網：GC 回收時確保 executor 被關閉
         try:
             self._executor.shutdown(wait=False)
-        except Exception:
+        except _EDITOR_SHUTDOWN_EXCEPTIONS:
             pass
 
     def run_review_only(self, draft: str, doc_type: str) -> QAReport:
@@ -177,7 +179,7 @@ class EditorInChief(EditorFlowMixin, EditorRefineMixin, EditorSegmentMixin, Edit
                     result = future.result()
                     results.append(result)
                     console.print(f"[green]v {agent_name} 完成[/green]")
-                except Exception as exc:
+                except _EDITOR_REVIEW_EXCEPTIONS as exc:
                     logger.error("審查 Agent '%s' 執行失敗: %s", agent_name, exc)
                     console.print(f"[red]x {agent_name} 失敗: {str(exc)[:50]}[/red]")
                     results.append(

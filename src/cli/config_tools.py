@@ -21,6 +21,7 @@ from src.core.config import ConfigManager
 from src.core.llm import LiteLLMProvider
 
 logger = logging.getLogger(__name__)
+_CONFIG_TOOL_EXCEPTIONS = (AttributeError, OSError, RuntimeError, TypeError, ValueError, Exception)
 
 console = Console()
 app = typer.Typer()
@@ -44,7 +45,7 @@ def test_connectivity(model_id: str, api_key: str) -> bool:
         # Very short prompt to save time/tokens
         llm.generate("Hi", max_tokens=1)
         return True
-    except Exception as exc:
+    except _CONFIG_TOOL_EXCEPTIONS as exc:
         logger.debug("模型連線測試失敗（%s）: %s", model_id, exc)
         return False
 
@@ -230,7 +231,7 @@ def set_value(
             parse_value_fn=_parse_value,
             safe_config_write_fn=safe_config_write,
         )
-    except Exception as e:
+    except _CONFIG_TOOL_EXCEPTIONS as e:
         console.print(f"[red]載入設定檔失敗：{e}[/red]")
         raise typer.Exit(1)
 
@@ -262,7 +263,7 @@ def export(
             mask_sensitive_fn=_mask_sensitive,
             yaml_module=yaml,
         )
-    except Exception as e:
+    except _CONFIG_TOOL_EXCEPTIONS as e:
         console.print(f"[red]錯誤：無法讀取設定：{e}[/red]")
         raise typer.Exit(1)
 

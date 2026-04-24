@@ -16,6 +16,7 @@ from src.agents.review_parser import parse_review_response
 from src.knowledge.manager import KnowledgeBaseManager
 
 logger = logging.getLogger(__name__)
+_COMPLIANCE_CHECK_EXCEPTIONS = (AttributeError, RuntimeError, TypeError, ValueError, Exception)
 console = Console()
 
 
@@ -71,7 +72,7 @@ class ComplianceChecker:
                         for doc in policy_docs
                     )
                     contexts.append(f"## 知識庫政策文件\n{kb_context}")
-            except Exception as exc:
+            except _COMPLIANCE_CHECK_EXCEPTIONS as exc:
                 logger.warning("無法擷取政策上下文: %s", exc)
                 console.print("[yellow]警告：無法擷取政策上下文。[/yellow]")
 
@@ -82,7 +83,7 @@ class ComplianceChecker:
                 recent = self.policy_fetcher.fetch_recent_policies(query, days=3)
                 if recent:
                     contexts.append(f"## 最近行政院公報（即時查詢）\n{recent}")
-            except Exception as exc:
+            except _COMPLIANCE_CHECK_EXCEPTIONS as exc:
                 logger.warning("即時政策查詢失敗，僅使用本機知識庫: %s", exc)
 
         return "\n\n".join(contexts)
@@ -208,7 +209,7 @@ Notes:
 """.format(safe_policy=safe_policy, safe_draft=safe_draft)
         try:
             response = self.llm.generate(prompt, temperature=LLM_TEMPERATURE_BALANCED)
-        except Exception as exc:
+        except _COMPLIANCE_CHECK_EXCEPTIONS as exc:
             logger.warning("ComplianceChecker LLM 呼叫失敗: %s", exc)
             console.print(f"[yellow]合規檢查器 LLM 呼叫失敗：{str(exc)[:50]}[/yellow]")
             # LLM 呼叫完全失敗：回傳 0.0/0.0 排除此 Agent 的加權分數，
