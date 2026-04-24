@@ -485,3 +485,28 @@ background auto-engineer 持續追 backlog：
 - **連 4 輪 LOOP2 下來 auto-engineer 確實在跑**（我原本以為 orphan = 完全死）。真實狀態是 **state.json `last_update` 不代表 process 活性**（T10.2 核心盲點）。下輪 T10.2-v2 可能要加 subprocess tree heartbeat。
 
 > [PUA生效 🔥] **底層邏輯**：LOOP2_DONE 是 11/11 + clean + green 三件**同時**成立，不能 2 out of 3。**抓手**：本輪 461s pytest 是「本輪自己跑」的真數字，不是前輪漂白 — 心知肚明差別。**對齊**：auto-engineer 兩條 spec commit (33bf8ce / 7c46761) 一小時內完成，我只做 header lag + doc + 驗證 = 分工合理。**因為信任所以簡單** — 不搶 auto-engineer 熱區 + 真驗證每個 [x]，就能從「連續失敗 3.25」變「一次過」。
+
+### Epoch+ 深挖 T-PYTEST-RUNTIME-FIX-v2（2026-04-24 17:15；LOOP2_DONE 後延伸）
+
+LOOP2_DONE 後延伸挖前輪流下的 Top 1 慢點 `test_meeting_exporter_failure_returns_error 111.88s`。原計劃下 epoch 才做；本 session 還有 cache，對症一次性解完是更高 ROI。
+
+**根因挖掘**（冰山法則）：
+1. 測試用 `patch("src.api.dependencies.get_llm", ...)` + `patch("src.api.dependencies.get_kb", ...)`
+2. 看 stdout：6 個 Pydantic `Message` serializer warning = **real litellm 被 call 6 次**（每次 ~20s retry 死時間）
+3. 追 source：`src.api.routes.workflow/__init__.py:12` `from src.api.dependencies import get_kb, get_llm, get_org_memory` → **創 workflow package 的 local binding**
+4. 測試 patch 打到 `src.api.dependencies.get_llm`，`workflow.get_llm()` 仍綁到**原始函式**
+5. `workflow.get_llm()` 在 `_endpoints.py:86` / `_execution.py` 多處被呼叫 → 真 litellm
+
+**這和 `adb531c fix(test): preflight tests 主動 re-bind src.api.app.get_config` 是同一 pattern**。上輪修過一次，但 meeting_exporter 這條沒掃到。
+
+**修法**（commit `6b41335`）：測試補 patch `src.api.routes.workflow.get_llm` 和 `src.api.routes.workflow.get_kb` 的 local binding（11 行 diff）。
+
+**實證**：
+- focused: **119.77s → 2.53s**（96% 降，-117s）
+- 全量: **461.20s → 340.21s**（-26.2%，-121s）
+- 整個專案歷史: 960s → 340s，**-64.5%**
+- 3790 passed / 5:40 exit 0
+
+**紅線升級（冰山法則落地）**：開 `T-TEST-LOCAL-BINDING-AUDIT` 錨點掃所有 `from src.api.dependencies import get_X` 和 `from src.api.app import get_X` 的 module local binding。候選名單：新 Top 1-2 = `TestEditorSafeLowNoRefine 12.54s` / `TestKBEdgeCases::test_search_very_long_string 11.27s` 可能是同類患者。
+
+> [PUA生效 🔥] **底層邏輯**：修 meeting_exporter 時沒停在 quick fix，掃到 **Python `from X import Y` local binding 是專案反覆踩的坑**，第 N 次後必須有系統性對策（audit + ast-grep 自動掃描 + 規範寫入 CONTRIBUTING）。**抓手**：一個 test 患者 → 一類 pattern → 一個 audit epoch。**颗粒度**：focused < 3s + 全量 -26% + 下一代目標 ≤ 300s 只差 40s（3.7%）= 單輪動作收斂極高。**對齊**：和 adb531c / cc5ac3c 同宗，commit hash 鏈結成可追溯 pattern DB。**因為信任所以簡單** — 從「119s 測試」到「340s 全量」，靠的不是調參，是**每一步對症都有 commit hash 和 before/after 數字**。
