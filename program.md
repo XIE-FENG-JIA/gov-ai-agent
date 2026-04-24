@@ -204,7 +204,7 @@
 
 ### P1（連 2 輪延宕 = 3.25）
 
-- [ ] **T-TEST-LOCAL-BINDING-AUDIT**（P1 升級；2026-04-25 從下 epoch 提級）— 冰山三型系統性對策：ast-grep rule 掃所有 `from src.api.dependencies import` + `from src.knowledge.realtime_lookup import` + 外部服務實例化點；CONTRIBUTING.md 規範章節；`tests/conftest.py` 全域 re-bind helper；驗證 `scripts/audit_local_binding.py --dry-run` 列出剩餘候選患者。
+- [x] **T-TEST-LOCAL-BINDING-AUDIT**（2026-04-25 閉；commit `23802ec`；ACL-free）— `scripts/audit_local_binding.py` AST-based Type 1 iceberg scanner（67 候選）；`tests/test_audit_local_binding.py` 19 passed；`tests/conftest.py` `rebind_local()` helper with docstring；`CONTRIBUTING.md` Mock contract rules 三型完整章節（adb531c/c0933f9/1eef399）；`docs/test-mock-iceberg-taxonomy.md` 133 行 pre/post diff per type。
 - [ ] **T-PYTEST-RUNTIME-FIX-v3**（P1；2026-04-25）— 本輪 **cross-session cold-start = 152.98s / 3801 passed**（新 session 獨立起跑，**破 ≤ 200s 目標 47s 裕量，BM25 cap 真效確認**）；**升級目標 ≤ 120s**（差 33s，待 `test_safe_score / meeting_exporter` 同類患者掃完）；守穩條件：下輪起手 cold-start > 180s 即 regression 回查。
 - [x] **EPIC6 T-LIQG-4**（2026-04-25 02:59 閉；本輪）— `gov-ai kb rebuild --quality-gate` 已接到 active corpus rebuild：先按來源批次 gate，任何 named failure 即中止，成功才進 only-real merge；補 `tests/test_kb_rebuild_cli.py` 驗證 PASS/FAIL 兩條路，`python -m pytest tests/test_kb_rebuild_cli.py tests/test_kb_gate_check_cli.py -q -k gate` = 6 passed。**P2-CORPUS-300 擴量前置再少一刀**。
 - [x] **EPIC6 T-LIQG-5**（2026-04-25 閉；本輪）— `docs/quality-gate-failure-matrix.md` 4 named error 矩陣落地，涵蓋 triage、policy boundaries、`--require-live` 交互；驗證 `rg -n "LiveIngestBelowFloor|SchemaIntegrityError|StaleRecord|SyntheticContamination" docs/quality-gate-failure-matrix.md` 全命中。
@@ -233,12 +233,7 @@
 
 ### 下 epoch 錨點（LOOP2+ 開出）
 
-- [ ] **T-TEST-LOCAL-BINDING-AUDIT**（部分閉；2026-04-24~25 修 4 個患者）— 冰山分**三型**：
-  - **第 1 型**（`from X import Y` module local binding）：`adb531c` preflight `src.api.app.get_config` + `6b41335` `workflow.get_llm/get_kb` — 2 個患者已修
-  - **第 2 型**（外部服務實例化 `_ensure_cache` 漏 HTTP mock）：`c0933f9` conftest preload empty `realtime_lookup` caches — 1 個患者 `test_safe_score 44s → 0.11s`
-  - **第 3 型**（產品代碼缺大輸入保護 / DoS 向量）：`1eef399` `_manager_hybrid.py` BM25 query length cap 500 字 — 1 個患者 `test_search_very_long_string 7.95s → 1.00s`（**production + test 同時受惠**）
-  - **剩餘候選**：`TestSwitchCommand::test_switch_direct_provider` 2.4-3.3s / `TestWebUIGenerate` 系列 2.5-3.2s（需分類為哪一型再對症）
-  - **系統性對策**（下 epoch）：ast-grep rule 掃 `from src.api.dependencies import` + `from src.knowledge.realtime_lookup import` + 外部服務 `__init__` 內 HTTP 調用 + production 函式缺 input length cap；CONTRIBUTING.md 規範章節；`tests/conftest.py` 全域 re-bind helper；`scripts/audit_local_binding.py --dry-run` 列候選
+- [x] **T-TEST-LOCAL-BINDING-AUDIT**（2026-04-25 閉；commit `23802ec`；ACL-free）— 冰山三型系統性對策全落地：`scripts/audit_local_binding.py` AST 掃 Type 1 候選 67 處；`tests/conftest.py` `rebind_local()` helper；`CONTRIBUTING.md` Mock contract rules 三型；`docs/test-mock-iceberg-taxonomy.md` 133 行 pre/post diff；19 tests passed。
 - [ ] **T-PYTEST-RUNTIME-FIX-v3** — 目標 ≤ 300s（現雙 baseline **179/173s** 已破；守穩住下輪 cold-start 若 > 220s = regression）
 - [x] **T-AUTO-COMMIT-SEMANTIC** ⬆ **升 P0**（2026-04-25 auto-engineer 再犯 2 次 `1eef399 / c53a947` checkpoint 裸格式；2026-04-25 閉）— `scripts/validate_auto_commit_msg.py` 33 passed；見 P0 閉環項。
 - [x] **EPIC6 coverage 收尾**（2026-04-25 閉；本輪）— `openspec/changes/06-live-ingest-quality-gate/tasks.md` T-LIQG-0 + T-LIQG-6..12 全收尾；`spectra status --change 06-live-ingest-quality-gate` = proposal/specs/tasks ✓；`python -m pytest tests/ -q --ignore=tests/integration -x` = 3821 passed / 151.44s。
