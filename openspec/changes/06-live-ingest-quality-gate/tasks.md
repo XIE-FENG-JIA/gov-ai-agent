@@ -31,7 +31,7 @@
   Validation: `pytest tests/test_kb_rebuild_cli.py -q -k gate`
   Commit: `feat(cli): wire --quality-gate flag into kb rebuild`
 
-- [ ] **T-LIQG-5** Add the gate failure-mode matrix doc at `docs/quality-gate-failure-matrix.md` covering the four named errors, their operator triage steps, and how each interacts with `--require-live`.
+- [x] **T-LIQG-5** Add the gate failure-mode matrix doc at `docs/quality-gate-failure-matrix.md` covering the four named errors, their operator triage steps, and how each interacts with `--require-live`.
   Requirements:
   - Operators have a single source for triaging gate failures
   Validation: `rg -n "LiveIngestBelowFloor|SchemaIntegrityError|StaleRecord|SyntheticContamination" docs/quality-gate-failure-matrix.md`
