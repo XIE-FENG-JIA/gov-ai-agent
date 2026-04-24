@@ -4,7 +4,7 @@
 >
 > **HEAD 獨立實測指標（`wc + find + grep + git log` 本輪現跑；ACL-free）**：
 > - ✅ Spectra 5/5 = 100%（01-05 Epic proposal + tasks + specs 全齊）
-> - ✅ 胖檔收斂：`src/` 內 >400 行 Python **4 檔** = `api/models 461 / agents/fact_checker 446 / sources/datagovtw 410 / cli/workflow_cmd 406`
+> - ✅ 胖檔收斂：`src/` 內 >400 行 Python **2 檔** = `sources/datagovtw 410 / cli/workflow_cmd 406`
 > - ✅ 邊界 watch：`web_preview/app 399 / api/routes/workflow/_execution 389 / knowledge/realtime_lookup 386 / knowledge/fetchers/law_fetcher 377 / core/constants 374`
 > - 🟠 裸 except **實測 109 處 / 61 檔**（v7.0 header 寫 127/64 stale；HEAD `grep -rEc "except Exception|except:" src/` 為準）
 > - 🟠 裸 except 高密度前 9 檔 = `web_preview/app 7 / kb/stats 6 / manager 5 / gazette 4 / _manager_search 4 / core/llm 4 / generate/export 4 / agents/fact_checker 4 / auditor 4` 共 42 處 / 38.5%
@@ -12,12 +12,12 @@
 > - ✅ program.md = **190 行**（v6.4 下 1912 → 190 真砍，archive 真落地）
 > - ✅ engineer-log = **208 行**（`docs/archive/engineer-log-202604g.md` 已落；T9.6-v5 已閉）
 > - 🔴 auto-commit 語意率 **1/30 = 3.3%**（連 >42 輪 Admin-dep；ACL DENY SID 2 條持平）
-> - ⏸ pytest 沿用 v6.4 基線：`3741 passed / 0 failed / 960.04s`（本輪只動 markdown，未重跑；runtime ≤ 500s 為 v8.0 目標）
+> - ✅ pytest 新基線：`3750 passed / 0 failed / 630.18s`（2026-04-22 09:00 左右重跑；runtime ≤ 500s 仍是 v8.0 目標）
 >
 > **v7.0 P0 重排（第四十二輪 /pua 精校；連 1 輪延宕 = 紅線 X 3.25）**：
 > 1. ✅ **T9.6-REOPEN-v5**（2026-04-22 已閉）— `engineer-log.md` 已封存到 `docs/archive/engineer-log-202604g.md`，主檔 `208` 行回到 hard cap 內
-> 2. 🟠 **T-FAT-ROTATE-V2 刀 7** → **P0 次位**（40 分；ACL-free）— `src/api/models.py 461` 拆 `src/api/models/{__init__, requests, responses}.py`；`from src.api.models import *` 契約守；`tests/test_api_*.py` 導入守
-> 3. 🟠 **T-BARE-EXCEPT-AUDIT 刀 3** → **P0 三位**（45 分；ACL-free；合併三檔）— `web_preview/app 7` + `kb/stats 6` + `manager 5` = 18 處 / 3 檔，typed bucket + logger.warning
+> 2. ✅ **T-FAT-ROTATE-V2 刀 7**（2026-04-22 09:05 閉；ACL-free）— `src/api/models.py 461` 已拆 `src/api/models/{__init__, requests, responses}.py`；`from src.api.models import *` 契約守；`pytest tests/test_api_server.py -q` + `pytest tests/ -q --ignore=tests/integration -x` 全綠
+> 3. ✅ **T-BARE-EXCEPT-AUDIT 刀 4**（2026-04-22 已閉；ACL-free）— `src/core/llm.py`、`src/knowledge/fetchers/gazette_fetcher.py`、`src/knowledge/_manager_search.py` 裸 except 已清零；`pytest tests/test_llm.py tests/test_fetchers.py tests/test_knowledge_manager_unit.py -q` 契約守
 > 4. 🟡 **T-PYTEST-RUNTIME-FIX** → **P1 降級**（30 分；profile 已存 `docs/pytest-profile-v6.4.md`；P0 三件完結後開工）— 前 30 慢點（cite_cmd cp950 / KB search / agent timeout / fetcher retry）對症；目標 runtime ≤ 500s
 > 5. ✅ **T-PROGRAM-MD-ARCHIVE-REAL**（2026-04-22；前輪閉）— 頭部 16 疊歷史 header 真清到 archive；主檔 1912 → 190
 >
@@ -29,7 +29,7 @@
 > **v7.0 下輪硬指標（第四十二輪收尾審查）**：
 > 1. `wc -l engineer-log.md` ≤ 300（當前 208 ✅）
 > 2. `wc -l program.md` ≤ 250（當前 ≈ 200 ✅ 守錨點）
-> 3. `wc -l src/api/models.py` 或拆後 `src/api/models/*.py` 每檔 ≤ 400（當前 461 ❌）
+> 3. `wc -l src/api/models.py` 或拆後 `src/api/models/*.py` 每檔 ≤ 400（當前 `requests.py 181 / responses.py 83 / __init__.py 45` ✅）
 > 4. `grep -rEc "except Exception|except:" src/web_preview/app.py src/cli/kb/stats.py src/knowledge/manager.py` 合計 ≤ 5（當前 18）
 > 5. 裸 except 總數 ≤ 90（當前 109）
 > 6. `find kb_data/corpus -name "*.md" | wc -l` ≥ 200（當前 173）
@@ -51,9 +51,9 @@
 >
 > **v7.1 P0 精校（本輪新增刀 4 + 刀 8）**：
 > 1. ✅ **T9.6-REOPEN-v5** 已閉（engineer-log 208；主檔重回 cap 內）
-> 2. 🟠 **T-FAT-ROTATE-V2 刀 7** 次位（api/models 461 拆 package）
-> 3. 🟠 **T-BARE-EXCEPT-AUDIT 刀 4**（NEW；三位）— `core/llm 4 + gazette_fetcher 4 + _manager_search 4 = 12 處 / 3 檔`；core/llm 推理大腦優先
-> 4. 🟠 **T-FAT-ROTATE-V2 刀 8**（NEW；四位）— fact_checker.py 446 拆 package；agent 大腦級
+> 2. ✅ **T-FAT-ROTATE-V2 刀 7** 已閉（api/models 已拆 package；requests 181 / responses 83 / __init__ 45）
+> 3. ✅ **T-BARE-EXCEPT-AUDIT 刀 4** 已閉（`core/llm` / `gazette_fetcher` / `_manager_search` 裸 except = 0）
+> 4. ✅ **T-FAT-ROTATE-V2 刀 8** 已閉（fact_checker 已拆 package；`__init__ 30 / checks 257 / pipeline 205`）
 
 ---
 
@@ -149,24 +149,25 @@
 
 ### P0（連 1 輪延宕 = 紅線 X 3.25）
 
+- [x] **T-BARE-EXCEPT-AUDIT 刀 5**（2026-04-22 12:16 閉；ACL-free）— `src/cli/generate/export.py`、`src/agents/auditor.py` 8 處裸 except 改 typed bucket + `logger.warning`；補 `_export_qa_report` / lint / cite / auditor logging 回歸；驗證 `python -m pytest tests/test_export_citation_metadata.py tests/test_exporter_extended.py tests/test_agents.py tests/test_agents_extended.py -q` = 369 passed、`rg -n "except Exception|except:" src/cli/generate/export.py src/agents/auditor.py` = 0 命中。
+- [x] **T-FAT-ROTATE-V2 刀 9**（2026-04-22 13:18 閉；ACL-free）— `src/cli/workflow_cmd.py 345` 拆為 `src/cli/workflow_cmd/{__init__,commands,helpers}.py`（44 / 258 / 66）；保留 `from src.cli.workflow_cmd import app`、`_ensure_dir`、`_workflow_path`、`_validate_workflow_name` 契約與 monkeypatch 面；驗證 `python -m pytest tests/test_workflow_cmd.py -q` = 35 passed、`python -m pytest tests/test_cli_state_dir.py tests/test_cli_commands.py -q -k workflow` = 21 passed。
+- [ ] **T-COMMIT-SEMANTIC-GUARD**（45 分；ACL-free 先落 lint；連 2 輪延宕 3.25 邊緣）— `scripts/commit_msg_lint.py` 拒絕 `auto-commit: checkpoint` 裸格式 + `docs/commit-plan.md` v3；pre-commit hook 備胎；近 30 commits 語意率 2/30 = 6.7% 連 2 輪持平。
 - [x] **T9.6-REOPEN-v5**（2026-04-22 04:05 閉；ACL-free）— 封存 `v5.7 / v5.8 / v5.9 / v6.0` 反思到 `docs/archive/engineer-log-202604g.md`；`engineer-log.md` 主檔收斂為 `v6.1→v6.2 / v6.3 / v7.0 / v7.0-sensor`；`wc -l engineer-log.md` = 208。
-- [ ] **T-FAT-ROTATE-V2 刀 7**（40 分；ACL-free；**P0 次位**）— `src/api/models.py 461` 按 request/response schema 邊界拆 `src/api/models/{__init__, requests, responses}.py`；`from src.api.models import *` 匯入面守；`tests/test_api_*.py` 契約守。
 - [x] **T-BARE-EXCEPT-AUDIT 刀 3**（2026-04-22 03:06 閉；ACL-free）— `src/web_preview/app.py 7` + `src/cli/kb/stats.py 6` + `src/knowledge/manager.py 5` = 18 處 / 3 檔已收斂 typed bucket + `logger.warning`；補 logging 回歸測試；pytest 3741 / 0 / 778s 全綠；結構性 typed-bucket 模板沿用刀 1/2 成熟。
-- [ ] **T-BARE-EXCEPT-AUDIT 刀 4**（45 分；ACL-free；**NEW P0 三位**）— HEAD 實測 `src/core/llm.py 4` + `src/knowledge/fetchers/gazette_fetcher.py 4` + `src/knowledge/_manager_search.py 4` = 12 處 / 3 檔；`core/llm` 推理大腦路徑優先；typed bucket + `logger.warning` 沿用刀 1/2/3 模板；目標總裸 except 109 → ≤ 97。
-- [ ] **T-FAT-ROTATE-V2 刀 8**（40 分；ACL-free；**NEW P0 四位**）— `src/agents/fact_checker.py 446` 按 check strategy 拆 `src/agents/fact_checker/{__init__, checks, pipeline}.py` 或類比結構；保留 `src.agents.fact_checker` 匯入面；`tests/test_agents*.py` / `tests/test_fact_*.py` 契約守。
+- [x] **T-BARE-EXCEPT-AUDIT 刀 4**（2026-04-22 04:29 閉；ACL-free）— `src/core/llm.py`、`src/knowledge/fetchers/gazette_fetcher.py`、`src/knowledge/_manager_search.py` 12 處裸 except 已收斂為 typed bucket + `logger.warning`；`rg -n "except Exception|except:"` 三檔 = 0 命中。
+- [x] **T-FAT-ROTATE-V2 刀 8**（2026-04-22 10:12 閉；ACL-free）— `src/agents/fact_checker.py 446` 拆成 `src/agents/fact_checker/{__init__, checks, pipeline}.py`；保留 `src.agents.fact_checker`、`FactChecker`、`_MAPPING_PATH`、`_load_regulation_doc_type_mapping` 匯入面；`tests/test_fact_checker_coverage.py tests/test_fact_checker_enhanced.py tests/test_agents.py tests/test_agents_extended.py tests/test_api_server.py tests/test_realtime_lookup.py -q` = 644 passed。
 - [x] **P0-TEST-REGRESSION**（2026-04-22 03:41 閉；ACL-free）— `src/knowledge/manager.py` 對 corrupted Chroma persisted config + opaque vendor exception 降級處理；新增 `_type` KeyError 回歸；pytest **3741 → 3745 passed**（+4 測試）；基線刷新。
 - [x] **T-PROGRAM-MD-ARCHIVE-REAL**（2026-04-22；前輪）— 頭部 v5.5-v6.4 歷史 header 真封存至 `docs/archive/program-history-202604g.md`；主檔收斂到 v7.0 單 header + 規則 + 活任務。
 
 ### P1（連 2 輪延宕 = 3.25）
 
-- [ ] **T-PYTEST-RUNTIME-FIX**（30 分；從 P0 降 P1；profile 已存）— 根據 `docs/pytest-profile-v6.4.md` 前 30 慢點（`cite_cmd cp950`、KB search、agent timeout path、fetcher network-error retry）對症下藥；目標 runtime ≤ 500s；CI 體感 blocker。
-- [ ] **EPIC6-DISCOVERY**（30 分；連 2 輪空缺；Spectra 100% 後下槓桿）— `openspec/changes/06-*/proposal.md` 骨架；**建議選 `live-ingest quality gate`**（貼合 corpus 擴量 + FDA/MOHW 血債）；備選 `audit trail UI` / `observability dashboard`。
-- [ ] **T-COMMIT-SEMANTIC-GUARD**（45 分；auto-commit 洪水根因；ACL-free 部分可先落）— `scripts/commit_msg_lint.py` 拒絕 `auto-commit: checkpoint` 裸格式；pre-commit hook + `docs/commit-plan.md` v3；auto-engineer 必須帶語意 subject。
+- [ ] **T-PYTEST-RUNTIME-FIX**（30 分；2026-04-22 11:30 本輪實跑 773s；vs 09:00 基線 630s 退 +23% → 從 P2 拉回 P1）— 先 `pytest --durations=30 -p no:randomly -q` 確認是併發污染還是 post-刀 8 真退化；若真退化對症 `docs/pytest-profile-v6.4.md` 前 30 慢點；目標 runtime ≤ 500s。
 - [ ] **P2-CORPUS-300**（待 mojlaw/datagovtw/executive_yuan_rss/pcc live 續抓）— corpus 173 → 300；`scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss,pcc --limit 100 --require-live --prune-fixture-fallback`。
-- [ ] **P0.1-MOHW-LIVE-DIAG**（15 分；連 4 輪 0 動 → 本輪不動即 3.25 硬實錘；下輪強制降 P2 或一次處理完）— `MohwRssAdapter` live fetch 診斷；複製 FDA probe SOP；交付 `docs/mohw-endpoint-probe.md`。
+- [ ] **P0.1-MOHW-LIVE-DIAG**（15 分；連 5 輪 0 動 → 本輪不動即強制降 P2 或一次處理完）— `MohwRssAdapter` live fetch 診斷；複製 FDA probe SOP；交付 `docs/mohw-endpoint-probe.md`。
 
 ### P2（Admin/key 依賴，不能當 P1 佔坑）
 
+- [ ] **EPIC6-DISCOVERY**（連 3 輪空缺降 P2；Spectra 5/5 已 8 hr+；下 epoch 規模線開始再回 P1）— `openspec/changes/06-*/proposal.md` 骨架；建議 `live-ingest quality gate`；備選 `audit trail UI` / `observability dashboard`。
 - [ ] **P2-CHROMA-NEMOTRON-VALIDATE** — 待人工填 `OPENROUTER_API_KEY` 後跑 `gov-ai kb rebuild --only-real` + `docs/embedding-validation.md`。
 - [ ] **T6.1** — blind eval baseline：`run_blind_eval.py --limit 30` + `benchmark/baseline_v2.1.json` + `docs/benchmark-baseline.md`。
 - [ ] **T6.2** — benchmark trend：每次 T2.x 後追加 `benchmark/trend.jsonl`；跌幅 >10% 即 regression gate。
@@ -198,7 +199,10 @@
 
 ## 已完成
 
-- [x] **近期閉環（2026-04-22）** — `T-PROGRAM-MD-ARCHIVE`、`T-PROGRAM-MD-ARCHIVE-REAL`、`T-PYTEST-PROFILE`、`T-ROLLUP-SYNC`、`T-FAT-ROTATE-V2` 刀 3/4/5/6、`T9.6-REOPEN-v4`、`T9.6-REOPEN-v5`、`T-BARE-EXCEPT-AUDIT` 刀 1/2/3、`P0-TEST-REGRESSION`（KB manager Chroma 降級處理；基線 3745）、`P1-PCC-ADAPTER`、`P0.1-FDA-LIVE-DIAG`、`P0.3-CORPUS-SCALE`、`EPIC5-TASKS-SPECS`、`T5.1`、`T5.2`、`T5.3`、`T5.4`。
+- [x] **近期閉環（2026-04-22）** — `T-PROGRAM-MD-ARCHIVE`、`T-PROGRAM-MD-ARCHIVE-REAL`、`T-PYTEST-PROFILE`、`T-ROLLUP-SYNC`、`T-FAT-ROTATE-V2` 刀 3/4/5/6/7/8/9、`T9.6-REOPEN-v4`、`T9.6-REOPEN-v5`、`T-BARE-EXCEPT-AUDIT` 刀 1/2/3/4/5、`P0-TEST-REGRESSION`（KB manager Chroma 降級處理；基線 3745）、`P1-PCC-ADAPTER`、`P0.1-FDA-LIVE-DIAG`、`P0.3-CORPUS-SCALE`、`EPIC5-TASKS-SPECS`、`T5.1`、`T5.2`、`T5.3`、`T5.4`。
+- [x] **T-CLI-MAIN-RECONCILE**（2026-04-22 11:38 閉；ACL-gated）— `git diff src/cli/main.py tests/test_cli_commands.py` 確認 help-only boot gate 與 `_is_help_only_invocation` 測試意圖一致；`python -m pytest tests/test_cli_commands.py -q` 實測 **755 passed / 201.64s**，shell wrapper timeout 但 pytest 已完成全綠；commit 仍待 `.git` DENY ACL 解除。
+- [x] **T-FAT-ROTATE-V2 刀 7**（2026-04-22 09:05 閉；ACL-free）— `src/api/models.py` 拆成 `src/api/models/requests.py`、`src/api/models/responses.py`、`src/api/models/__init__.py`；保留 `src.api.models` 匯入面；驗證 `python -m pytest tests/test_api_server.py -q` = 259 passed、`python -m pytest tests/ -q --ignore=tests/integration -x` = 3750 passed。
+- [x] **T-FAT-ROTATE-V2 刀 8**（2026-04-22 10:12 閉；ACL-free）— `src/agents/fact_checker.py` 拆成 `src/agents/fact_checker/__init__.py`、`src/agents/fact_checker/checks.py`、`src/agents/fact_checker/pipeline.py`；保留 `src.agents.fact_checker` 與 mapping loader patch 面；驗證 targeted pytest 644 passed，另全量 `pytest tests/ -q --ignore=tests/integration -x` 於 shell timeout 前已印出 **3750 passed**。
 - [x] **Openspec 收官** — 01-real-sources / 02-open-notebook-fork / 03-citation-tw-format / 04-audit-citation / 05-kb-governance 五件 proposal + tasks + specs 全齊；tasks 全 `[x]` = 15 + 15 + 9 + 8 + 8 = 55 件。
 - [x] **較早完成項** — 已移到 [docs/archive/program-history-202604g.md](docs/archive/program-history-202604g.md)。
 
