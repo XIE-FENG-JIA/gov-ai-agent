@@ -1,26 +1,21 @@
-from dataclasses import asdict
 from datetime import date
 from pathlib import Path
-import json
 
 import typer
 
-from src.core.models import PublicGovDoc
 from src.cli.verify_cmd import collect_citation_verification_checks, render_citation_verification_results
-from src.knowledge.corpus_provenance import is_active_corpus_metadata, is_fixture_backed_metadata
 from src.sources.ingest import _adapter_registry
-from src.sources.quality_config import get_quality_policy
-from src.sources.quality_gate import GateReport, QualityGate, QualityGateError
+from src.sources.quality_gate import QualityGate, QualityGateError
 
 from ._shared import app, console
 from .corpus import _ingest_fetch_results, _load_full_document, _sanitize_metadata, parse_markdown_with_metadata
-
-
-_REBUILD_COLLECTIONS: tuple[tuple[str, str], ...] = (
-    ("examples", "examples"),
-    ("regulations", "regulations"),
-    ("policies", "policies"),
+from ._quality_gate_cli import (
+    load_gate_check_records,
+    render_gate_check_failure,
+    render_gate_check_success,
+    run_corpus_quality_gate,
 )
+from ._rebuild_corpus import REBUILD_COLLECTIONS, rebuild_active_corpus, should_skip_rebuild_file
 
 
 def _maybe_ingest(results: list, do_ingest: bool) -> None:
@@ -32,149 +27,6 @@ def _maybe_ingest(results: list, do_ingest: bool) -> None:
     count = _ingest_fetch_results(results, kb)
     console.print(f"[green]已匯入 {count} 筆至知識庫[/green]")
     console.print(f"目前資料庫統計：{kb.get_stats()}")
-
-
-def _should_skip_rebuild_file(metadata: dict, only_real: bool) -> bool:
-    if metadata.get("deprecated"):
-        return True
-    if not only_real:
-        return False
-    return not is_active_corpus_metadata(metadata)
-
-
-def _skip_reason(metadata: dict, only_real: bool) -> str | None:
-    if metadata.get("deprecated"):
-        return "deprecated"
-    if not only_real:
-        return None
-    if is_active_corpus_metadata(metadata):
-        return None
-    if bool(metadata.get("synthetic")):
-        return "synthetic"
-    if is_fixture_backed_metadata(metadata):
-        return "fixture_fallback"
-    return "inactive"
-
-
-def _corpus_collection_for_metadata(metadata: dict) -> str:
-    doc_type = str(metadata.get("doc_type", "")).strip()
-    return "regulations" if doc_type == "法規" else "policies"
-
-
-def _print_provenance_summary(imported: int, skipped: dict[str, int]) -> None:
-    details = [f"匯入 real {imported} 筆"]
-    for reason in ("synthetic", "fixture_fallback", "deprecated", "inactive"):
-        count = skipped.get(reason, 0)
-        if count:
-            details.append(f"跳過 {reason} {count} 筆")
-    console.print(f"[bold cyan]only-real provenance：{' / '.join(details)}[/bold cyan]")
-
-
-def _build_gate_failure_payload(
-    exc: QualityGateError,
-    *,
-    adapter_name: str,
-    records_in: int,
-) -> dict[str, object]:
-    payload: dict[str, object] = {
-        "adapter": adapter_name,
-        "records_in": records_in,
-        "records_out": 0,
-        "error_type": exc.__class__.__name__,
-        "message": str(exc),
-        "policy": asdict(get_quality_policy(adapter_name)),
-    }
-    if hasattr(exc, "record_id"):
-        payload["record_id"] = getattr(exc, "record_id")
-    if hasattr(exc, "missing_fields"):
-        payload["missing_fields"] = getattr(exc, "missing_fields")
-    return payload
-
-
-def _corpus_gate_adapter_name(corpus_root: Path, file_path: Path) -> str:
-    relative = file_path.relative_to(corpus_root)
-    if len(relative.parts) > 1:
-        return relative.parts[0]
-    return "corpus"
-
-
-def _corpus_gate_record(file_path: Path) -> dict[str, object]:
-    metadata, content = parse_markdown_with_metadata(file_path)
-    return {
-        "source_id": str(metadata.get("source_id") or file_path.stem),
-        "source_url": metadata.get("source_url", ""),
-        "source_agency": metadata.get("source_agency", ""),
-        "source_doc_no": metadata.get("source_doc_no"),
-        "source_date": metadata.get("source_date"),
-        "doc_type": metadata.get("doc_type", "unknown"),
-        "raw_snapshot_path": metadata.get("raw_snapshot_path"),
-        "crawl_date": metadata.get("crawl_date"),
-        "content_md": content,
-        "synthetic": bool(metadata.get("synthetic")),
-        "fixture_fallback": bool(metadata.get("fixture_fallback")),
-    }
-
-
-def _run_corpus_quality_gate(corpus_root: Path) -> list[GateReport]:
-    adapter_records: dict[str, list[dict[str, object]]] = {}
-    for file_path in sorted(corpus_root.rglob("*.md")):
-        metadata, _ = parse_markdown_with_metadata(file_path)
-        if metadata.get("deprecated"):
-            continue
-        adapter_name = _corpus_gate_adapter_name(corpus_root, file_path)
-        adapter_records.setdefault(adapter_name, []).append(_corpus_gate_record(file_path))
-
-    reports: list[GateReport] = []
-    for adapter_name in sorted(adapter_records):
-        records = adapter_records[adapter_name]
-        gate = QualityGate.from_adapter_name(adapter_name)
-        try:
-            report = gate.evaluate(records, adapter_name=adapter_name)
-        except QualityGateError as exc:
-            typer.echo(json.dumps(_build_gate_failure_payload(exc, adapter_name=adapter_name, records_in=len(records))), err=True)
-            raise typer.Exit(1) from exc
-        reports.append(report)
-    return reports
-
-
-def _rebuild_active_corpus(kb, corpus_root: Path) -> tuple[int, dict[str, int]]:
-    files = sorted(corpus_root.rglob("*.md"))
-    imported_by_collection = {collection: 0 for collection, _ in _REBUILD_COLLECTIONS}
-    skipped_by_reason: dict[str, int] = {}
-
-    for file_idx, file_path in enumerate(files):
-        metadata, content = parse_markdown_with_metadata(file_path)
-        reason = _skip_reason(metadata, only_real=True)
-        if reason:
-            skipped_by_reason[reason] = skipped_by_reason.get(reason, 0) + 1
-            continue
-
-        collection = _corpus_collection_for_metadata(metadata)
-        metadata.setdefault("title", file_path.stem)
-        metadata.setdefault("doc_type", "unknown")
-        doc_seed = str(metadata.get("source_id") or file_path.stem)
-        saved_id = kb.upsert_document(
-            kb.make_deterministic_id(doc_seed, collection),
-            content,
-            _sanitize_metadata(metadata),
-            collection_name=collection,
-            full_document=_load_full_document(kb, file_path, content),
-            chunk_index=file_idx,
-            total_chunks=len(files),
-        )
-        if saved_id:
-            imported_by_collection[collection] += 1
-
-    console.print(
-        "[bold cyan]only-real 模式：以 active corpus 為唯一重建來源"
-        f"（{corpus_root.as_posix()}）[/bold cyan]"
-    )
-    for collection, _ in _REBUILD_COLLECTIONS:
-        console.print(f"[green]{collection}[/green]：重建 {imported_by_collection[collection]} 筆")
-
-    total_imported = sum(imported_by_collection.values())
-    _print_provenance_summary(total_imported, skipped_by_reason)
-    return total_imported, skipped_by_reason
 
 
 @app.command("rebuild")
@@ -216,18 +68,21 @@ def rebuild(
 
     corpus_root = source_root / "corpus"
     if quality_gate and not (corpus_root.exists() and any(corpus_root.rglob("*.md"))):
-        console.print("[red]錯誤：--quality-gate 需要 kb_data/corpus active corpus，不能退回 legacy collections。[/red]")
+        console.print(
+            "[red]錯誤：--quality-gate 需要 kb_data/corpus active corpus，"
+            "不能退回 legacy collections。[/red]"
+        )
         raise typer.Exit(1)
 
     if effective_only_real and corpus_root.exists() and any(corpus_root.rglob("*.md")):
         if quality_gate:
-            reports = _run_corpus_quality_gate(corpus_root)
+            reports = run_corpus_quality_gate(corpus_root)
             for report in reports:
                 console.print(
                     "[bold green]quality gate: PASS[/bold green] "
                     f"adapter={report.adapter} records_in={report.records_in} records_out={report.records_out}"
                 )
-        total_imported, skipped_by_reason = _rebuild_active_corpus(kb, corpus_root)
+        total_imported, skipped_by_reason = rebuild_active_corpus(kb, corpus_root)
         total_skipped = sum(skipped_by_reason.values())
         console.print(
             f"[bold]重建完成：總計 {total_imported} 筆"
@@ -260,7 +115,7 @@ def rebuild(
     total_skipped = 0
     total_missing_dirs = 0
 
-    for collection, subdir_name in _REBUILD_COLLECTIONS:
+    for collection, subdir_name in REBUILD_COLLECTIONS:
         source_dir = source_root / subdir_name
         if not source_dir.exists():
             total_missing_dirs += 1
@@ -274,7 +129,7 @@ def rebuild(
 
         for file_idx, file_path in enumerate(files):
             metadata, content = parse_markdown_with_metadata(file_path)
-            if _should_skip_rebuild_file(metadata, only_real):
+            if should_skip_rebuild_file(metadata, only_real):
                 skipped += 1
                 continue
 
@@ -466,77 +321,6 @@ def _run_fetcher_for_source(source_name: str):
     return None
 
 
-def _build_gate_report_payload(report: GateReport) -> dict[str, object]:
-    return {
-        "adapter": report.adapter,
-        "records_in": report.records_in,
-        "records_out": report.records_out,
-        "rejected_by": report.rejected_by,
-        "pass_rate": report.pass_rate,
-        "duration_seconds": report.duration_seconds,
-        "timestamp": report.timestamp.isoformat(),
-    }
-
-
-def _render_gate_check_success(report: GateReport, *, output_format: str) -> None:
-    payload = _build_gate_report_payload(report)
-    if output_format == "json":
-        console.print_json(data=payload)
-        return
-
-    console.print("[bold green]quality gate: PASS[/bold green]")
-    console.print(f"adapter={report.adapter}")
-    console.print(f"records_in={report.records_in} records_out={report.records_out}")
-    console.print(f"pass_rate={report.pass_rate:.2f}")
-    console.print(f"duration_seconds={report.duration_seconds:.3f}")
-    console.print(f"timestamp={report.timestamp.isoformat()}")
-
-
-def _render_gate_check_failure(
-    exc: QualityGateError,
-    *,
-    adapter_name: str,
-    records_in: int,
-    output_format: str,
-) -> None:
-    payload: dict[str, object] = {
-        "adapter": adapter_name,
-        "records_in": records_in,
-        "records_out": 0,
-        "error_type": exc.__class__.__name__,
-        "message": str(exc),
-        "policy": asdict(get_quality_policy(adapter_name)),
-    }
-    if hasattr(exc, "record_id"):
-        payload["record_id"] = getattr(exc, "record_id")
-    if hasattr(exc, "missing_fields"):
-        payload["missing_fields"] = getattr(exc, "missing_fields")
-
-    if output_format == "json":
-        console.print_json(data=payload)
-        return
-
-    console.print("[bold red]quality gate: FAIL[/bold red]")
-    console.print(f"adapter={adapter_name}")
-    console.print(f"records_in={records_in}")
-    console.print(f"error_type={payload['error_type']}")
-    console.print(f"message={payload['message']}")
-
-
-def _load_gate_check_records(source_key: str, *, since_date: date | None, limit: int):
-    registry = _adapter_registry()
-    adapter_cls = registry[source_key]
-    adapter = adapter_cls()
-    documents = list(adapter.list(since_date=since_date, limit=limit))[:limit]
-    records = []
-    for item in documents:
-        source_id = str(item.get("id", "")).strip()
-        if not source_id:
-            continue
-        records.append(adapter.normalize(adapter.fetch(source_id)))
-    return records
-
-
 @app.command("gate-check")
 def gate_check(
     source: str = typer.Option(..., "--source", "-s", help="來源代碼，例如 mojlaw / datagovtw / mohw"),
@@ -558,15 +342,15 @@ def gate_check(
     except ValueError as exc:
         raise typer.BadParameter("日期格式必須是 YYYY-MM-DD") from exc
 
-    records = _load_gate_check_records(source_key, since_date=since_date, limit=limit)
+    records = load_gate_check_records(source_key, registry=registry, since_date=since_date, limit=limit)
     gate = QualityGate.from_adapter_name(source_key)
 
     try:
         report = gate.evaluate(records, adapter_name=source_key)
     except QualityGateError as exc:
-        _render_gate_check_failure(exc, adapter_name=source_key, records_in=len(records), output_format=output_format)
+        render_gate_check_failure(exc, adapter_name=source_key, records_in=len(records), output_format=output_format)
         raise typer.Exit(code=1) from exc
 
-    _render_gate_check_success(report, output_format=output_format)
+    render_gate_check_success(report, output_format=output_format)
     if report.pass_rate < 0.5:
         raise typer.Exit(code=1)
