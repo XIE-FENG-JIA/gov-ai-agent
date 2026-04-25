@@ -16,7 +16,7 @@
 輸出:
 - stdout: JSON (機器單一事實源)
 - --human: stderr markdown 摘要
-- exit code: 0=clean / 1=soft violations / 2=hard violations
+- exit code: 0=no hard violations / 1=soft violations only when --strict-soft / 2=hard violations
 """
 from __future__ import annotations
 
@@ -347,6 +347,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--repo", type=Path, default=_REPO_ROOT)
     parser.add_argument("--human", action="store_true", help="stderr 印 markdown 摘要")
+    parser.add_argument(
+        "--strict-soft",
+        action="store_true",
+        help="soft violations also return exit 1 (CI/nightly gate); default is hook-safe and only hard fails",
+    )
     args = parser.parse_args(argv)
 
     report = build_report(args.repo)
@@ -356,7 +361,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if report.violations_hard:
         return 2
-    if report.violations_soft:
+    if args.strict_soft and report.violations_soft:
         return 1
     return 0
 

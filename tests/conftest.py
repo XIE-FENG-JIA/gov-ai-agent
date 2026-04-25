@@ -4,7 +4,7 @@ import logging
 import pytest
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 # 確保 src 在 Python 路徑中
 sys.path.append(str(Path(__file__).parent.parent))
@@ -42,6 +42,41 @@ def cleanup_repo_root_atomic_tmps():
     cleanup_orphan_tmps(str(repo_root), max_age_seconds=None)
     yield
     cleanup_orphan_tmps(str(repo_root), max_age_seconds=None)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _cleanup_xdist_pyc_star(tmp_path_factory):
+    """Auto-clean xdist worker .pyc.<id> artifacts (session start + end).
+
+    xdist spawns workers that byte-compile files to e.g. ``foo.pyc.140245...``.
+    These are not covered by standard ``__pycache__/`` ignores.
+    """
+    import glob as _glob
+
+    src_root = Path(__file__).resolve().parent.parent / "src"
+
+    def _clean() -> None:
+        for f in _glob.glob(str(src_root / "**" / "*.pyc.*"), recursive=True):
+            try:
+                Path(f).unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    _clean()
+    yield
+    _clean()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _bypass_robots_cache_in_tests():
+    """Prevent real robots.txt HTTP fetches during the unit test suite.
+
+    Tests in ``test_robots_compliance.py`` create their own ``RobotsCache()``
+    instances and are unaffected by this patch.
+    """
+    with patch("src.sources._common._robots_cache") as mock_cache:
+        mock_cache.allowed.return_value = True
+        yield
 
 
 @pytest.fixture(scope="session", autouse=True)

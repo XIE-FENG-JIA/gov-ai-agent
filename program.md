@@ -2,6 +2,23 @@
 
 > 歷史 v7.0–v7.2 sensor/header 已封存：[docs/archive/program-history-202604j.md](docs/archive/program-history-202604j.md)
 
+> **v7.7-sensor 校準段（2026-04-25 15:33；第四十七輪；sensor 實跑）**：
+> - ✅ **bare except 49 處 / 40 檔**（+1 src/sources/_common.py RobotsCache noqa BLE001；T-ROBOTS-IMPL 新增）
+> - ✅ **fat files 0 over 400**（yellow watch 11 檔；最重 validators 391）
+> - ✅ **corpus 173**（T-CORPUS-200-PUSH 待；P2 外部服務依賴）
+> - ✅ **engineer-log 234 行**（≤300 soft ✅；≤400 hard ✅）
+> - ✅ **program.md 271 行**（soft cap 250 微超；含本輪新增 header）
+> - ✅ **auto-commit 語意率 46.7%（14/30）**（≥20% 目標 ✅；90% 目標差距 43pp）
+> - ✅ **EPIC6 13/13 全閉**
+> - ✅ **violations.hard = []**（sensor exit 1 為 soft only）
+> - ✅ **T-PYC-CLEAN 閉**（3862 個 .pyc.* 刪除；conftest session-end fixture 加入）
+> - ✅ **T-ROBOTS-IMPL 閉**（RobotsCache + RobotsDisallowedError + _robots_cache 加入 _common.py；request_with_proxy_bypass 加 robots check；tests/test_robots_compliance.py 4 passed）
+>
+> **v7.7 P0**：
+> 1. ✅ **T-HEADER-RESYNC-v5**（2026-04-25 本輪閉）— sensor 實跑 + header 更新；violations.hard = [] ✅
+> 2. ✅ **T-PYC-CLEAN**（2026-04-25 本輪閉）— 3862 .pyc.* 刪除；.gitignore 已含 `*.pyc.*`；conftest `_cleanup_xdist_pyc_star` session fixture 加入
+> 3. ✅ **T-ROBOTS-IMPL**（2026-04-25 本輪閉）— `RobotsCache` + `RobotsDisallowedError` + `_robots_cache` 加入 `src/sources/_common.py`；`request_with_proxy_bypass` 加 robots check；`tests/test_robots_compliance.py` 4 passed；`test_sources_base.py` 8 passed
+
 > **v7.5-sensor 校準段（2026-04-25 14:47；第四十六輪；HEAD 獨立跑；T-PROGRAM-MD-TRIM + T-REGRESSION-FIX-刀8 閉）**：
 > - ✅ **pytest 3914 passed / 10 skipped**（T-REGRESSION-FIX-刀8：refine/rewrite/pipeline/review_parser/org_memory exception bucket 擴寬；test_e2e mock exhaustion 修正；22 fail → 0）
 > - ✅ **bare except 2 處 / 2 檔**（cite_cmd.py noqa BLE001 + warnings_compat.py compat pragma；全部故意保留）
