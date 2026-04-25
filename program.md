@@ -30,7 +30,7 @@
 #### v7.8b 反思新增 — 雙紅線同檔優先（ROI ×2）
 
 - [x] **T-FAT-REALTIME-LOOKUP-CUT**（45 min；P1；2026-04-25 18:35）— `src/knowledge/realtime_lookup.py` 386 行同時是 fat yellow（max 386）+ bare-except 熱點（2 處）；拆 `_request_helpers.py` / `_normalize.py` 抽 80–100 行；同時把 except Exception 收 typed bucket；目標：fat 386 → ≤ 300、bare-except 熱點 -2 = 37、全量 pytest 不退（`tests/test_realtime_lookup.py` 既有 case 全綠）。**雙刀同檔，commit 一份做兩件**。
-- [ ] **T-INTEGRATION-COVERAGE-EXPAND**（60 min；P1；2026-04-25 18:35）— integration 只 2 檔太瘦；加 `tests/integration/test_kb_rebuild_quality_gate.py`（live-API gated by `GOV_AI_RUN_INTEGRATION=1`，跑 mojlaw + executive_yuan_rss 一輪 quality-gate）+ `tests/integration/test_api_server_smoke.py`（uvicorn boot + `/health` + `/api/v1/rewrite` 一條 happy path）；驗證本地默認 skip、`GOV_AI_RUN_INTEGRATION=1` 真跑。**主套件覆蓋不到端到端**。
+- [x] **T-INTEGRATION-COVERAGE-EXPAND**（60 min；P1；2026-04-25 18:35；2026-04-25 閉）— 新增 `tests/integration/test_kb_rebuild_quality_gate.py`（5 tests；mojlaw + executive_yuan_rss 各跑 QualityGate.evaluate，含 LiveIngestBelowFloor + timestamp UTC 驗證 + multi-source 聯跑）+ `tests/integration/test_api_server_smoke.py`（3 tests；uvicorn boot + GET / + GET /api/v1/health schema + POST /api/v1/meeting happy-path）；無 GOV_AI_RUN_INTEGRATION=1 時全 8 個 SKIP；主套件 `python -m pytest tests/ -q --ignore=tests/integration --tb=line -x` = 3949 passed ✅。
 
 #### v7.8 反思新增 — 結構治理（連 5+ 輪同根因，需上工程而非 patch）
 
