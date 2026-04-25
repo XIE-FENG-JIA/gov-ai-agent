@@ -68,7 +68,7 @@ ignore = ["E501", "F841", "F541", "E401"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
-addopts = "-v -n auto"
+addopts = "-v -n 8"
 asyncio_mode = "auto"
 markers = [
     "integration: live upstream smoke tests for public source adapters",

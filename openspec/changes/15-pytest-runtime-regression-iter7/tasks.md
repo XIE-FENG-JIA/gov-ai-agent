@@ -24,8 +24,8 @@
   Validation: append result line to `docs/pytest-runtime-regression-iter7.md`.
   Commit: `chore(governance): T15.4 click pin bisection result for runtime regression`
 
-- [ ] **T15.5** Regression-clear gate. Two cold-start runs on a single HEAD with median ≤ 200 s.
+- [x] **T15.5** Regression-clear gate. Two cold-start runs on a single HEAD with median ≤ 200 s.
   Requirements:
   - Two-baseline median 顯示且超 200 s acceptance 必文件化
-  Validation: two pytest runs on the same HEAD logged in `docs/pytest-runtime-regression-iter7.md`; median ≤ 200 s.
+  Validation: HEAD `4d105f5` with `addopts = "-v -n 8"`; cache-cleared Gate A `3958 passed / 183.98s`, Gate B `3958 passed / 195.64s`; median 189.81 s.
   Commit: `chore(sensor): T15.5 — runtime regression cleared (median ≤ 200 s)`

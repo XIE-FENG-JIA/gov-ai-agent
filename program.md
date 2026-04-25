@@ -32,7 +32,7 @@
 ### P0（2026-04-26 05:55 /pua 深度回顧新增；本輪必動 — 治理底線 + T15.5 紅線真閉環）
 
 - [x] **T-WORKTREE-FLUSH-LOOP5**（2026-04-26 閉；P0；ACL-free；治理底線）— 已 flush 13/14 openspec promote、`src/cli/utils.py` shim removal、`tests/test_cli_commands.py` xdist/state cleanup 與治理文件更新；驗證 `python -m pytest tests/ -q --ignore=tests/integration` = 3951 passed / 248.81s。剩餘活 spec 僅 `15-pytest-runtime-regression-iter7`；T15.5 因 runtime > 200s 仍未關。
-- [ ] **T15.5-MEDIAN-COLD-START**（P0；45 min；ACL-free；紅線 v9 真閉環）— LOOP closure red-line v9 要求 two-baseline median ≤ 200 s。本輪 -n auto 實測 224.65 s（超 12.3%）。對策：(a) 兩次冷啟動 `python -m pytest tests/ -q --ignore=tests/integration -n auto`，每次前清 `__pycache__` + `.pytest_cache`；(b) 結果 append 到 `docs/pytest-runtime-regression-iter7.md` Bisection results；(c) 若 median > 200 s 開新 bisection step（候選：jieba initial load / chromadb import / xdist 14 worker boot variance）。驗收：median ≤ 200 s + 雙跑數據文件化 + T15.5 [x]；通過後 archive 15-iter7 至 `openspec/changes/archive/2026-04-26-15-pytest-runtime-regression-iter7/`。
+- [x] **T15.5-MEDIAN-COLD-START**（2026-04-26 閉；P0；ACL-free；紅線 v9 真閉環）— 根因為 Windows NTFS/import I/O 被 xdist 14 workers 過飽和；`pyproject.toml` 將 pytest `addopts` 從 `-n auto` 改為 `-n 8`。驗證同 HEAD `4d105f5` 冷啟動雙跑（每次前清 `__pycache__` + `.pytest_cache`）：Gate C `3958 passed / 183.98s`、Gate D `3958 passed / 195.64s`，median **189.81s ≤ 200s**；詳見 `docs/pytest-runtime-regression-iter7.md`。
 - [→merged] **T-OPENSPEC-PROMOTE-13-14-FLUSH**（P0；併入 T-WORKTREE-FLUSH-LOOP5 (a) 子任務；2026-04-26 05:55 升級）— 從上輪 P1 「partially done」直升 P0 並合併執行；不再分項拖。
 
 ### P0（v7.9-final 後段 /pua 深度回顧新增；漂白第七型 / 工作量黑洞 / 本輪必動）

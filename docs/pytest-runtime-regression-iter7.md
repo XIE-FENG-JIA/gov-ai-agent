@@ -87,6 +87,7 @@ python -m pytest -q --ignore=tests/integration -p no:xdist --no-header
 | C2 — click | fresh venv click==8.1.7 (incomplete: missing langgraph) | **548.5 s (invalid)** | **PROVISIONALLY RULED OUT** — timing invalid (incomplete venv, some tests errored). Circumstantial: current HEAD 8868f69 with click 8.2.1 improved from LOOP5 315 s → 214 s via T13 refactors alone, proving regression was code-complexity not click overhead. |
 | C1 — dispersal | (deferred until 13 closes) | — | — |
 | C5 — jieba cold load | add `_prewarm_jieba` session autouse fixture in `tests/conftest.py`; HEAD `0b26d25` | gate A: **233.9 s**, gate B: **227.1 s**, median **230.5 s** | **PARTIAL** — jieba pre-warm eliminates 12-13s BM25 test cold-start from per-test durations; bottleneck shifts to session fixture startup (~11s/worker parallel) + I/O contention across 14 workers. 15% gap remains (230.5 s vs 200 s target). T15.5 gate NOT yet cleared. |
+| C6 — Windows xdist worker cap | set pytest `addopts = "-v -n 8"`; HEAD `4d105f5` | gate A: **183.98 s**, gate B: **195.64 s**, median **189.81 s** | **CLEARED** — 14 workers over-saturated Windows NTFS/import I/O; 8 workers preserves parallelism while removing contention. T15.5 gate cleared. |
 
 ## T15.5 Gate Runs (Regression-Clear Gate)
 
@@ -94,15 +95,19 @@ python -m pytest -q --ignore=tests/integration -p no:xdist --no-header
 |-----|------|---------|-------|
 | Gate A | `0b26d25` | **233.9 s** | after jieba prewarm fixture |
 | Gate B | `0b26d25` | **227.1 s** | after jieba prewarm fixture |
+| Gate C | `4d105f5` | **183.98 s** | after xdist worker cap `-n 8`; cache cleared before run |
+| Gate D | `4d105f5` | **195.64 s** | after xdist worker cap `-n 8`; cache cleared before run |
 
 **Median (A + B)** = **230.5 s**. Target ≤ 200 s. **Not yet cleared.**
 
-Progress from LOOP5 baseline: 315 s → 230.5 s (−27 %). Remaining gap: 30.5 s.
+**Median (C + D)** = **189.81 s**. Target ≤ 200 s. **Cleared.**
 
-Root cause of remaining gap: I/O contention across 14 xdist workers importing
-~500 Python modules simultaneously from Windows NTFS. Collection overhead alone
-is ~36.6 s wall-clock (vs 17 s main-process collection). Next bisection
-candidates: reduce worker count + reduce fixture I/O at session startup.
+Progress from LOOP5 baseline: 315 s → 189.81 s (−40 %). Remaining gap: 0 s.
+
+Root cause: I/O contention across 14 xdist workers importing ~500 Python modules
+simultaneously from Windows NTFS. Collection overhead alone was ~36.6 s
+wall-clock (vs 17 s main-process collection). Capping at 8 workers lowers wall
+time below the 200 s red line without disabling parallelism.
 
 ## Red line v9
 
