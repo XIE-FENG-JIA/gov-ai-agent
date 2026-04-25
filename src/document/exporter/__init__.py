@@ -209,7 +209,7 @@ class DocxExporter:
 
         try:
             sections = self.template_engine.parse_draft(draft_text)
-        except Exception as exc:
+        except (ValueError, TypeError, AttributeError, KeyError) as exc:
             logger.warning("草稿解析失敗，產生最小有效文件: %s", exc)
             sections = {}
 

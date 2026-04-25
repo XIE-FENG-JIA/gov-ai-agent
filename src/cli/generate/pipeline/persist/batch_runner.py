@@ -60,7 +60,7 @@ def _run_batch(
         kb = runtime.KnowledgeBaseManager(kb_path, llm)
     except runtime.typer.Exit:
         raise
-    except Exception as exc:
+    except (OSError, ValueError, RuntimeError, KeyError, ImportError) as exc:
         runtime.console.print(f"[red]錯誤：初始化失敗：{runtime._sanitize_error(exc)}[/red]")
         raise runtime.typer.Exit(1)
 

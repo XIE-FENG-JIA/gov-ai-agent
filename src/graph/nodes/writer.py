@@ -4,6 +4,7 @@ write_draft node — 包裝 WriterAgent.write_draft()
 
 import logging
 
+from src.core.llm import LLMError
 from src.graph.state import GovDocState
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,6 @@ def write_draft(state: GovDocState) -> dict:
             "phase": "draft_written",
         }
 
-    except Exception as exc:
+    except (LLMError, OSError, ValueError, RuntimeError) as exc:
         logger.exception("write_draft 失敗: %s", exc)
         return {"error": f"草稿撰寫失敗: {exc}", "phase": "failed"}

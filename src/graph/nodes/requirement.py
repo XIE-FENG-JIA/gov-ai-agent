@@ -4,6 +4,7 @@ parse_requirement node — 包裝 RequirementAgent.analyze()
 
 import logging
 
+from src.core.llm import LLMError
 from src.graph.state import GovDocState
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,6 @@ def parse_requirement(state: GovDocState) -> dict:
             "phase": "requirement_parsed",
         }
 
-    except Exception as exc:
+    except (LLMError, OSError, ValueError, RuntimeError) as exc:
         logger.exception("parse_requirement 失敗: %s", exc)
         return {"error": f"需求分析失敗: {exc}", "phase": "failed"}

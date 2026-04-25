@@ -65,7 +65,7 @@ def build_report(state: GovDocState) -> dict:
             "phase": "report_built",
         }
 
-    except Exception as exc:
+    except (ValueError, TypeError, AttributeError, KeyError) as exc:
         logger.exception("build_report 失敗: %s", exc)
         return {
             "report": f"# 品質報告產生失敗\n\n錯誤: {exc}",

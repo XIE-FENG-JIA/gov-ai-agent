@@ -1,5 +1,7 @@
 import importlib
 
+from src.core.llm import LLMError
+
 
 def _runtime():
     return importlib.import_module("src.cli.generate")
@@ -70,7 +72,7 @@ def _process_batch_item(
         progress.console.print(f"  [green][{idx}/{total}] 完成 -> {final_path}[/green]")
         result["success"] = True
 
-    except Exception as exc:
+    except (LLMError, OSError, ValueError, RuntimeError) as exc:
         analysis = runtime.ErrorAnalyzer.diagnose(exc)
         progress.console.print(f"  [red][{idx}/{total}] 失敗：{runtime._sanitize_error(exc)}[/red]")
         progress.console.print(f"  [dim]診斷：{analysis['root_cause']}[/dim]")

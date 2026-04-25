@@ -34,7 +34,7 @@ def fetch_models_impl(
     except requests_module.ConnectionError:
         console.print("[red]無法連線至 OpenRouter API，請確認網路連線。[/red]")
         raise
-    except Exception as exc:
+    except (requests_module.HTTPError, ValueError) as exc:
         logger.debug("擷取模型清單失敗: %s", exc)
         console.print("[red]擷取模型清單失敗，請稍後再試。[/red]")
         raise

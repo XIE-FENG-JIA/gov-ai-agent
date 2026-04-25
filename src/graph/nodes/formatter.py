@@ -37,6 +37,6 @@ def format_document(state: GovDocState) -> dict:
             "phase": "document_formatted",
         }
 
-    except Exception as exc:
+    except (ValueError, TypeError, AttributeError, KeyError, RuntimeError) as exc:
         logger.exception("format_document 失敗: %s", exc)
         return {"error": f"文件格式化失敗: {exc}", "phase": "failed"}

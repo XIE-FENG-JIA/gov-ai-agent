@@ -6,6 +6,7 @@ import math
 from typing import Any
 
 from src.agents.review_parser import parse_review_response
+from src.core.llm import LLMError
 from src.core.review_models import ReviewResult
 from src.document.citation_metadata import extract_reference_entries
 
@@ -206,7 +207,7 @@ def semantic_similarity_check(
             if not emb_draft or not emb_law:
                 continue
             similarity = cosine_similarity(emb_draft, emb_law)
-        except Exception as exc:
+        except (LLMError, ValueError, RuntimeError, OSError) as exc:
             logger.warning("語義相似度計算失敗，跳過此引用：%s", exc)
             continue
 

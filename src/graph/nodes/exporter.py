@@ -54,6 +54,6 @@ def export_docx(state: GovDocState) -> dict:
             "phase": "exported",
         }
 
-    except Exception as exc:
+    except (OSError, ValueError, RuntimeError) as exc:
         logger.exception("export_docx 失敗: %s", exc)
         return {"error": f"DOCX 匯出失敗: {exc}", "phase": "failed"}

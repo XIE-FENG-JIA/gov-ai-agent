@@ -658,3 +658,6 @@ PASS T-FAT-REALTIME-LOOKUP-CUT 2026-04-25 19:24 realtime_lookup.py 387->254 line
 [2026-04-25 22:05:07] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=8c1953d) — 若先前 FAIL 是 ACL denied，此條即救援對應 | results.log
 [2026-04-25 22:07:09] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=45084be) — 若先前 FAIL 是 ACL denied，此條即救援對應 | results.log
 [2026-04-25 22:15:25] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=052a341) — 若先前 FAIL 是 ACL denied，此條即救援對應 | results.log
+[2026-04-25 22:17:27] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=cc57397) — 若先前 FAIL 是 ACL denied，此條即救援對應 | results.log,src/cli/convert_cmd.py,src/cli/generate/cli.py,src/cli/validate_cmd.py,src/knowledge/fetchers/base.py
+[2026-04-25 22:23] | T-BARE-EXCEPT-KNIFE-13 | PASS | 刀13: bare-except 19→13; 6 files typed bucket fix (convert_cmd/validate_cmd/fetchers/base/cli_generate/exporter/config_tools); 3949 passed
+[2026-04-25 22:23] | T-BARE-EXCEPT-KNIFE-14 | PASS | 刀14: bare-except 13→3; 10 files typed bucket fix + RuntimeError added to memory.py; only 3 intentional noqa/compat remain; 3949 passed

@@ -32,7 +32,7 @@ def fetch_org_memory(state: GovDocState) -> dict:
             "phase": "memory_fetched",
         }
 
-    except Exception as exc:
+    except (OSError, ValueError, AttributeError, TypeError, RuntimeError) as exc:
         logger.exception("fetch_org_memory 失敗: %s", exc)
         # 機構記憶失敗不阻斷流程，只記錄警告
         return {"org_hints": "", "phase": "memory_fetched"}

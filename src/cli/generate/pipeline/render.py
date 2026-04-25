@@ -122,7 +122,7 @@ def _run_core_pipeline(
     try:
         sections = template_engine.parse_draft(raw_draft)
         formatted_draft = template_engine.apply_template(requirement, sections)
-    except Exception as exc:
+    except (ValueError, TypeError, AttributeError, KeyError, RuntimeError) as exc:
         runtime.console.print(f"[red]格式標準化失敗：{runtime._sanitize_error(exc)}[/red]")
         raise runtime.typer.Exit(1)
     runtime.console.print("  [green]格式標準化完成。[/green]")
