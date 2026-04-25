@@ -39,8 +39,10 @@ def convert(
         raise typer.Exit(1)
 
     try:
+        from docx.opc.exceptions import PackageNotFoundError
+        from zipfile import BadZipFile
         doc = Document(input_file)
-    except Exception as exc:
+    except (OSError, ValueError, PackageNotFoundError, BadZipFile) as exc:
         console.print(f"[red]錯誤：無法開啟 DOCX 檔案：{exc}[/red]")
         raise typer.Exit(1)
 

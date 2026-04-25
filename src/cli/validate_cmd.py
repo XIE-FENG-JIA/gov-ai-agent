@@ -41,8 +41,10 @@ def validate(
     checks: list[tuple[str, bool, str]] = []
 
     try:
+        from docx.opc.exceptions import PackageNotFoundError
+        from zipfile import BadZipFile
         doc = Document(file_path)
-    except Exception as e:
+    except (OSError, ValueError, PackageNotFoundError, BadZipFile) as e:
         console.print(f"[red]無法開啟文件：{e}[/red]")
         raise typer.Exit(1)
 

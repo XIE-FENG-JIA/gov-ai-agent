@@ -146,7 +146,7 @@ class BaseFetcher(ABC):
             return None
         try:
             return resp.json()
-        except Exception as exc:
+        except (ValueError, UnicodeDecodeError) as exc:
             logger.error("JSON 解析失敗 %s：%s", url, exc)
             return None
 

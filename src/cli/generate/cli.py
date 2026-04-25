@@ -222,5 +222,5 @@ def generate(
             rounds_used=qa_report.rounds_used if qa_report else None,
             elapsed=gen_elapsed,
         )
-    except Exception as exc:
+    except (OSError, ValueError) as exc:
         runtime.console.print(f"[dim]歷史記錄寫入失敗：{exc}[/dim]")
