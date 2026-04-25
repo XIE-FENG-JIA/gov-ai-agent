@@ -1,6 +1,6 @@
 import logging
 from rich.console import Console
-from src.core.llm import LLMProvider
+from src.core.llm import LLMProvider, LLMError
 from src.core.review_models import ReviewResult
 from src.core.constants import LLM_TEMPERATURE_PRECISE, MAX_DRAFT_LENGTH, DEFAULT_REVIEW_SCORE, escape_prompt_tag
 from src.agents.review_parser import parse_review_response
@@ -127,7 +127,7 @@ Be precise: only flag genuine contradictions or mismatches, not stylistic prefer
 """.format(safe_draft=safe_draft)
         try:
             response = self.llm.generate(prompt, temperature=LLM_TEMPERATURE_PRECISE)
-        except Exception as exc:
+        except (LLMError, RuntimeError, OSError) as exc:
             logger.warning("ConsistencyChecker LLM 呼叫失敗: %s", exc)
             return ReviewResult(agent_name=self.AGENT_NAME, issues=[], score=0.0, confidence=0.0)
         return parse_review_response(

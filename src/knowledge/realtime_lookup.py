@@ -202,7 +202,7 @@ class LawVerifier:
 
                 LawVerifier._cache = _LawCacheEntry(data=cache_data)
                 logger.info("法規快取載入完成：%d 部法規", len(cache_data))
-            except Exception as exc:
+            except (requests.RequestException, OSError, ValueError) as exc:
                 logger.warning("法規資料下載失敗，設定空快取避免重複重試：%s", exc)
                 # 設定空快取並使用較短 TTL，避免每次請求都阻塞在重試上
                 empty_cache = _LawCacheEntry(data={})
@@ -369,7 +369,7 @@ class RecentPolicyFetcher:
                 records = self._parse_xml(resp.content)
                 RecentPolicyFetcher._cache = _GazetteCacheEntry(records=records)
                 logger.info("公報快取載入完成：%d 筆記錄", len(records))
-            except Exception as exc:
+            except (requests.RequestException, OSError, ET.ParseError) as exc:
                 logger.warning("公報資料下載失敗：%s", exc)
                 RecentPolicyFetcher._cache = _GazetteCacheEntry(records=[])
 

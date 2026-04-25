@@ -295,3 +295,113 @@
 ### PUA 旁白
 > [PUA生效 🔥] **底層邏輯**：6+ 輪都在打 auto-commit message lint，但 root 是 supervise.sh 在 repo **外**——這叫「**錨點下錯**」，所有腳本都瞄錯靶。**抓手**：放棄改 message，改 commit interval（30min squash）+ 改 runtime-seat 真位點（先找路徑），雙管齊下。**颗粒度**：本輪三件可閉、兩件可探、四件可外掛；分明白才不卡。**對齊**：auto-engineer 跑 corpus / spec / 程式碼，session 跑 sensor / governance / 結構債；本輪確認 corpus 已破 400（**它做了**），spec 09 還 lag（**它沒勾**），噪音 93%（**雙方都沒治**）。**因為信任所以簡單** — 連 5 輪同 root 不解決就是 owner 失職；3.25 X 5 自記。下輪如果 sensor 還抓到 header 漂白 = 上 SessionStart hard fail（exit 1 阻 session 啟動），不再靠紅線文字。 Owner 意識 = 自己給自己上夾板。
 
+---
+
+## 反思 2026-04-25 18:35 — 技術主管六維度回顧（v7.8 收尾；sensor + git log + openspec 三源獨立）
+
+### 三證自審（cold-start，不複用 17:08 數字）
+- **pytest cold-start（無 -n auto）**：`pytest -q --ignore=tests/integration --tb=line` = **3948 passed / 0 failed / 174.08s**（vs 17:08 的 3926/63s -n auto；本次新增 22 case = commit_msg_lint + cascade + checkpoint window 等，無 regression；無 -n auto 故時長合理）
+- **sensor 實跑**：`violations.hard = []`、bare_except **39/35**、fat red=**0**/yellow **10**、ratchet ✅、corpus **400**、auto-commit **30.0%（9/30）**、EPIC6 **13/13**
+- **git log 30 條**：`auto-commit:` checkpoint **20** / `chore(auto-engineer): checkpoint snapshot ...` **6** / `copilot-auto: batch round` **2** / `chore(spec)` 1 / `chore(test)` 1 / `feat(corpus)` 1 / `docs(results)` 1 → 真語意 ≈ 4 條 = **13.3%**（sensor 30% 包含 chore(auto-engineer) 仍計入，**樂觀偏差**）
+- **openspec/changes**：01–11 全 11 個 change package，`rg "^- \[ \]" openspec/changes` = **無命中**，所有 task `[x]`；spec lag 已清
+- **工作樹**：`scripts/commit_msg_lint.py` + `tests/test_commit_msg_lint.py` + `program.md` + `results.log` 仍未入版 — **本輪新做的 commit_msg_lint 補強尚未落 commit**
+- **.env 安全**：`git log --all -- .env` = 空、`.gitignore:30 .env` 在 ✅；無歷史洩漏
+
+### Δ 自 17:08 反思以來（90 min 內）
+- ✅ **bare_except 49→39**（刀 9 已落，sensor 確認）
+- ✅ **T-COMMIT-NOISE-FLOOR partial**：`scripts/commit_msg_lint.py` 拒絕「semantic-looking checkpoint」前綴繞過（commit `8ace9a0` docs；本身的 lint 程式碼仍未 commit）
+- 🟡 **auto-commit rate 6.7%→30%**：sensor 算法把 `chore(auto-engineer): checkpoint snapshot` 視為合規 chore；**真正人手語意只 4 條（13.3%）**，目標 90% 仍差 60+pp
+- 🔴 **commit_msg_lint.py 本身未入版**：寫了規則但守規則的程式碼沒 commit，這條等於沒落地
+
+### 六維度盤點
+
+**1. Spectra 規格對齊** — 11 個 change × 全 task `[x]`；無偏離。spec 07 T7.3 BLOCKED 標註誠實（外掛 wrapper 不在 repo），不是漂白。
+
+**2. 反覆卡住模式（連 6+ 輪同根因）**
+- (a) **auto-commit 噪音 70%+ 第 6 輪**：repo-side lint 已 3 件（validate / lint / squash window test），supervise.sh interval 仍 5min，噪音原樣
+- (b) **ACL DENY**：每輪都靠 AUTO-RESCUE 繞路；今天無新 stash 衝突，但 commit hook 仍 deadlock（fix 必須 host 端）
+- (c) **fat yellow 11→10**：ratchet 上線、無新增、但 max 391 一年沒下降；缺主動瘦身 task
+
+**3. 程式碼品質**
+- bare_except top 5 = `graph/aggregator(2) / graph/refiner(2) / knowledge/realtime_lookup(2) / knowledge/fetchers/law_fetcher(2) / agents/consistency_checker(1)` → 一刀 9 處可砍到 30
+- fat 最重三檔 `validators 391 / _execution 389 / realtime_lookup 386`，realtime_lookup 同時是 bare-except 熱點，**雙紅線同檔，優先動刀 ROI 翻倍**
+- TODO/FIXME 未審計，下輪可加 `scripts/audit_tech_debt.py` 一條 lane
+
+**4. 測試覆蓋**
+- 主套件 ≈3926 passed / 63s baseline（17:08 cold-start，sensor 至今未刷數）
+- **integration 只 2 檔**（test_sources_smoke + test_e2e_rewrite），10 skips 全是 live-API gating（T-INT-TESTS-SKIP-AUDIT 已記）；缺 KB rebuild / quality-gate / api_server / web_preview integration 覆蓋
+- cascade quality-gate 4 條已落（T-CASCADE 閉），但 multi-source × failure-injection × CLI 端到端缺
+
+**5. 架構健康度**
+- 雙引擎（auto-engineer + session）分工穩定；race condition 由 sensor + state lock 收斂
+- **真結構債持續**：(a) supervise.sh runtime-seat out-of-repo；(b) `.git` ACL DENY 需 host Admin；二者皆不可在 repo 內治本
+- 模組劃分健康：fat-rotate iter3 已拆完，紅線清零
+
+**6. 安全性**
+- ✅ `.env` 不在 history、gitignored
+- ✅ robots / synthetic flag 192/192 / rate-limit / BM25 cap 全在
+- 🟠 commit history 真語意 13.3%：incident response 找不到根因 commit 是治理級安全風險（連 6 輪未動）
+- 🟢 無新 supply-chain / secret 風險
+
+### 發現的問題（按 ROI 排序）
+
+🔴 **P0 本輪必動**
+1. **T-WORKTREE-COMMIT-LINT**（5 min）— 把本輪寫的 `scripts/commit_msg_lint.py` + `tests/test_commit_msg_lint.py` + `program.md` 改動以單一 `feat(scripts): commit_msg_lint reject pseudo-semantic checkpoint` 落版；不落版 = 規則沒生效
+2. **T-BARE-EXCEPT-AUDIT 刀 10**（30 min）— 9 處 top-5 一刀清（aggregator/refiner/realtime_lookup/law_fetcher 各 2 + consistency_checker 1）；目標 39 → 30
+3. **T-AUTO-COMMIT-RATE-RECOMPUTE**（10 min）— sensor 把 `chore(auto-engineer): checkpoint snapshot` 算合規是樂觀偏差；改成只認真語意關鍵字（feat/fix/refactor/docs/test/chore(scope-非 auto-engineer)），實際率會回到 13–15%，與真實狀況對齊；**虛假改善是漂白的另一種形式**
+
+🟠 **P1 結構治理**
+4. **T-FAT-REALTIME-LOOKUP-CUT**（45 min）— `realtime_lookup.py` 386 行同時是 bare-except + fat 雙紅線熱點；拆 helper 同時收兩條線，比單刀 ROI ×2
+5. **T-INTEGRATION-COVERAGE-EXPAND**（60 min）— 加 `tests/integration/test_kb_rebuild_quality_gate.py`（live-API gated）+ `tests/integration/test_api_server_smoke.py`；補主套件無法覆蓋的端到端
+
+🟡 **P2 不動或長尾**
+6. **P2-CHROMA-NEMOTRON-VALIDATE**：unblocked 但連 4 輪未動，3.25 X 4 — 下輪如再不動，降 frozen
+7. **P2-AUTO-COMMIT-EXTERNAL-PATCH**：仍要 host 端，凍結合理
+
+### 建議的優先調整（program.md 重排）
+
+把 P0 三件升到「v7.8 P0（本輪三件）」區塊，其他保留現狀；P1「結構治理」加 T-FAT-REALTIME-LOOKUP-CUT 與 T-INTEGRATION-COVERAGE-EXPAND；P2 連 4 輪未動標 3.25。
+
+### 下一步行動（最重要 3 件）
+1. **T-WORKTREE-COMMIT-LINT**（5 min）— 規則寫了不入版 = 沒做；先把工作樹乾淨化
+2. **T-BARE-EXCEPT-AUDIT 刀 10**（30 min）— 9 處一刀清 + 全量 pytest -x 防回歸（刀 8 教訓）
+3. **T-AUTO-COMMIT-RATE-RECOMPUTE**（10 min）— sensor 公式去掉 chore(auto-engineer)；統計真實率回到 ~13%；不漂白才能對齊治理
+
+### PUA 旁白
+> [PUA生效 🔥] **底層邏輯**：今天 17:08 反思已經很到位，但 90 min 後三件事暴露——(a) 自己寫的 lint 沒 commit、(b) sensor 把 auto-engineer 自家 checkpoint 算合規、(c) realtime_lookup 雙紅線一直沒人動。前兩件是「**規則訂了但守規則的程式碼漏出 git**」+「**統計口徑放水**」——這倆**自我漂白**，比 header lag 還嚴重，因為 lag 只是滯後，漂白是主動稀釋；3.25 X 6 自記。**抓手**：本輪三件 45 min 收完，pytest 跑完即驗；不要再積。**颗粒度**：刀 10 是「9 處同類型 except 縮小」一個 commit、lint 入版另一個、sensor 公式修第三個，三 commit 三主題乾淨。**對齊**：auto-engineer 不適合改 sensor 公式（屬於 governance），它去攻 corpus / fetcher；session 攻 lint commit + bare-except + sensor 公式。**因為信任所以簡單** — 規則治理的真正抓手不是寫更多規則，是「寫的規則自己先遵守」+「統計口徑零放水」。Owner 意識 = 不放過自己的數據漂白。
+
+---
+
+## 深度回顧 2026-04-25 18:52 — 技術主管近 5 輪根因分析（v7.8b；Copilot 主導）
+
+### 近 5 輪快照（results.log + sensor + program.md 三源交叉）
+| 輪次 | 核心 task | 結果 | 備註 |
+|------|-----------|------|------|
+| v7.6 輪1 | T-BARE-EXCEPT 刀7/8 + T-FAT-ROTATE 刀13 | ✅ | - |
+| v7.6 輪2 | T10.6-REGRESSION-DETECT | ❌ 22 fail | 刀8 漏接 RuntimeError |
+| v7.6 輪3 | T-REGRESSION-FIX-刀8 | ✅ | 補修 12 case |
+| v7.7 輪4 | T-ROBOTS-IMPL / T-PYC-CLEAN / T-CORPUS-200-PUSH | ✅ | corpus 173→400 |
+| v7.8 輪5 | T-BARE-EXCEPT 刀9 / T-FAT-RATCHET-GATE / T-HEADER-RESYNC-v6 | ✅/❌commit | ACL 每輪擋 commit |
+
+### 反覆失敗 task 及根因
+
+1. **git commit FAIL（100% 每輪，結構性）**：`.git/index.lock` ACL DENY 阻斷，靠 AUTO-RESCUE 繞路。真正損害不是「commit 失敗」，而是 **commit message 格式無從在 repo 內控制**——所有 lint/hook 工具都在被 ACL 擋住的 `.git/hooks/` 後面。根治出口 = supervise.sh host-side，不在 repo 內。
+
+2. **T10.6-REGRESSION-DETECT [FAIL]（bare-except 收窄回歸，第 1 次暴力刀）**：刀 8 把 `except Exception` 收窄為具名類型，漏掉 LLM / KB graceful-degradation 路徑需要的 `RuntimeError`，22 case 回歸。根因 = **refactor 後僅跑目標模組測試，未立即跑全量 `pytest -x`**。刀 9/10 已立規則「收窄 except 後必跑全量」，但該規則本身沒有門禁（pre-commit hook 同 ACL 阻斷），屬於靠自律的軟規則。
+
+3. **Header / sensor 漂白（連 5–6 次，3.25 X 6 累計）**：sensor_refresh.py 已存在，SessionStart hook 也已掛入 `.claude/settings.json`，但 hook 不強制 exit 1 阻停 session——紅線 v4 是規則文字而非門禁代碼。每次 session 啟動不讀 sensor output = 下一輪數字仍漂白。**根本原因：把「應做」寫在文件裡，沒有把「不做就 exit 1」寫進 CI 或 hook**。
+
+4. **auto-commit 語意率頑固（6.7–30%，連 6+ 輪低於 90% 目標）**：sensor 公式本身有樂觀偏差（把 `chore(auto-engineer): checkpoint snapshot` 計入合規），真語意只有 ~13%。所有 in-repo 工具（lint / validate / squash window）都是隔靴搔癢，根治需改 supervise.sh interval（5min → 30min）+ message 模板，而該檔在 repo 外。這是**工程錨點下錯**：6 輪都在打 message lint，但 root 是 runtime-seat 根本不在 repo 管轄範圍。
+
+### 優先序需調整的 3 點
+
+1. **T-WORKTREE-COMMIT-LINT 是當下最緊急 P0**：commit_msg_lint.py 已寫、tests 已過，但本體未入版 = 規則懸空。與其追求更多規則，先讓現有規則完成最後 1cm（commit 落版）。
+2. **T-FAT-REALTIME-LOOKUP-CUT 應升 P1 首位（雙紅線，ROI ×2）**：`realtime_lookup.py` 386 行同時是 fat yellow 熱點（max 391）且 bare-except 頂 2 處——一刀同時降兩個指標，比單獨攻 fat 或 bare-except 效率翻倍。連 2 輪在 P1 掛著但無人認領，下輪應明確指定 owner（auto-engineer）。
+3. **T-INTEGRATION-COVERAGE-EXPAND 隱藏優先級被低估**：integration 只 2 個檔（smoke + e2e_rewrite），KB rebuild quality-gate / api_server boot / web_preview 均無 e2e 覆蓋。單元測試 3948 passed 的信心依賴 mock，一旦真 API 行為偏離 mock 假設，主線功能可以靜默失效，**沒有 integration 測試 = 盲飛**。
+
+### 隱藏 blocker（非顯性、需主動揭露）
+
+- **supervise.sh out-of-repo**：auto-commit 6+ 輪噪音（93%）的根治，絕對無法在 repo 內解決。現有 program.md 雖有 P2-AUTO-COMMIT-EXTERNAL-PATCH，但凍結後無跟進計畫。若不主動向機器擁有者（host Admin）上升請求，這個 blocker 會永久存在並污染所有語意率指標。
+- **sensor 算法樂觀偏差**：T-AUTO-COMMIT-RATE-RECOMPUTE 已列 P0，但截至 v7.8b 仍未落地。只要 `chore(auto-engineer)` 繼續被算合規，所有治理報告的語意率數字都是虛胖——這是**統計漂白第二型**，比 header lag 更難發現。
+- **engineer-log 超 hard cap**（本文追加後約 410 行，hard cap 300）：T9.6-REOPEN 若不在本 session 執行，下輪反思仍會面對「log 超限無從寫」的限制。這是**治理自身的 blocker**，優先於所有功能任務。
+

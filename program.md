@@ -19,12 +19,23 @@
 
 > **v7.3–v7.7 sensor/header 歷史已封存**：詳見 [docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)。
 
+### P0（v7.8b 18:35 反思新增；本輪必動 45 min）
+
+- [ ] **T-WORKTREE-COMMIT-LINT**（5 min；P0；2026-04-25 18:35）— `scripts/commit_msg_lint.py` + `tests/test_commit_msg_lint.py` + `program.md` 改動仍在工作樹未入版；以單一 `feat(scripts): commit_msg_lint reject pseudo-semantic checkpoint` 落版；驗證 `git status` clean（扣除 copilot session 檔）+ `python -m pytest tests/test_commit_msg_lint.py -q` ≥ 既有 case 全綠。**不入版 = 規則沒生效**。
+- [ ] **T-BARE-EXCEPT-AUDIT 刀 10**（30 min；P0；2026-04-25 18:35）— sensor top-5 共 9 處：`graph/aggregator(2) / graph/refiner(2) / knowledge/realtime_lookup(2) / knowledge/fetchers/law_fetcher(2) / agents/consistency_checker(1)` → typed bucket（`LLMError|RuntimeError|OSError` 視 callsite）；目標 39 → 30；**全量 `pytest -x` 收尾**防刀 8 回歸再現。
+- [ ] **T-AUTO-COMMIT-RATE-RECOMPUTE**（10 min；P0；2026-04-25 18:35）— `scripts/sensor_refresh.py` auto-commit 公式把 `chore(auto-engineer): checkpoint snapshot` 視為合規是樂觀偏差；改成只認 `feat|fix|refactor|docs|test|chore(scope!=auto-engineer)` 真語意；實際率回到 13–15%；驗證 `python scripts/sensor_refresh.py --human` 顯示真實率 + `tests/test_sensor_refresh.py` 加 1 條防回歸。**統計口徑放水 = 漂白第二型**。
+
 ### P1（連 2 輪延宕 = 3.25）
+
+#### v7.8b 反思新增 — 雙紅線同檔優先（ROI ×2）
+
+- [ ] **T-FAT-REALTIME-LOOKUP-CUT**（45 min；P1；2026-04-25 18:35）— `src/knowledge/realtime_lookup.py` 386 行同時是 fat yellow（max 386）+ bare-except 熱點（2 處）；拆 `_request_helpers.py` / `_normalize.py` 抽 80–100 行；同時把 except Exception 收 typed bucket；目標：fat 386 → ≤ 300、bare-except 熱點 -2 = 37、全量 pytest 不退（`tests/test_realtime_lookup.py` 既有 case 全綠）。**雙刀同檔，commit 一份做兩件**。
+- [ ] **T-INTEGRATION-COVERAGE-EXPAND**（60 min；P1；2026-04-25 18:35）— integration 只 2 檔太瘦；加 `tests/integration/test_kb_rebuild_quality_gate.py`（live-API gated by `GOV_AI_RUN_INTEGRATION=1`，跑 mojlaw + executive_yuan_rss 一輪 quality-gate）+ `tests/integration/test_api_server_smoke.py`（uvicorn boot + `/health` + `/api/v1/rewrite` 一條 happy path）；驗證本地默認 skip、`GOV_AI_RUN_INTEGRATION=1` 真跑。**主套件覆蓋不到端到端**。
 
 #### v7.8 反思新增 — 結構治理（連 5+ 輪同根因，需上工程而非 patch）
 
 - [x] **T-AUTO-COMMIT-RUNTIME-SEAT**（2026-04-25 17:35 閉；P1→P2 凍結）— 已輸出 `docs/auto-commit-runtime-seat.md`：`.auto-engineer.state.json` 指向 PID 12668、`.auto-engineer.pid` 一致、`.copilot-loop.state.json` 無 formatter；`tasklist /v` 在本 shell `Access denied`、`where supervise` 無結果、repo scan 無 `auto-commit:` template。結論：commit formatter 在 external wrapper / scheduler / Admin rescue layer，repo 內不可直修；已寫 host-side patch point、validator 接法與驗收條件。
-- [ ] **T-COMMIT-NOISE-FLOOR**（30 min；P1；2026-04-25 v7.8 開）— 近 30 commit 28 條 = `auto-commit checkpoint` 噪音 93%，git blame/bisect 失效；治本兩刀：(a) 改 supervise loop interval 從 5 min → 30 min；(b) 5 min 窗口內 squash + 補語意 message 模板；驗證下個 24 hr 內 git log 噪音 ≤ 50%。
+- [ ] **T-COMMIT-NOISE-FLOOR**（30 min；P1；2026-04-25 v7.8 開）— 近 30 commit 28 條 = `auto-commit checkpoint` 噪音 93%，git blame/bisect 失效；治本兩刀：(a) 改 supervise loop interval 從 5 min → 30 min；(b) 5 min 窗口內 squash + 補語意 message 模板；2026-04-25 18:28 repo-side 防線補強：`scripts/commit_msg_lint.py` 拒絕 semantic-looking `chore(auto-engineer): checkpoint snapshot ...` 噪音，避免新 wrapper 前綴繞過 lint；驗證 `python -m pytest tests/test_commit_msg_lint.py tests/test_validate_auto_commit_msg.py -q` = 55 passed；仍待 external interval/squash 24hr 驗收。
 - [x] **T-FAT-RATCHET-GATE**（2026-04-25 閉；P1；ACL-free）— `scripts/check_fat_files.py` 建立：任一 src/ Python 檔 ≥ 400 行 = exit 1；`scripts/fat_baseline.json` 記錄 yellow 10 檔基線（max 391）；`--strict` 驗 ratchet（count + max_lines 不得增）；`sensor_refresh.py` 對齊 ≥400 red downstream hard check + `fat_ratchet_ok/detail` 欄位；CI 已接 `python scripts/check_fat_files.py --strict`；新增 `tests/test_check_fat_files.py` 防 400 行邊界 / yellow ratchet 退化。驗證 `python scripts/check_fat_files.py --strict` exit 0 ✅、`python -m pytest tests/test_check_fat_files.py tests/test_sensor_refresh.py -q --tb=short` = 20 passed ✅。
 
 #### v7.8 反思新增 — 深挖類

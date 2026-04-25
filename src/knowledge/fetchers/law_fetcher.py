@@ -56,7 +56,7 @@ class LawFetcher(BaseFetcher):
 
         try:
             laws = self._extract_laws_from_response(resp.content)
-        except Exception as exc:
+        except (ValueError, zipfile.BadZipFile, ET.ParseError) as exc:
             logger.error("解析法規資料失敗：%s", exc)
             return []
 
@@ -240,7 +240,7 @@ class LawFetcher(BaseFetcher):
                     try:
                         xml_data = zf.read(name)
                         all_laws.extend(self._parse_bulk_xml(xml_data))
-                    except Exception as exc:
+                    except (ET.ParseError, ValueError, KeyError) as exc:
                         logger.warning("解析 ZIP 內 XML %s 失敗：%s", name, exc)
 
         results: list[FetchResult] = []

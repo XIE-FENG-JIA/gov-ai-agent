@@ -121,6 +121,14 @@ _SEMANTIC_RE = re.compile(
     r"(?:\([^)]+\))?!?:\s+.{10,}"
 )
 
+# Pseudo-semantic checkpoint noise — passes _SEMANTIC_RE but is NOT truly semantic.
+# e.g. `chore(auto-engineer): checkpoint snapshot (2026-04-25 18:17:35 +0800) @ 18:19`
+# Aligned with commit_msg_lint._REJECT_PATTERNS; excluded from semantic count.
+_CHECKPOINT_NOISE_RE = re.compile(
+    r"^chore\(auto-engineer\):\s*checkpoint(?:\s+snapshot)?\b",
+    re.IGNORECASE,
+)
+
 
 def count_bare_except(repo: Path) -> tuple[int, int, list[tuple[str, int]]]:
     """掃 src/ 下所有 .py 的 bare except 出現次數."""
@@ -205,7 +213,10 @@ def auto_commit_rate(
     subjects = [line for line in out.splitlines() if line.strip()]
     if not subjects:
         return 0, 0.0
-    semantic = sum(1 for s in subjects if _SEMANTIC_RE.match(s))
+    semantic = sum(
+        1 for s in subjects
+        if _SEMANTIC_RE.match(s) and not _CHECKPOINT_NOISE_RE.match(s)
+    )
     return semantic, semantic / len(subjects)
 
 

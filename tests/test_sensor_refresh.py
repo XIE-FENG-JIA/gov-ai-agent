@@ -266,3 +266,27 @@ def test_main_human_mode_prints_stderr(tmp_path: Path, capsys: pytest.CaptureFix
     assert "Sensor Refresh" in out.err
     # JSON still on stdout
     json.loads(out.out)
+
+
+def test_auto_commit_rate_excludes_checkpoint_noise(tmp_path: Path) -> None:
+    """T-AUTO-COMMIT-RATE-RECOMPUTE: chore(auto-engineer) checkpoint noise ≠ semantic."""
+    repo = _make_repo(tmp_path)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@x"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
+
+    messages = [
+        "feat(api): add endpoint for document export",  # semantic
+        "chore(auto-engineer): checkpoint snapshot (2026-04-25 18:17:35 +0800) @ 18:19",  # noise
+        "chore(auto-engineer): feat-add-foo @2026-04-25",  # semantic (has real description)
+        "fix(cli): correct argument parsing for long options list",  # semantic
+    ]
+    for i, msg in enumerate(messages):
+        (repo / f"f{i}.txt").write_text(str(i), encoding="utf-8")
+        subprocess.run(["git", "-C", str(repo), "add", f"f{i}.txt"], check=True)
+        subprocess.run(["git", "-C", str(repo), "commit", "-m", msg, "-q"], check=True)
+
+    semantic, rate = _mod.auto_commit_rate(repo, n=4)
+    # feat + chore(auto-engineer) real-desc + fix = 3; checkpoint noise excluded
+    assert semantic == 3, f"expected 3 semantic, got {semantic}"
+    assert rate == pytest.approx(0.75, abs=0.01)

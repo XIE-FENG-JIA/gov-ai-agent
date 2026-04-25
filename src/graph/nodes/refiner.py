@@ -5,6 +5,7 @@ refine_draft + verify_refinement nodes — 根據審查結果修正草稿
 import logging
 from typing import Any
 
+from src.core.llm import LLMError
 from src.graph.state import GovDocState
 from src.core.constants import MAX_DRAFT_LENGTH, MAX_FEEDBACK_LENGTH, escape_prompt_tag, is_llm_error_response
 
@@ -101,9 +102,8 @@ Return ONLY the new draft markdown.
             "phase": "draft_refined",
         }
 
-    except Exception as exc:
+    except (LLMError, RuntimeError, OSError) as exc:
         logger.exception("refine_draft 失敗: %s", exc)
-        # 修正失敗不阻斷流程，保留現有草稿
         current_draft = (
             state.get("refined_draft")
             or state.get("formatted_draft")
@@ -131,6 +131,6 @@ def verify_refinement(state: GovDocState) -> dict:
             return {"phase": "verification_warning"}
         return {"phase": "verification_passed"}
 
-    except Exception as exc:
+    except (AttributeError, TypeError) as exc:
         logger.exception("verify_refinement 失敗: %s", exc)
         return {"phase": "verification_warning"}

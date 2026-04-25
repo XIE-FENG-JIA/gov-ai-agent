@@ -36,7 +36,7 @@ def _dicts_to_review_results(raw: list[dict[str, Any]]) -> list[ReviewResult]:
                 score=d.get("score", 0.0),
                 confidence=d.get("confidence", 1.0),
             ))
-        except Exception as exc:
+        except (TypeError, KeyError, ValueError) as exc:
             logger.warning("無法轉換審查結果 dict → ReviewResult: %s", exc)
             results.append(ReviewResult(
                 agent_name=d.get("agent_name", "Unknown"),
@@ -105,7 +105,7 @@ def aggregate_reviews(state: GovDocState) -> dict:
             "phase": "reviews_aggregated",
         }
 
-    except Exception as exc:
+    except (RuntimeError, AttributeError, TypeError, ZeroDivisionError) as exc:
         logger.exception("aggregate_reviews 失敗: %s", exc)
         return {
             "aggregated_report": {
