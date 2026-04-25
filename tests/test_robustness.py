@@ -2858,11 +2858,16 @@ class TestProductionReadinessIteration2:
 
         2026-04-25 flaky fix：xdist 並行下若前面 test 改過 src.api.middleware
         logger 的 propagate / level，caplog 抓不到。顯式還原 + 指定 logger 名。
+        LLM mocked to prevent real API calls (which trigger Pydantic serialiser warnings).
         """
         from unittest.mock import patch
         from fastapi.testclient import TestClient
         from api_server import app
+        import api_server as _api_srv
+        from src.core.llm import MockLLMProvider
 
+        original_llm = _api_srv._llm
+        _api_srv._llm = MockLLMProvider({})
         middleware_logger = logging.getLogger("src.api.middleware")
         saved_propagate = middleware_logger.propagate
         saved_level = middleware_logger.level
@@ -2886,21 +2891,31 @@ class TestProductionReadinessIteration2:
         finally:
             middleware_logger.propagate = saved_propagate
             middleware_logger.setLevel(saved_level)
+            _api_srv._llm = original_llm
 
     def test_middleware_skips_health_check_logging(self, caplog):
-        """health check 端點不應產生請求日誌（避免雜訊）"""
+        """health check 端點不應產生請求日誌（避免雜訊）
+        LLM mocked to prevent check_connectivity real API calls (which trigger Pydantic warnings).
+        """
         from fastapi.testclient import TestClient
         from api_server import app
+        import api_server as _api_srv
+        from src.core.llm import MockLLMProvider
 
-        client = TestClient(app)
-        with caplog.at_level(logging.INFO):
-            caplog.clear()
-            client.get("/")
-            client.get("/api/v1/health")
-        # 不應有 / 或 /api/v1/health 的請求日誌
-        health_logs = [r for r in caplog.records
-                       if r.message and ("GET /" in r.message) and ("ms)" in r.message)]
-        assert len(health_logs) == 0, "health check 不應產生請求日誌"
+        original_llm = _api_srv._llm
+        _api_srv._llm = MockLLMProvider({})
+        try:
+            client = TestClient(app)
+            with caplog.at_level(logging.INFO):
+                caplog.clear()
+                client.get("/")
+                client.get("/api/v1/health")
+            # 不應有 / 或 /api/v1/health 的請求日誌
+            health_logs = [r for r in caplog.records
+                           if r.message and ("GET /" in r.message) and ("ms)" in r.message)]
+            assert len(health_logs) == 0, "health check 不應產生請求日誌"
+        finally:
+            _api_srv._llm = original_llm
 
 
 # ==================== Production Readiness Iteration 3 ====================

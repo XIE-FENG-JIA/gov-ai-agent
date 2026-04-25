@@ -8,7 +8,7 @@
 > - ✅ **bare-except 3 處 / 3 檔**（刀10+11+12+13+14：39→30→20→19→13→3；僅剩 3 個 noqa/compat 有意保留）
 > - ✅ **fat files 0 over 400**；yellow 9 檔（validators 390 / _execution 389 / law_fetcher 377 ...）；ratchet ok (9/10, max=390)
 > - ✅ **corpus 400 ≥ target 200**
-> - ✅ **auto-commit 語意率 100%（30/30）**（T-COMMIT-T12.5-VERIFY 閉；change-12 archived；0 violations）
+> - ⚠️ **auto-commit 語意率 sensor=100%（30/30）但實測=16.7%（5/30）**（v7.9-sensor 22:35 /pua 抓到漂白第三型未斷根：sensor `_CHECKPOINT_NOISE_RE` 與 lint `_REJECT_PATTERNS` 只擋 `checkpoint`，漏 21 條 `chore(auto-engineer): patch`；T-COMMIT-NOISE-PATCH-CLOSE 待修）
 > - ✅ **EPIC6 13/13 全閉**；EPIC1-5 = 55/55；openspec/changes/ 僅剩 archive/
 >
 > **v7.8 P0（本輪三件，全閉）**：
@@ -18,7 +18,15 @@
 
 > **v7.3–v7.7 sensor/header 歷史已封存**：詳見 [docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)。
 
-### P0（v7.8c 20:08 /pua 深度回顧新增；治理優先；本輪必動）
+### P0（v7.9-sensor 22:35 /pua 深度回顧新增；漂白第三/四型未斷根；本輪必動）
+
+- [x] **T-OPENSPEC-PURPOSE-BACKFILL**（2026-04-25 閉；P0；ACL-free）— 已將 11 個 `openspec/specs/*/spec.md` Purpose 從對應 archive proposal Problem 回填，並刪除 3 個舊散件 `openspec/specs/{citation-tw-format,sources,open-notebook-integration}.md`。驗收：spec Purpose 無 `TBD - created`、`openspec/specs/*.md` = 0。
+- [x] **T-LITELLM-WARNING-CLOSE**（20 min；P1；ACL-free）— 預設 `pytest tests/test_robustness.py -q` 下仍噴 2 個 `PydanticSerializationUnexpectedValue: Expected 10 fields but got 6: Message + Expected StreamingChoices`；不能用 `-W error::UserWarning` cherry-pick 規避；升級 mock 工廠 Message 補齊 4 缺欄位 + Choices 改為 `litellm.utils.Choices` 子類；驗收 `python -m pytest tests/test_robustness.py -q 2>&1 | grep -c "PydanticSerializationUnexpectedValue"` = 0。
+- [x] **T-INTEGRATION-API-AUTH-SMOKE-CLOSE**（2026-04-25 晚；P0；ACL-free）— live uvicorn integration meeting smoke 會因 `config.yaml` 啟用 API auth 但測試未帶 key 而 401；已讓 `tests/integration/test_api_server_smoke.py`、`tests/integration/test_meeting_multi_round.py` 從 `API_CLIENT_KEY` 或 `config.yaml api.api_keys[0]` 產生 Bearer header；驗證 `GOV_AI_RUN_INTEGRATION=1 python -m pytest tests/integration/test_api_server_smoke.py tests/integration/test_meeting_multi_round.py -q --tb=line` = 7 passed。
+- [ ] **T-INTEGRATION-LIVE-SOURCES-CLOSE**（30 min；P0；ACL-free）— API auth slice 已綠，但 `GOV_AI_RUN_INTEGRATION=1 python -m pytest tests/integration -q --tb=line` 仍有 live source / quality-gate / ConfigManager iterable failures（datagovtw no docs、mojlaw connection/synthetic A0030018、`src/core/llm.py:303`）；需先分離純本機 smoke 與 live upstream smoke，再讓 CI 跑可重現 job。
+- [x] **T-INTEGRATION-CI-WIRE**（15 min；P1；ACL-free）— `tests/integration/` 8 個檔全靠 `GOV_AI_RUN_INTEGRATION=1` gate；CI workflow 沒設 = SKIP-only = 寫等於沒寫；`.github/workflows/ci.yml` 加一個 `integration` job 設 env；驗收 CI 該 job 至少跑 1+ test 真實 PASS（不是 SKIP）。**信心要從 mock 升到 e2e**。
+
+### P0（v7.8c 20:08 /pua 深度回顧新增；治理優先；已全閉，保留追溯）
 
 - [x] **T-OPENSPEC-PROMOTE-AUDIT**（2026-04-25 閉；P0；ACL-free）— 驗證 specs 已 promote（14 spec files in openspec/specs/）；移除 11 個重複 active change folders（archive 早已有 date-prefixed copy）；建立 `openspec/changes/archive/INDEX.md`（11 條目全齊）；寫 `docs/openspec-promotion-audit-202604.md` 收尾報告。驗收：`ls openspec/changes/` 僅剩 `12-commit-msg-noise-floor` ✅；`openspec/specs/` 14 spec files（≥10）✅；INDEX.md 建立 ✅。
 - [x] **T-LITELLM-MOCK-CONTRACT-FIX**（2026-04-25 20:36 閉；P0；ACL-free）— 實測 litellm mock contract 已對齊目前依賴；`python -m pytest tests/test_robustness.py -W error::UserWarning -q` = 299 passed / 0 warning，未重現 `ModelResponse / Choices / Message` pydantic schema warning；全量非 integration `python -m pytest -q --ignore=tests/integration --tb=line` = 3949 passed。
@@ -111,6 +119,7 @@
 ---
 
 ## 已完成
+- [x] **T-COMMIT-NOISE-PATCH-CLOSE** (2026-04-25 closed; P0) - patch noise now rejected by scripts/commit_msg_lint.py and excluded by scripts/sensor_refresh.py; regression tests added; targeted pytest = 40 passed; sensor auto_commit_rate = 20.0 percent no whitening.
 
 - [x] **T-PROGRAM-MD-ARCHIVE-v2**（2026-04-25 本輪閉；ACL-free）— v7.3–v7.7 sensor/header 歷史封存至 `docs/archive/program-history-202604k.md`；`program.md` 主檔回到 250 行 soft cap 以下，保留 v7.8 現況與活任務。
 - [x] **T-AUTO-COMMIT-RUNTIME-SEAT**（2026-04-25 17:35 閉；本輪）— 完成 runtime-seat audit 文件 `docs/auto-commit-runtime-seat.md`；確認 repo-local validators 已存在但違規 formatter 不在 repo，可執行修補點移交外部 Admin wrapper。
