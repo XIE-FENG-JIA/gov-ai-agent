@@ -71,7 +71,8 @@ def ingest(
         if not source_id:
             continue
 
-        corpus_path = corpus_root / f"{source_id}.md"
+        safe_id = _safe_filename(source_id)
+        corpus_path = corpus_root / f"{safe_id}.md"
         existing_metadata = _read_corpus_metadata(corpus_path) if corpus_path.exists() else None
         if existing_metadata and not _should_upgrade_existing(existing_metadata):
             continue
@@ -86,7 +87,7 @@ def ingest(
             )
 
         month_bucket = normalized.crawl_date.strftime("%Y%m")
-        raw_path = raw_root / month_bucket / f"{source_id}.json"
+        raw_path = raw_root / month_bucket / f"{safe_id}.json"
         _write_raw_snapshot(raw_path, raw)
 
         persisted_doc = normalized.model_copy(update={"raw_snapshot_path": str(raw_path)})
@@ -223,6 +224,18 @@ def _read_corpus_metadata(path: Path) -> dict[str, Any] | None:
 
 def _should_upgrade_existing(metadata: dict[str, Any]) -> bool:
     return bool(metadata.get("synthetic") or metadata.get("fixture_fallback"))
+
+
+def _safe_filename(source_id: str) -> str:
+    """Return a safe single-component filename from a source_id that may be a URL.
+
+    Replaces URL scheme separators and characters that are invalid in Windows
+    filenames so the resulting string can be used as a path stem.
+    """
+    safe = source_id.replace("://", "--")
+    for ch in r'/\:*?"<>|':
+        safe = safe.replace(ch, "_")
+    return safe[:200]
 
 
 if __name__ == "__main__":
