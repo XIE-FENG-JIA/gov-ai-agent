@@ -23,7 +23,7 @@ from fastapi.templating import Jinja2Templates
 from src.core.constants import MAX_USER_INPUT_LENGTH
 from src.core.models import VALID_DOC_TYPES
 from src.api.dependencies import get_config
-from src.cli.utils import detect_state_dir, resolve_state_read_path
+from src.cli.utils_io import detect_state_dir, resolve_state_read_path
 from src.web_preview._helpers import (  # noqa: F401 — re-exported for tests
     _WEB_UI_EXCEPTIONS,
     _log_web_warning,

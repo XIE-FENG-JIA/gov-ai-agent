@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from src.cli.utils import JSONStore
+from src.cli.utils_io import JSONStore
 
 console = Console()
 

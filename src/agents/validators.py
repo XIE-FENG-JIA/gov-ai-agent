@@ -4,6 +4,13 @@ import os
 import re
 from datetime import date
 
+from src.agents.validator_citations import (
+    check_citation_integrity as _check_citation_integrity,
+    check_citation_level as _check_citation_level,
+    check_evidence_presence as _check_evidence_presence,
+)
+from src.agents.validator_terms import COLLOQUIAL_PATTERNS, OUTDATED_AGENCY_MAP
+
 logger = logging.getLogger(__name__)
 
 
@@ -192,140 +199,18 @@ class ValidatorRegistry:
 
     def check_citation_level(self, draft_text: str, **kwargs) -> list[dict]:
         """檢查引用等級合規性：Level A 權威來源、待補依據標記。"""
-        errors: list[dict] = []
-
-        # 1. 檢查「待補依據」標記
-        pending_count = draft_text.count("【待補依據】")
-        if pending_count > 0:
-            errors.append(_issue(
-                f"草稿包含 {pending_count} 處「待補依據」標記，需補充 Level A 權威來源。",
-                "待補依據標記",
-                "使用 gov-ai kb search 查詢相關法規，以 Level A 權威來源（公報/法規）替換「【待補依據】」",
-            ))
-
-        # 2. 檢查參考來源段落中是否有 Level A
-        ref_section_match = re.search(r"###\s*參考來源.*", draft_text, re.DOTALL)
-        if ref_section_match:
-            ref_section = ref_section_match.group(0)
-            if "[Level A]" not in ref_section:
-                errors.append(_issue(
-                    "參考來源中缺少 Level A 權威來源（公報/法規），建議補充。",
-                    "參考來源段落",
-                    "補充至少一筆 Level A 來源（如全國法規資料庫、行政院公報），標記為 [Level A]",
-                ))
-
-        # 3. 掃描「依據...」句型，檢查是否附帶引用標記
-        yiju_matches = re.finditer(r"依據[^。\n]{2,30}(?:辦理|規定|處理|執行)", draft_text)
-        for m in yiju_matches:
-            # 取該句結尾後 10 字元看有沒有 [^ 或 【待補依據】
-            end_pos = m.end()
-            trailing = draft_text[end_pos:end_pos + 15]
-            if "[^" not in trailing and "【待補依據】" not in trailing and "[^" not in draft_text[m.start():end_pos]:
-                errors.append(_issue(
-                    f"法律主張「{m.group(0)}」缺少引用標記 [^n] 或「待補依據」。",
-                    f"「{m.group(0)}」",
-                    f"在「{m.group(0)}」後方加入引用標記（如 [^1]），並在參考來源段落補充對應定義",
-                ))
-
-        return errors
+        return _check_citation_level(draft_text, _issue)
 
     def check_evidence_presence(self, draft_text: str, **kwargs) -> list[dict]:
         """檢查草稿是否包含至少一個 evidence-backed 引用。"""
-        errors: list[dict] = []
-        if "參考來源" not in draft_text:
-            errors.append(_issue(
-                "草稿缺少「參考來源」段落，無法驗證引用來源。",
-                "文件結構",
-                "在文末新增「### 參考來源」段落，列出引用的法規與公報來源",
-            ))
-        ref_match = re.search(r"\[\^(\d+)\]", draft_text)
-        if not ref_match:
-            errors.append(_issue(
-                "草稿中無任何引用標記 [^n]，建議補充 evidence-backed 引用。",
-                "引用標記",
-                "在法規依據處加入 [^1] 等標記，並在參考來源段落定義 [^1]: 來源名稱",
-            ))
-        return errors
+        return _check_evidence_presence(draft_text, _issue)
 
     def check_citation_integrity(self, draft_text: str, **kwargs) -> list[dict]:
-        """檢查引用完整性：找出孤兒引用與未使用定義。
+        """檢查引用完整性：找出孤兒引用與未使用定義。"""
+        return _check_citation_integrity(draft_text, _issue)
 
-        - 孤兒引用：文中使用了 [^n] 但參考來源段落缺少對應定義
-        - 未使用定義：參考來源段落定義了 [^n]: 但文中未引用
-        """
-        errors: list[dict] = []
-
-        # 找出文中所有引用標記 [^n]（排除定義行本身）
-        # 引用格式: [^1], [^2], ...
-        inline_refs = set(re.findall(r"\[\^(\d+)\](?!:)", draft_text))
-
-        # 找出參考來源段落中的定義 [^n]:
-        definitions = set(re.findall(r"\[\^(\d+)\]:", draft_text))
-
-        # 孤兒引用：引用了但無定義
-        orphan_refs = inline_refs - definitions
-        for ref_id in sorted(orphan_refs, key=int):
-            errors.append(_issue(
-                f"孤兒引用：[^{ref_id}] 在文中被引用，但缺少對應的參考來源定義。",
-                f"引用 [^{ref_id}]",
-                f"在參考來源段落新增「[^{ref_id}]: 來源名稱與連結」",
-            ))
-
-        # 未使用定義：定義了但未引用
-        unused_defs = definitions - inline_refs
-        for def_id in sorted(unused_defs, key=int):
-            errors.append(_issue(
-                f"未使用定義：[^{def_id}] 已定義但未在文中引用，建議移除或補充引用。",
-                f"定義 [^{def_id}]",
-                f"在文中適當位置加入 [^{def_id}] 引用，或從參考來源段落移除該定義",
-            ))
-
-        return errors
-
-    # 過時機關名稱對照表（舊名→新名）
-    _OUTDATED_AGENCY_MAP: dict[str, str] = {
-        "環保署": "環境部",
-        "行政院環境保護署": "環境部",
-        "內政部營建署": "內政部國土管理署",
-        "營建署": "國土管理署",
-        "交通部觀光局": "交通部觀光署",
-        "觀光局": "觀光署",
-        "行政院原住民族委員會": "原住民族委員會",
-        "原民會": "原住民族委員會",
-        "行政院農業委員會": "農業部",
-        "農委會": "農業部",
-        "科技部": "國家科學及技術委員會",
-        "行政院海洋委員會海巡署": "海洋委員會海巡署",
-        "經濟部水利署": "經濟部水利署",
-        "交通部公路總局": "交通部公路局",
-        "公路總局": "公路局",
-        "經濟部智慧財產局": "經濟部智慧財產局",
-        "行政院人事行政總處": "人事行政總處",
-        "衛生福利部食品藥物管理署": "衛生福利部食品藥物管理署",
-        "財政部關務署": "財政部關務署",
-        "教育部體育署": "體育部",
-    }
-
-    # 口語化用詞清單（不應出現在正式公文中）
-    _COLLOQUIAL_PATTERNS: list[tuple[str, str]] = [
-        ("幫我", "請協助"),
-        ("沒問題", "可行"),
-        ("超棒", "甚佳"),
-        ("超讚", "甚佳"),
-        ("好的", "遵辦"),
-        ("OK", "可"),
-        ("沒辦法", "無法"),
-        ("搞定", "完成"),
-        ("趕快", "儘速"),
-        ("拜託", "惠請"),
-        ("啦", ""),
-        ("喔", ""),
-        ("嗎", ""),
-        ("吧", ""),
-        ("耶", ""),
-        ("欸", ""),
-        ("哦", ""),
-    ]
+    _OUTDATED_AGENCY_MAP = OUTDATED_AGENCY_MAP
+    _COLLOQUIAL_PATTERNS = COLLOQUIAL_PATTERNS
 
     # 單字語氣詞在句尾出現的上下文：後接中文標點、空白或文末
     _CLAUSE_END_RE = re.compile(r"(?=[，。、；：！？」）\s\n]|$)")

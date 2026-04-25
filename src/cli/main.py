@@ -119,7 +119,7 @@ else:
     from src.cli.explain_cmd import explain as explain_cmd
     from src.cli.extract_cmd import extract as extract_cmd
     from src.cli.format_cmd import format_doc as format_cmd
-    from src.cli.highlight_cmd import highlight as highlight_cmd
+    from src.cli.search_cmd import highlight as highlight_cmd, search as search_cmd
     from src.cli.lint_cmd import lint as lint_cmd
     from src.cli.merge_cmd import merge as merge_cmd
     from src.cli.number_cmd import number as number_cmd
@@ -130,7 +130,6 @@ else:
     from src.cli.review_cmd import review as review_cmd
     from src.cli.rewrite_cmd import rewrite as rewrite_cmd
     from src.cli.sample_cmd import sample as sample_cmd
-    from src.cli.search_cmd import search as search_cmd
     from src.cli.split_cmd import split as split_cmd
     from src.cli.stamp_cmd import stamp as stamp_cmd
     from src.cli.stats_cmd import stats as stats_cmd
@@ -247,7 +246,7 @@ def main(
     """
     # Delay state-dir setup import until callback execution so CLI module
     # collection does not depend on src.cli.utils import order.
-    from src.cli.utils import configure_state_dir
+    from src.cli.utils_io import configure_state_dir
     from src.core.logging_config import setup_logging
 
     configure_state_dir()

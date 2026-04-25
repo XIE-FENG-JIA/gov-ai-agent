@@ -4,7 +4,7 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 
-from src.cli.utils import atomic_text_write
+from src.cli.utils_io import atomic_text_write
 
 console = Console()
 

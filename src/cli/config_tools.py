@@ -6,7 +6,7 @@ import typer
 import yaml
 from rich.console import Console
 from rich.prompt import Confirm, Prompt
-from src.cli.utils import atomic_yaml_write, safe_config_write
+from src.cli.utils_io import atomic_yaml_write, safe_config_write
 from src.cli.config_tools_fetch_impl import fetch_models_impl
 from src.cli.config_tools_mutations_impl import (
     backup_impl,

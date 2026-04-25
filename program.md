@@ -2,14 +2,16 @@
 
 > 歷史 v7.0–v7.7 sensor/header 已封存：[docs/archive/program-history-202604j.md](docs/archive/program-history-202604j.md)、[docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)
 
-> **v7.9-sensor 校準段（2026-04-25 21:40；HEAD + sensor + pytest 三源獨立 cold-start）**：
-> - ✅ **pytest 3949 passed / 0 failed**（`python -m pytest -q --ignore=tests/integration --tb=line`）
-> - ✅ **sensor_refresh.py exit 0**；`violations.hard = []`
-> - ✅ **bare-except 3 處 / 3 檔**（刀10+11+12+13+14：39→30→20→19→13→3；僅剩 3 個 noqa/compat 有意保留）
-> - ✅ **fat files 0 over 400**；yellow 9 檔（validators 390 / _execution 389 / law_fetcher 377 ...）；ratchet ok (9/10, max=390)
+> **v7.9-sensor 後段（2026-04-26 00:15；HEAD + sensor + pytest + git log 四源獨立 cold-start）**：
+> - ✅ **pytest 3950 passed / 0 failed / 42.79s**（vs v7.9 baseline 45.78s — runtime −6.5%；用例 +1）
+> - ✅ **sensor_refresh.py exit 0**；`violations.hard = []`；soft = 1（auto_commit_rate 26.7% < 90%）
+> - ✅ **bare-except 3 / 3 檔**（hard 紅線清零；全 noqa/compat 故意保留）
+> - ✅ **fat ≥400 = 0 / yellow 9 / max=390**（ratchet ok 9/10）
 > - ✅ **corpus 400 ≥ target 200**
-> - ⚠️ **auto-commit 語意率 sensor=100%（30/30）但實測=16.7%（5/30）**（v7.9-sensor 22:35 /pua 抓到漂白第三型未斷根：sensor `_CHECKPOINT_NOISE_RE` 與 lint `_REJECT_PATTERNS` 只擋 `checkpoint`，漏 21 條 `chore(auto-engineer): patch`；T-COMMIT-NOISE-PATCH-CLOSE 待修）
-> - ✅ **EPIC6 13/13 全閉**；EPIC1-5 = 55/55；openspec/changes/ 僅剩 archive/
+> - ⚠️ **auto-commit 真語意率 26.7%（8/30）vs 90% 目標 = 3.4× 差距**（漂白第四型出現：`chore(copilot): batch round` 取代 `auto-engineer: patch` — lint 沒擋到；T-COPILOT-NOISE-PATCH 升 P0）
+> - ⚠️ **ACL-V2 假閉**：`lib/common.sh:803 yolo_mode=on` 21:46 寫 DEPLOYED，22:05–22:38 連 8 條 [AUTO-RESCUE] = 修法未驗收；T-ACL-V2-VERIFY 升 P0
+> - ✅ **openspec 治理閉環**：11 spec promote + Purpose backfill；`openspec/changes/` 僅剩 archive
+> - ✅ **integration 9 個檔**（test_sources_smoke + 8 e2e）+ CI integration job 已 wire（`a48b656`），首跑驗收待補
 >
 > **v7.8 P0（本輪三件，全閉）**：
 > 1. ✅ **T-HEADER-RESYNC-v6**（修上輪 3 處漂白：corpus 173→400 / auto-commit 46.7%→3.3% / pytest 3917/129s→3926/63s）
@@ -17,6 +19,17 @@
 > 3. ✅ **T-BARE-EXCEPT-AUDIT 刀 9**（10 處一刀清；49→39；797 passed）
 
 > **v7.3–v7.7 sensor/header 歷史已封存**：詳見 [docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)。
+
+### P0（v7.9-sensor 終段 01:05 /pua 深度回顧新增；治理斷層 / worktree 滯留 / cli 神物件；本輪必動）
+
+- [ ] **T-GITHUB-REMOTE-SETUP**（P0；ACL-free；30 min；🔴 E2E 首位）— `git remote -v` 確認 repo 無 origin remote；需建立 GitHub repository + `git remote add origin <url>` + 推送主分支 + 確認 GitHub Actions `integration` job 至少跑 ≥16 PASSes。驗收：`git remote -v` 顯示 origin URL + GitHub Actions run URL 存在 + integration job ≥1 非 SKIP test PASS。（T-CI-REMOTE-VERIFY 閉環後升 P0）
+- [ ] **T-ACL-V3-HOST-VERIFY**（P0；host/Admin only；ACL 解鎖後立即做；解鎖 T-WORKTREE-COMMIT-FLUSH）— 依 `docs/acl-v3-rca-handoff.md` 用 elevated host shell 清 `.git/index.lock` + `.git/objects/**/tmp_obj_*`，必要時修 `.git` orphan DENY ACL；驗收：5 次空 commit 全綠 + `git log --grep="AUTO-RESCUE" --since="1 hour ago" --format="%h %s"` = 0；通過後立刻做 **T-WORKTREE-COMMIT-FLUSH**。最新狀況（00:50）：`git commit --allow-empty` FAIL `unable to unlink .git/index.lock: Invalid argument`；遺留 `.git/index.lock` + `.git/objects/d8/tmp_obj_kAQb7T`；`scripts/check_acl_state.py` = advisory-deny/read-only；需 Admin 清 orphan DENY + stale lock/tmp 再重跑 5 次空 commit 驗收。
+- [ ] **T-ACL-V2-VERIFY**（5 min；P0；ACL-driven）— `lib/common.sh:803 yolo_mode=on` 21:46 寫 DEPLOYED 但 22:05–22:38 連 8 條 [AUTO-RESCUE] = 假閉環；驗收必須跑空 commit：`for i in 1 2 3 4 5; do git commit --allow-empty -m "test: ACL V2 verify $i"; sleep 30; done` 全綠 + `git log --grep="AUTO-RESCUE" --since="1 hour ago" | wc -l` = 0；任一失敗 = 開 ACL-V3 RCA。**只有空 commit 能證 codex 不再碰 .git**。
+  - 2026-04-26 00:45 校準：`python -m pytest tests -q` = 3952 passed / 34 skipped；`git add` 仍失敗 `Unable to create .git/index.lock: Permission denied`；`.git` 可見 orphan DENY 2 ACE，`scripts/check_acl_state.py --human` = advisory-deny/read-only；`icacls`、Win32 DACL、`acl_clean_orphan_deny.ps1` 均無法在目前 token 移除。需 host/Admin 清理。
+- [ ] **T-WORKTREE-COMMIT-FLUSH**（30 min；P0；ACL 解後立即執行）— 5 件已驗證 P0/P1 工作樹滯留：T-FAT-PRE-EMPT-CUT（validators 238 / _execution 178 / law_fetcher 259 + 4 抽出檔 validator_citations/validator_terms/_ralph_loop/law_xml）、T-COPILOT-NOISE-PATCH（commit_msg_lint + sensor_refresh + tests 41 passed）、T-INTEGRATION-CI-FIRST-RUN-VERIFY（docs/integration-ci-first-run.md）、T-CLI-COUPLING-AUDIT（scripts/cli_ast_audit.py + docs/cli-module-audit.md）、knowledge/manager.py chromadb=None graceful-degradation。**全部 PASS（3951 passed / 39.69s）但因 .git ACL block 無 commit**。驗收：分 5 個語意 commit（refactor/test/docs 對應）入版 + `git log -n 5 --format=%s` 全 lint pass + sensor 真語意率不退。**沒入版 = 工作量等於 0 = 3.25**。
+- [x] **T-ACL-V3-RCA**（2026-04-26 閉；P0；handoff doc done / host action pending）— `docs/acl-v3-rca-handoff.md` 已補：含本輪重現證據（`.git/index.lock` 0 bytes、`del` Access denied、commit/add blocked）、已試方法、stale lock/tmp 檢查點、host/Admin recovery order、5 次空 commit + AUTO-RESCUE 驗收。repo sandbox 內仍不能 commit；後續轉 **T-ACL-V3-HOST-VERIFY**。
+- [x] **T-COPILOT-NOISE-PATCH**（2026-04-26 00:18 閉；P0；ACL-free；待入版）— `chore(copilot): batch round` 漂白第四型已在 `scripts/commit_msg_lint.py` 拒絕、`scripts/sensor_refresh.py` 排除語意率；新增 commit-msg + sensor 回歸；驗證 `python -m pytest tests/test_commit_msg_lint.py tests/test_sensor_refresh.py -q` = 41 passed、`python scripts/sensor_refresh.py --human` = auto_commit_rate 20.0%（6/30，口徑誠實）。
+- [x] **T-FAT-PRE-EMPT-CUT**（2026-04-26 閉；P0；ACL-free）—`validators.py` 390→275（抽 `validator_citations.py` / `validator_terms.py`）、`_execution.py` 389→208（抽 `_ralph_loop.py`）、`law_fetcher.py` 377→296（抽 `law_xml.py`）；`scripts/fat_baseline.json` ratchet 收緊為 yellow count 6 / max 386；順手修 `KnowledgeBaseManager` 在 `chromadb` 匯入失敗時仍可被舊測試 patch 的 graceful-degradation 相容。驗收 `python scripts/check_fat_files.py --strict` OK、targeted 437 passed、`python -m pytest tests -q --ignore=tests/integration` = 3951 passed。
 
 ### P0（v7.9-sensor 22:35 /pua 深度回顧新增；漂白第三/四型未斷根；本輪必動）
 
@@ -43,6 +56,17 @@
 - [x] **T-AUTO-COMMIT-RATE-RECOMPUTE**（10 min；P0；2026-04-25 18:35）— `scripts/sensor_refresh.py` auto-commit 公式把 `chore(auto-engineer): checkpoint snapshot` 視為合規是樂觀偏差；改成只認 `feat|fix|refactor|docs|test|chore(scope!=auto-engineer)` 真語意；實際率回到 13–15%；驗證 `python scripts/sensor_refresh.py --human` 顯示真實率 + `tests/test_sensor_refresh.py` 加 1 條防回歸。**統計口徑放水 = 漂白第二型**。
 
 ### P1（連 2 輪延宕 = 3.25）
+
+#### v7.9-sensor 終段 01:05 /pua 深度回顧新增 — CLI 神物件 / wrapper 治本 / CI 遠端驗
+
+- [x] **T-CLI-FAT-ROTATE-V3**（2026-04-26 閉；P1；ACL-free；openspec only）— `openspec/changes/13-cli-fat-rotate-v3/` proposal + tasks 落地：(a) `utils.py` 拆 utils_io/utils_display/utils_text 三模組逐 importer 切換（T13.1a–e）；(b) 4 高風險 import 改公共介面：`lint_service`/`cite_service`/`verify_service`/`history_store`（T13.2–T13.5）；(c) 4 micro 合併（T13.6a–d）；(d) 回歸門（T13.7）；**本輪實作閉環（2026-04-26）：T13.1b — `utils_io.py`（306 行）建立，26 個 importer 全切，`src.cli.utils` 降為 51 行 shim；T13.1c — `utils_display.py`（11 行）Console singleton；T13.1d — `utils_text.py` placeholder，utils.py ≤ 80 行，fat-gate OK red=0 yellow=6；T13.6a — `highlight_cmd.py`（43 行）合入 `search_cmd.py`，刪源檔；全量 3951 tests passed ✅**；待辦：T13.1e shim 清除、T13.2–T13.5 iceberg 解耦、T13.6b–d micro 合併、T13.7 回歸門。
+- [ ] **T-COPILOT-WRAPPER-HOST-PATCH**（P1；host/Admin SLA 48 hr）— `docs/auto-commit-host-action.md` 升 actionable handoff：(a) supervise interval 5 min → 30 min；(b) squash window 同窗口 commit 合併；(c) message 模板強制 `feat|fix|refactor|docs|test|chore` 真語意。驗收 SLA：48 hr 內 sensor `auto_commit_rate ≥ 70%`、`git log -n 30 --format=%s` 0 條 `chore(auto-engineer): patch` / 0 條 `chore(copilot): batch`。**6+ 輪在 P2/P1 凍結 = 3.25 累計**，本輪不再凍。
+- [x] **T-CI-REMOTE-VERIFY**（2026-04-26 閉；P1；ACL-free）— `git remote -v` = empty（無 origin）；`docs/integration-ci-first-run.md` 末尾已補 "local-only verification, GitHub Actions integration job pending remote setup" 標記；升 P0 開 **T-GITHUB-REMOTE-SETUP**。
+
+#### v7.9-sensor 後段 00:15 /pua 深度回顧新增 — CI 真跑驗收 + cli 顆粒度
+
+- [x] **T-INTEGRATION-CI-FIRST-RUN-VERIFY**（2026-04-26 閉；P1；CI-only）— 本機無 `origin` remote，改以本機等效指令驗收：`GOV_AI_RUN_INTEGRATION=1 python -m pytest tests/integration/ -v --tb=short --ignore=tests/integration/test_e2e_rewrite.py` = **16 passed / 18 skipped（live-source gate）/ 0 failed**，符合 CI 設計（GOV_AI_RUN_LIVE_SOURCES 未設 = 跳過外部 API 測試）；T-INTEGRATION-CI-WIRE 閉環確認有效；驗收文件 `docs/integration-ci-first-run.md` ✅。
+- [x] **T-CLI-COUPLING-AUDIT**（2026-04-26 閉；P2→P1；ACL-free）— `scripts/cli_ast_audit.py` AST 掃 80 檔 10,924 行；`docs/cli-module-audit.md` 已輸出：(1) 35 直接指令 + 12 群組指令樹；(2) 6 跨群組 import（4 高風險：`generate/export` 借用 `cite_cmd`/`lint_cmd` 私有符號、`kb/rebuild` 借用 `verify_cmd`、`generate/__init__` 直寫 `history`）；(3) 9 micro 檔（<50 行）可合併、11 fat 檔（≥250 行）；結論：fat-rotate v3 治理**有必要**（`utils.py` 26 個 importer 神物件 + 冰山耦合 + 雙峰分布）。
 
 #### v7.8c 20:08 /pua 深度回顧新增 — integration 補漏 + 外部 blocker 上升
 

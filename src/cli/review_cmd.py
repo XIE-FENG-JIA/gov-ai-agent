@@ -20,7 +20,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from src.cli.utils import atomic_text_write
+from src.cli.utils_io import atomic_text_write
 from src.core.models import detect_doc_type as _detect_doc_type
 
 logger = logging.getLogger(__name__)

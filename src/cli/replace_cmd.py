@@ -3,7 +3,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from src.cli.utils import atomic_text_write
+from src.cli.utils_io import atomic_text_write
 
 console = Console()
 

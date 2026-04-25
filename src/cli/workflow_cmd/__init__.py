@@ -6,7 +6,7 @@ import re
 import typer
 from rich.console import Console
 
-from src.cli.utils import resolve_state_path, resolve_state_read_path
+from src.cli.utils_io import resolve_state_path, resolve_state_read_path
 
 app = typer.Typer()
 console = Console()

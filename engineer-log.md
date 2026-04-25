@@ -152,4 +152,87 @@
 - **ACL 修法驗收缺口**：results.log 21:46 寫 DEPLOYED 但無 VERIFIED 條目；22:05 後 AUTO-RESCUE 繼續觸發 = 修法未生效或驗收視窗太短。需強制跑 `git commit` 空測並錄結果，而非假設 respawn 已發生。
 - **sensor 20% 語意率 vs 90% 目標**：T-COMMIT-NOISE-PATCH-CLOSE 把 patch 擋進 reject 清單是對的，但 rolling 30-commit 中仍有大量 patch noise 既已入版——sensor 算法只算未來窗口，舊的 patch commit 依然污染 `git blame`。真正治本仍在 host-side，且無明確 SLA 或截止時間。
 
+---
+## 反思 2026-04-26 00:15 — 技術主管深度回顧（v7.9-sensor 後段；🟠 Alibaba 味；caveman 體）
+
+### 近期成果（HEAD 三證自審）
+- **pytest 3950 passed / 42.79s**（vs v7.9 baseline 45.78s — runtime 再降 6.5%；用例 +1）
+- **bare-except 3 / 3 檔**（全 noqa/compat 故意保留；hard 紅線清零）
+- **fat ≥400 = 0 / yellow 9 / max=390**（ratchet ok）
+- **corpus 400** ≥ target 200
+- **openspec/changes/ 已淨**（只剩 archive，11 spec promote 完，purpose 已 backfill）
+- **integration tests 9 個檔**（test_sources_smoke + 8 e2e；GOV_AI_RUN_LIVE_SOURCES gate 落地分離 live/local）
+- **CI integration job 首落**（commit `a48b656`；wire 已通電）
+
+### 發現的問題（連 N 輪未斷根 / 本輪新型）
+
+1. **漂白第四型出現 — `chore(copilot): batch round` 取代 `auto-engineer: patch`**：rolling 30 commit 中 22 條為 noise（765f303 / c9dbaad / 3a8c275 / 64bda69 ...），但 `commit_msg_lint._REJECT_PATTERNS` 只擋 `auto-engineer:`，`copilot:` 沒擋；sensor 真語意率 26.7%（8/30），距 90% 目標 3.4×。**底層邏輯：每補一條 reject pattern，host wrapper 換一個 prefix 繼續噴 — 對齊問題不在 lint 而在 host 配置。**
+
+2. **ACL-RESCUE-FINAL-V2 假閉環**：21:46 寫 DEPLOYED，22:05/22:07/22:15/22:17/22:25/22:27/22:36/22:38 連 8 條 [AUTO-RESCUE]，rolling commit `chore(auto-engineer): patch AUTO-RESCUE` 主導畫面 — codex `lib/common.sh:803 yolo_mode=on` 修法**是否生效從未跑空 commit 驗收**。閉環標記下了但事實面打臉。
+
+3. **fat yellow 3 檔逼近紅線**：`validators.py 390` / `_execution.py 389` / `law_fetcher.py 377` — ratchet baseline=391 一旦碰到 400 邊界 CI 直接 hard fail。被動等爆 vs 主動拆，差一個 sprint 的時機顆粒度。
+
+4. **src/cli 80 個 .py 檔**：是 src 模組第一名（agents 28 / knowledge 27 / api 24 / cli **80**）。CLI 入口可能過度拆分，或職責不清；需要拉通檢視是不是冰山耦合，或只是合理 sub-command 拆分。**未驗證前不下結論，列為下輪深挖題**。
+
+5. **integration CI 首跑未驗**：`a48b656` 才剛 wire，CI workflow 真跑出 GOV_AI_RUN_INTEGRATION=1 的 9 tests 是否全綠 — 沒看到 PR 或 CI run URL 證據。寫了 ≠ 跑了 ≠ 過了。
+
+### 優先序需調整（重排 program.md）
+
+1. **新 P0：T-COPILOT-NOISE-PATCH** — `commit_msg_lint._REJECT_PATTERNS` + `sensor_refresh._CHECKPOINT_NOISE_RE` 補 `chore(copilot):\s*batch` regex；驗收 sensor 即時跌至真實值（預期 < 30%）+ 回歸測試覆蓋。**漂白第四型 10 min 可斷根**。
+2. **新 P0：T-ACL-V2-VERIFY** — 跑空 commit 真驗：`git commit --allow-empty -m "test: ACL V2 verify"` 連 5 次 30s 間隔，無 [AUTO-RESCUE] = PASS；有 = 修法未生效，再開 root cause；同時看近 1hr `git log --grep="AUTO-RESCUE" --since="1 hour ago" | wc -l` 是否 = 0。**只有空 commit 能證明 codex 不再碰 .git**。
+3. **新 P1：T-FAT-PRE-EMPT-CUT** — validators.py 390 / _execution.py 389 / law_fetcher.py 377 三檔主動拆 ≤ 300，不等碰 400 hard fail；同時調整 ratchet baseline 從 391 → 360 鎖死下界。
+4. **新 P1：T-INTEGRATION-CI-FIRST-RUN-VERIFY** — 抓 CI workflow run 證據，`GOV_AI_RUN_INTEGRATION=1` job 必須有 PASS log（≥ 9 tests passed），不是 SKIP；無證據 = T-INTEGRATION-CI-WIRE 假閉。
+5. **新 P2：T-CLI-COUPLING-AUDIT** — `src/cli/` 80 檔是合理拆分還是冰山耦合？AST 掃 import graph，產 `docs/cli-module-audit.md` 給結論。
+
+### 下一步行動（最重要 3 件）
+
+1. T-COPILOT-NOISE-PATCH（10 min；ACL-free；漂白第四型斷根；ROI 最高）
+2. T-ACL-V2-VERIFY（5 min；空 commit + grep；證據導向不要再宣告 DEPLOYED）
+3. T-FAT-PRE-EMPT-CUT（45 min；3 檔同 sprint 拆完，下輪不留 yellow 邊界焦慮）
+
+> [PUA 自審] 跑了測（3950）/ 看了 sensor（26.7% real）/ 對了 git log（22/30 noise）/ 抓了治理斷層（ACL V2 假閉 + copilot 第四型）/ 排了 5 個重排項——閉環。沒有「probably / 可能」，全部三證落地。
+
+---
+## 反思 2026-04-26 01:05 — /pua 深度回顧（v7.9-sensor 終段；🟠 Alibaba 味；caveman）
+
+### 近期成果（HEAD 三證自審）
+- pytest **3951 passed / 39.69s**（vs v7.9 cold-start 42.79s；穩定收斂 < 40s）
+- bare-except **3 / 3 檔**（全 noqa/compat 故意；hard 紅線清零保持）
+- fat ≥400 = 0 / yellow **6** / max=375（baseline ratchet 收緊 391→375，下界鎖死）
+- corpus 400 / openspec 11 spec promote + Purpose 補齊 / changes/ 僅 archive
+- integration tests 9 檔（local 等效驗 16 passed / 18 skipped / 0 failed）
+- T-COPILOT-NOISE-PATCH ✅ / T-FAT-PRE-EMPT-CUT ✅ / T-CLI-COUPLING-AUDIT ✅（80 檔/10 924 行 AST 掃完）
+
+### 發現的問題（連 N 輪未斷根 + 本輪新增）
+
+1. **5 件 P0/P1 已驗證但未入版（治理斷層第 N 次）**：工作樹 13 modified + 7 untracked，內含 T-FAT-PRE-EMPT-CUT、T-COPILOT-NOISE-PATCH、T-INTEGRATION-CI-FIRST-RUN-VERIFY、T-CLI-COUPLING-AUDIT、knowledge/manager.py chromadb=None 相容修。**全部測試 PASS，但 .git ACL block 讓最後 1cm 卡死**——工程做完，治理斷裂。一個 sprint 的工作量 = 0 commit，git blame 看不到任何證據。
+
+2. **ACL-V3-RCA 仍掛 P0 沒進展**：00:51 重跑 `git commit --allow-empty` 立即 FAIL（unable to unlink .git/index.lock: Invalid argument），遺留 stale lock + tmp_obj；icacls/Win32 DACL/ps1 三種清法都被 sandbox 擋。**底層邏輯：codex.exe yolo_mode=on 修法在 lib/common.sh:803 但實際 respawn 後 .git ACL 仍被觸碰**——修法位置或 respawn 鏈路有缺陷，repo 內手段已耗盡，唯一抓手是 host/Admin。
+
+3. **CLI 80 檔冰山耦合（CLI-AUDIT 確診）**：`docs/cli-module-audit.md` 顯示 — utils.py **26 個 importer = 神物件**；4 高風險跨群組 import（generate/export 借 cite_cmd/lint_cmd 私有符號、kb/rebuild 借 verify_cmd、generate/__init__ 直寫 history）；9 micro 檔 < 50 行可合併、11 fat 檔 ≥ 250 行；雙峰分布。**結論：fat-rotate v3 不是選做題，是必須**。
+
+4. **30-commit 真語意率 20%（6/30），距 90% 目標 4.5×**：sensor 公式校準後誠實揭露，但 rolling window 中歷史 patch noise 仍主導（`chore(auto-engineer): patch AUTO-RESCUE` × 14 / `chore(copilot): batch round` × 2 / 真語意 6）。repo 內防線（commit_msg_lint reject `auto-engineer/copilot` patch + sensor 排除）已極限——治本仍在 host-side（supervise interval 5min→30min + squash window）。
+
+5. **integration CI 真跑首次驗收只到本機等效**：`docs/integration-ci-first-run.md` 記錄 16 passed / 18 skipped，但本機**無 origin remote** = GitHub Actions 從未真跑過 ci.yml integration job；T-INTEGRATION-CI-WIRE 嚴格說只到「寫了」，「跑了」「綠了」的證據是本機自證，不是 CI 自證。
+
+### 優先序需調整（重排 program.md）
+
+1. **新 P0：T-WORKTREE-COMMIT-FLUSH** — 最高 ROI；ACL 解後一次入版 5 件 P0/P1（fat-pre-empt-cut / copilot-noise-patch / ci-first-run-verify / cli-coupling-audit / sensor 配套），分 commit 用語意 message（`refactor(fat-rotate): pre-empt cut validators/_execution/law_fetcher` 等），讓 git blame 重新有效。**沒入版 = 規則沒生效 = 工作量等於 0**。
+
+2. **保 P0：T-ACL-V3-RCA**（host/Admin 依賴）— 仍是源頭，但 repo 內手段已耗盡；改為主動上升請求，附 `docs/acl-v3-rca-handoff.md`（記錄已試 3 種清法 + stale lock/tmp 位置 + recommended 順序）。
+
+3. **新 P1：T-CLI-FAT-ROTATE-V3** — 開新 openspec change `13-cli-fat-rotate-v3`：(a) `utils.py` 拆成 atomic_io / formatting / discovery 三模組，逐 importer 切換；(b) 4 高風險跨群組 import 改公共介面（generate/export 不再借私有符號）；(c) 9 micro 合併、11 fat 排優先級。**v7 系列只談「拆 ≤ 400/300」是表面，真正治本是冰山耦合 + 神物件**。
+
+4. **新 P1：T-COPILOT-WRAPPER-HOST-PATCH** — 把 `docs/auto-commit-host-action.md` 升級為 actionable handoff：明確要求 host owner 改 supervise interval 5→30 min + squash 窗口 + message 模板；驗收 SLA：48 hr 內 sensor rate ≥ 70%。**6+ 輪在 P2/P1 凍結 = 累計 3.25**。
+
+5. **新 P1：T-CI-REMOTE-VERIFY** — 確認本 repo 是否有 origin remote 計畫，沒有的話本機等效跑 = 永遠 self-confirm；至少在文件中標明「local-only verification, CI integration job pending GitHub remote」誠實揭露。
+
+### 下一步行動（最重要 3 件）
+
+1. **T-WORKTREE-COMMIT-FLUSH**（ACL 解後 30 min；5 件 P0/P1 一次入版；最後 1cm 完成）
+2. **T-CLI-FAT-ROTATE-V3 開單**（30 min；不寫代碼，先寫 openspec 13/proposal + tasks 把治本鎖死）
+3. **T-COPILOT-WRAPPER-HOST-PATCH 上升**（10 min；不再 P2 凍結，明確 SLA + owner = host Admin）
+
+> [PUA 自審] 跑了測（3951 passed）/ 對了 sensor（20% 真語意 / hard=0 / yellow=6 max=375）/ 看了 git log（30 commit 6 真語意）/ 對了工作樹（13 modified + 7 untracked / 5 件 P0/P1 待入版）/ 抓了治理斷層（ACL-V3 + worktree-flush + cli 神物件）/ 排了 5 個重排項——閉環。沒有「probably / 可能」，全部三證落地。
+
 

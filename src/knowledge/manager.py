@@ -28,11 +28,17 @@ suppress_known_third_party_deprecations_temporarily = getattr(
 
 suppress_known_third_party_deprecations()
 
+
+class _UnavailableChromaDB:
+    def PersistentClient(self, *args: Any, **kwargs: Any) -> Any:
+        raise ImportError("chromadb is unavailable")
+
+
 try:
     import chromadb
 except ImportError:
-    chromadb = None  # type: ignore[assignment]
-_CHROMADB_IMPORT_FAILED = chromadb is None
+    chromadb = _UnavailableChromaDB()  # type: ignore[assignment]
+_CHROMADB_IMPORT_FAILED = isinstance(chromadb, _UnavailableChromaDB)
 
 logger = logging.getLogger(__name__)
 _KB_MANAGER_EXCEPTIONS = (
@@ -74,7 +80,7 @@ def _resolve_chromadb() -> Any:
     若執行期間被測試或呼叫端明確設為 None，視為不可用。
     """
     global chromadb, _CHROMADB_IMPORT_FAILED
-    if chromadb is not None:
+    if chromadb is not None and not isinstance(chromadb, _UnavailableChromaDB):
         return chromadb
     if not _CHROMADB_IMPORT_FAILED:
         return None
@@ -82,7 +88,7 @@ def _resolve_chromadb() -> Any:
         chromadb = importlib.import_module("chromadb")
         _CHROMADB_IMPORT_FAILED = False
     except ImportError:
-        chromadb = None  # type: ignore[assignment]
+        chromadb = _UnavailableChromaDB()  # type: ignore[assignment]
         _CHROMADB_IMPORT_FAILED = True
     return chromadb
 

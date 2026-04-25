@@ -13,7 +13,7 @@ import typer
 from rich.table import Table
 
 from ._shared import _ARCHIVE_EXCLUDE, console, get_history_dir_path
-from src.cli.utils import atomic_json_write
+from src.cli.utils_io import atomic_json_write
 
 
 def duplicate(

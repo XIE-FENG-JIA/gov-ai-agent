@@ -11,7 +11,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from src.cli.utils import JSONStore
+from src.cli.utils_io import JSONStore
 
 app = typer.Typer()
 console = Console()

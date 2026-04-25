@@ -14,7 +14,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.prompt import Prompt, Confirm
 
-from src.cli.utils import resolve_state_read_path
+from src.cli.utils_io import resolve_state_read_path
 
 console = Console()
 

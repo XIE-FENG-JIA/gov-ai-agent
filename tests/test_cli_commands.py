@@ -2534,7 +2534,7 @@ class TestCLILogging:
         assert _is_help_only_invocation(["cite", "--help"]) is False
         assert _is_help_only_invocation([]) is False
 
-    @patch("src.cli.utils.configure_state_dir")
+    @patch("src.cli.utils_io.configure_state_dir")
     def test_main_callback_configures_state_dir(self, mock_configure_state_dir):
         """main callback 應先設定 state dir 再配置 logging。"""
         from src.cli.main import main as main_callback
@@ -10111,7 +10111,7 @@ class TestReplaceBackup:
         from unittest.mock import patch
         target = tmp_path / "output.txt"
         target.write_text("原始", encoding="utf-8")
-        with patch("src.cli.utils.os.replace", side_effect=OSError("perm denied")):
+        with patch("src.cli.utils_io.os.replace", side_effect=OSError("perm denied")):
             import pytest
             with pytest.raises(OSError):
                 atomic_text_write(str(target), "新內容")

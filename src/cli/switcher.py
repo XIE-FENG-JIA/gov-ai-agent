@@ -5,7 +5,7 @@ from rich.prompt import Prompt
 from src.core.config import ConfigManager
 from src.core.constants import CONNECTIVITY_CHECK_TIMEOUT
 from src.core.llm import LiteLLMProvider, get_llm_factory
-from src.cli.utils import atomic_yaml_write
+from src.cli.utils_io import atomic_yaml_write
 
 console = Console()
 app = typer.Typer()

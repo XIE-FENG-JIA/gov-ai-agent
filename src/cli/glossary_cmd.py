@@ -6,7 +6,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from src.cli.utils import atomic_json_write
+from src.cli.utils_io import atomic_json_write
 
 logger = logging.getLogger(__name__)
 

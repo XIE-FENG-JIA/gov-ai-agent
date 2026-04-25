@@ -1000,7 +1000,7 @@ class TestAtomicYamlWrite:
         atomic_yaml_write(target, original)
 
         # 模擬 os.replace 失敗（如磁碟滿或權限問題）
-        with patch("src.cli.utils.os.replace", side_effect=OSError("disk full")):
+        with patch("src.cli.utils_io.os.replace", side_effect=OSError("disk full")):
             with pytest.raises(OSError):
                 atomic_yaml_write(target, {"new": "data"})
 
@@ -1012,7 +1012,7 @@ class TestAtomicYamlWrite:
         """寫入失敗後不應殘留暫存檔。"""
         from src.cli.utils import atomic_yaml_write
         target = str(tmp_path / "fail.yaml")
-        with patch("src.cli.utils.os.replace", side_effect=OSError("disk full")):
+        with patch("src.cli.utils_io.os.replace", side_effect=OSError("disk full")):
             with pytest.raises(OSError):
                 atomic_yaml_write(target, {"data": 1})
         leftover = [f for f in os.listdir(tmp_path) if f.endswith(".tmp")]

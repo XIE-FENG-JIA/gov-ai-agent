@@ -342,7 +342,7 @@ class TestSafeConfigWrite:
         cfg.write_text(yaml.dump(original), encoding="utf-8")
 
         new_data = {"api": {"v2": True}, "llm": {}, "providers": {}}
-        with patch("src.cli.utils.shutil.copy2", side_effect=OSError("disk full")):
+        with patch("src.cli.utils_io.shutil.copy2", side_effect=OSError("disk full")):
             with caplog.at_level(logging.WARNING, logger="src.cli.utils"):
                 safe_config_write(str(cfg), new_data)
 

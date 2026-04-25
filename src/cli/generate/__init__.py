@@ -19,7 +19,7 @@ from src.agents.requirement import RequirementAgent
 from src.agents.template import TemplateEngine
 from src.agents.writer import WriterAgent
 from src.cli.history import append_record
-from src.cli.utils import atomic_json_write, atomic_text_write
+from src.cli.utils_io import atomic_json_write, atomic_text_write
 from src.core.config import ConfigManager
 from src.core.constants import MAX_USER_INPUT_LENGTH
 from src.core.error_analyzer import ErrorAnalyzer

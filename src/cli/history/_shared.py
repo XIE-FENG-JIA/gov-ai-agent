@@ -8,7 +8,7 @@ from datetime import datetime
 import typer
 from rich.console import Console
 
-from src.cli.utils import JSONStore, atomic_json_write, resolve_state_path, resolve_state_read_path
+from src.cli.utils_io import JSONStore, atomic_json_write, resolve_state_path, resolve_state_read_path
 
 console = Console()
 _MAX_HISTORY = 100

@@ -5,11 +5,11 @@ import io
 import json
 import logging
 import re
-import defusedxml.ElementTree as ET
 import zipfile
 from pathlib import Path
 from typing import Any
 
+import defusedxml.ElementTree as ET
 import requests
 
 from src.knowledge.fetchers.base import BaseFetcher, FetchResult
@@ -20,6 +20,7 @@ from src.knowledge.fetchers.constants import (
     LAW_DETAIL_URL,
     SOURCE_LEVEL_A,
 )
+from src.knowledge.fetchers.law_xml import parse_bulk_xml
 
 logger = logging.getLogger(__name__)
 
@@ -292,86 +293,4 @@ class LawFetcher(BaseFetcher):
         logger.info("LawFetcher bulk 擷取完成：%d 個檔案", len(results))
         return results
 
-    @staticmethod
-    def _parse_bulk_xml(data: bytes) -> list[dict]:
-        """解析全國法規資料庫 bulk XML，回傳與 JSON API 相同格式的 dict 清單。
-
-        bulk XML 格式：根元素下有多個 <法規> 元素，每個含
-        <法規性質>、<法規名稱>、<法規網址>、<法規類別>、<前言>、<條文> 子元素。
-        條文含 <條號>、<條文內容> 子元素。
-        """
-        # 嘗試 UTF-8 和 Big5 編碼
-        text = None
-        for encoding in ("utf-8", "big5", "cp950"):
-            try:
-                text = data.decode(encoding)
-                break
-            except (UnicodeDecodeError, LookupError):
-                continue
-        if text is None:
-            text = data.decode("utf-8", errors="replace")
-
-        root = ET.fromstring(text)
-        laws: list[dict] = []
-
-        # 支援 <法規> 或 <Law> 標籤
-        for law_elem in list(root.iter("法規")) + list(root.iter("Law")):
-            law_dict: dict = {}
-
-            # 提取法規基本資訊（使用 is not None 避免 Element 真值測試問題）
-            name_el = law_elem.find("法規名稱")
-            if name_el is None:
-                name_el = law_elem.find("LawName")
-            if name_el is not None and name_el.text:
-                law_dict["LawName"] = name_el.text.strip()
-
-            url_el = law_elem.find("法規網址")
-            if url_el is None:
-                url_el = law_elem.find("LawURL")
-            if url_el is not None and url_el.text:
-                # 從 URL 提取 PCode
-                url_text = url_el.text.strip()
-                pcode_match = re.search(r"pcode=([A-Z0-9]+)", url_text, re.IGNORECASE)
-                if pcode_match:
-                    law_dict["PCode"] = pcode_match.group(1)
-
-            pcode_el = law_elem.find("PCode")
-            if pcode_el is not None and pcode_el.text:
-                law_dict["PCode"] = pcode_el.text.strip()
-
-            # 跳過沒有 PCode 的法規
-            if "PCode" not in law_dict:
-                continue
-
-            # 提取前言
-            foreword_el = law_elem.find("前言")
-            if foreword_el is None:
-                foreword_el = law_elem.find("Foreword")
-            foreword_text = ""
-            if foreword_el is not None and foreword_el.text:
-                foreword_text = foreword_el.text.strip()
-
-            # 提取條文
-            articles: list[dict] = []
-            if foreword_text:
-                articles.append({
-                    "ArticleNo": "前言",
-                    "ArticleContent": foreword_text,
-                })
-            for art_elem in list(law_elem.iter("條文")) + list(law_elem.iter("Article")):
-                art_no_el = art_elem.find("條號")
-                if art_no_el is None:
-                    art_no_el = art_elem.find("ArticleNo")
-                art_content_el = art_elem.find("條文內容")
-                if art_content_el is None:
-                    art_content_el = art_elem.find("ArticleContent")
-                if art_no_el is not None and art_content_el is not None:
-                    articles.append({
-                        "ArticleNo": (art_no_el.text or "").strip(),
-                        "ArticleContent": (art_content_el.text or "").strip(),
-                    })
-
-            law_dict["LawArticles"] = articles
-            laws.append(law_dict)
-
-        return laws
+    _parse_bulk_xml = staticmethod(parse_bulk_xml)
