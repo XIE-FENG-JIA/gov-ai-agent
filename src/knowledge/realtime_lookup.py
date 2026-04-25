@@ -13,9 +13,14 @@ import requests
 from src.knowledge.fetchers.constants import (
     GAZETTE_API_URL,
     LAW_API_URL,
-    LAW_DETAIL_URL,
 )
-from src.core.constants import HTTP_DEFAULT_TIMEOUT
+from src.knowledge._request_helpers import _request_with_retry  # noqa: F401
+from src.knowledge._normalize import (  # noqa: F401
+    Citation,
+    CitationCheck,
+    extract_citations,
+    format_verification_results,
+)
 from src.knowledge._realtime_lookup_laws import (
     check_article as _check_article_impl,
     fuzzy_match as _fuzzy_match_impl,
@@ -27,65 +32,6 @@ from src.knowledge._realtime_lookup_policy import (
 )
 
 logger = logging.getLogger(__name__)
-
-_HTTP_TIMEOUT = HTTP_DEFAULT_TIMEOUT
-_MAX_RETRIES = 2
-_BACKOFF_BASE = 2
-
-@dataclass
-class Citation:
-    """從草稿中解析出的法規引用。"""
-    law_name: str
-    article_no: str | None
-    original_text: str
-    location: str
-
-
-@dataclass
-class CitationCheck:
-    """單一引用的驗證結果。"""
-    citation: Citation
-    law_exists: bool
-    article_exists: bool | None
-    actual_content: str | None
-    pcode: str | None
-    confidence: float
-    closest_match: str | None = None
-
-def _request_with_retry(url: str, *, timeout: int = _HTTP_TIMEOUT) -> requests.Response:
-    """帶重試的 HTTP GET（獨立於 BaseFetcher，供本模組使用）。"""
-    last_exc: Exception | None = None
-    for attempt in range(_MAX_RETRIES + 1):
-        try:
-            resp = requests.get(url, timeout=timeout)
-            resp.raise_for_status()
-            return resp
-        except (requests.ConnectionError, requests.Timeout, requests.HTTPError) as exc:
-            if "SSL" in str(exc) or "CERTIFICATE" in str(exc):
-                logger.error(
-                    "SSL 憑證驗證失敗 %s，拒絕降級以防止 MITM 攻擊。"
-                    "請確認目標伺服器憑證或網路環境。", url,
-                )
-                raise
-            last_exc = exc
-            if attempt < _MAX_RETRIES:
-                time.sleep(_BACKOFF_BASE ** attempt)
-    raise last_exc  # type: ignore[misc]
-
-# 法規引用正則
-_CITATION_PATTERN = re.compile(
-    r'(?:依據|依|按|遵照|援引)\s*[「「]?'
-    r'(.{2,30}?(?:法|條例|辦法|規則|細則|規程|標準|準則|綱要|通則))'
-    r'[」」]?\s*'
-    r'(?:第\s*(\d+(?:-\d+)?)\s*條)?'
-)
-
-# 獨立法規+條文引用（無前綴動詞，但有明確「第X條」）
-# 限制法規名稱只能含中文字元，避免匹配到標點或無關文字
-_STANDALONE_CITATION_PATTERN = re.compile(
-    r'[「「]?([\u4e00-\u9fff]{2,20}(?:法|條例|辦法|規則|細則|規程|標準|準則|綱要|通則))[」」]?'
-    r'\s*第\s*(\d+(?:-\d+)?)\s*條'
-)
 
 @dataclass
 class _LawCacheEntry:
@@ -104,58 +50,12 @@ class LawVerifier:
 
     def verify_citations(self, draft: str) -> list[CitationCheck]:
         """從草稿提取所有法規引用並逐一驗證。"""
-        citations = self._extract_citations(draft)
+        citations = extract_citations(draft)
         if not citations:
             return []
 
         self._ensure_cache()
         return [self._verify_single(c) for c in citations]
-
-    def _extract_citations(self, text: str) -> list[Citation]:
-        """用正則從文字中提取法規引用。"""
-        seen: set[tuple[str, str | None]] = set()
-        matched_spans: set[tuple[int, int, int]] = set()  # (line_no, start, end)
-        results: list[Citation] = []
-
-        lines = text.split("\n")
-        for line_no, line in enumerate(lines, 1):
-            # 第一輪：主要模式（含前綴動詞）
-            for m in _CITATION_PATTERN.finditer(line):
-                # 記錄 span（即使 dedup 跳過，也要阻止 standalone 重複匹配）
-                matched_spans.add((line_no, m.start(), m.end()))
-                law_name = m.group(1).strip()
-                article_no = m.group(2)
-                key = (law_name, article_no)
-                if key not in seen:
-                    seen.add(key)
-                    results.append(Citation(
-                        law_name=law_name,
-                        article_no=article_no,
-                        original_text=m.group(0).strip(),
-                        location=f"第 {line_no} 行",
-                    ))
-
-            # 第二輪：獨立模式（無前綴動詞），跳過與主模式有任何重疊的位置
-            for m in _STANDALONE_CITATION_PATTERN.finditer(line):
-                if any(
-                    not (m.end() <= s or m.start() >= e)
-                    for ln, s, e in matched_spans
-                    if ln == line_no
-                ):
-                    continue
-                law_name = m.group(1).strip()
-                article_no = m.group(2)
-                key = (law_name, article_no)
-                if key not in seen:
-                    seen.add(key)
-                    results.append(Citation(
-                        law_name=law_name,
-                        article_no=article_no,
-                        original_text=m.group(0).strip(),
-                        location=f"第 {line_no} 行",
-                    ))
-
-        return results
 
     def _ensure_cache(self) -> None:
         """下載並快取全國法規目錄（執行緒安全，double-check locking）。"""
@@ -261,42 +161,6 @@ class LawVerifier:
     ) -> tuple[str | None, float]:
         """模糊比對法規名稱，回傳最佳匹配和相似度。"""
         return _fuzzy_match_impl(target, candidates)
-
-
-def format_verification_results(checks: list[CitationCheck]) -> str:
-    """將驗證結果格式化為 prompt 內嵌文字。"""
-    if not checks:
-        return ""
-
-    lines = ["## 即時法規驗證結果（來源：全國法規資料庫 API）\n"]
-
-    for chk in checks:
-        c = chk.citation
-        if chk.law_exists:
-            law_url = LAW_DETAIL_URL.format(pcode=chk.pcode) if chk.pcode else ""
-            url_note = f"\n  🔗 {law_url}" if law_url else ""
-
-            if chk.closest_match and chk.closest_match != c.law_name:
-                lines.append(
-                    f"⚠️ {c.law_name} → 最相似法規：「{chk.closest_match}」{url_note}"
-                )
-            else:
-                lines.append(f"✅ {c.law_name} — 法規存在{url_note}")
-
-            if chk.article_exists is True and c.article_no:
-                content_preview = (chk.actual_content or "")[:100]
-                lines.append(f"  ✅ 第 {c.article_no} 條 — 條文存在：「{content_preview}」")
-            elif chk.article_exists is False and c.article_no:
-                extra = f"（{chk.actual_content}）" if chk.actual_content else ""
-                lines.append(
-                    f"  ❌ 第 {c.article_no} 條 — 條文不存在{extra}"
-                )
-        else:
-            lines.append(f"❌ {c.law_name} — 全國法規資料庫中查無此法規名稱")
-            if chk.closest_match:
-                lines.append(f"  → 最相似法規：「{chk.closest_match}」")
-
-    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
