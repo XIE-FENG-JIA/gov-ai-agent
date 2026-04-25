@@ -318,6 +318,81 @@ def test_run_live_ingest_ignores_malformed_corpus_files(tmp_path: Path, monkeypa
     assert results[0].records[0]["source_url"] == "https://example.test/live"
 
 
+def test_run_live_ingest_quality_gate_validates_active_live_rows(tmp_path: Path, monkeypatch) -> None:
+    class FakeAdapter:
+        pass
+
+    def fake_ingest(adapter, *, limit, base_dir, require_live):  # type: ignore[no-untyped-def]
+        corpus_root = base_dir / "corpus" / "mojlaw"
+        corpus_root.mkdir(parents=True, exist_ok=True)
+        (corpus_root / "A0001.md").write_text(
+            "---\n"
+            "source_id: A0001\n"
+            "source_url: https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=A0001\n"
+            "source_agency: 法務部全國法規資料庫\n"
+            "source_doc_no: A0001\n"
+            "source_date: 2026-04-20\n"
+            "doc_type: 法規\n"
+            "crawl_date: 2026-04-20\n"
+            "synthetic: false\n"
+            "fixture_fallback: false\n"
+            "---\n"
+            "# 測試法規\n\n真資料。\n",
+            encoding="utf-8",
+        )
+        return []
+
+    monkeypatch.setattr(live_ingest, "_available_sources", lambda: {"mojlaw": FakeAdapter})
+    monkeypatch.setattr(live_ingest, "_load_ingest_function", lambda: fake_ingest)
+    monkeypatch.setattr(
+        "src.sources.quality_gate.get_quality_policy",
+        lambda adapter_name: type(
+            "Policy",
+            (),
+            {
+                "expected_min_records": 1,
+                "freshness_window_days": 365,
+                "allow_fallback": False,
+            },
+        )(),
+    )
+
+    results = live_ingest.run_live_ingest(
+        source_keys=["mojlaw"],
+        limit=2,
+        base_dir=tmp_path,
+        quality_gate=True,
+    )
+
+    assert results[0].status == "PASS"
+    assert "quality_gate=PASS" in results[0].summary
+    assert "gate_records_in=1" in results[0].summary
+
+
+def test_main_forwards_quality_gate_flag(tmp_path: Path, monkeypatch) -> None:
+    observed: list[bool] = []
+
+    monkeypatch.setattr(live_ingest, "_available_sources", lambda: {"mojlaw": object})
+    monkeypatch.setattr(
+        live_ingest,
+        "run_live_ingest",
+        lambda *,
+        source_keys,
+        limit,
+        base_dir,
+        require_live=True,
+        prune_fixture_fallback=False,
+        archive_label=None,
+        quality_gate=False: observed.append(quality_gate) or [],
+    )
+    monkeypatch.setattr(live_ingest, "write_report", lambda *args, **kwargs: None)
+
+    exit_code = live_ingest.main(["--sources", "mojlaw", "--base-dir", str(tmp_path), "--quality-gate"])
+
+    assert exit_code == 0
+    assert observed == [True]
+
+
 def test_main_rejects_unknown_source(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(live_ingest, "_available_sources", lambda: {"mojlaw": object})
 

@@ -547,3 +547,4 @@ PASS T-SYNTHETIC-AUDIT-SCRIPT 2026-04-25 scripts/audit_synthetic_flag.py created
 [2026-04-25 15:55:59] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=950f03b) — 若先前 FAIL 是 ACL denied，此條即救援對應 | openspec/changes/09-fat-rotate-iter3/tasks.md,program.md,results.log
 [2026-04-25 16:03:00 +08:00] | [T-PYTEST-RUNTIME-REGRESSION-iter6-COMMIT] | [FAIL] | 驗證與文件同步已完成，但 git commit 被權限擋住：.git/index.lock Permission denied；alternate GIT_INDEX_FILE 又被 .git/objects insufficient permission 擋；工作樹保留 3 檔變更待 Admin/AUTO-RESCUE 提交 | program.md, openspec/changes/09-fat-rotate-iter3/tasks.md, results.log
 [2026-04-25 16:03:18] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=2908a46) — 若先前 FAIL 是 ACL denied，此條即救援對應 | results.log
+[2026-04-25 16:06:21] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=716a5d5) — 若先前 FAIL 是 ACL denied，此條即救援對應 | results.log

@@ -64,6 +64,12 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default=False,
         help="Archive existing fixture-backed corpus/raw files for sources that now have live docs.",
     )
+    parser.add_argument(
+        "--quality-gate",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Validate each source's active live corpus with the configured quality gate.",
+    )
     parser.add_argument("--archive-label", default=None, help="Optional archive folder label under kb_data/archive/")
     return parser
 
@@ -84,6 +90,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.prune_fixture_fallback or args.archive_label is not None:
         run_kwargs["prune_fixture_fallback"] = args.prune_fixture_fallback
         run_kwargs["archive_label"] = args.archive_label
+    if args.quality_gate:
+        run_kwargs["quality_gate"] = args.quality_gate
     results = run_live_ingest(**run_kwargs)
     write_report(report_path, results=results, base_dir=base_dir, limit=args.limit, force_live=args.require_live)
     return 0 if all(result.status == "PASS" for result in results) else 1
@@ -97,6 +105,7 @@ def run_live_ingest(
     require_live: bool = True,
     prune_fixture_fallback: bool = False,
     archive_label: str | None = None,
+    quality_gate: bool = False,
 ) -> list[SourceRunResult]:
     registry = _available_sources()
     ingest_fn = _load_ingest_function()
@@ -129,6 +138,7 @@ def run_live_ingest(
                     )
                 rows = _read_source_records(base_dir=base_dir, storage_names=storage_names)
                 live_rows = [row for row in rows if not row["fixture_fallback"] and not row["archived_fixture"]]
+                gate_summary = _evaluate_quality_gate(source_key, live_rows) if quality_gate else None
                 fixture_remaining = sum(1 for row in rows if row["fixture_fallback"])
                 results.append(
                     SourceRunResult(
@@ -138,6 +148,7 @@ def run_live_ingest(
                         summary=(
                             f"live_total={len(live_rows)} newly_ingested={len(records)} "
                             f"fixture_remaining={fixture_remaining} archived={archived_count}"
+                            + (f" {gate_summary}" if gate_summary else "")
                         ),
                         records=live_rows,
                         ingested_count=len(records),
@@ -232,6 +243,14 @@ def write_report(
     report_path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
 
 
+def _evaluate_quality_gate(source_key: str, live_rows: list[dict[str, Any]]) -> str:
+    from src.sources.quality_gate import QualityGate
+
+    gate = QualityGate.from_adapter_name(source_key)
+    report = gate.evaluate(live_rows, adapter_name=source_key)
+    return f"quality_gate=PASS gate_records_in={report.records_in} gate_records_out={report.records_out}"
+
+
 def _parse_sources(raw_sources: str, parser: argparse.ArgumentParser) -> list[str]:
     available = _available_sources()
     source_keys = [_normalize_source_key(item) for item in raw_sources.split(",") if item.strip()]
@@ -286,7 +305,15 @@ def _read_record(corpus_path: Path) -> dict[str, Any] | None:
     metadata = yaml.safe_load(raw_meta) or {}
     return {
         "path": corpus_path.as_posix(),
+        "source_id": str(metadata.get("source_id") or corpus_path.stem),
         "source_url": str(metadata.get("source_url", "")).replace("|", "%7C"),
+        "source_agency": metadata.get("source_agency", ""),
+        "source_doc_no": metadata.get("source_doc_no"),
+        "source_date": metadata.get("source_date"),
+        "doc_type": metadata.get("doc_type", "unknown"),
+        "raw_snapshot_path": metadata.get("raw_snapshot_path"),
+        "crawl_date": metadata.get("crawl_date"),
+        "content_md": body,
         "synthetic": bool(metadata.get("synthetic")),
         "fixture_fallback": bool(metadata.get("fixture_fallback")),
         "deprecated": bool(metadata.get("deprecated")),
