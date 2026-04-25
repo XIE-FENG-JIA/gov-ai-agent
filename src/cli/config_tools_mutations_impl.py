@@ -1,6 +1,8 @@
+import logging
 import os
 import shutil
 
+logger = logging.getLogger(__name__)
 
 def show_impl(*, format_name, section, console, config_manager_cls):
     if format_name not in ("yaml", "json"):
@@ -268,8 +270,8 @@ def restore_impl(*, source, console, config_manager_cls, yaml_module, confirm_cl
             bak_data = yaml_module.safe_load(handle) or {}
         keys = list(bak_data.keys()) if isinstance(bak_data, dict) else []
         console.print(f"[cyan]備份檔案包含 {len(keys)} 個 top-level key：{', '.join(keys)}[/cyan]")
-    except Exception:
-        pass
+    except (OSError, ValueError) as _preview_err:
+        logger.debug("備份檔案預覽失敗（非致命）：%s", _preview_err)
 
     if not confirm_cls.ask(f"確定要用 [bold]{bak_path}[/bold] 覆蓋目前的設定檔？"):
         console.print("[dim]已取消。[/dim]")

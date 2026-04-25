@@ -136,7 +136,7 @@ class NpaFetcher(BaseFetcher):
                     return self._parse_npa_xml(resp.content)
                 else:
                     return self._parse_npa_json(resp.content)
-            except Exception:
+            except (ValueError, ET.ParseError):
                 logger.debug("解析警政署模組 %s (%s) 失敗，嘗試另一格式", module, fmt)
                 continue
 

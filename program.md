@@ -91,6 +91,19 @@
 > 5. 🟠 **T-BARE-EXCEPT-AUDIT 刀 6**（沿用）
 > 6. 🟠 **T-FAT-ROTATE-V2 刀 10**（datagovtw）+ **刀 11**（api/routes/agents 397 新加）
 
+> **v7.4-sensor 校準段（2026-04-25 13:45；第四十五輪；HEAD 獨立跑）**：
+> - ✅ **pytest 回歸驗證 2308 passed / 101.61s**（6 pre-existing fails 確認，0 新回歸；bare except 刀 8 + fat-rotate 刀 13 契約守）
+> - ✅ **bare except 47 處 / 38 檔**（刀 8 修 4 處：app.py / config_tools / npa_fetcher / writer.cite；51→47；剩 2 個 noqa/compat 故意保留）
+> - ✅ **fat files 0 over 400**（刀 13：web_preview/app.py 399→364；拆出 `_helpers.py` 42 行；yellow watch 11 檔最重 validators 391）
+> - ✅ **engineer-log 133 行**（hard cap ≤400 ✅；soft cap ≤300 ✅）
+> - ✅ **auto-commit 語意率 53.3%（16/30）**（≥20% 目標 ✅）
+> - ✅ **EPIC6 13/13 全閉**（T-LIQG-0..12 全 [x]）
+> - 🟡 **program.md 278 行**（soft cap 250 略超；corpus 173 < 200 soft，外部服務依賴）
+>
+> **v7.4 P0**：
+> 1. ✅ **T-BARE-EXCEPT-AUDIT 刀 8**（2026-04-25 本輪閉；4 處修 typed bucket；1464 passed）
+> 2. ✅ **T-FAT-ROTATE-V2 刀 13**（2026-04-25 本輪閉；web_preview/app.py 399→364；拆 `_helpers.py` 42 行；39 passed）
+
 ---
 
 ## 🚨 北極星指令（優先於所有判斷）
@@ -255,6 +268,8 @@
 
 ## 已完成
 
+- [x] **T-FAT-ROTATE-V2 刀 13**（2026-04-25 本輪閉；ACL-free）— `src/web_preview/app.py 399` 拆出 `src/web_preview/_helpers.py`（42 行：`_WEB_UI_EXCEPTIONS` / `_parse_env_int` / `_parse_env_float` / `_sanitize_web_error` / `_log_web_warning`）；主檔 399→364 行；保留 `src.web_preview.app._sanitize_web_error` / `_api_headers` 匯入面；驗證 `python -m pytest tests/test_web_preview.py -q` = 39 passed。
+- [x] **T-BARE-EXCEPT-AUDIT 刀 8**（2026-04-25 本輪閉；ACL-free）— 4 處裸 `except Exception:` 改為 typed bucket：`src/api/app.py → (ImportError, OSError, RuntimeError)`、`src/cli/config_tools_mutations_impl.py → (OSError, ValueError)` + 補 logger、`src/knowledge/fetchers/npa_fetcher.py → (ValueError, ET.ParseError)`、`src/agents/writer/cite.py → (ImportError, AttributeError)` + 補 logger；剩 2 個 noqa/compat 故意保留；總量 51→47；驗證 `python -m pytest tests/test_api_server.py tests/test_agents.py tests/test_agents_extended.py tests/test_cli_commands.py tests/test_fetchers.py -q` = 1464 passed。
 - [x] **T-BARE-EXCEPT-AUDIT 刀 7**（2026-04-26 閉；ACL-free）— 10 個熱點檔共 20 處裸 `except Exception`/`except:` 改為命名 exception bucket（`LLMError`/`TemplateNotFound`/`TemplateError`/typed OS+runtime tuples）；同步補 `LLMError` 至 `_AUDITOR_LLM_EXCEPTIONS`；更新 4 個測試 mock `side_effect` 從 `Exception`/`RuntimeError` 改為 `LLMError`/`jinja2.TemplateNotFound`；src/ 總量 71→51（-20）；驗證 `python -m pytest tests/test_agents.py tests/test_agents_extended.py tests/test_editor.py tests/test_api_server.py tests/test_knowledge.py tests/test_cli_commands.py -q` = 1381 passed。
 - [x] **T-BARE-EXCEPT-AUDIT 刀 6**（2026-04-25 閉；本輪）— 6 個熱點檔共 18 處裸 `except Exception`/`except:` 改為命名 exception bucket，保留原有降級與 logging 契約；驗證目標 6 檔 `except Exception|except:` 全 0、`src/` 總量 71（≤80）、`python -m pytest tests/test_knowledge_manager_unit.py tests/test_knowledge.py tests/test_graph.py tests/test_cli_commands.py tests/test_api_server.py tests/test_editor.py tests/test_agents.py tests/test_agents_extended.py -q` = 1521 passed。
 - [x] **T-PYTEST-COLLECT-NAMESPACE**（2026-04-25 02:38 閉；ACL-free）— 修正 `tests/test_e2e_rewrite.py` 與 `tests/integration/test_e2e_rewrite.py` 同名導致的 pytest collect 衝突；新增 `tests/__init__.py`、`tests/integration/__init__.py` 與 root `conftest.py` 相容 shim，保住舊有 `from conftest import ...` 匯入；驗證 `python -m pytest tests/test_e2e_rewrite.py tests/integration/test_e2e_rewrite.py -q` = 5 passed、`python -m pytest tests/test_api_auth.py tests/test_api_server.py tests/test_e2e.py tests/test_stress.py -q` = 383 passed、`python -m pytest tests -q` = 3802 passed / 10 skipped。

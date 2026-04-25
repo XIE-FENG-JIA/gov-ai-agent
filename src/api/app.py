@@ -151,7 +151,7 @@ def _warmup_law_cache() -> None:
         verifier = LawVerifier()
         verifier._ensure_cache()
         logger.info("法規快取預熱完成。")
-    except Exception:
+    except (ImportError, OSError, RuntimeError):
         logger.warning("法規快取預熱失敗，將於首次使用時重試。", exc_info=True)
 
 

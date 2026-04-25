@@ -1,9 +1,12 @@
+import logging
 import re
 
 from src.document import CitationFormatter, REFERENCE_SECTION_HEADING
 from src.utils.tw_check import to_traditional
 
 from .rewrite import _PENDING_CITATION_WARNING, _SKELETON_WARNING
+
+logger = logging.getLogger(__name__)
 
 
 class WriterCitationMixin:
@@ -132,8 +135,8 @@ class WriterCitationMixin:
             mapping = getattr(validator_registry, "_OUTDATED_AGENCY_MAP", {}) or {}
             for old_name, new_name in sorted(mapping.items(), key=lambda item: len(item[0]), reverse=True):
                 draft = draft.replace(old_name, new_name)
-        except Exception:
-            pass
+        except (ImportError, AttributeError) as _map_err:
+            logger.debug("舊機關名稱對照表載入失敗（非致命）：%s", _map_err)
         return draft
 
     @staticmethod

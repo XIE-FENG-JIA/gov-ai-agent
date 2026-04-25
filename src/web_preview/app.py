@@ -24,16 +24,15 @@ from src.core.constants import MAX_USER_INPUT_LENGTH
 from src.core.models import VALID_DOC_TYPES
 from src.api.dependencies import get_config
 from src.cli.utils import detect_state_dir, resolve_state_read_path
+from src.web_preview._helpers import (  # noqa: F401 — re-exported for tests
+    _WEB_UI_EXCEPTIONS,
+    _log_web_warning,
+    _parse_env_float,
+    _parse_env_int,
+    _sanitize_web_error,
+)
 
 logger = logging.getLogger(__name__)
-_WEB_UI_EXCEPTIONS = (
-    httpx.HTTPError,
-    json.JSONDecodeError,
-    OSError,
-    RuntimeError,
-    TypeError,
-    ValueError,
-)
 
 _DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _DIR.parent.parent
@@ -48,24 +47,6 @@ templates.env.autoescape = True
 
 # 後端 API 基底 URL（透過環境變數可覆蓋）
 _API_BASE = os.environ.get("WEB_UI_API_BASE", "http://127.0.0.1:8000")
-
-
-def _parse_env_int(name: str, default: int) -> int:
-    raw = os.environ.get(name, str(default))
-    try:
-        return int(raw)
-    except ValueError:
-        logger.warning("環境變數 %s=%r 不是整數，改用預設值 %d", name, raw, default)
-        return default
-
-
-def _parse_env_float(name: str, default: float) -> float:
-    raw = os.environ.get(name, str(default))
-    try:
-        return float(raw)
-    except ValueError:
-        logger.warning("環境變數 %s=%r 不是數值，改用預設值 %.2f", name, raw, default)
-        return default
 
 
 _WEB_UI_RALPH_MAX_CYCLES = max(1, _parse_env_int("WEB_UI_RALPH_MAX_CYCLES", 2))
@@ -97,22 +78,6 @@ async def web_http_exception_handler(request: Request, exc: StarletteHTTPExcepti
         {"status_code": exc.status_code, "detail": exc.detail or "頁面未找到"},
         status_code=exc.status_code,
     )
-
-
-def _sanitize_web_error(exc: Exception) -> str:
-    """將例外轉為使用者友善的錯誤訊息，避免洩漏內部資訊。"""
-    _SAFE = {
-        "ConnectError": "無法連線至後端 API，請確認伺服器已啟動。",
-        "TimeoutException": "請求逾時，請稍後再試。",
-        "HTTPStatusError": "後端 API 回傳錯誤，請稍後再試。",
-    }
-    return _SAFE.get(type(exc).__name__, "發生內部錯誤，請稍後再試或聯繫管理員。")
-
-
-def _log_web_warning(action: str, exc: Exception) -> None:
-    """記錄可預期的 Web UI 降級錯誤。"""
-    logger.warning("%s 失敗: %s", action, exc)
-
 
 # ── 首頁 ─────────────────────────────────────────────
 @web_app.get("/", response_class=HTMLResponse)
