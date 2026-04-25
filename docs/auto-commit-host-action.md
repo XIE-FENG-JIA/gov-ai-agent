@@ -1,6 +1,7 @@
 # Auto-Commit Host Action
 
 Date: 2026-04-25
+Updated: 2026-04-26 (T-COPILOT-WRAPPER-HOST-PATCH — upgraded to actionable handoff)
 Owner: host Admin
 Scope: out-of-repo auto-engineer wrapper / scheduler / commit message template
 
@@ -17,10 +18,16 @@ This blocks `openspec/changes/12-commit-msg-noise-floor/tasks.md` T12.5 because 
 
 ## Host Changes Requested
 
-1. Change the auto-commit interval from 5 minutes to 30 minutes for this repo.
+1. Change the auto-commit interval from 5 minutes to **30 minutes** for this repo.
 2. Enable a squash window so one agent round produces one semantic commit when possible.
 3. Replace generic wrapper subjects with the active task prefix and why-summary.
-4. Reject fallback subjects matching `chore(auto-engineer): patch`, `chore(auto-engineer): checkpoint snapshot`, or `chore(copilot): batch` before commit creation.
+4. Reject fallback subjects matching any of the following before commit creation:
+   - `chore(auto-engineer): patch`
+   - `chore(auto-engineer): checkpoint snapshot`
+   - `chore(auto-engineer): AUTO-RESCUE`
+   - `chore(auto-engineer): N files`
+   - `chore(copilot): batch`
+5. Enforce commit subject type prefix from the allowed set: `feat|fix|refactor|docs|test|chore`. Pure bare-keyword subjects (no `(scope):` part) must be rejected.
 
 Recommended subject template:
 
@@ -61,6 +68,7 @@ Pass criteria:
 
 - Rolling 30 contains no `chore(auto-engineer): patch` subject.
 - Rolling 30 contains no `chore(auto-engineer): checkpoint snapshot` subject.
+- Rolling 30 contains no `chore(auto-engineer): AUTO-RESCUE` subject.
 - Rolling 30 contains no `chore(copilot): batch` subject.
 - Every subject from `git log -n 30 --format=%s` passes `scripts/commit_msg_lint.py`.
 - `scripts/sensor_refresh.py --json` reports `auto_commit_rate >= 0.70` within 48 hours of deployment.

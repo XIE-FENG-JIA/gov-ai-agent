@@ -84,7 +84,7 @@
 ### P1（v7.9-final 後段 /pua 新增 — fat-rotate 真閉環 + openspec promote）
 
 - [→P0] **T-OPENSPEC-PROMOTE-13-14**（2026-04-26 05:55 升級為 P0 並併入 T-WORKTREE-FLUSH-LOOP5 (a)；本條保留作回溯）— ACL 已解；不再 host-blocked；本輪需直接 `git rm -r openspec/changes/13-cli-fat-rotate-v3 openspec/changes/14-13-acceptance-audit` + add archive copies + commit。
-- [ ] **T-REGULATION-MAPPING-SPEC**（P2；30 min；ACL-free）— 工作樹 `kb_data/regulation_doc_type_mapping.yaml` 144 行新資料無 spec 無 reader 無測；補 mini-proposal `openspec/changes/15-regulation-doc-type-mapping/` + 1 個 yaml schema roundtrip test 防漂移；隨 T-WORKTREE-FLUSH-LOOP4 (d) 一同入版。
+- [x] **T-REGULATION-MAPPING-SPEC**（2026-04-26 閉；P2；ACL-free）— `kb_data/regulation_doc_type_mapping.yaml` 補 openspec change 16 + spec `openspec/specs/regulation-doc-type-mapping/spec.md`（schema 合約：required pcode/applicable_doc_types + valid doc-type universe）+ `tests/test_regulation_doc_type_mapping.py`（7 tests：schema validation + roundtrip）；驗收 `python -m pytest tests/test_regulation_doc_type_mapping.py -v` = 7 passed ✅。
 
 ### P1（v7.9-final 02:32 /pua 新增 — fat-rotate 治本推進）
 
@@ -100,7 +100,7 @@
 #### v7.9-sensor 終段 01:05 /pua 深度回顧新增 — CLI 神物件 / wrapper 治本 / CI 遠端驗
 
 - [x] **T-CLI-FAT-ROTATE-V3**（2026-04-26 閉；P1；ACL-free；openspec only）— `openspec/changes/13-cli-fat-rotate-v3/` proposal + tasks 落地：(a) `utils.py` 拆 utils_io/utils_display/utils_text 三模組逐 importer 切換（T13.1a–e）；(b) 4 高風險 import 改公共介面：`lint_service`/`cite_service`/`verify_service`/`history_store`（T13.2–T13.5）；(c) 4 micro 合併（T13.6a–d）；(d) 回歸門（T13.7）；**本輪實作閉環（2026-04-26）：T13.1b — `utils_io.py`（306 行）建立，26 個 importer 全切，`src.cli.utils` 降為 51 行 shim；T13.1e — 切換剩餘測試 importer 到 `utils_io` 並刪除 `src/cli/utils.py`，直接 importer = 0；T13.1c — `utils_display.py`（11 行）Console singleton；T13.1d — `utils_text.py` placeholder，utils.py ≤ 80 行，fat-gate OK red=0 yellow=6；T13.6a — `highlight_cmd.py`（43 行）合入 `search_cmd.py`，刪源檔；T13.6b — `number_cmd.py`（44 行）合入 `stamp_cmd.py`，`gov-ai number` 仍由 main 註冊；T13.6c — `replace_cmd.py`（44 行）合入 `redact_cmd.py`，backup 失敗測試改 patch 新位置；T13.6d — `batch_io.py`（22 行）合入 `batch_runner.py`，persist `__init__` 僅 re-export；全量 3951 tests passed ✅，T13.6b/c targeted 44 passed ✅，fat-gate red=0 yellow=6 ✅；**T13.7 回歸門 PASS（3951 passed, fat red=0, HIGH=0）✅**；T13.1e 補驗 `python -m pytest tests -q --ignore=tests/integration` = 3951 passed / 231.91s。
-- [ ] **T-COPILOT-WRAPPER-HOST-PATCH**（P1；host/Admin SLA 48 hr）— `docs/auto-commit-host-action.md` 升 actionable handoff：(a) supervise interval 5 min → 30 min；(b) squash window 同窗口 commit 合併；(c) message 模板強制 `feat|fix|refactor|docs|test|chore` 真語意。驗收 SLA：48 hr 內 sensor `auto_commit_rate ≥ 70%`、`git log -n 30 --format=%s` 0 條 `chore(auto-engineer): patch` / 0 條 `chore(copilot): batch`。**6+ 輪在 P2/P1 凍結 = 3.25 累計**，本輪不再凍。
+- [x] **T-COPILOT-WRAPPER-HOST-PATCH**（2026-04-26 repo 側完成；host Admin SLA 48 hr 待驗）— `docs/auto-commit-host-action.md` 升 actionable handoff：(a) supervise interval 5 min → 30 min；(b) squash window 同窗口 commit 合併；(c) message 模板強制 `feat|fix|refactor|docs|test|chore` 真語意；(d) 新增 AUTO-RESCUE + N-files 排除規則。Repo 側文件完成 ✅；host Admin 執行 checklist + 48 hr sensor 驗收由 Admin 補。
 - [x] **T-CI-REMOTE-VERIFY**（2026-04-26 閉；P1；ACL-free）— `git remote -v` = empty（無 origin）；`docs/integration-ci-first-run.md` 末尾已補 "local-only verification, GitHub Actions integration job pending remote setup" 標記；升 P0 開 **T-GITHUB-REMOTE-SETUP**。
 
 #### v7.9-sensor 後段 00:15 /pua 深度回顧新增 — CI 真跑驗收 + cli 顆粒度
