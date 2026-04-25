@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -64,19 +65,20 @@ def save_baseline(yellow: list[tuple[str, int]]) -> None:
         "yellow_files": [{"path": p, "lines": n} for p, n in yellow],
     }
     _BASELINE_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"[fat-gate] baseline saved → {_BASELINE_PATH.name} ({len(yellow)} yellow files, max {data['yellow_max_lines']} lines)", file=sys.stderr)
+    print(
+        f"[fat-gate] baseline saved → {_BASELINE_PATH.name} "
+        f"({len(yellow)} yellow files, max {data['yellow_max_lines']} lines)",
+        file=sys.stderr,
+    )
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Fat-file ratchet gate for src/ Python files")
-    parser.add_argument("--strict", action="store_true", help="Also enforce yellow ratchet (count + max_lines)")
-    parser.add_argument("--update-baseline", action="store_true", help="Write current state as new baseline, then exit 0")
-    parser.add_argument("--json", dest="output_json", action="store_true", help="Output JSON report to stdout")
-    args = parser.parse_args()
-
-    red, yellow = scan_fat_files(_REPO_ROOT)
-    baseline = load_baseline()
-
+def build_report(
+    repo: Path,
+    baseline: dict,
+    *,
+    strict: bool,
+) -> dict:
+    red, yellow = scan_fat_files(repo)
     result: dict = {
         "red": [{"path": p, "lines": n} for p, n in red],
         "yellow": [{"path": p, "lines": n} for p, n in yellow],
@@ -85,18 +87,10 @@ def main() -> int:
         "violations": [],
     }
 
-    if args.update_baseline:
-        save_baseline(yellow)
-        if args.output_json:
-            print(json.dumps(result, indent=2, ensure_ascii=False))
-        return 0
-
-    # Hard: any red file → exit 1
     for path, lines in red:
         result["violations"].append(f"RED {path}: {lines} lines ≥ {_RED_LIMIT}")
 
-    # Strict: yellow ratchet — count and max lines must not grow
-    if args.strict:
+    if strict:
         baseline_count = baseline.get("yellow_count_max", 0)
         baseline_max = baseline.get("yellow_max_lines", 0)
         cur_count = len(yellow)
@@ -110,6 +104,31 @@ def main() -> int:
             result["violations"].append(
                 f"yellow max_lines {cur_max} > baseline {baseline_max} (existing yellow file grew)"
             )
+    return result
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Fat-file ratchet gate for src/ Python files")
+    parser.add_argument("--strict", action="store_true", help="Also enforce yellow ratchet (count + max_lines)")
+    parser.add_argument(
+        "--update-baseline",
+        action="store_true",
+        help="Write current state as new baseline, then exit 0",
+    )
+    parser.add_argument("--json", dest="output_json", action="store_true", help="Output JSON report to stdout")
+    args = parser.parse_args(argv)
+
+    red, yellow = scan_fat_files(_REPO_ROOT)
+    baseline = load_baseline()
+
+    if args.update_baseline:
+        save_baseline(yellow)
+        result = build_report(_REPO_ROOT, baseline, strict=args.strict)
+        if args.output_json:
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0
+
+    result = build_report(_REPO_ROOT, baseline, strict=args.strict)
 
     if args.output_json:
         print(json.dumps(result, indent=2, ensure_ascii=False))

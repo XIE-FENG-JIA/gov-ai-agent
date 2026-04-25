@@ -171,7 +171,8 @@ def test_cascade_mixed_named_errors_all_four_failure_types() -> None:
 
     batches: dict[str, list[PublicGovDoc]] = {
         "below_floor_source": [],  # LiveIngestBelowFloor
-        "schema_bad_source": [_make_doc(source_id="S-001", source_url="")],  # SchemaIntegrityError
+        # Pass a dict missing source_date so model_validate raises ValidationError → SchemaIntegrityError
+        "schema_bad_source": [{"source_id": "S-001", "source_url": "https://example.gov.tw/bad"}],  # SchemaIntegrityError
         "synthetic_source": [_make_doc(source_id="SY-001", synthetic=True)],  # SyntheticContamination
         "stale_source": [_make_doc(source_id="ST-001", crawl_date=stale_date)],  # StaleRecord
     }

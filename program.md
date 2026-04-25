@@ -187,12 +187,12 @@
 
 - [x] **T-AUTO-COMMIT-RUNTIME-SEAT**（2026-04-25 17:35 閉；P1→P2 凍結）— 已輸出 `docs/auto-commit-runtime-seat.md`：`.auto-engineer.state.json` 指向 PID 12668、`.auto-engineer.pid` 一致、`.copilot-loop.state.json` 無 formatter；`tasklist /v` 在本 shell `Access denied`、`where supervise` 無結果、repo scan 無 `auto-commit:` template。結論：commit formatter 在 external wrapper / scheduler / Admin rescue layer，repo 內不可直修；已寫 host-side patch point、validator 接法與驗收條件。
 - [ ] **T-COMMIT-NOISE-FLOOR**（30 min；P1；2026-04-25 v7.8 開）— 近 30 commit 28 條 = `auto-commit checkpoint` 噪音 93%，git blame/bisect 失效；治本兩刀：(a) 改 supervise loop interval 從 5 min → 30 min；(b) 5 min 窗口內 squash + 補語意 message 模板；驗證下個 24 hr 內 git log 噪音 ≤ 50%。
-- [ ] **T-FAT-RATCHET-GATE**（30 min；P1；2026-04-25 v7.8 開）— `scripts/check_fat_files.py` + CI hook：任一檔 ≥ 400 = exit 1；ratchet 紀錄當前 yellow 11 檔基線（max 391），不允許新增 yellow（除非同 PR 拆走一個）；驗證 `python scripts/check_fat_files.py --strict` exit 0、加入 sensor_refresh.py downstream check。
+- [x] **T-FAT-RATCHET-GATE**（2026-04-25 閉；P1；ACL-free）— `scripts/check_fat_files.py` 建立（120 行）：任一 src/ Python 檔 ≥ 400 行 = exit 1；`scripts/fat_baseline.json` 記錄 yellow 10 檔基線（max 391）；`--strict` 驗 ratchet（count + max_lines 不得增）；`sensor_refresh.py` 加 `check_fat_ratchet()` downstream check + `fat_ratchet_ok/detail` 欄位；驗證 `python scripts/check_fat_files.py --strict` exit 0 ✅、`python scripts/sensor_refresh.py --human` ratchet=✅。
 
 #### v7.8 反思新增 — 深挖類
 
-- [ ] **T-INT-TESTS-SKIP-AUDIT**（30 min；P1；2026-04-25 v7.8 開）— 連 3 輪未深挖 10 skipped；分類 live-API gating / 環境缺失 / 故意 skip；輸出 `docs/integration-skip-audit.md` + 標 reason category。
-- [ ] **T-CASCADE-QUALITY-GATE-TEST**（60 min；P1；2026-04-25 v7.8 開）— EPIC6 quality gate 4 named failure 各 1 test，但多源混合失敗 / cascade 場景未測；補 `tests/test_quality_gate_cascade.py` 至少 4 條（多源 fail-stop / partial pass / cascade ordering / mixed named errors）。
+- [x] **T-INT-TESTS-SKIP-AUDIT**（2026-04-25 閉；P1；ACL-free）— `docs/integration-skip-audit.md` 輸出：全部 10 個 skip 均屬 `tests/integration/test_sources_smoke.py`（`GOV_AI_RUN_INTEGRATION != "1"` live-API gating）；主套件 3926 passed / 0 skipped；chromadb/multipart/win32 平台 skip 條件均為 False（依賴已安裝）；無環境缺失 / 無故意 skip 技術債。驗證 `python -m pytest tests/ -q --ignore=tests/integration --tb=no | tail -1` = `3926 passed` ✅。
+- [x] **T-CASCADE-QUALITY-GATE-TEST**（2026-04-25 閉；P1；ACL-free）— `tests/test_quality_gate_cascade.py` 4 條 cascade 測試：(1) multi-source fail-stop（LiveIngestBelowFloor 中止後 source_c 不執行）；(2) partial pass（no fail-stop 收集所有 pass/fail）；(3) cascade ordering（SchemaIntegrityError 不污染下一 adapter）；(4) mixed named errors（4 種命名錯誤同批跑）；驗證 `python -m pytest tests/test_quality_gate_cascade.py -v` = **4 passed** ✅。
 
 #### 既有 P1（保留追蹤）
 

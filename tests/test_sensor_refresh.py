@@ -50,8 +50,8 @@ def test_bare_except_counts_exception_patterns(tmp_path: Path) -> None:
 def test_scan_fat_files_red_vs_yellow(tmp_path: Path) -> None:
     repo = _make_repo(tmp_path)
     src = repo / "src"
-    (src / "fat.py").write_text("\n".join(["x = 1"] * 450), encoding="utf-8")  # > 400 red
-    (src / "medium.py").write_text("\n".join(["x = 1"] * 380), encoding="utf-8")  # 350-400 yellow
+    (src / "fat.py").write_text("\n".join(["x = 1"] * 400), encoding="utf-8")  # ≥400 red
+    (src / "medium.py").write_text("\n".join(["x = 1"] * 399), encoding="utf-8")  # 350-399 yellow
     (src / "thin.py").write_text("\n".join(["x = 1"] * 100), encoding="utf-8")  # < 350
 
     red, yellow = _mod.scan_fat_files(repo)

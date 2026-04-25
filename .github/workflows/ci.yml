@@ -29,6 +29,9 @@ jobs:
       - name: Lint with ruff
         run: ruff check src/ tests/ api_server.py
 
+      - name: Check fat-file ratchet
+        run: python scripts/check_fat_files.py --strict
+
       - name: Type check with mypy
         run: mypy src/core/config.py src/core/constants.py src/core/models.py --ignore-missing-imports
         continue-on-error: true

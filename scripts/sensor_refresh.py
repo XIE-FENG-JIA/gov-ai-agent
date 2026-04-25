@@ -7,7 +7,7 @@
 
 指標涵蓋:
 - bare_except: 總數 / 檔數 / top 10 熱點
-- fat_files: >400 (red) / 350-400 (yellow) 邊界
+- fat_files: ≥400 (red) / 350-399 (yellow) 邊界
 - corpus: kb_data/corpus/**/*.md count (LIQG 擴量指標)
 - log_lines: engineer-log / program.md / results.log 行數
 - auto_commit_rate: 最近 30 commits 語意率 (T-COMMIT-SEMANTIC-GUARD 守門)
@@ -144,7 +144,7 @@ def count_bare_except(repo: Path) -> tuple[int, int, list[tuple[str, int]]]:
 
 
 def scan_fat_files(repo: Path) -> tuple[list[tuple[str, int]], list[tuple[str, int]]]:
-    """列 src/ 下超 400 (red) 和 350-400 (yellow) 的 Python 檔."""
+    """列 src/ 下 ≥400 (red) 和 350-399 (yellow) 的 Python 檔."""
     src = repo / "src"
     if not src.exists():
         return [], []
@@ -156,9 +156,9 @@ def scan_fat_files(repo: Path) -> tuple[list[tuple[str, int]], list[tuple[str, i
         except OSError:
             continue
         rel = py.relative_to(repo).as_posix()
-        if lines > 400:
+        if lines >= 400:
             red.append((rel, lines))
-        elif 350 <= lines <= 400:
+        elif 350 <= lines < 400:
             yellow.append((rel, lines))
     red.sort(key=lambda x: -x[1])
     yellow.sort(key=lambda x: -x[1])
@@ -261,7 +261,7 @@ def check_fat_ratchet(repo: Path, red: list[tuple[str, int]], yellow: list[tuple
     return True, f"ok (count={cur_count}/{baseline_count}, max_lines={cur_max}/{baseline_max})"
 
 
-
+def build_report(repo: Path) -> SensorReport:
     r = SensorReport()
     r.bare_except_total, r.bare_except_files, r.bare_except_top = count_bare_except(repo)
     r.fat_files_red, r.fat_files_yellow = scan_fat_files(repo)
@@ -290,7 +290,7 @@ def check_fat_ratchet(repo: Path, red: list[tuple[str, int]], yellow: list[tuple
         r.violations_hard.append(
             f"program_md_lines {r.program_md_lines} > {_HARD_LIMITS['program_md_lines']}"
         )
-    if len(r.fat_files_red) > _HARD_LIMITS["fat_file_count_red"]:
+    if r.fat_files_red:
         r.violations_hard.append(
             f"fat_file_count_red {len(r.fat_files_red)} > {_HARD_LIMITS['fat_file_count_red']}"
         )
@@ -346,7 +346,7 @@ def format_human(r: SensorReport) -> str:
             lines.append(f"    - {path}: {n}")
 
     lines.append(
-        f"- **胖檔**: red (>400) = {len(r.fat_files_red)} / yellow (350-400) = {len(r.fat_files_yellow)}"
+        f"- **胖檔**: red (≥400) = {len(r.fat_files_red)} / yellow (350-399) = {len(r.fat_files_yellow)}"
         f" / ratchet={'✅' if r.fat_ratchet_ok else '🔴'} {r.fat_ratchet_detail}"
     )
     if r.fat_files_red:
@@ -355,7 +355,8 @@ def format_human(r: SensorReport) -> str:
 
     lines.append(f"- **corpus**: {r.corpus_count} 份 .md")
     lines.append(
-        f"- **log 行數**: engineer-log {r.engineer_log_lines} / program.md {r.program_md_lines} / results.log {r.results_log_lines}"
+        f"- **log 行數**: engineer-log {r.engineer_log_lines} / "
+        f"program.md {r.program_md_lines} / results.log {r.results_log_lines}"
     )
     lines.append(
         f"- **auto-commit 語意率**: {r.auto_commit_rate:.1%} ({r.auto_commit_recent_30_semantic} / 近 30)"
