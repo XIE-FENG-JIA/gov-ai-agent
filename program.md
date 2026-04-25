@@ -2,6 +2,15 @@
 
 > 歷史 v7.0–v7.7 sensor/header 已封存：[docs/archive/program-history-202604j.md](docs/archive/program-history-202604j.md)、[docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)
 
+> **v7.9-final 後段（2026-04-26 /pua 深度回顧；五源 HEAD + sensor + pytest -n auto + 單跑 + git diff 獨立量測）**：
+> - ⚠️ **pytest -n auto 全量**：`python -m pytest tests/ -q --ignore=tests/integration` = **3948 passed / 1 failed / 14 errors / 263.64s** —— 與 sensor `--human` 報「3950 passed / 0 failed」**不一致 → 漂白第七型 xdist race 隱藏失敗**
+> - ⚠️ **單跑同檔全綠**：`pytest tests/test_kb_rebuild_cli.py` = 2 passed；`pytest tests/test_e2e_rewrite.py::...not_traceable` = 1 passed → race 確證 xdist worker collect 污染 + fixture 跨 worker state 漏洗
+> - ⚠️ **工作樹 19 檔未入版**（196+/394- diff）：含全新 `src/cli/shared/` + `src/core/history_store.py`（T13.5 落地）+ `verify_cmd.py` 大幅瘦身 + `kb_data/regulation_doc_type_mapping.yaml` 144 行新資料 + 6 檔 tests 副改 + engineer-log 245 行清理 → **T-WORKTREE-FLUSH-LOOP4 升 P0**
+> - ✅ **bare-except 3/3**（noqa/compat 全意保留）；fat ≥400=0 / yellow 6 / max=375（vs v7.9-sensor max 386 → -11 行）
+> - ✅ **corpus 400**；engineer-log 102 / program.md 193 / results.log 737
+> - ⚠️ **wrapper noise 仍佔 git log**：近 50 commit 36 條 chore(auto-engineer/copilot) = 28% semantic ratio；含 8 條 AUTO-RESCUE → T-COPILOT-WRAPPER-HOST-PATCH P1 連 6+ 輪未動，T-WORKTREE-COMMIT-FLUSH-MERGED P0 SLA < 24hr
+> - ✅ **T-CLI-FAT-ROTATE-V3 Track A/B/C 13/14**（T13.1e shim 仍 `[ ]` → T13.7 premature 已被 change-14 記）
+>
 > **v7.9-sensor 後段（2026-04-26 00:15；HEAD + sensor + pytest + git log 四源獨立 cold-start）**：
 > - ✅ **pytest 3950 passed / 0 failed / 42.79s**（vs v7.9 baseline 45.78s — runtime −6.5%；用例 +1）
 > - ✅ **sensor_refresh.py exit 0**；`violations.hard = []`；soft = 1（auto_commit_rate 26.7% < 90%）
@@ -19,6 +28,11 @@
 > 3. ✅ **T-BARE-EXCEPT-AUDIT 刀 9**（10 處一刀清；49→39；797 passed）
 
 > **v7.3–v7.7 sensor/header 歷史已封存**：詳見 [docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)。
+
+### P0（v7.9-final 後段 /pua 深度回顧新增；漂白第七型 / 工作量黑洞 / 本輪必動）
+
+- [x] **T-XDIST-RACE-AUDIT**（P0；30–45 min；ACL-free；漂白第七型 = 測試再現性）— sensor `--human` 報 0 hard violations / 3950 passed，但 `python -m pytest tests/ -q --ignore=tests/integration` -n auto 實測 **1 failed / 14 errors / 263.64s**：(a) `tests/test_kb_rebuild_cli.py` 14 × `TypeError: CliRunner.__init__() got an unexpected keyword argument 'mix_stderr'`（typer/click 升版棄用簽名 + xdist worker collect 期 module 載入污染）；(b) `tests/test_e2e_rewrite.py::test_run_rewrite_e2e_fails_when_citation_source_is_not_traceable` → `src/e2e_rewrite/fixtures.py:112 KeyError: 'source_url'`（fixture cross-worker shared state 漏洗）。對策：定位 CliRunner mix_stderr callsite 改當代簽名；source_url fixture scope 設 function 或 worker 隔離。驗收：`pytest tests -q --ignore=tests/integration` -n auto = 0 failed / 0 errors，與單跑同調。**2026-05-xx 閉：修復全 19 個 CI 失敗（HOME env、jieba dev-dep、xdist state leak、mix_stderr、e2e mock corpus 等），本機 3951 passed + 推送 CI 觸發驗收。**
+- [ ] **T-WORKTREE-FLUSH-LOOP4**（P0；20 min；ACL 已開）— 19 檔 196+/394- 工作樹未入版，含全新 `src/cli/shared/`（Track B 後續）+ `src/core/history_store.py`（T13.5 落地）+ `src/cli/verify_cmd.py` 大幅瘦身（111→？）+ `src/cli/history/_shared.py` 收斂 + `kb_data/regulation_doc_type_mapping.yaml` 144 行新資料 + 6 檔 tests 副改 + engineer-log 245 行清理。**不入版 = 工作量歸零 + sensor 失準 + commit history 被 wrapper 救援污染**。對策：分 5 語意 commit 落版：(a) `refactor(core): extract history_store from cli/history`；(b) `refactor(cli): scaffold src/cli/shared/ for verify/lint/cite services`；(c) `refactor(cli): trim verify_cmd via shared/verify_service`；(d) `feat(kb): regulation doc-type mapping yaml + provenance guard test`；(e) `docs(governance): archive engineer-log v7.9 七段 to 202604L`。每筆 message 過 `commit_msg_lint -` 全綠。
 
 ### P0（v7.9-final 02:32 /pua 深度回顧新增；漂白第五型 / 公式漂白第六型 / 本輪必動）
 
@@ -61,14 +75,20 @@
 - [x] **T-BARE-EXCEPT-KNIFE-14**（本輪閉；P1；ACL-free）— 刀14：13→3（10 檔 typed bucket fix + RuntimeError bucket 補入 memory.py fetch_org_memory）：`graph/nodes/{writer,memory,formatter,requirement,exporter,reporter}.py` / `agents/fact_checker/checks.py` / `cli/generate/pipeline/render.py` / `cli/generate/pipeline/persist/{batch_runner,item_processor}.py`；bare_except 最終僅剩 3 個 noqa/compat 有意保留；全量非 integration 3949 passed ✅。
 - [x] **T-AUTO-COMMIT-RATE-RECOMPUTE**（10 min；P0；2026-04-25 18:35）— `scripts/sensor_refresh.py` auto-commit 公式把 `chore(auto-engineer): checkpoint snapshot` 視為合規是樂觀偏差；改成只認 `feat|fix|refactor|docs|test|chore(scope!=auto-engineer)` 真語意；實際率回到 13–15%；驗證 `python scripts/sensor_refresh.py --human` 顯示真實率 + `tests/test_sensor_refresh.py` 加 1 條防回歸。**統計口徑放水 = 漂白第二型**。
 
+### P1（v7.9-final 後段 /pua 新增 — fat-rotate 真閉環 + openspec promote）
+
+- [ ] **T13.1e — utils.py shim 移除**（P1；10 min；ACL-free；`openspec/changes/13-cli-fat-rotate-v3/tasks.md` 唯一 `[ ]`）— Track A 收尾：`rg "from src.cli.utils import|from .utils import" src/` = 0 後刪 `src/cli/utils.py` shim；驗收 `python -m pytest tests/ -q --ignore=tests/integration` exit 0；T13.7 才算誠實閉環（目前 [x] 但子任務未盡 = premature audit gap，已被 14-13-acceptance-audit 記錄）。
+- [ ] **T-OPENSPEC-PROMOTE-13-14**（P1；20 min；ACL-free）— `openspec/changes/` 仍剩 `13-cli-fat-rotate-v3` + `14-13-acceptance-audit` 兩個 active；對應 spec deltas 套入 `openspec/specs/`、change folder 移到 `openspec/changes/archive/`、補 archive INDEX；驗收 `ls openspec/changes/` = `archive/` 唯一。
+- [ ] **T-REGULATION-MAPPING-SPEC**（P2；30 min；ACL-free）— 工作樹 `kb_data/regulation_doc_type_mapping.yaml` 144 行新資料無 spec 無 reader 無測；補 mini-proposal `openspec/changes/15-regulation-doc-type-mapping/` + 1 個 yaml schema roundtrip test 防漂移；隨 T-WORKTREE-FLUSH-LOOP4 (d) 一同入版。
+
 ### P1（v7.9-final 02:32 /pua 新增 — fat-rotate 治本推進）
 
 - [x] **T-CLI-FAT-ROTATE-V3-T13.2-T13.3**（2026-04-26 閉；P1；ACL-free）— `generate/export.py` 已改走 `src/cli/_shared/citation_format.py` 與 `src/cli/_shared/lint_invocation.py` 公共介面，移除對 `cite_cmd` / `lint_cmd` 私有實作的高風險耦合；同步勾選 openspec T13.2/T13.3。驗收：`python scripts/cli_ast_audit.py` exit 0、`python scripts/check_fat_files.py --strict` = red 0 / yellow 6、`python -m pytest tests/test_cite_cmd.py tests/test_lint_cmd.py -q` = 89 passed、`python -m pytest tests/test_cli_commands.py -q -k "cite or lint or generate"` = 47 passed。
 
 ### P2（v7.9-final 02:32 /pua 新增 — 治理基礎建設 + 儀式前置）
 
-- [ ] **T-INTEGRATION-RUNTIME-CUT**（P2；30 min；ACL-free；治理基礎）— integration `GOV_AI_RUN_INTEGRATION=1 pytest tests/integration -q --tb=line` 215.85s（vs unit 42s = 5×）；`pytest tests/integration --durations=10` 抓 top-3 hot test → mock 化或拆 live/local；目標 ≤ 90s。**runtime 不縮 = 每輪驗收 4 分鐘成本 = 漂白第五型有溫床**。
-- [ ] **T-ENGINEER-LOG-PRE-ROTATE**（P2；5 min；ACL-free；儀式前置）— 主檔追加本輪反思後 ~310 行（hard cap 300）；主動切 v7.9 整段（22:35 / 22:54 / 00:15 / 01:05 / 02:29 / 02:32 共 6 段）至 `docs/archive/engineer-log-202604L.md`，主檔保留 v7.8b 之前+空指引；避免下輪硬切儀式。
+- [x] **T-INTEGRATION-RUNTIME-CUT**（2026-04-26 閉；P2；ACL-free）— `GOV_AI_RUN_INTEGRATION=1 pytest tests/integration -q --tb=line` = **18.71s / 17 passed / 18 skipped**（wall 25.5s）；目標 ≤90s **已達**；根因：`pyproject.toml addopts = "-v -n auto"` xdist 14 workers 已啟用，server-startup 頂峰 2.42s setup 分散並行；無需再 mock/split。驗收：≤90s ✅，通過數不變（17 passed）✅。
+- [x] **T-ENGINEER-LOG-PRE-ROTATE**（2026-04-26 閉；P2；ACL-free）— v7.9 共 7 段（22:35/22:54/00:15/01:05/02:29/02:32/02:40）封存至 `docs/archive/engineer-log-202604L.md`（218 行）；主檔從 339 行降至 102 行（well under 300 hard cap）；archive pointer 追加至 header；空指引 placeholder 置末。
 
 ### P1（連 2 輪延宕 = 3.25）
 
