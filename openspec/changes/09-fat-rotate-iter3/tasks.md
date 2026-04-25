@@ -7,14 +7,14 @@
   Validation: `wc -l src/cli/kb/rebuild/*.py` all ≤ 300; `pytest tests/test_cli_kb_rebuild*.py tests/test_cli_commands.py -q -k rebuild` green.
   Commit: `refactor(cli): split kb/rebuild 572 into orchestrate/adapters/quality_gate_integration`
 
-- [ ] **T9.2** Split `src/sources/datagovtw.py 410` → `src/sources/datagovtw/{__init__, client, normalize, fixtures}.py`.
+- [x] **T9.2** Split `src/sources/datagovtw.py 410` → `src/sources/datagovtw/{__init__, client, normalize, fixtures}.py`.
   Requirements:
   - No module larger than 300 lines after rotation
   - Import contract preserved through `__init__.py` re-exports
   Validation: `wc -l src/sources/datagovtw/*.py` all ≤ 300; `pytest tests/test_datagovtw_adapter.py -q` green.
   Commit: `refactor(sources): split datagovtw 410 into client/normalize/fixtures`
 
-- [ ] **T9.3** Split `src/api/routes/agents.py 397` → `src/api/routes/agents/{__init__, read, write}.py`.
+- [x] **T9.3** Split `src/api/routes/agents.py 397` → `src/api/routes/agents/{__init__, read, write}.py`.
   Requirements:
   - No module larger than 300 lines after rotation
   - Import contract preserved through `__init__.py` re-exports

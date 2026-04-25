@@ -1,12 +1,12 @@
 # Tasks: 07-auto-commit-semantic-enforce
 
-- [ ] **T7.1** Add `scripts/validate_auto_commit_msg.py` wrapping `commit_msg_lint.py` with structured rejection envelope.
+- [x] **T7.1** Add `scripts/validate_auto_commit_msg.py` wrapping `commit_msg_lint.py` with structured rejection envelope.
   Requirements:
   - Auto-engineer commit messages must conform to Conventional Commit
   Validation: `python -m pytest tests/test_validate_auto_commit_msg.py -q` (≥ 8 tests covering accept / reject / envelope shape / empty / comment-only)
   Commit: `feat(governance): add validate_auto_commit_msg runtime wrapper`
 
-- [ ] **T7.2** Write `tests/test_validate_auto_commit_msg.py` with at least 8 cases (valid semantic / checkpoint rejection / WIP rejection / empty / stdin path / envelope structure / exit codes / unicode safety).
+- [x] **T7.2** Write `tests/test_validate_auto_commit_msg.py` with at least 8 cases (valid semantic / checkpoint rejection / WIP rejection / empty / stdin path / envelope structure / exit codes / unicode safety).
   Requirements:
   - Auto-engineer commit messages must conform to Conventional Commit
   Validation: `python -m pytest tests/test_validate_auto_commit_msg.py -q` all pass in < 5s
