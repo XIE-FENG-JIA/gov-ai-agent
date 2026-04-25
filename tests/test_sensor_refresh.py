@@ -226,6 +226,36 @@ def test_main_exit_2_hard(tmp_path: Path, capsys: pytest.CaptureFixture[str]) ->
     assert payload["violations"]["hard"]
 
 
+def test_main_soft_violations_are_hook_safe_by_default(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo = _make_repo(tmp_path)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    (repo / "engineer-log.md").write_text("x\n" * 350, encoding="utf-8")
+    (repo / "program.md").write_text("x\n" * 100, encoding="utf-8")
+
+    rc = _mod.main(["--repo", str(repo)])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert rc == 0
+    assert payload["violations"]["soft"]
+    assert not payload["violations"]["hard"]
+
+
+def test_main_strict_soft_returns_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    repo = _make_repo(tmp_path)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    (repo / "engineer-log.md").write_text("x\n" * 350, encoding="utf-8")
+    (repo / "program.md").write_text("x\n" * 100, encoding="utf-8")
+
+    rc = _mod.main(["--repo", str(repo), "--strict-soft"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert rc == 1
+    assert payload["violations"]["soft"]
+    assert not payload["violations"]["hard"]
+
+
 def test_main_human_mode_prints_stderr(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     repo = _make_repo(tmp_path)
     subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
