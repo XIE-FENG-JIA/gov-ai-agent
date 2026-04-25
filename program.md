@@ -24,7 +24,7 @@
 > - ✅ **sensor_refresh.py exit 0**；`violations.hard = []`（soft 只做預警；`--strict-soft` 才 exit 1）
 > - 🟡 **bare-except 49 處 / 40 檔**（有效 naked bucket；不再寫「2/2 全部保留」）
 > - ✅ **fat files 0 over 400**；yellow 11 檔（validators.py 391 / workflow _execution 389 / realtime_lookup 386...）
-> - 🟡 **program.md soft cap 288 > 250**；hard cap 500 未破
+> - 🟡 **program.md soft cap 275 > 250**；hard cap 500 未破
 > - 🟡 **corpus 173 < target 200**；T-CORPUS-200-PUSH 未閉
 > - 🟡 **auto-commit 語意率 46.7%（14/30）< 90%**；外部 wrapper 仍需治理
 > - ✅ **EPIC6 13/13 全閉**
