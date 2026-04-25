@@ -35,8 +35,8 @@
 #### v7.8c 20:08 /pua 深度回顧新增 — integration 補漏 + 外部 blocker 上升
 
 - [ ] **T-INTEGRATION-COVERAGE-PHASE-2**（90 min；P1；2026-04-25 20:08；ACL-free）— integration 4 檔（smoke / e2e_rewrite / kb_rebuild_quality_gate / api_server_smoke）覆蓋仍薄；缺：(1) KB CLI 完整流（`gov-ai kb fetch → ingest → search` recall@k 對比）；(2) `cite_cmd` e2e（CLI 拉條件 → 出引用）；(3) `web_preview` render smoke（`uvicorn boot → GET / → 渲染標的元素 assert`）；(4) `meeting` API 多輪互動（happy + 邊界）。目標 integration 4→8，每檔 GOV_AI_RUN_INTEGRATION 開關；驗收 `GOV_AI_RUN_INTEGRATION=1 pytest tests/integration -q` 全綠 + 無增加主套件時間。**單元 3949 passed 的信心建在 mock 上 = 盲飛**。
-- [ ] **P1-AUTO-COMMIT-EXTERNAL-PATCH**（從 P2 升級；P1；owner = host Admin；2026-04-25 20:08）— 連 6+ 輪卡 supervise.sh 5 min interval out-of-repo；不再凍結，主動上升。產出：(a) `docs/auto-commit-host-action.md` host-side 清單（檔位 / 修改點 / 驗證命令）；(b) 列「希望 host Admin 做的 3 件」：interval 5→30 min / squash window 啟動 / message template 補語意 prefix；(c) 通信錨點寫 `HANDOFF.md` 待 host 簽收。驗收：rolling 30-commit 真語意率 63.3%→90%+ + `git log -n 30 --format=%s` 無 `chore(auto-engineer): patch` 條目 + 12-commit T12.5 可閉。**外部 blocker 凍結 = 永久污染**。
-- [ ] **T-COMMIT-T12.5-VERIFY**（5 min；P1；2026-04-25 20:08；依賴 P1-AUTO-COMMIT-EXTERNAL-PATCH）— `openspec/changes/12-commit-msg-noise-floor/tasks.md` T12.5 唯一 pending；待 wrapper daemons reload 後跑 `python scripts/commit_msg_lint.py --rolling 30`，0 violations 時把 [x] 補上、change 進 archive。
+- [x] **P1-AUTO-COMMIT-EXTERNAL-PATCH**（2026-04-25 20:31 閉；repo-side handoff）— 已新增 `docs/auto-commit-host-action.md` host-side 清單（interval 5→30 min / squash window / semantic message template / 驗證命令），並在 `HANDOFF.md` 補 host Admin 錨點；repo 內可交付部分完成。後續驗收移交 `T-COMMIT-T12.5-VERIFY`：待 host reload 後 rolling 30-commit 真語意率 90%+、`git log -n 30 --format=%s` 無 `chore(auto-engineer): patch`、逐行 pipe 到 `python scripts/commit_msg_lint.py -` 全綠。
+- [ ] **T-COMMIT-T12.5-VERIFY**（5 min；P1；2026-04-25 20:08；依賴 P1-AUTO-COMMIT-EXTERNAL-PATCH）— `openspec/changes/12-commit-msg-noise-floor/tasks.md` T12.5 唯一 pending；待 wrapper daemons reload 後跑 `git log -n 30 --format=%s` 並逐行 pipe 到 `python scripts/commit_msg_lint.py -`，0 violations 時把 [x] 補上、change 進 archive。
 
 #### v7.8b 反思新增 — 雙紅線同檔優先（ROI ×2）
 

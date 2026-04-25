@@ -48,14 +48,17 @@ Run after host daemons reload:
 ```bash
 cd "/d/Users/Administrator/Desktop/公文ai agent"
 git log -n 30 --format=%s
-python scripts/commit_msg_lint.py --rolling 30
+git log -n 30 --format=%s | grep -E '^(chore\(auto-engineer\): patch|.*checkpoint snapshot)' && exit 1 || true
+git log -n 30 --format=%s | while IFS= read -r subject; do
+  printf '%s\n' "$subject" | python scripts/commit_msg_lint.py - || exit 1
+done
 ```
 
 Pass criteria:
 
 - Rolling 30 contains no `chore(auto-engineer): patch` subject.
 - Rolling 30 contains no `checkpoint snapshot` subject.
-- `python scripts/commit_msg_lint.py --rolling 30` exits 0.
+- Every subject from `git log -n 30 --format=%s` passes `scripts/commit_msg_lint.py`.
 - `openspec/changes/12-commit-msg-noise-floor/tasks.md` T12.5 can be checked off.
 
 ## Host Admin Checklist

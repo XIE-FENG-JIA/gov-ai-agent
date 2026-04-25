@@ -54,6 +54,11 @@ Anti-bloat guard：待辦 > 20 禁新增，待辦 > 80 進化輪 skip（`auto-en
 
 ## 🔴 已知阻塞 / 風險
 
+### 0. Host auto-commit wrapper 仍需 Admin reload（2026-04-25）
+- Repo-side 規則已收斂，但 host-side wrapper 仍可能產生 `chore(auto-engineer): patch ...` / `checkpoint snapshot ...`，阻塞 `openspec/changes/12-commit-msg-noise-floor/tasks.md` T12.5。
+- Host Admin 請照 `docs/auto-commit-host-action.md` 執行 3 件事：interval 5→30 min、啟用 squash window、message template 改用 active task semantic prefix。
+- Reload 後驗證：`git log -n 30 --format=%s`，再逐行 pipe 到 `python scripts/commit_msg_lint.py -`；0 violations 才可關 T12.5。
+
 ### 1. `.git` ACL DENY（rescue-daemon 緩解中）
 - 2 組 foreign ORPHAN SID 的 explicit DENY
 - Nuclear 清（takeown + icacls reset）ms 級重生 — 未找到 re-apply source
