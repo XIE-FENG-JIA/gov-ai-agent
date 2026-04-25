@@ -28,6 +28,27 @@ _BASE_API_CONFIG: dict = {
 }
 
 
+def _clean_xdist_pyc_star() -> None:
+    import glob as _glob
+
+    src_root = Path(__file__).resolve().parent.parent / "src"
+    for f in _glob.glob(str(src_root / "**" / "*.pyc.*"), recursive=True):
+        try:
+            Path(f).unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def pytest_sessionstart(session):
+    if not hasattr(session.config, "workerinput"):
+        _clean_xdist_pyc_star()
+
+
+def pytest_sessionfinish(session, exitstatus):
+    if not hasattr(session.config, "workerinput"):
+        _clean_xdist_pyc_star()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def suppress_litellm_async_cleanup_noise():
     """避免 litellm 在測試 teardown 階段透過 asyncio 噴 closed-file logging error。"""
@@ -51,20 +72,7 @@ def _cleanup_xdist_pyc_star(tmp_path_factory):
     xdist spawns workers that byte-compile files to e.g. ``foo.pyc.140245...``.
     These are not covered by standard ``__pycache__/`` ignores.
     """
-    import glob as _glob
-
-    src_root = Path(__file__).resolve().parent.parent / "src"
-
-    def _clean() -> None:
-        for f in _glob.glob(str(src_root / "**" / "*.pyc.*"), recursive=True):
-            try:
-                Path(f).unlink(missing_ok=True)
-            except OSError:
-                pass
-
-    _clean()
     yield
-    _clean()
 
 
 @pytest.fixture(scope="session", autouse=True)
