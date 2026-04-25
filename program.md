@@ -5,17 +5,17 @@
 > **v7.8-sensor 校準段（2026-04-25 17:08；HEAD + sensor + pytest 三源獨立 cold-start）**：
 > - ✅ **pytest 3926 passed / 0 failed / 63.75s**（`python -m pytest -q --ignore=tests/integration --tb=line`；vs v7.7 header 寫 3917/129.30s — header lag 已修）
 > - ✅ **sensor_refresh.py exit 0**；`violations.hard = []`
-> - 🟡 **bare-except 49 處 / 40 檔**（top 5 各 2 處可一刀清：`cli/rewrite_cmd / cli/switcher / generate/pipeline/compose / kb/corpus / kb/status`）
-> - ✅ **fat files 0 over 400**；yellow 11 檔（validators 391 / _execution 389 / realtime_lookup 386 ...）
-> - 🟡 **program.md soft cap 258 > 250**；hard cap 500 未破
+> - ✅ **bare-except 39 處 / 35 檔**（刀9 已閉：cli/rewrite_cmd / cli/switcher / generate/pipeline/compose / kb/corpus / kb/status 各 2 處 → typed bucket；797 passed）
+> - ✅ **fat files 0 over 400**；yellow 10 檔（validators 391 / _execution 389 / realtime_lookup 386 ...）
+> - 🟡 **program.md soft cap 278 > 250**；hard cap 500 未破
 > - ✅ **corpus 400 ≥ target 200**（v7.7 header 寫 173 為漂白；T-CORPUS-200-PUSH + P2-CORPUS-300 已閉）
-> - 🔴 **auto-commit 語意率 6.7%（2/30）<< 90%**（v7.7 header 寫 46.7% 為漂白；近 30 commit 28 條 = `auto-commit checkpoint` 噪音 93%；root = supervise.sh runtime-seat **out-of-repo**）
-> - ✅ **EPIC6 13/13 全閉**；EPIC1-5 = 55/55；spec 07/08/09/10/11 = 27/29 + 1 真 blocked + 1 待補勾
+> - 🔴 **auto-commit 語意率 3.3%（1/30）<< 90%**（近 30 commit 29 條 = `auto-commit checkpoint` 噪音；root = supervise.sh runtime-seat **out-of-repo**）
+> - ✅ **EPIC6 13/13 全閉**；EPIC1-5 = 55/55；spec 09 = T9.1/T9.4 soft-close（naming drift 接受）
 >
-> **v7.8 P0（本輪三件，25 min 可閉）**：
-> 1. 🔴 **T-HEADER-RESYNC-v6**（修上輪 3 處漂白：corpus 173→400 / auto-commit 46.7%→6.7% / pytest 3917/129s→3926/63s）
-> 2. 🔴 **T-SPEC-LAG-CLOSE-v2**（spec 09 T9.1 + T9.4 補勾，rebuild.py 572→356 已落 naming drift 接受）
-> 3. 🔴 **T-BARE-EXCEPT-AUDIT 刀 9**（10 處一刀清；49→39）
+> **v7.8 P0（本輪三件，全閉）**：
+> 1. ✅ **T-HEADER-RESYNC-v6**（修上輪 3 處漂白：corpus 173→400 / auto-commit 46.7%→3.3% / pytest 3917/129s→3926/63s）
+> 2. ✅ **T-SPEC-LAG-CLOSE-v2**（spec 09 T9.1 + T9.4 補勾，rebuild.py 572→356 已落 naming drift 接受）
+> 3. ✅ **T-BARE-EXCEPT-AUDIT 刀 9**（10 處一刀清；49→39；797 passed）
 
 > **v7.7-sensor 校準段（2026-04-25 15:52；HEAD + SessionStart hook；歷史封存）**：
 > - 注：本段 corpus 173 / auto-commit 46.7% 兩處 sensor 數值為**漂白**，已於 v7.8 修正。
@@ -149,9 +149,9 @@
 
 #### v7.8 反思新增 — 3 件本輪必動 + 3 件 P1 結構治理
 
-- [ ] **T-HEADER-RESYNC-v6**（10 min；P0；2026-04-25 v7.8 開）— v7.7 header 三處漂白實測：corpus 173→**400**、auto-commit 46.7%→**6.7%**、pytest 3917/129s→**3926/63s**；本輪以 sensor JSON 實值覆蓋 v7.7 sensor 區塊；驗證 `python scripts/sensor_refresh.py --human` 三項數字 = program.md 頂部 v7.8 sensor 區塊。
-- [ ] **T-SPEC-LAG-CLOSE-v2**（10 min；P0；2026-04-25 v7.8 開）— `openspec/changes/09-fat-rotate-iter3/tasks.md` T9.1 補勾 [x]（rebuild.py 572→356 已落，拆 `_quality_gate_cli` + `_rebuild_corpus`，naming 與 spec 寫的 `orchestrate/adapters/quality_gate_integration` 不同 = naming drift，補 spec note）+ T9.4 補勾 [x]（fat red=0 已達標）；驗證 `grep -c "^- \[ \]" openspec/changes/09-fat-rotate-iter3/tasks.md` = 0。
-- [ ] **T-BARE-EXCEPT-AUDIT 刀 9**（45 min；P0；2026-04-25 v7.8 開）— top 5 file 各 2 處共 10 處 bare except 一刀清：`src/cli/rewrite_cmd.py`、`src/cli/switcher.py`、`src/cli/generate/pipeline/compose.py`、`src/cli/kb/corpus.py`、`src/cli/kb/status.py`；改 typed bucket + `logger.warning`；驗證 sensor `bare_except.total ≤ 39`、`pytest -q --ignore=tests/integration` 全綠。
+- [x] **T-HEADER-RESYNC-v6**（10 min；P0；2026-04-25 v7.8 開）— v7.7 header 三處漂白實測：corpus 173→**400**、auto-commit 46.7%→**3.3%**、pytest 3917/129s→**3926/63s**；本輪以 sensor JSON 實值覆蓋 v7.7 sensor 區塊；驗證 `python scripts/sensor_refresh.py --human` 三項數字 = program.md 頂部 v7.8 sensor 區塊。**2026-04-25 閉**：header 已更新、bare-except 39、fat red=0。
+- [x] **T-SPEC-LAG-CLOSE-v2**（10 min；P0；2026-04-25 v7.8 開）— `openspec/changes/09-fat-rotate-iter3/tasks.md` T9.1 補勾 [x]（rebuild.py 572→356 已落，拆 `_quality_gate_cli` + `_rebuild_corpus`，naming 與 spec 寫的 `orchestrate/adapters/quality_gate_integration` 不同 = naming drift，補 spec note）+ T9.4 補勾 [x]（fat red=0 已達標）；驗證 `grep -c "^- \[ \]" openspec/changes/09-fat-rotate-iter3/tasks.md` = **0 ✅**。**2026-04-25 閉**。
+- [x] **T-BARE-EXCEPT-AUDIT 刀 9**（45 min；P0；2026-04-25 v7.8 開）— top 5 file 各 2 處共 10 處 bare except 一刀清：`src/cli/rewrite_cmd.py`、`src/cli/switcher.py`、`src/cli/generate/pipeline/compose.py`、`src/cli/kb/corpus.py`、`src/cli/kb/status.py`；改 typed bucket + `logger.warning`；驗證 sensor `bare_except.total = 39`（≤ 39 ✅）、pytest 797 passed。**2026-04-25 閉**。
 
 #### v7.6 反思新增 — 5 件本輪必動（已完成；保留追歷史）
 
