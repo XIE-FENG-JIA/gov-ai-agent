@@ -3,6 +3,7 @@ import json
 from unittest.mock import patch
 
 from src.cli.stats_cmd import stats
+from src.cli.utils import set_state_dir
 
 
 class TestStatsCommand:
@@ -10,6 +11,7 @@ class TestStatsCommand:
 
     def test_no_history_file(self, tmp_path, monkeypatch):
         """無歷史記錄檔案時應正常輸出。"""
+        set_state_dir(None)
         monkeypatch.chdir(tmp_path)
         with patch("src.cli.stats_cmd.console") as mock_console:
             stats()
@@ -36,6 +38,7 @@ class TestStatsCommand:
 
     def test_corrupted_history(self, tmp_path, monkeypatch):
         """歷史記錄損壞時 JSONStore 優雅降級為空列表，stats 顯示 0 筆。"""
+        set_state_dir(None)
         monkeypatch.chdir(tmp_path)
         (tmp_path / ".gov-ai-history.json").write_text("not json", encoding="utf-8")
         with patch("src.cli.stats_cmd.console") as mock_console:

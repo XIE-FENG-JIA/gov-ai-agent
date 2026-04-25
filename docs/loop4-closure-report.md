@@ -153,6 +153,14 @@ rewritten under `P0.S-REBASE-APPLY` (legacy frozen).
   shape becomes the next sensor `_CHECKPOINT_NOISE_RE` target.
   See `docs/change-13-acceptance-audit.md` Gap 3 for v0→v4 escalation
   lineage and Spectra change `14-13-acceptance-audit`.
+- **v9 (LOOP5, 2026-04-26): two-baseline median MUST be reported, not
+  single-run readings.** Any cross-session pytest run > 200 s triggers a
+  Spectra change documenting both runs (HEAD SHA + runtime + passed +
+  failed) and a bisection plan covering at least 3 candidate root causes.
+  Single-run readings can fluctuate ±27 % (LOOP5 run1 351 s vs run3 277 s
+  same HEAD post-fix); only median has standing in regression decisions.
+  See `docs/pytest-runtime-regression-iter7.md` and Spectra change
+  `15-pytest-runtime-regression-iter7`.
 
 ---
 

@@ -3581,7 +3581,7 @@ class TestHistoryCommand:
         from src.cli.main import app
         result = runner.invoke(app, ["history", "list"])
         assert "1 筆" in result.stdout
-        assert ".gov-ai-history.json" in result.stdout
+        assert ".gov-ai-history.json" in result.stdout.replace("\n", "")
 
     def test_history_clear(self, tmp_path, monkeypatch):
         """清除歷史記錄"""

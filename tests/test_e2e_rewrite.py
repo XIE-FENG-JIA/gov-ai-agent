@@ -88,6 +88,20 @@ def test_run_rewrite_e2e_fails_when_citation_source_is_not_traceable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     scenario = e2e_rewrite.SCENARIOS[0]
+    fake_corpus = {
+        sid: {
+            "source_id": sid,
+            "title": f"法規{sid}",
+            "source_url": f"https://example.gov/{sid}",
+            "doc_type": "law",
+            "source_level": "A",
+            "content": "內容",
+            "path": f"kb_data/corpus/mojlaw/{sid}.md",
+        }
+        for sid in scenario.source_ids
+    }
+
+    monkeypatch.setattr(e2e_rewrite, "load_real_corpus", lambda *a, **kw: fake_corpus)
     corpus = e2e_rewrite.load_real_corpus()
 
     monkeypatch.setattr(e2e_rewrite, "SCENARIOS", (scenario,))

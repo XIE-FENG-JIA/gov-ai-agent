@@ -15,6 +15,7 @@ def test_json_store_uses_user_state_dir_in_repo_root(tmp_path, monkeypatch):
     home_dir.mkdir()
 
     monkeypatch.setenv("USERPROFILE", str(home_dir))
+    monkeypatch.setenv("HOME", str(home_dir))
     monkeypatch.delenv("GOV_AI_STATE_DIR", raising=False)
     monkeypatch.chdir(repo_root)
 
@@ -43,6 +44,7 @@ def test_json_store_reads_legacy_root_file_before_state_migration(tmp_path, monk
     home_dir.mkdir()
 
     monkeypatch.setenv("USERPROFILE", str(home_dir))
+    monkeypatch.setenv("HOME", str(home_dir))
     monkeypatch.delenv("GOV_AI_STATE_DIR", raising=False)
     monkeypatch.chdir(repo_root)
 
@@ -85,6 +87,7 @@ def test_workflow_dir_uses_user_state_dir_in_repo_root(tmp_path, monkeypatch):
     home_dir.mkdir()
 
     monkeypatch.setenv("USERPROFILE", str(home_dir))
+    monkeypatch.setenv("HOME", str(home_dir))
     monkeypatch.delenv("GOV_AI_STATE_DIR", raising=False)
     monkeypatch.chdir(repo_root)
 
@@ -112,6 +115,7 @@ def test_profile_set_default_dir_uses_user_state_dir_in_repo_root(tmp_path, monk
     home_dir.mkdir()
 
     monkeypatch.setenv("USERPROFILE", str(home_dir))
+    monkeypatch.setenv("HOME", str(home_dir))
     monkeypatch.delenv("GOV_AI_STATE_DIR", raising=False)
     monkeypatch.chdir(repo_root)
 
@@ -142,6 +146,7 @@ def test_wizard_load_profile_reads_state_dir_in_repo_root(tmp_path, monkeypatch)
     )
 
     monkeypatch.setenv("USERPROFILE", str(home_dir))
+    monkeypatch.setenv("HOME", str(home_dir))
     monkeypatch.delenv("GOV_AI_STATE_DIR", raising=False)
     monkeypatch.chdir(repo_root)
 

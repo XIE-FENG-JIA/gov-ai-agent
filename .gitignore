@@ -50,6 +50,7 @@ kb_data/*
 !kb_data/examples/
 kb_data/examples/*
 !kb_data/examples/*.md
+!kb_data/regulation_doc_type_mapping.yaml
 *.docx
 *.pdf
 .chroma/
