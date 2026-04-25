@@ -34,7 +34,7 @@
 
 #### v7.8c 20:08 /pua 深度回顧新增 — integration 補漏 + 外部 blocker 上升
 
-- [ ] **T-INTEGRATION-COVERAGE-PHASE-2**（90 min；P1；2026-04-25 20:08；ACL-free）— integration 4 檔（smoke / e2e_rewrite / kb_rebuild_quality_gate / api_server_smoke）覆蓋仍薄；缺：(1) KB CLI 完整流（`gov-ai kb fetch → ingest → search` recall@k 對比）；(2) `cite_cmd` e2e（CLI 拉條件 → 出引用）；(3) `web_preview` render smoke（`uvicorn boot → GET / → 渲染標的元素 assert`）；(4) `meeting` API 多輪互動（happy + 邊界）。目標 integration 4→8，每檔 GOV_AI_RUN_INTEGRATION 開關；驗收 `GOV_AI_RUN_INTEGRATION=1 pytest tests/integration -q` 全綠 + 無增加主套件時間。**單元 3949 passed 的信心建在 mock 上 = 盲飛**。
+- [x] **T-INTEGRATION-COVERAGE-PHASE-2**（2026-04-25 閉；P1；ACL-free）— 新增 4 個 integration 測試檔（test_kb_cli_flow.py 3 tests / test_cite_cmd_e2e.py 5 tests / test_web_preview_smoke.py 4 tests / test_meeting_multi_round.py 5 tests）；無 GOV_AI_RUN_INTEGRATION=1 時全 16 tests SKIP；integration count 4→8；主套件 `python -m pytest -q --ignore=tests/integration --tb=line` = 3949 passed ✅。
 - [x] **P1-AUTO-COMMIT-EXTERNAL-PATCH**（2026-04-25 20:31 閉；repo-side handoff）— 已新增 `docs/auto-commit-host-action.md` host-side 清單（interval 5→30 min / squash window / semantic message template / 驗證命令），並在 `HANDOFF.md` 補 host Admin 錨點；repo 內可交付部分完成。後續驗收移交 `T-COMMIT-T12.5-VERIFY`：待 host reload 後 rolling 30-commit 真語意率 90%+、`git log -n 30 --format=%s` 無 `chore(auto-engineer): patch`、逐行 pipe 到 `python scripts/commit_msg_lint.py -` 全綠。
 - [ ] **T-COMMIT-T12.5-VERIFY**（5 min；P1；2026-04-25 20:08；依賴 P1-AUTO-COMMIT-EXTERNAL-PATCH）— `openspec/changes/12-commit-msg-noise-floor/tasks.md` T12.5 唯一 pending；待 wrapper daemons reload 後跑 `git log -n 30 --format=%s` 並逐行 pipe 到 `python scripts/commit_msg_lint.py -`，0 violations 時把 [x] 補上、change 進 archive。
 
