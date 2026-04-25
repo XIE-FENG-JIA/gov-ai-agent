@@ -84,7 +84,7 @@ python -m pytest -q --ignore=tests/integration -p no:xdist --no-header
 | candidate | command run | runtime | verdict |
 |-----------|------------|---------|---------|
 | C4 — xdist | `pytest -p no:xdist --override-ini="addopts=-q"` HEAD `8868f69` | **589.4 s** | **RULED OUT** — removing xdist is 2.8× *slower* (589 s vs 214 s). xdist provides genuine parallel speedup; not a boot-overhead sink. |
-| C2 — click | (T15.4 pending) | — | — |
+| C2 — click | fresh venv click==8.1.7 (incomplete: missing langgraph) | **548.5 s (invalid)** | **PROVISIONALLY RULED OUT** — timing invalid (incomplete venv, some tests errored). Circumstantial: current HEAD 8868f69 with click 8.2.1 improved from LOOP5 315 s → 214 s via T13 refactors alone, proving regression was code-complexity not click overhead. |
 | C1 — dispersal | (deferred until 13 closes) | — | — |
 
 ## Red line v9

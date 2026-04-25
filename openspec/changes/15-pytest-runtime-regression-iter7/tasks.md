@@ -18,7 +18,7 @@
   Validation: append result line to `docs/pytest-runtime-regression-iter7.md` "Bisection results" section; runtime + verdict.
   Commit: `chore(governance): T15.3 xdist bisection result for runtime regression`
 
-- [ ] **T15.4** Bisection step 2 — fresh venv `click==8.1.7` baseline. If runtime ≤ 180 s, click 8.2 import overhead is the root cause.
+- [x] **T15.4** Bisection step 2 — fresh venv `click==8.1.7` baseline. If runtime ≤ 180 s, click 8.2 import overhead is the root cause.
   Requirements:
   - Each candidate root cause has a reproducible bisection command
   Validation: append result line to `docs/pytest-runtime-regression-iter7.md`.
