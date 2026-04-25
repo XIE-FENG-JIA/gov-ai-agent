@@ -1,22 +1,10 @@
 {
-  "yellow_count_max": 10,
-  "yellow_max_lines": 391,
+  "yellow_count_max": 6,
+  "yellow_max_lines": 375,
   "yellow_files": [
     {
-      "path": "src/agents/validators.py",
-      "lines": 391
-    },
-    {
-      "path": "src/api/routes/workflow/_execution.py",
-      "lines": 389
-    },
-    {
-      "path": "src/knowledge/realtime_lookup.py",
-      "lines": 386
-    },
-    {
-      "path": "src/knowledge/fetchers/law_fetcher.py",
-      "lines": 377
+      "path": "src/knowledge/manager.py",
+      "lines": 375
     },
     {
       "path": "src/cli/wizard_cmd.py",
@@ -25,10 +13,6 @@
     {
       "path": "src/core/constants.py",
       "lines": 374
-    },
-    {
-      "path": "src/knowledge/manager.py",
-      "lines": 369
     },
     {
       "path": "src/web_preview/app.py",

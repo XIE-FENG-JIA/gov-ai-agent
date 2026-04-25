@@ -42,6 +42,7 @@ _REJECT_PATTERNS = (
     re.compile(r"^auto-commit:?\s*$", re.IGNORECASE),
     re.compile(r"^chore\(auto-engineer\):\s*checkpoint(?:\s+snapshot)?\b", re.IGNORECASE),
     re.compile(r"^chore\(auto-engineer\):\s*patch\b", re.IGNORECASE),
+    re.compile(r"^chore\(copilot\):\s*batch\b", re.IGNORECASE),
     re.compile(r"^copilot-auto:", re.IGNORECASE),  # Copilot batch round 違規
     re.compile(r"^[a-z]+-auto:", re.IGNORECASE),   # 通用 <agent>-auto: 兜底
     re.compile(r"^WIP\s*$", re.IGNORECASE),

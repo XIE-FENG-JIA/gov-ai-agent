@@ -10,6 +10,7 @@ Repo-side commit lint is already stricter, but host-side wrapper commits still p
 
 - `chore(auto-engineer): patch ...`
 - `chore(auto-engineer): checkpoint snapshot ...`
+- `chore(copilot): batch ...`
 - `[AUTO-RESCUE]` follow-up commits that hide the real task name
 
 This blocks `openspec/changes/12-commit-msg-noise-floor/tasks.md` T12.5 because the repository cannot force the external wrapper to change its interval, squash behavior, or generated subject.
@@ -19,6 +20,7 @@ This blocks `openspec/changes/12-commit-msg-noise-floor/tasks.md` T12.5 because 
 1. Change the auto-commit interval from 5 minutes to 30 minutes for this repo.
 2. Enable a squash window so one agent round produces one semantic commit when possible.
 3. Replace generic wrapper subjects with the active task prefix and why-summary.
+4. Reject fallback subjects matching `chore(auto-engineer): patch`, `chore(auto-engineer): checkpoint snapshot`, or `chore(copilot): batch` before commit creation.
 
 Recommended subject template:
 
@@ -48,23 +50,27 @@ Run after host daemons reload:
 ```bash
 cd "/d/Users/Administrator/Desktop/公文ai agent"
 git log -n 30 --format=%s
-git log -n 30 --format=%s | grep -E '^(chore\(auto-engineer\): patch|.*checkpoint snapshot)' && exit 1 || true
+git log -n 30 --format=%s | grep -E '^(chore\(auto-engineer\): patch|chore\(auto-engineer\): checkpoint snapshot|chore\(copilot\): batch)' && exit 1 || true
 git log -n 30 --format=%s | while IFS= read -r subject; do
   printf '%s\n' "$subject" | python scripts/commit_msg_lint.py - || exit 1
 done
+python scripts/sensor_refresh.py --json
 ```
 
 Pass criteria:
 
 - Rolling 30 contains no `chore(auto-engineer): patch` subject.
-- Rolling 30 contains no `checkpoint snapshot` subject.
+- Rolling 30 contains no `chore(auto-engineer): checkpoint snapshot` subject.
+- Rolling 30 contains no `chore(copilot): batch` subject.
 - Every subject from `git log -n 30 --format=%s` passes `scripts/commit_msg_lint.py`.
-- `openspec/changes/12-commit-msg-noise-floor/tasks.md` T12.5 can be checked off.
+- `scripts/sensor_refresh.py --json` reports `auto_commit_rate >= 0.70` within 48 hours of deployment.
+- `openspec/changes/12-commit-msg-noise-floor/tasks.md` T12.5 remains green.
 
 ## Host Admin Checklist
 
 - [ ] Increase interval: 5 min → 30 min.
 - [ ] Enable squash window for one semantic commit per agent round.
 - [ ] Deploy the semantic subject template.
+- [ ] Add pre-commit rejection for known wrapper-noise subjects.
 - [ ] Restart wrapper daemons.
 - [ ] Run validation commands and paste output into `results.log`.
