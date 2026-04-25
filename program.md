@@ -2,15 +2,14 @@
 
 > 歷史 v7.0–v7.7 sensor/header 已封存：[docs/archive/program-history-202604j.md](docs/archive/program-history-202604j.md)、[docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)
 
-> **v7.8-sensor 校準段（2026-04-25 17:08；HEAD + sensor + pytest 三源獨立 cold-start）**：
-> - ✅ **pytest 3926 passed / 0 failed / 63.75s**（`python -m pytest -q --ignore=tests/integration --tb=line`；vs v7.7 header 寫 3917/129.30s — header lag 已修）
+> **v7.9-sensor 校準段（2026-04-25 21:40；HEAD + sensor + pytest 三源獨立 cold-start）**：
+> - ✅ **pytest 3949 passed / 0 failed**（`python -m pytest -q --ignore=tests/integration --tb=line`）
 > - ✅ **sensor_refresh.py exit 0**；`violations.hard = []`
-> - ✅ **bare-except 39 處 / 35 檔**（刀9 已閉：cli/rewrite_cmd / cli/switcher / generate/pipeline/compose / kb/corpus / kb/status 各 2 處 → typed bucket；797 passed）
-> - ✅ **fat files 0 over 400**；yellow 10 檔（validators 391 / _execution 389 / realtime_lookup 386 ...）
-> - ✅ **program.md soft cap 已修**；v7.3–v7.7 header 封存後主檔 < 250 行
-> - ✅ **corpus 400 ≥ target 200**（v7.7 header 寫 173 為漂白；T-CORPUS-200-PUSH + P2-CORPUS-300 已閉）
-> - 🔴 **auto-commit 語意率 3.3%（1/30）<< 90%**（近 30 commit 29 條 = `auto-commit checkpoint` 噪音；root = supervise.sh runtime-seat **out-of-repo**）
-> - ✅ **EPIC6 13/13 全閉**；EPIC1-5 = 55/55；spec 09 = T9.1/T9.4 soft-close（naming drift 接受）
+> - ✅ **bare-except 20 處 / 20 檔**（刀10+11：39→30→20；刀11 10 檔 typed bucket fix：validators/fact_checker/dependencies/config/style_checker/rewrite/strategy/knowledge/flow/ask_service）
+> - ✅ **fat files 0 over 400**；yellow 9 檔（validators 390 / _execution 389 / law_fetcher 377 ...）；ratchet ok (9/10, max=390)
+> - ✅ **corpus 400 ≥ target 200**
+> - ✅ **auto-commit 語意率 100%（30/30）**（T-COMMIT-T12.5-VERIFY 閉；change-12 archived；0 violations）
+> - ✅ **EPIC6 13/13 全閉**；EPIC1-5 = 55/55；openspec/changes/ 僅剩 archive/
 >
 > **v7.8 P0（本輪三件，全閉）**：
 > 1. ✅ **T-HEADER-RESYNC-v6**（修上輪 3 處漂白：corpus 173→400 / auto-commit 46.7%→3.3% / pytest 3917/129s→3926/63s）
@@ -23,12 +22,13 @@
 
 - [x] **T-OPENSPEC-PROMOTE-AUDIT**（2026-04-25 閉；P0；ACL-free）— 驗證 specs 已 promote（14 spec files in openspec/specs/）；移除 11 個重複 active change folders（archive 早已有 date-prefixed copy）；建立 `openspec/changes/archive/INDEX.md`（11 條目全齊）；寫 `docs/openspec-promotion-audit-202604.md` 收尾報告。驗收：`ls openspec/changes/` 僅剩 `12-commit-msg-noise-floor` ✅；`openspec/specs/` 14 spec files（≥10）✅；INDEX.md 建立 ✅。
 - [x] **T-LITELLM-MOCK-CONTRACT-FIX**（2026-04-25 20:36 閉；P0；ACL-free）— 實測 litellm mock contract 已對齊目前依賴；`python -m pytest tests/test_robustness.py -W error::UserWarning -q` = 299 passed / 0 warning，未重現 `ModelResponse / Choices / Message` pydantic schema warning；全量非 integration `python -m pytest -q --ignore=tests/integration --tb=line` = 3949 passed。
-- [ ] **P0-WRITER-FALLBACK-REGRESSION**（2026-04-25 21:36；P0；worktree fix ready / commit blocked）— 已在工作樹修復 writer fallback regression：KB `Exception` 降級為無範例 legacy draft；open-notebook runtime fallback 補 `_last_open_notebook_diagnostics`（service/mode/used_fallback/fallback_stage/fallback_reason）。驗證 targeted 10 passed；全量非 integration `python -m pytest -q --ignore=tests/integration --tb=line` = 3949 passed；但 git commit 被 `.git/index.lock: Permission denied` / `.git` write PermissionError 阻斷。
+- [x] **P0-WRITER-FALLBACK-REGRESSION**（2026-04-25 21:34 閉；P0；已入版 commit 5d6cfea）— 修復 writer fallback regression：KB `Exception` 降級為無範例 legacy draft；open-notebook runtime fallback 補 `_last_open_notebook_diagnostics`（service/mode/used_fallback/fallback_stage/fallback_reason）。驗證 targeted 10 passed；全量非 integration 3949 passed；commit 5d6cfea ✅。
 
 ### P0（v7.8b 18:35 反思新增；本輪必動 45 min）
 
 - [x] **T-WORKTREE-COMMIT-LINT**（5 min；P0；2026-04-25 18:35）— `scripts/commit_msg_lint.py` + `tests/test_commit_msg_lint.py` + `program.md` 改動仍在工作樹未入版；以單一 `feat(scripts): commit_msg_lint reject pseudo-semantic checkpoint` 落版；驗證 `git status` clean（扣除 copilot session 檔）+ `python -m pytest tests/test_commit_msg_lint.py -q` ≥ 既有 case 全綠。**不入版 = 規則沒生效**。
 - [x] **T-BARE-EXCEPT-AUDIT 刀 10**（30 min；P0；2026-04-25 18:35）— sensor top-5 共 9 處：`graph/aggregator(2) / graph/refiner(2) / knowledge/realtime_lookup(2) / knowledge/fetchers/law_fetcher(2) / agents/consistency_checker(1)` → typed bucket（`LLMError|RuntimeError|OSError` 視 callsite）；目標 39 → 30；**全量 `pytest -x` 收尾**防刀 8 回歸再現。
+- [x] **T-BARE-EXCEPT-KNIFE-11**（2026-04-25 閉；P1；ACL-free）— 刀11：30→20（10 檔 typed bucket fix）：validators/fact_checker/dependencies/config/style_checker/rewrite/strategy/knowledge_routes/editor_flow/ask_service；strategy.py 補 `from src.core.llm import LLMError` import + rewrite.py 同步加入 LLMError bucket 防 test_writer_exception 回歸；全量非 integration 3949 passed ✅。
 - [x] **T-AUTO-COMMIT-RATE-RECOMPUTE**（10 min；P0；2026-04-25 18:35）— `scripts/sensor_refresh.py` auto-commit 公式把 `chore(auto-engineer): checkpoint snapshot` 視為合規是樂觀偏差；改成只認 `feat|fix|refactor|docs|test|chore(scope!=auto-engineer)` 真語意；實際率回到 13–15%；驗證 `python scripts/sensor_refresh.py --human` 顯示真實率 + `tests/test_sensor_refresh.py` 加 1 條防回歸。**統計口徑放水 = 漂白第二型**。
 
 ### P1（連 2 輪延宕 = 3.25）
