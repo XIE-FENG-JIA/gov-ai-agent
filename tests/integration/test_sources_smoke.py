@@ -21,12 +21,17 @@ pytestmark = pytest.mark.integration
 
 
 def _live_sources_enabled() -> bool:
-    return os.getenv("GOV_AI_RUN_INTEGRATION") == "1"
+    return (
+        os.getenv("GOV_AI_RUN_INTEGRATION") == "1"
+        and os.getenv("GOV_AI_RUN_LIVE_SOURCES") == "1"
+    )
 
 
 def _require_live_sources() -> None:
-    if not _live_sources_enabled():
+    if os.getenv("GOV_AI_RUN_INTEGRATION") != "1":
         pytest.skip("set GOV_AI_RUN_INTEGRATION=1 to run live source smoke tests")
+    if os.getenv("GOV_AI_RUN_LIVE_SOURCES") != "1":
+        pytest.skip("set GOV_AI_RUN_LIVE_SOURCES=1 to run tests that call live external APIs")
 
 
 def _disable_fixtures(adapter: object) -> None:

@@ -21,6 +21,8 @@ pytestmark = pytest.mark.integration
 def _require_live_integration() -> None:
     if os.getenv("GOV_AI_RUN_INTEGRATION") != "1":
         pytest.skip("set GOV_AI_RUN_INTEGRATION=1 to run KB CLI flow integration tests")
+    if os.getenv("GOV_AI_RUN_LIVE_SOURCES") != "1":
+        pytest.skip("set GOV_AI_RUN_LIVE_SOURCES=1 to run tests that call live external APIs")
 
 
 # ---------------------------------------------------------------------------
@@ -62,7 +64,7 @@ def test_kb_flow_fetch_ingest_search_mojlaw() -> None:
 
     with tempfile.TemporaryDirectory() as tmpdir:
         config = ConfigManager()
-        llm_factory = get_llm_factory(config)
+        llm_factory = get_llm_factory(config.config.get("llm", {}), full_config=config.config)
         kb = KnowledgeBaseManager(
             llm_provider=llm_factory.get_provider(),
             persist_directory=tmpdir,
@@ -110,7 +112,7 @@ def test_kb_flow_fetch_ingest_search_executive_yuan_rss() -> None:
 
     with tempfile.TemporaryDirectory() as tmpdir:
         config = ConfigManager()
-        llm_factory = get_llm_factory(config)
+        llm_factory = get_llm_factory(config.config.get("llm", {}), full_config=config.config)
         kb = KnowledgeBaseManager(
             llm_provider=llm_factory.get_provider(),
             persist_directory=tmpdir,
@@ -157,7 +159,7 @@ def test_kb_flow_ingest_stats_report_real_vs_synthetic() -> None:
 
     with tempfile.TemporaryDirectory() as tmpdir:
         config = ConfigManager()
-        llm_factory = get_llm_factory(config)
+        llm_factory = get_llm_factory(config.config.get("llm", {}), full_config=config.config)
         kb = KnowledgeBaseManager(
             llm_provider=llm_factory.get_provider(),
             persist_directory=tmpdir,

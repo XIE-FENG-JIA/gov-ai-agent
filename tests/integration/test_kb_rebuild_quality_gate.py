@@ -22,6 +22,8 @@ pytestmark = pytest.mark.integration
 def _require_live_integration() -> None:
     if os.getenv("GOV_AI_RUN_INTEGRATION") != "1":
         pytest.skip("set GOV_AI_RUN_INTEGRATION=1 to run live quality-gate integration tests")
+    if os.getenv("GOV_AI_RUN_LIVE_SOURCES") != "1":
+        pytest.skip("set GOV_AI_RUN_LIVE_SOURCES=1 to run tests that call live external APIs")
 
 
 # ---------------------------------------------------------------------------

@@ -674,3 +674,6 @@ PASS T-FAT-REALTIME-LOOKUP-CUT 2026-04-25 19:24 realtime_lookup.py 387->254 line
 PASS T-OPENSPEC-PURPOSE-BACKFILL  # 2026-04-25 23:15 already-done: 11/11 spec.md no TBD, 0 standalone files
 PASS T-LITELLM-WARNING-CLOSE      # 2026-04-25 23:15 mocked _llm in 2 middleware tests; 299 passed, 0 PydanticSerializationUnexpectedValue warnings
 PASS T-INTEGRATION-CI-WIRE        # 2026-04-25 23:15 added integration job to ci.yml; 9/9 local integration tests passed
+
+[2026-04-25 23:25 Asia/Taipei] | 決策：P1 T-LITELLM-WARNING-CLOSE；robustness 測試 warning 是目前最小可閉品質缺口 | PASS | middleware logging/health check 測試固定使用 MockLLMProvider，避免真實 LiteLLM connectivity path；驗收 python -m pytest tests/test_robustness.py -q = 299 passed；PydanticSerializationUnexpectedValue count = 0。
+2026-04-26 00:02 | T-INTEGRATION-LIVE-SOURCES-CLOSE | PASS | Separated pure-local smoke from live-upstream smoke; added GOV_AI_RUN_LIVE_SOURCES=1 gate to test_sources_smoke / test_kb_rebuild_quality_gate / test_kb_cli_flow; fixed ConfigManager type bug in test_kb_cli_flow (3 occurrences; pass config.config.get('llm',{}) + full_config=config.config); added corpus existence skip guard to test_e2e_rewrite; updated CI integration job to run tests/integration/ (all except test_e2e_rewrite.py); main suite 3950 passed | tests/integration/
