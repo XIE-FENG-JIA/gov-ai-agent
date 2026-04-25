@@ -167,7 +167,7 @@ class WriterRewriteMixin:
         query = f"{requirement.doc_type} {requirement.subject}"
         try:
             examples = self._search_examples(query)
-        except (RuntimeError, OSError, ValueError) as exc:
+        except (LLMError, RuntimeError, OSError, ValueError) as exc:
             examples = []
 
         if examples:

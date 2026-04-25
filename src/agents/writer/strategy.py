@@ -3,6 +3,7 @@ import logging
 from rich.console import Console
 
 from src.core.constants import KB_WRITER_RESULTS, LLM_TEMPERATURE_PRECISE, MAX_EXAMPLE_LENGTH
+from src.core.llm import LLMError
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -108,7 +109,7 @@ class WriterStrategyMixin:
                 len(refined) if refined else 0,
             )
             return original_query
-        except (RuntimeError, OSError, ValueError) as exc:
+        except (LLMError, RuntimeError, OSError, ValueError) as exc:
             return original_query
 
     def _search_examples(self, query: str) -> list[dict]:
