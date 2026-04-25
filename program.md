@@ -2,29 +2,12 @@
 
 > 歷史 v7.0–v7.2 sensor/header 已封存：[docs/archive/program-history-202604j.md](docs/archive/program-history-202604j.md)
 
-> **v7.7-sensor 校準段（2026-04-25 15:33；第四十七輪；sensor 實跑）**：
-> - ✅ **bare except 49 處 / 40 檔**（+1 src/sources/_common.py RobotsCache noqa BLE001；T-ROBOTS-IMPL 新增）
-> - ✅ **fat files 0 over 400**（yellow watch 11 檔；最重 validators 391）
-> - ✅ **corpus 173**（T-CORPUS-200-PUSH 待；P2 外部服務依賴）
-> - ✅ **engineer-log 234 行**（≤300 soft ✅；≤400 hard ✅）
-> - ✅ **program.md 271 行**（soft cap 250 微超；含本輪新增 header）
-> - ✅ **auto-commit 語意率 46.7%（14/30）**（≥20% 目標 ✅；90% 目標差距 43pp）
-> - ✅ **EPIC6 13/13 全閉**
-> - ✅ **violations.hard = []**（sensor exit 1 為 soft only）
-> - ✅ **T-PYC-CLEAN 閉**（3862 個 .pyc.* 刪除；conftest session-end fixture 加入）
-> - ✅ **T-ROBOTS-IMPL 閉**（RobotsCache + RobotsDisallowedError + _robots_cache 加入 _common.py；request_with_proxy_bypass 加 robots check；tests/test_robots_compliance.py 4 passed）
->
-> **v7.7 P0**：
-> 1. ✅ **T-HEADER-RESYNC-v5**（2026-04-25 本輪閉）— sensor 實跑 + header 更新；violations.hard = [] ✅
-> 2. ✅ **T-PYC-CLEAN**（2026-04-25 本輪閉）— 3862 .pyc.* 刪除；.gitignore 已含 `*.pyc.*`；conftest `_cleanup_xdist_pyc_star` session fixture 加入
-> 3. ✅ **T-ROBOTS-IMPL**（2026-04-25 本輪閉）— `RobotsCache` + `RobotsDisallowedError` + `_robots_cache` 加入 `src/sources/_common.py`；`request_with_proxy_bypass` 加 robots check；`tests/test_robots_compliance.py` 4 passed；`test_sources_base.py` 8 passed
-
 > **v7.7-sensor 校準段（2026-04-25 15:52；HEAD + SessionStart hook）**：
 > - ✅ **pytest 3917 passed / 0 failed / 129.30s**（`python -m pytest -q --ignore=tests/integration --tb=short`）
 > - ✅ **sensor_refresh.py exit 0**；`violations.hard = []`（soft 只做預警；`--strict-soft` 才 exit 1）
 > - 🟡 **bare-except 49 處 / 40 檔**（有效 naked bucket；不再寫「2/2 全部保留」）
 > - ✅ **fat files 0 over 400**；yellow 11 檔（validators.py 391 / workflow _execution 389 / realtime_lookup 386...）
-> - 🟡 **program.md soft cap 275 > 250**；hard cap 500 未破
+> - 🟡 **program.md soft cap 258 > 250**；hard cap 500 未破
 > - 🟡 **corpus 173 < target 200**；T-CORPUS-200-PUSH 未閉
 > - 🟡 **auto-commit 語意率 46.7%（14/30）< 90%**；外部 wrapper 仍需治理
 > - ✅ **EPIC6 13/13 全閉**
