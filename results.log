@@ -558,3 +558,4 @@ PASS T-SYNTHETIC-AUDIT-SCRIPT 2026-04-25 scripts/audit_synthetic_flag.py created
 [2026-04-25 16:30:47] | [P2-CORPUS-300] | [PASS] | corpus 173→400（fda 200 + mohw 20 + ey-rss 60 + mojlaw 100 + datagovtw 20）；300 目標達成；驗證 400 ≥ 300 ✅；program.md 已勾 [x] | scripts/live_ingest.py, program.md
 [2026-04-25 16:34:30] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=d11822c) — 若先前 FAIL 是 ACL denied，此條即救援對應 | .copilot-loop.state.json
 [2026-04-25 16:37:08] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=fd3cc14) — 若先前 FAIL 是 ACL denied，此條即救援對應 | results.log
+[2026-04-25 16:44:54] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=3df794a) — 若先前 FAIL 是 ACL denied，此條即救援對應 | results.log
