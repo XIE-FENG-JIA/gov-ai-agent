@@ -1,0 +1,23 @@
+# OpenSpec Changes Archive Index
+
+This index records all completed and archived openspec change sets.
+
+| ID | Archived Date | Summary | Tasks | Status |
+|----|--------------|---------|-------|--------|
+| 01-real-sources | 2026-04-25 | 真實公開公文來源整合契約（PublicGovDoc model / BaseSourceAdapter / 5 adapters / ingest pipeline / CLI） | T1.1–T1.15 | 100% (15/15) |
+| 02-open-notebook-fork | 2026-04-25 | open-notebook fork 整合邊界定義（vendor import / ask-service adapter / fallback / freeze gate） | T2.0–T2.14 | 100% (15/15) |
+| 03-citation-tw-format | 2026-04-25 | 台灣公文引用格式標準化（citation_formatter / DOCX export / metadata keys / verify CLI） | T3.0–T3.8 | 100% (9/9) |
+| 04-audit-citation | 2026-04-25 | 引用稽核流程強化（citation_checker / fact_checker tighten / auditor aggregation / failure matrix） | T4.0–T4.7 | 100% (8/8) |
+| 05-kb-governance | 2026-04-25 | 知識庫治理規則落地（corpus eligibility / live-ingest retirement / only-real rebuild / post-rebuild verify） | T5.0–T5.7 | 100% (8/8) |
+| 06-live-ingest-quality-gate | 2026-04-25 | 即時擷取品質閘門（QualityGate.evaluate / 4 named failures / gate-check CLI / --quality-gate flag / failure matrix doc） | T-LIQG-0–T-LIQG-12 | 100% (13/13) |
+| 07-auto-commit-semantic-enforce | 2026-04-25 | 自動提交語意驗證強化（validate_auto_commit_msg / 8 test cases / runtime-seat enforce / sensor soft gate 0.9） | T7.1–T7.5 | 100% (5/5) |
+| 08-bare-except-audit-iter6 | 2026-04-25 | 裸 except 稽核第六刀（compliance_checker / editor / workflow endpoints / config_tools / reviewers / _manager_hybrid typed buckets） | T8.1–T8.7 | 100% (7/7) |
+| 09-fat-rotate-iter3 | 2026-04-25 | 肥大模組旋轉第三輪（kb/rebuild 572→190 / datagovtw 410→split / routes/agents 397→split；全 ≤300 lines） | T9.1–T9.5 | 100% (5/5) |
+| 10-test-local-binding-audit-systematic | 2026-04-25 | 測試 local binding 系統化稽核（audit_local_binding.py AST / rebind_local helper / CONTRIBUTING mock rules / taxonomy doc） | T10.1–T10.6 | 100% (6/6) |
+| 11-bare-except-iter6-regression | 2026-04-25 | 裸 except iter6 回歸修復（writer/editor/fact_checker typed bucket 加 RuntimeError/ConnectionError；3949 passed） | T11.1–T11.5 | 100% (5/5) |
+
+## Notes
+
+- Change 12 (`12-commit-msg-noise-floor`) remains active; T12.5 awaits 30-commit window verification post-daemon-reload.
+- Promoted specs are in `openspec/specs/<capability>/spec.md`.
+- Archive folder naming: `<YYYY-MM-DD>-<change-id>/`.
