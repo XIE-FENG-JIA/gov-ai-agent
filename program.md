@@ -166,6 +166,7 @@
 - [ ] **T-ROBOTS-IMPL**（45 min；P0；2026-04-25 v7.6 反思開）— OpenSpec 01 spec.md 寫「robots.txt restrictions MUST be respected」但 `grep robots src/ --include='*.py'` = 0；於 `src/sources/_common.py` 加 `RobotsCache` 類（用 `urllib.robotparser`，TTL 1hr），所有 adapter 在 `_request()` 前 `cache.allowed(url, user_agent)` check；補 `tests/test_robots_compliance.py` ≥ 3 條（allow / disallow / parse-fail fallback to allow + log warning）。驗證 `python -m pytest tests/test_robots_compliance.py tests/test_sources_base.py -q` 全綠。
 - [ ] **T-PYC-CLEAN**（5 min；P0；2026-04-25 v7.6 反思開）— `find src -name "*.pyc.*" -delete`（3624 個 xdist worker 殘留 byte-compile artifacts）+ `.gitignore` 補 `*.pyc.*` pattern；`tests/conftest.py` 加 session-end fixture 自動清。驗證 `find src -name "*.pyc.*" | wc -l` = 0。
 - [ ] **T-CORPUS-200-PUSH**（45 min；P0；2026-04-25 v7.6 反思開；原 P1 P2-CORPUS-300 升 P0 拆第一刀）— EPIC6 quality gate 已 unblock；跑 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --quality-gate` 把 corpus 173 → 200 soft target；產出 `docs/corpus-200-push-2026-04-25.md` 記錄各 source 抓 N / gate pass / dedup 後增量。驗證 `find kb_data/corpus -name "*.md" | wc -l` ≥ 200。
+- [ ] **T-PYTEST-RUNTIME-REGRESSION-iter6**（30 min；P0；2026-04-25 新增）— full suite 已由 22 fail 修成 0 fail，但 runtime 440s > 200s budget；用 `pytest --durations=20 --tb=no` 定位慢測/重試/外連，優先移除 LLM retry sleep 與不必要 cold-start。驗證 `python -m pytest -q --ignore=tests/integration --tb=no` ≤ 200s 且 0 failed。
 
 #### v7.5 已閉項（保留追歷史）
 
