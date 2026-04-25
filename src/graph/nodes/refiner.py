@@ -131,6 +131,6 @@ def verify_refinement(state: GovDocState) -> dict:
             return {"phase": "verification_warning"}
         return {"phase": "verification_passed"}
 
-    except (AttributeError, TypeError) as exc:
+    except (RuntimeError, AttributeError, TypeError) as exc:
         logger.exception("verify_refinement 失敗: %s", exc)
         return {"phase": "verification_warning"}
