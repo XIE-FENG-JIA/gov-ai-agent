@@ -3,6 +3,7 @@ import logging
 from rich.console import Console
 
 from src.core.constants import LLM_TEMPERATURE_PRECISE, escape_prompt_tag, is_llm_error_response
+from src.core.llm import LLMError
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -166,7 +167,7 @@ class WriterRewriteMixin:
         query = f"{requirement.doc_type} {requirement.subject}"
         try:
             examples = self._search_examples(query)
-        except Exception as exc:
+        except (RuntimeError, OSError, ValueError) as exc:
             logger.warning("知識庫搜尋失敗，將不使用範例: %s", exc)
             examples = []
 
@@ -192,7 +193,7 @@ class WriterRewriteMixin:
         llm_failed = False
         try:
             draft = self.llm.generate(full_prompt, temperature=LLM_TEMPERATURE_PRECISE)
-        except Exception as exc:
+        except LLMError as exc:
             logger.warning("WriterAgent LLM 呼叫失敗: %s", exc)
             draft = ""
             llm_failed = True

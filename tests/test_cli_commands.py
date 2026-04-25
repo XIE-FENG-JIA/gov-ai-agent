@@ -2212,7 +2212,8 @@ class TestWriterDraftDegradation:
         from src.core.models import PublicDocRequirement
 
         mock_llm = MagicMock()
-        mock_llm.generate.side_effect = Exception("LLM connection refused")
+        from src.core.llm import LLMError
+        mock_llm.generate.side_effect = LLMError("LLM connection refused")
         mock_llm.embed.return_value = [0.1] * 128
 
         mock_kb = MagicMock()

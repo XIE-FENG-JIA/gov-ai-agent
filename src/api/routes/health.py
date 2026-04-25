@@ -59,7 +59,7 @@ async def health_check():
             kb_status = "available"
             try:
                 kb_collections = len(_kb.client.list_collections())
-            except Exception as e:
+            except (RuntimeError, AttributeError, OSError) as e:
                 logger.warning("KB health check 失敗: %s", e)
                 kb_status = "degraded"
 
@@ -69,7 +69,7 @@ async def health_check():
         if hasattr(_llm, "check_connectivity"):
             try:
                 llm_status = "available" if _llm.check_connectivity() else "degraded"
-            except Exception as e:
+            except (RuntimeError, OSError, ValueError) as e:
                 logger.warning("LLM connectivity check 失敗: %s", e)
                 llm_status = "degraded"
         else:

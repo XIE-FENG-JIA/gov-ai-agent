@@ -14,7 +14,7 @@ from src.agents.fact_checker.checks import (
 )
 from src.agents.review_parser import parse_review_response
 from src.core.constants import DEFAULT_REVIEW_SCORE, LLM_TEMPERATURE_PRECISE, MAX_DRAFT_LENGTH, escape_prompt_tag
-from src.core.llm import LLMProvider
+from src.core.llm import LLMError, LLMProvider
 from src.core.review_models import ReviewResult
 
 logger = logging.getLogger(__name__)
@@ -58,8 +58,7 @@ class FactChecker:
 
                 citation_checks = self.law_verifier.verify_citations(draft)
                 verification_context = format_verification_results(citation_checks)
-            except Exception as exc:
-                verification_failed = True
+            except (ImportError, RuntimeError, OSError, AttributeError) as exc:
                 logger.warning("即時法規驗證失敗，降級為純 LLM 審查: %s", exc)
 
         verification_degraded = verification_failed or is_verification_degraded(self.law_verifier, citation_checks)
@@ -171,7 +170,7 @@ IMPORTANT: Each issue MUST include a concrete "suggestion" that tells the user e
 Do NOT write vague suggestions like "請確認引用是否正確". Give the specific fix or clearly state what needs verification."""
         try:
             response = self.llm.generate(prompt, temperature=LLM_TEMPERATURE_PRECISE)
-        except Exception as exc:
+        except LLMError as exc:
             logger.warning("FactChecker LLM 呼叫失敗: %s", exc)
             return merge_repo_issues(
                 llm_result=ReviewResult(agent_name=self.AGENT_NAME, issues=[], score=0.0, confidence=0.0),

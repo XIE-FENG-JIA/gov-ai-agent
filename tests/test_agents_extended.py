@@ -1556,8 +1556,9 @@ class TestApplyTemplateFallback:
             "attachments": "",
             "references": ""
         }
-        # Mock env.get_template 使其拋出異常
-        with patch.object(engine.env, "get_template", side_effect=Exception("Template not found")):
+        # Mock env.get_template 使其拋出異常（TemplateNotFound 是 jinja2 標準異常）
+        import jinja2
+        with patch.object(engine.env, "get_template", side_effect=jinja2.TemplateNotFound("han.j2")):
             result = engine.apply_template(sample_requirement, sections)
         assert "測試主旨" in result
         assert "測試機關" in result
@@ -1574,7 +1575,8 @@ class TestApplyTemplateFallback:
             "references": ""
         }
         mock_template = MagicMock()
-        mock_template.render.side_effect = Exception("Render error")
+        import jinja2
+        mock_template.render.side_effect = jinja2.TemplateError("Render error")
         with patch.object(engine.env, "get_template", return_value=mock_template):
             result = engine.apply_template(sample_requirement, sections)
         assert "渲染失敗測試" in result
@@ -1807,16 +1809,17 @@ class TestEditorParallelEdgeCases:
         mock_kb.search_policies.return_value = []
 
         # FormatAuditor 同步呼叫成功（返回空結果）
-        # 但所有並行 Agent 全部拋出例外
+        # 但所有並行 Agent 全部拋出例外（使用 LLMError 代表 LLM 層失敗）
         call_count = [0]
+        from src.core.llm import LLMError
 
         def side_effect(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
                 # FormatAuditor
                 return json.dumps({"errors": [], "warnings": []})
-            # 所有並行 Agent 拋出例外
-            raise RuntimeError("模擬 Agent 全部崩潰")
+            # 所有並行 Agent 拋出 LLM 例外
+            raise LLMError("模擬 Agent 全部崩潰")
 
         mock_llm.generate.side_effect = side_effect
 
@@ -1874,7 +1877,8 @@ class TestEditorParallelEdgeCases:
             ),
         ]
 
-        mock_llm.generate.side_effect = Exception("連線逾時")
+        from src.core.llm import LLMError
+        mock_llm.generate.side_effect = LLMError("連線逾時")
         refined = editor._auto_refine("原始草稿內容", results)
         assert refined == "原始草稿內容"
 

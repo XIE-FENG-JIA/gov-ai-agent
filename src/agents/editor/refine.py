@@ -12,6 +12,7 @@ from src.core.constants import (
     escape_prompt_tag,
     is_llm_error_response,
 )
+from src.core.llm import LLMError
 from src.core.review_models import ReviewIssue, ReviewResult
 
 logger = logging.getLogger(__name__)
@@ -99,7 +100,7 @@ Return ONLY the corrected draft markdown.
 
         try:
             result = self.llm.generate(prompt)
-        except Exception as exc:
+        except LLMError as exc:
             logger.warning("分層修正 LLM 呼叫失敗: %s", exc)
             console.print(f"[yellow]修正失敗：{str(exc)[:50]}，保留原始草稿[/yellow]")
             return draft
@@ -164,7 +165,7 @@ Return ONLY the new draft markdown.
         console.print("[cyan]Editor 正在重新撰寫...[/cyan]")
         try:
             result = self.llm.generate(prompt)
-        except Exception as exc:
+        except LLMError as exc:
             logger.warning("Editor LLM 呼叫失敗: %s", exc)
             console.print(f"[yellow]Editor LLM 呼叫失敗：{str(exc)[:50]}，保留原始草稿[/yellow]")
             return draft

@@ -53,8 +53,7 @@ class OrganizationalMemory:
             try:
                 with open(self.storage_path, 'r', encoding='utf-8') as f:
                     return json.load(f)
-            except Exception as e:
-                # 保留損毀備份，避免後續覆蓋導致永久資料遺失
+            except (json.JSONDecodeError, UnicodeDecodeError, OSError) as e:
                 backup_path = self.storage_path.with_suffix(".json.bak")
                 try:
                     import shutil
@@ -86,8 +85,7 @@ class OrganizationalMemory:
                 except OSError:
                     pass
                 raise
-        except Exception as e:
-            logger.warning("儲存偏好設定失敗: %s", e)
+        except OSError as e:
             console.print(f"[red]儲存偏好設定失敗：{e}[/red]")
 
     def get_agency_profile(self, agency_name: str) -> dict[str, Any]:

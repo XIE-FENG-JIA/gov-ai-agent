@@ -2,7 +2,7 @@ import json
 import logging
 import re
 from rich.console import Console
-from src.core.llm import LLMProvider
+from src.core.llm import LLMProvider, LLMError
 from src.core.constants import LLM_TEMPERATURE_PRECISE, KB_REGULATION_RESULTS, MAX_DRAFT_LENGTH, escape_prompt_tag, is_llm_error_response
 from src.agents.review_parser import _extract_json_object, _sanitize_json_string
 from src.knowledge.manager import KnowledgeBaseManager
@@ -13,7 +13,7 @@ console = Console()
 
 _AUDITOR_KB_EXCEPTIONS = (AttributeError, OSError, RuntimeError, TypeError, ValueError)
 _AUDITOR_VALIDATOR_EXCEPTIONS = (AttributeError, OSError, RuntimeError, TypeError, ValueError)
-_AUDITOR_LLM_EXCEPTIONS = (AttributeError, OSError, RuntimeError, TypeError, ValueError)
+_AUDITOR_LLM_EXCEPTIONS = (AttributeError, LLMError, OSError, RuntimeError, TypeError, ValueError)
 
 
 def _normalize_audit_items(items: list) -> list[dict | str]:

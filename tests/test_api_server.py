@@ -1212,7 +1212,8 @@ class TestWriterExceptionHandling:
 
     def test_writer_exception(self, client, mock_api_deps):
         """測試 writer 端點 LLM 拋出異常時優雅降級為基本模板"""
-        mock_api_deps["llm"].generate.side_effect = RuntimeError("LLM 連線超時")
+        from src.core.llm import LLMError
+        mock_api_deps["llm"].generate.side_effect = LLMError("LLM 連線超時")
 
         response = client.post("/api/v1/agent/writer", json={
             "requirement": {
@@ -1310,7 +1311,8 @@ class TestReviewExceptionHandling:
 
     def test_review_fact_exception(self, client, mock_api_deps):
         """測試事實審查端點 LLM 異常時優雅降級（回傳 score=0.0 而非失敗）"""
-        mock_api_deps["llm"].generate.side_effect = RuntimeError("事實審查失敗")
+        from src.core.llm import LLMError
+        mock_api_deps["llm"].generate.side_effect = LLMError("事實審查失敗")
 
         response = client.post("/api/v1/agent/review/fact", json={
             "draft": "### 主旨\n這是一份測試公文的草稿內容",

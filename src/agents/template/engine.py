@@ -3,7 +3,7 @@ import os
 import re
 from datetime import date
 
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, TemplateError, TemplateNotFound
 
 from src.agents.template.helpers import (
     _build_attachment_ref,
@@ -134,7 +134,7 @@ class TemplateEngine:
 
         try:
             template = self.env.get_template(template_name)
-        except Exception as exc:
+        except TemplateNotFound as exc:
             logger.warning("模板載入失敗: %s，使用備用格式", exc)
             return self._fallback_apply(requirement, sections)
 
@@ -198,7 +198,7 @@ class TemplateEngine:
 
         try:
             output = template.render(**context)
-        except Exception as exc:
+        except TemplateError as exc:
             logger.warning("Jinja2 模板渲染失敗: %s，使用備用格式", exc)
             return self._fallback_apply(requirement, sections)
 

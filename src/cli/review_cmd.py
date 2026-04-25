@@ -197,7 +197,7 @@ def review(
     try:
         llm = get_llm()
         kb = get_kb()
-    except Exception as exc:
+    except (OSError, RuntimeError, ValueError, ImportError) as exc:
         console.print(f"[red]錯誤：無法初始化 LLM/KB：{exc}[/red]")
         raise typer.Exit(1)
 
@@ -224,7 +224,7 @@ def review(
                 qa_report = editor.run_review_only(draft_content, detected_type)
                 refined_draft = None
 
-    except Exception as exc:
+    except (RuntimeError, OSError, ValueError) as exc:
         logger.exception("審查流程失敗: %s", exc)
         console.print(f"[red]審查失敗：{exc}[/red]")
         raise typer.Exit(1)

@@ -8,7 +8,7 @@ from rich.table import Table
 from src.agents.template import TemplateEngine
 from src.core.config import ConfigManager
 from src.core.constants import MAX_DRAFT_LENGTH, escape_prompt_tag
-from src.core.llm import get_llm_factory
+from src.core.llm import LLMError, get_llm_factory
 
 logger = logging.getLogger(__name__)
 
@@ -111,8 +111,7 @@ def explain(
     engine = TemplateEngine()
     try:
         sections = engine.parse_draft(content)
-    except Exception as e:
-        console.print(f"[red]解析失敗：{e}[/red]")
+    except (ValueError, KeyError, AttributeError) as e:
         raise typer.Exit(code=1)
 
     # 推測公文類型
@@ -132,7 +131,7 @@ def explain(
             f"<document-data>\n{safe_content}\n</document-data>"
         )
         llm_explanation = llm.generate(prompt)
-    except Exception as exc:
+    except LLMError as exc:
         logger.warning("LLM 解釋產生失敗，略過：%s", exc)
         llm_explanation = ""
 

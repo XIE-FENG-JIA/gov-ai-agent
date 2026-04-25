@@ -64,7 +64,7 @@ def quickstart():
             else:
                 console.print("  [red]✗[/red] config.yaml 缺少 llm 區塊")
                 llm_msg = "缺少 llm 設定"
-        except Exception as exc:
+        except (ImportError, OSError, ValueError, RuntimeError, KeyError) as exc:
             console.print(f"  [red]✗[/red] LLM 初始化失敗：{str(exc)[:60]}")
             llm_msg = f"初始化失敗：{str(exc)[:40]}"
     else:
@@ -96,7 +96,7 @@ def quickstart():
                 console.print("  [yellow]△[/yellow] 知識庫尚未匯入範例（系統仍可運作，但品質可能受限）")
                 console.print("  [dim]建議執行：gov-ai kb ingest[/dim]")
                 kb_msg = "未匯入範例"
-        except Exception as exc:
+        except (ImportError, OSError, ValueError, RuntimeError) as exc:
             console.print(f"  [yellow]△[/yellow] 知識庫檢查失敗：{str(exc)[:60]}")
             kb_msg = f"檢查失敗：{str(exc)[:40]}"
     else:

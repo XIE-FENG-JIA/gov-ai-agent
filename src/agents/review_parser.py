@@ -189,7 +189,7 @@ def parse_review_response(
                         raw_risk = "low"
                 sanitized_item["risk_level"] = raw_risk
                 issues.append(ReviewIssue(category=category, **sanitized_item))
-            except Exception as item_exc:
+            except (KeyError, TypeError, ValueError) as item_exc:
                 logger.debug(
                     "%s: 解析單一 issue 失敗: %s", agent_name, item_exc
                 )
@@ -235,8 +235,7 @@ def parse_review_response(
             score=default_score,
             confidence=default_confidence,
         )
-    except Exception as exc:
-        logger.warning("%s: 解析審查結果時發生例外 (%s): %s", agent_name, type(exc).__name__, exc)
+    except (AttributeError, KeyError, TypeError, ValueError, RuntimeError) as exc:
         return ReviewResult(
             agent_name=agent_name,
             issues=[],
