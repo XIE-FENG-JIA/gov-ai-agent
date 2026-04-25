@@ -11,7 +11,7 @@ import yaml
 
 from src.core.models import PublicGovDoc
 from src.sources.base import BaseSourceAdapter
-from src.sources.ingest import FixtureFallbackError, build_argument_parser, collect_source_snapshots, ingest, main
+from src.sources.ingest import FixtureFallbackError, _safe_filename, build_argument_parser, collect_source_snapshots, ingest, main
 
 
 class FakeAdapter(BaseSourceAdapter):
@@ -241,3 +241,66 @@ def test_collect_source_snapshots_reads_existing_storage_dirs(tmp_path: Path) ->
     assert mojlaw.corpus_count == 1
     assert mojlaw.latest_corpus_path == latest
     assert mojlaw.last_crawl_mtime is not None
+
+
+def test_safe_filename_plain_id_unchanged() -> None:
+    assert _safe_filename("A0030018") == "A0030018"
+    assert _safe_filename("DOC-001") == "DOC-001"
+
+
+def test_safe_filename_url_scheme_replaced() -> None:
+    result = _safe_filename("https://www.mohw.gov.tw/cp-18-86219-1.html")
+    assert ":" not in result
+    assert "/" not in result
+    assert result.startswith("https--")
+
+
+def test_safe_filename_invalid_windows_chars_replaced() -> None:
+    for ch in r':*?"<>|':
+        result = _safe_filename(f"some{ch}id")
+        assert ch not in result
+
+
+def test_safe_filename_truncates_long_ids() -> None:
+    long_id = "x" * 300
+    assert len(_safe_filename(long_id)) <= 200
+
+
+def test_ingest_url_source_id_uses_safe_filename(tmp_path: Path) -> None:
+    """Ingest with a URL-based source_id must write files with safe path components."""
+    url_id = "https://www.mohw.gov.tw/cp-18-86219-1.html"
+
+    class UrlIdAdapter(FakeAdapter):
+        def list(self, since_date=None, limit: int = 3):  # type: ignore[override]
+            return [{"id": url_id, "title": "URL id test", "date": __import__("datetime").date(2026, 4, 25)}]
+
+        def fetch(self, doc_id: str) -> dict:
+            return {"id": doc_id, "title": "URL id test", "body": "content"}
+
+        def normalize(self, raw: dict) -> PublicGovDoc:
+            return PublicGovDoc(
+                source_id=raw["id"],
+                source_url=raw["id"],
+                source_agency="衛福部",
+                source_doc_no=raw["id"],
+                source_date=__import__("datetime").date(2026, 4, 25),
+                doc_type="公告",
+                raw_snapshot_path=None,
+                crawl_date=__import__("datetime").date(2026, 4, 25),
+                content_md=f"# {raw['title']}\n\n{raw['body']}",
+                synthetic=False,
+            )
+
+    records = ingest(UrlIdAdapter(), limit=1, base_dir=tmp_path)
+
+    assert len(records) == 1
+    # The file must exist and have no ":" in its path components
+    assert records[0].corpus_path.exists()
+    assert ":" not in records[0].corpus_path.stem
+    assert records[0].raw_path.exists()
+    assert ":" not in records[0].raw_path.stem
+    # But source_id in the YAML frontmatter must remain the original URL
+    import yaml as _yaml
+    content = records[0].corpus_path.read_text(encoding="utf-8")
+    meta = _yaml.safe_load(content.split("---\n", 2)[1])
+    assert meta["source_id"] == url_id
