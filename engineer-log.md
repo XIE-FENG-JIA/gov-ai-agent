@@ -186,3 +186,49 @@
 - **auto-engineer**（codex round 136+）：T-ROBOTS-IMPL 程式碼層、T-CORPUS-200-PUSH live ingest（它擅長）
 - **session（本反思）**：T-HEADER-RESYNC-v5、T-SPEC-LAG-CLOSE、T-PYC-CLEAN、program.md 重排（governance 閉環）
 - **合流點**：兩條線單 commit 收尾後跑 `python scripts/sensor_refresh.py | python -c "import json,sys; r=json.load(sys.stdin); assert not r['violations']['hard']"` exit 0 才算 LOOP_DONE
+
+---
+
+## 深度回顧 2026-04-25 15:29 — 技術主管近 5 輪根因分析（v7.7）
+
+### 近 5 輪摘要（results.log 510-533）
+| 輪次 | 主要 task | 結果 |
+|------|-----------|------|
+| 1 | T-BARE-EXCEPT 刀7/8 + T-FAT-ROTATE 刀13 + T-PYTEST-BASELINE-VERIFY | ✅ |
+| 2 | T10.6-REGRESSION-DETECT | ❌ 22 fail |
+| 3 | T-REGRESSION-FIX-刀8（修 12 回歸 + 3914 passed） | ✅ |
+| 4 | T-WORKTREE-CLEAN-v3 + sensor/header/program.md 清理 | ✅ |
+| 5 | REFLECT-v7.6 + T-SPEC-LAG-CLOSE | ✅ |
+
+### 反覆失敗 task 及根因
+
+**1. COMMIT FAIL（結構性，每輪 100% 出現）**
+- 根因：`.git` DENY ACL (SID `...692795393`) 阻斷 index.lock 建立；AUTO-RESCUE 繞路後代 commit，功能完整落版。
+- 真正損害：auto-engineer commit message 格式無從控制（仍是 `auto-commit:`），語意率 50% 遠低於 90% 目標。
+- 處置現況：已有 `check_acl_state.py` + `validate_auto_commit_msg.py`，但 pre-commit hook 被同一 ACL 擋。
+
+**2. T10.6-REGRESSION-DETECT [FAIL]（刀8 過收窄）**
+- 根因：bare-except 刀8 把 `except Exception` 收窄為具體類型時漏掉 `RuntimeError`，LLM/KB graceful-degradation 路徑中斷，22 測試回歸。
+- 模式：「refactor → targeted test 綠 → 全量回歸未立刻跑」；T-REGRESSION-FIX-刀8 下輪補齊。
+- 改進點：每次 exception bucket 收窄後必跑全量 `pytest -x`，不可只跑目標模組。
+
+**3. Header/Sensor 漂白（第 4 次，3.25 X 4 自記）**
+- 根因：`sensor_refresh.py` 沒有掛到 session 啟動 hook，靠人工記憶跑，必然每隔數輪漂白。
+- 已訂規則（紅線 v4）但未機械化落地，規則 = 空文。
+
+### 優先序需調整的 3 點
+
+1. **T-SPEC-LAG-CLOSE 已 PASS**（results.log 530），應從 P0 清單移除，避免佔據排程注意力。
+2. **T-ROBOTS-IMPL 應升 P0 首位**：OpenSpec 01 明文 `MUST respect robots.txt`，`grep robots src/ = 0`，是已簽約但未履行的合規缺口；不是 nice-to-have。
+3. **T-CORPUS-200-PUSH 改由 session 主動執行**：EPIC6 quality gate 已 unblock 6+ 輪，但 corpus 173 原地不動；owner 需從「等 auto-engineer 做」換成「session 直接跑 `scripts/live_ingest.py`」。
+
+### 隱藏 blocker
+
+- **fat yellow watch 11 檔**（validators 391 / _execution 389 等）：無 ratchet gate，任一 +50 行即 red；建議本週加 CI 門限。
+- **integration tests 10 skipped**：skip 原因未深挖（live API gating / 環境缺失？），影響 e2e 覆蓋信心。
+- **`.env` 實檔在 repo root**：需確認 `.gitignore` 有 `.env` 且 `git log --all -- .env` 無歷史提交，否則是安全風險。
+
+### 下一步（最重要 3 件）
+1. **T-ROBOTS-IMPL**（45 min）：`src/sources/_common.py` 加 `RobotsCache` + `urllib.robotparser`，補 3 條合規測試。
+2. **T-CORPUS-200-PUSH**（45 min）：session 主動跑 `scripts/live_ingest.py --sources mojlaw,datagovtw --limit 100 --quality-gate`，173 → 200。
+3. **sensor hook 機械化**（15 min）：把 `python scripts/sensor_refresh.py` 寫進 `.claude/CLAUDE.md` 或 CONTRIBUTING.md 的「session 啟動第 0 步」，用 exit code 鎖住不讓繼續。
