@@ -2854,25 +2854,38 @@ class TestProductionReadinessIteration2:
         assert len(req_id) > 0
 
     def test_middleware_logs_non_health_requests(self, caplog):
-        """非 health check 的請求應產生日誌"""
+        """非 health check 的請求應產生日誌
+
+        2026-04-25 flaky fix：xdist 並行下若前面 test 改過 src.api.middleware
+        logger 的 propagate / level，caplog 抓不到。顯式還原 + 指定 logger 名。
+        """
         from unittest.mock import patch
         from fastapi.testclient import TestClient
         from api_server import app
 
-        client = TestClient(app)
-        with caplog.at_level(logging.INFO), \
-             patch("src.api.middleware._check_api_key", return_value=None):
-            # POST 到不存在的 endpoint 會回 422/404，但仍應記錄日誌
-            client.post(
-                "/api/v1/agent/requirement",
-                json={"user_input": "測試用的需求描述"},
-            )
-        # 檢查日誌中有 request_id 格式的記錄
-        req_logs = [r for r in caplog.records
-                    if "/api/v1/agent/requirement" in r.message]
-        assert len(req_logs) >= 1, "應記錄 API 請求日誌"
-        # 日誌中應包含耗時 ms
-        assert any("ms" in r.message for r in req_logs)
+        middleware_logger = logging.getLogger("src.api.middleware")
+        saved_propagate = middleware_logger.propagate
+        saved_level = middleware_logger.level
+        middleware_logger.propagate = True
+        middleware_logger.setLevel(logging.INFO)
+        try:
+            client = TestClient(app)
+            with caplog.at_level(logging.INFO, logger="src.api.middleware"), \
+                 patch("src.api.middleware._check_api_key", return_value=None):
+                # POST 到不存在的 endpoint 會回 422/404，但仍應記錄日誌
+                client.post(
+                    "/api/v1/agent/requirement",
+                    json={"user_input": "測試用的需求描述"},
+                )
+            # 檢查日誌中有 request_id 格式的記錄
+            req_logs = [r for r in caplog.records
+                        if "/api/v1/agent/requirement" in r.message]
+            assert len(req_logs) >= 1, "應記錄 API 請求日誌"
+            # 日誌中應包含耗時 ms
+            assert any("ms" in r.message for r in req_logs)
+        finally:
+            middleware_logger.propagate = saved_propagate
+            middleware_logger.setLevel(saved_level)
 
     def test_middleware_skips_health_check_logging(self, caplog):
         """health check 端點不應產生請求日誌（避免雜訊）"""

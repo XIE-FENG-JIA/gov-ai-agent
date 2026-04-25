@@ -14,6 +14,7 @@ from src.agents.consistency_checker import ConsistencyChecker
 from src.agents.compliance_checker import ComplianceChecker
 from src.agents.auditor import FormatAuditor
 from src.agents.review_parser import format_audit_to_review_result
+from src.core.llm import LLMError
 
 from src.api.auth import require_api_key
 from src.api.dependencies import get_llm, get_kb
@@ -46,6 +47,7 @@ _AGENT_ROUTE_EXCEPTIONS = (
     ConnectionError,
     FileNotFoundError,
     KeyError,
+    LLMError,
     OSError,
     RuntimeError,
     TimeoutError,
