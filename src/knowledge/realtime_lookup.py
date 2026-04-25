@@ -57,6 +57,10 @@ class LawVerifier:
         self._ensure_cache()
         return [self._verify_single(c) for c in citations]
 
+    def _extract_citations(self, text: str) -> list[Citation]:
+        """提取法規引用（委派給模組級 extract_citations）。"""
+        return extract_citations(text)
+
     def _ensure_cache(self) -> None:
         """下載並快取全國法規目錄（執行緒安全，double-check locking）。"""
         # 快速路徑：快取有效時不加鎖
