@@ -46,8 +46,17 @@ _SOFT_LIMITS = {
     "engineer_log_lines": 300,
     "program_md_lines": 250,
     "corpus_count_min": 200,  # 低於 → soft violation
-    "auto_commit_rate_min": 0.20,  # 低於 20% → soft violation
+    # T7.5 (change 07): tighten from 0.20 → 0.90 for Auto-Dev Engineer authored
+    # commits only. T-COMMIT-SEMANTIC-GUARD v3 mandates 90% semantic compliance
+    # for the auto-engineer runtime once T7.1-T7.3 wire validate_auto_commit_msg
+    # into the commit pipeline.
+    "auto_commit_rate_min": 0.90,
 }
+
+# Author identity used by the auto-engineer runtime; sensor measures rate
+# against this subset only (humans / pua-loop sessions are exempt because they
+# already pass commit_msg_lint inline).
+_AUTO_ENGINEER_AUTHOR_PATTERN = "Auto-Dev Engineer"
 
 
 @dataclass
@@ -169,14 +178,24 @@ def count_lines(path: Path) -> int:
         return 0
 
 
-def auto_commit_rate(repo: Path, n: int = 30) -> tuple[int, float]:
-    """最近 n commits 的 semantic 合規比率."""
+def auto_commit_rate(
+    repo: Path,
+    n: int = 30,
+    author: str | None = None,
+) -> tuple[int, float]:
+    """最近 n commits 的 semantic 合規比率.
+
+    Args:
+        repo: 專案根
+        n: 取樣 commit 數
+        author: 若給, 用 ``git log --author=<pattern>`` 過濾（T7.5: Auto-Dev
+            Engineer only）. 不給則統計全體 commits.
+    """
+    cmd = ["git", "-C", str(repo), "log", f"-{n}", "--format=%s"]
+    if author:
+        cmd.insert(-1, f"--author={author}")
     try:
-        out = subprocess.check_output(
-            ["git", "-C", str(repo), "log", f"-{n}", "--format=%s"],
-            encoding="utf-8",
-            errors="replace",
-        )
+        out = subprocess.check_output(cmd, encoding="utf-8", errors="replace")
     except (subprocess.CalledProcessError, FileNotFoundError):
         return 0, 0.0
     subjects = [line for line in out.splitlines() if line.strip()]
@@ -215,7 +234,11 @@ def build_report(repo: Path) -> SensorReport:
     r.engineer_log_lines = count_lines(repo / "engineer-log.md")
     r.program_md_lines = count_lines(repo / "program.md")
     r.results_log_lines = count_lines(repo / "results.log")
-    r.auto_commit_recent_30_semantic, r.auto_commit_rate = auto_commit_rate(repo)
+    # T7.5: 統計範圍限制為 Auto-Dev Engineer 作者 — 人類 / pua-loop session
+    # 已在 commit time 過 lint, 不需 sensor 把它們算進來稀釋訊號.
+    r.auto_commit_recent_30_semantic, r.auto_commit_rate = auto_commit_rate(
+        repo, author=_AUTO_ENGINEER_AUTHOR_PATTERN
+    )
     r.epic6_progress = epic6_progress(repo)
 
     # Hard violations

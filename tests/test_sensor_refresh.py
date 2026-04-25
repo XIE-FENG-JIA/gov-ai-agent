@@ -114,6 +114,56 @@ def test_auto_commit_rate_semantic_vs_checkpoint(tmp_path: Path) -> None:
     assert rate == pytest.approx(0.6, abs=0.01)
 
 
+def test_auto_commit_rate_filters_by_author(tmp_path: Path) -> None:
+    """T7.5 — sensor 必須能只統計 Auto-Dev Engineer 作者的 commits."""
+    repo = _make_repo(tmp_path)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "human@x"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "Human Dev"], check=True)
+
+    # 1 human semantic commit
+    (repo / "h.txt").write_text("h", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "h.txt"], check=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "commit", "-m", "feat(api): human did this commit", "-q"],
+        check=True,
+    )
+
+    # Switch identity to Auto-Dev Engineer for next 3 commits
+    subprocess.run(
+        ["git", "-C", str(repo), "config", "user.email", "engineer@auto-dev.local"],
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(repo), "config", "user.name", "Auto-Dev Engineer"], check=True
+    )
+
+    auto_msgs = [
+        "chore(auto-engineer): feat-add-foo @2026-04-25",  # semantic
+        "auto-commit: auto-engineer checkpoint @2026-04-25",  # NOT semantic
+        "chore(auto-engineer): docs-update-spec @2026-04-25",  # semantic
+    ]
+    for i, msg in enumerate(auto_msgs):
+        (repo / f"a{i}.txt").write_text(str(i), encoding="utf-8")
+        subprocess.run(["git", "-C", str(repo), "add", f"a{i}.txt"], check=True)
+        subprocess.run(["git", "-C", str(repo), "commit", "-m", msg, "-q"], check=True)
+
+    # Without author filter: 4 commits, 3 semantic (human feat + 2 chore) = 75%
+    sem_all, rate_all = _mod.auto_commit_rate(repo, n=10)
+    assert sem_all == 3
+    assert rate_all == pytest.approx(0.75, abs=0.01)
+
+    # With author filter: 3 auto-engineer commits, 2 semantic = 66.7%
+    sem_auto, rate_auto = _mod.auto_commit_rate(repo, n=10, author="Auto-Dev Engineer")
+    assert sem_auto == 2
+    assert rate_auto == pytest.approx(2 / 3, abs=0.01)
+
+
+def test_soft_limit_auto_commit_rate_tightened_to_0_9() -> None:
+    """T7.5 — _SOFT_LIMITS['auto_commit_rate_min'] must be 0.9 (was 0.20)."""
+    assert _mod._SOFT_LIMITS["auto_commit_rate_min"] == pytest.approx(0.9)
+
+
 def test_epic6_progress_counts_done_vs_total(tmp_path: Path) -> None:
     repo = _make_repo(tmp_path)
     tasks = repo / "openspec" / "changes" / "06-live-ingest-quality-gate" / "tasks.md"

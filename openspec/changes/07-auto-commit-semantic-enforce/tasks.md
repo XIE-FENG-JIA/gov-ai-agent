@@ -24,7 +24,7 @@
   Validation: `grep -n "v4" docs/commit-plan.md` present and `rg "chore\\(auto-engineer\\)" docs/commit-plan.md` hits the template.
   Commit: `docs(commit-plan): v4 — runtime-seat enforcement + hook deprecation`
 
-- [ ] **T7.5** Extend `scripts/sensor_refresh.py` with an `auto_commit.rate_recent_30` soft violation when < 0.9 for Auto-Dev Engineer authored commits only.
+- [x] **T7.5** Extend `scripts/sensor_refresh.py` with an `auto_commit.rate_recent_30` soft violation when < 0.9 for Auto-Dev Engineer authored commits only.
   Requirements:
   - Commit-message lint must run inside the auto-engineer runtime pre-commit path
   Validation: `python scripts/sensor_refresh.py --human` shows the new soft threshold in violations section when applicable; `pytest tests/test_sensor_refresh.py -q` still 12/12 (plus any new case).

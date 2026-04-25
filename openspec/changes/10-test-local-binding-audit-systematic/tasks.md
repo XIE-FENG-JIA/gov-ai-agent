@@ -12,7 +12,7 @@
   Validation: `pytest tests/ -q -k "rebind"` green; at least one existing test migrated to the helper as a reference.
   Commit: `feat(tests): rebind_local helper for module local binding`
 
-- [ ] **T10.3** Ship `scripts/ast_grep/local_binding.yml` rule detecting `from src.X import Y` where Y is used as module-level indirection in src/.
+- [x] **T10.3** Ship `scripts/ast_grep/local_binding.yml` rule detecting `from src.X import Y` where Y is used as module-level indirection in src/.
   Requirements:
   - Audit tooling must enumerate Type 1 iceberg candidates reproducibly
   Validation: `ast-grep scan --rule scripts/ast_grep/local_binding.yml src/` runs without error; matches the known Type 1 sites (`src.api.app` / `src.api.routes.workflow`).

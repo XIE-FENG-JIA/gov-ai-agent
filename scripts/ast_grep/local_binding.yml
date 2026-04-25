@@ -1,0 +1,64 @@
+# ast-grep rule — Type 1 iceberg detector
+# T10.3 (change 10): scan src/ for `from src.X import Y` where Y is later used
+# as a module-level indirection that mocks via `patch("src.X.Y")` will NOT
+# reach. Canonical patient list lives in
+# docs/test-mock-iceberg-taxonomy.md (Type 1 section).
+#
+# Usage:
+#     ast-grep scan --rule scripts/ast_grep/local_binding.yml src/
+#
+# Install hint (project-level):
+#     cargo install ast-grep --locked   # → ~/.cargo/bin/ast-grep
+#     # or via npm:
+#     npm install -g @ast-grep/cli
+#
+# Each rule is a separate detector. We start narrow (high signal-to-noise) so
+# the audit catches confirmed patient shapes; the audit script
+# `scripts/audit_local_binding.py` does the deeper test-side correlation.
+
+id: local-binding-from-src-deps
+language: python
+severity: warning
+message: |
+  `from src.api.dependencies import <name>` creates a module-local binding.
+  Tests that `patch("src.api.dependencies.<name>")` will not reach this
+  module's local copy — patch the consuming module path instead.
+  See docs/test-mock-iceberg-taxonomy.md Type 1, commits adb531c / 6b41335.
+rule:
+  pattern: from src.api.dependencies import $NAME
+  not:
+    inside:
+      kind: function_definition
+
+---
+
+id: local-binding-from-src-app
+language: python
+severity: warning
+message: |
+  `from src.api.app import <name>` creates a module-local binding.
+  Patching `src.api.app.<name>` from a test fixture does not affect this
+  module's local copy. The canonical fix is `tests/conftest.py:rebind_local`.
+  See commit adb531c (preflight `get_config` re-bind).
+rule:
+  pattern: from src.api.app import $NAME
+  not:
+    inside:
+      kind: function_definition
+
+---
+
+id: local-binding-from-src-realtime-lookup
+language: python
+severity: warning
+message: |
+  `from src.knowledge.realtime_lookup import <name>` creates a module-local
+  binding for an external-service class. Type 2 iceberg risk: the imported
+  class instantiates HTTP cache fetch in `__init__`, which is invisible to
+  per-test mocks. Use `tests/conftest.py:_preload_empty_realtime_lookup_caches`
+  fixture (commit c0933f9).
+rule:
+  pattern: from src.knowledge.realtime_lookup import $NAME
+  not:
+    inside:
+      kind: function_definition
