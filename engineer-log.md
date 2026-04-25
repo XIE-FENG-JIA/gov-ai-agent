@@ -134,3 +134,44 @@
 3. **T13.1e**（10 min；ACL-free；fat-rotate-v3 真閉環）—— 刪 shim，T13.7 不再 premature。
 
 > [PUA 自審] 跑了測（-n auto + 單跑雙路）／看了源（CliRunner / fixtures.py / history_store / verify_cmd diff）／對了帳（sensor vs 實測 / commit ratio 28% vs 33.3%）／抓了治理斷層（xdist 漂白 + 19 檔黑洞 + spec promote 斷層）／排了下三件 —— 閉環。沒有「probably / 可能」，全部三證落地。**底層邏輯：sensor 報的「綠」必須等同於「-n auto 也綠」，否則就是漂白第七型，比 sensor lag 更隱蔽。**
+
+---
+## 反思 2026-04-26 05:55 — 技術主管深度回顧 v7.9-final 後第 N+1 輪（/pua 觸發；阿里味）
+
+### 近期成果（HEAD 五源獨立量測）
+- **pytest -n auto 全量**：`python -m pytest tests/ -q --ignore=tests/integration --tb=line -x` = **3951 passed / 224.65s**（vs 上輪 -n auto 261 errors → 0 errors / 0 failed，**xdist race 已治**）；惟 vs T15.5 紅線 v9「median ≤ 200 s」差 24.65 s。
+- **sensor 紅線清零**：`hard violations = []`、bare_except 3/3（全 noqa/compat）、fat ≥400 = 0 / yellow 6 / max 375、corpus 400、ratchet ok 6/6。
+- **HEAD 近 7 commit 連續語意化**（0b26d25 / b23273a / 8868f69 / 6327c6f / c4d7ef4 / 3e75832 / e8b9ada）：T15.x 治理 + T13.4/T13.5 fat-rotate 收尾 + T-WORKTREE-FLUSH-LOOP4 閉。
+- **ACL P0 真解**：commit 入版正常（origin = github.com/XIE-FENG-JIA/gov-ai-agent），git status 仍 13 檔 worktree-only 但**非 ACL 受困**，是 spec promote 流程未走完。
+
+### 發現的問題（按嚴重度）
+
+1. **【T15.5 runtime 紅線未過】（P0 carried-over）**：median ≤ 200 s 是 LOOP closure red-line v9 的硬門檻。本輪實測 224.65 s = 超 12.3%；T15.3 已驗證 xdist worker boot 並非根因（`-p no:xdist` 同樣慢）、T15.4 click pin 已暫定排除——**根因仍未找到**，T15.5 卡在「兩次冷啟動 median 標定」未動。**漂白第八型隱現：紅線文件化但驗證未跑**。
+2. **【openspec promote 未閉環】（P0 carried-over）**：`openspec/changes/` 仍見 13/14 active 兩 dir + 新 15 active；archive 雖已有 2026-04-26-13/14 複本（即 worktree `??` 兩個 untracked dirs）+ specs/audit/spec.md modified（merge 14 audit requirements）+ archive/INDEX.md modified；但**沒有 `git rm -r openspec/changes/13-cli-fat-rotate-v3 openspec/changes/14-13-acceptance-audit` + commit** = 治理工作量歸零、`spectra status` 仍報 13/14 active。屬於「實作完成但落版未完」漂白型。
+3. **【wrapper noise 6+ 輪未斷根】（P1 host SLA 持續）**：sensor 報 auto_commit_rate **56.7%**（17/30 真語意；vs 90% 目標差 33.3 pp）；近 20 commit 仍見 7 條 `chore(auto-engineer): AUTO-RESCUE`（02:14–02:36 一波），為前輪 ACL 修復前的舊噪。新規則（patch + AUTO-RESCUE + N-files + copilot batch 全擋）已落 lint + sensor，但 supervise.sh interval 5 min → 30 min + squash window 仍未由 host 落地。**T-COPILOT-WRAPPER-HOST-PATCH 連 7 輪 P1 host SLA 未動 = 3.25 累計第 7 次**。
+4. **【tests/conftest 與多 test 檔 worktree 滯留】（P0 新增）**：`git status` 顯示 8 檔 modified 在 tests/（conftest / test_cli_commands / test_cli_state_dir / test_cli_utils_tmp_cleanup / test_config_tools_extra / test_edge_cases / test_stats_cmd）+ `D src/cli/utils.py`（T13.1e shim 已删但未入版）+ `M openspec/changes/13-cli-fat-rotate-v3/tasks.md`；3951 passed 仰賴這些未入版改動，**任一 reset/clean = 測試瞬間炸** = 信心建在沙堆上。
+5. **【15-pytest-runtime-regression-iter7 active 但 T15.5 未跑】**：T15.1–T15.4 全 [x] 但 T15.5「runtime ≤ 200 s 兩冷啟中位」尚 [ ]；215.x 報告未 append 雙基線數據；前輪 `e8b9ada` 已標 T-XDIST-RACE-AUDIT 完成但 runtime 紅線文件化驗收 = 紙上閉環，非數字閉環。
+
+### 建議的優先調整（重排 program.md）
+
+1. **新 P0 首位：T-WORKTREE-FLUSH-LOOP5**（30 min；ACL-free；治理底線）— 把 13 檔 worktree 改動分 3 語意 commit 入版：(a) `chore(openspec): promote 13-cli-fat-rotate-v3 + 14-13-acceptance-audit to archive`（rm active dirs + add archive copies + INDEX.md + specs/audit/spec.md merge + 13 tasks.md final tick）；(b) `fix(tests): xdist HOME env / set_state_dir(None) isolation residual cleanup`（8 檔 tests/ + conftest）；(c) `refactor(cli): T13.1e finalize utils.py shim removal`（D src/cli/utils.py）。驗收：`git status` clean（扣 .copilot session）；`spectra status` 0 active 13/14；3951 passed 不退。
+2. **新 P0：T15.5-MEDIAN-COLD-START**（45 min；ACL-free；紅線真閉環）— 跑 2 次冷啟動 `python -m pytest tests/ -q --ignore=tests/integration -n auto`（每次前 `pyclean` + 清 `__pycache__`），記中位數到 `docs/pytest-runtime-regression-iter7.md` Bisection results；若 median > 200 s 則開新 bisection step（候選：jieba initial load / chromadb import / pytest-xdist 14 worker boot）。**驗收**：2 次冷啟中位 ≤ 200 s + 文件追加；T15.5 [x]；archive 15-iter7。
+3. **新 P0 升級：T-OPENSPEC-PROMOTE-13-14-FLUSH**（10 min；T-WORKTREE-FLUSH-LOOP5 (a) 子任務）— 從 P1 「partially done」升 P0 並併入 (a)；不再分項拖。
+4. **新 P1 維持：T-COPILOT-WRAPPER-HOST-PATCH**（host SLA 48 h；上升至 host Admin）— 繼續主動上升而非凍結；建議下輪追加上升訊息錨點到 HANDOFF.md（已存在則 timestamp 更新）。
+5. **新 P2：T-REGULATION-MAPPING-SPEC**（30 min；ACL-free）— `kb_data/regulation_doc_type_mapping.yaml` 144 行新資料補 mini-proposal `openspec/changes/16-regulation-doc-type-mapping/` + 1 個 yaml schema roundtrip test。
+
+### 下一步行動（最重要 3 件）
+
+1. **T-WORKTREE-FLUSH-LOOP5（含 promote 13-14 flush）**（30 min；ACL-free；治理底線；不入版 = 工作量 0）
+2. **T15.5-MEDIAN-COLD-START**（45 min；ACL-free；紅線 v9 真閉環）
+3. **HANDOFF.md timestamp 更新 + host 上升訊息錨點**（10 min；ACL-free；wrapper noise 第 7 輪上升）
+
+### 其他維度回顧（caveman）
+
+- **Spectra 規格對齊**：✅ 14 specs 已落 `openspec/specs/`（audit / auto-commit / citation / except-safety / fat-rotate / fork / kb-governance / quality-gate / regression-repair / sources / test-local-binding 11 + 3 早期）；archive 14 條 + 1 待 archive (13/14)；偏離點 = active 13/14 未挪。
+- **程式碼品質**：bare-except 3（全 noqa）；fat green；CLI fat-rotate-v3 14/14 task 全閉；冰山耦合 4 高風險 import 已切公共介面（lint/cite/verify/history_store）。code smell 殘留 = `regulation_doc_type_mapping.yaml` 144 行新資料無 schema 無 reader 無測。
+- **測試覆蓋**：unit 3951 passed；integration 17 passed / 18 skipped (live-source gate)；KB CLI / cite_cmd / web_preview / meeting 多輪 e2e 全有；**邊界**：xdist race 上輪治完（mix_stderr / source_url fixture / set_state_dir(None) 全修），本輪 0 errors。
+- **架構健康度**：CLI 神物件 utils.py 已死（T13.1e 完）；工作量單峰分佈消失 → 雙峰但 fat ≥400 = 0；過度耦合 = `_shared/` 三介面（citation_format / lint_invocation / verify_service / history_store）已穩定。
+- **安全性**：API auth gate 已落（test_api_auth.py + integration 7 passed）；hard-coded secrets = 0（.env example 已 audit）；`subprocess.run` 全部 list-form（cli_ast_audit 過）；明顯漏洞 = 0。
+
+> [PUA 自審] 跑了測（3951/224.65 s 三證落地）／看了源（13 active openspec dir + sensor 公式 + git log 近 20 commit）／對了帳（auto_commit 56.7% / runtime 224.65 s vs 200 s 紅線）／抓了治理斷層（promote 半閉 + worktree 滯留 + T15.5 紙上閉環）／排了下三件 —— 閉環。**底層邏輯：「實作完成」≠「落版完成」≠「驗收完成」，三者必須同步否則就是漂白。**

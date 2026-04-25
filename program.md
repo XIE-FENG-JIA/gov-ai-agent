@@ -9,7 +9,7 @@
 > - ✅ **bare-except 3/3**（noqa/compat 全意保留）；fat ≥400=0 / yellow 6 / max=375（vs v7.9-sensor max 386 → -11 行）
 > - ✅ **corpus 400**；engineer-log 102 / program.md 193 / results.log 737
 > - ⚠️ **wrapper noise 仍佔 git log**：近 50 commit 36 條 chore(auto-engineer/copilot) = 28% semantic ratio；含 8 條 AUTO-RESCUE → T-COPILOT-WRAPPER-HOST-PATCH P1 連 6+ 輪未動，T-WORKTREE-COMMIT-FLUSH-MERGED P0 SLA < 24hr
-> - ✅ **T-CLI-FAT-ROTATE-V3 Track A/B/C 13/14**（T13.1e shim 仍 `[ ]` → T13.7 premature 已被 change-14 記）
+> - ✅ **T-CLI-FAT-ROTATE-V3 Track A/B/C 14/14**（T13.1e shim 已刪；T13.7 premature gap 已實質補閉）
 >
 > **v7.9-sensor 後段（2026-04-26 00:15；HEAD + sensor + pytest + git log 四源獨立 cold-start）**：
 > - ✅ **pytest 3950 passed / 0 failed / 42.79s**（vs v7.9 baseline 45.78s — runtime −6.5%；用例 +1）
@@ -28,6 +28,12 @@
 > 3. ✅ **T-BARE-EXCEPT-AUDIT 刀 9**（10 處一刀清；49→39；797 passed）
 
 > **v7.3–v7.7 sensor/header 歷史已封存**：詳見 [docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)。
+
+### P0（2026-04-26 05:55 /pua 深度回顧新增；本輪必動 — 治理底線 + T15.5 紅線真閉環）
+
+- [ ] **T-WORKTREE-FLUSH-LOOP5**（P0；30 min；ACL-free；治理底線）— `git status` 仍 13 檔未入版（M openspec×3 + M tests×7 + M conftest + D src/cli/utils.py + ?? archive×2 dirs）。分 3 語意 commit：(a) `chore(openspec): promote 13/14 to archive`（rm active 13/14 dirs + add `openspec/changes/archive/2026-04-26-13-cli-fat-rotate-v3/` 與 `2026-04-26-14-13-acceptance-audit/` + INDEX.md + specs/audit/spec.md merge + 13 tasks.md final tick）；(b) `fix(tests): xdist HOME / set_state_dir(None) residual cleanup`（tests/conftest.py + tests/test_cli_commands.py + test_cli_state_dir.py + test_cli_utils_tmp_cleanup.py + test_config_tools_extra.py + test_edge_cases.py + test_stats_cmd.py）；(c) `refactor(cli): T13.1e finalize utils.py shim removal`（D src/cli/utils.py，shim 已被 utils_io 完全取代）。驗收：`git status` clean（扣 .copilot session）；`ls openspec/changes/` 僅剩 `15-pytest-runtime-regression-iter7` + `archive/`；3951 passed / fat green / bare-except 3 不退。**不入版 = 工作量歸零**。
+- [ ] **T15.5-MEDIAN-COLD-START**（P0；45 min；ACL-free；紅線 v9 真閉環）— LOOP closure red-line v9 要求 two-baseline median ≤ 200 s。本輪 -n auto 實測 224.65 s（超 12.3%）。對策：(a) 兩次冷啟動 `python -m pytest tests/ -q --ignore=tests/integration -n auto`，每次前清 `__pycache__` + `.pytest_cache`；(b) 結果 append 到 `docs/pytest-runtime-regression-iter7.md` Bisection results；(c) 若 median > 200 s 開新 bisection step（候選：jieba initial load / chromadb import / xdist 14 worker boot variance）。驗收：median ≤ 200 s + 雙跑數據文件化 + T15.5 [x]；通過後 archive 15-iter7 至 `openspec/changes/archive/2026-04-26-15-pytest-runtime-regression-iter7/`。
+- [→merged] **T-OPENSPEC-PROMOTE-13-14-FLUSH**（P0；併入 T-WORKTREE-FLUSH-LOOP5 (a) 子任務；2026-04-26 05:55 升級）— 從上輪 P1 「partially done」直升 P0 並合併執行；不再分項拖。
 
 ### P0（v7.9-final 後段 /pua 深度回顧新增；漂白第七型 / 工作量黑洞 / 本輪必動）
 
@@ -77,8 +83,7 @@
 
 ### P1（v7.9-final 後段 /pua 新增 — fat-rotate 真閉環 + openspec promote）
 
-- [ ] **T13.1e — utils.py shim 移除**（P1；10 min；ACL-free；`openspec/changes/13-cli-fat-rotate-v3/tasks.md` 唯一 `[ ]`）— Track A 收尾：`rg "from src.cli.utils import|from .utils import" src/` = 0 後刪 `src/cli/utils.py` shim；驗收 `python -m pytest tests/ -q --ignore=tests/integration` exit 0；T13.7 才算誠實閉環（目前 [x] 但子任務未盡 = premature audit gap，已被 14-13-acceptance-audit 記錄）。
-- [ ] **T-OPENSPEC-PROMOTE-13-14**（P1；20 min；ACL-free）— `openspec/changes/` 仍剩 `13-cli-fat-rotate-v3` + `14-13-acceptance-audit` 兩個 active；對應 spec deltas 套入 `openspec/specs/`、change folder 移到 `openspec/changes/archive/`、補 archive INDEX；驗收 `ls openspec/changes/` = `archive/` 唯一。
+- [→P0] **T-OPENSPEC-PROMOTE-13-14**（2026-04-26 05:55 升級為 P0 並併入 T-WORKTREE-FLUSH-LOOP5 (a)；本條保留作回溯）— ACL 已解；不再 host-blocked；本輪需直接 `git rm -r openspec/changes/13-cli-fat-rotate-v3 openspec/changes/14-13-acceptance-audit` + add archive copies + commit。
 - [ ] **T-REGULATION-MAPPING-SPEC**（P2；30 min；ACL-free）— 工作樹 `kb_data/regulation_doc_type_mapping.yaml` 144 行新資料無 spec 無 reader 無測；補 mini-proposal `openspec/changes/15-regulation-doc-type-mapping/` + 1 個 yaml schema roundtrip test 防漂移；隨 T-WORKTREE-FLUSH-LOOP4 (d) 一同入版。
 
 ### P1（v7.9-final 02:32 /pua 新增 — fat-rotate 治本推進）
@@ -94,7 +99,7 @@
 
 #### v7.9-sensor 終段 01:05 /pua 深度回顧新增 — CLI 神物件 / wrapper 治本 / CI 遠端驗
 
-- [x] **T-CLI-FAT-ROTATE-V3**（2026-04-26 閉；P1；ACL-free；openspec only）— `openspec/changes/13-cli-fat-rotate-v3/` proposal + tasks 落地：(a) `utils.py` 拆 utils_io/utils_display/utils_text 三模組逐 importer 切換（T13.1a–e）；(b) 4 高風險 import 改公共介面：`lint_service`/`cite_service`/`verify_service`/`history_store`（T13.2–T13.5）；(c) 4 micro 合併（T13.6a–d）；(d) 回歸門（T13.7）；**本輪實作閉環（2026-04-26）：T13.1b — `utils_io.py`（306 行）建立，26 個 importer 全切，`src.cli.utils` 降為 51 行 shim；T13.1c — `utils_display.py`（11 行）Console singleton；T13.1d — `utils_text.py` placeholder，utils.py ≤ 80 行，fat-gate OK red=0 yellow=6；T13.6a — `highlight_cmd.py`（43 行）合入 `search_cmd.py`，刪源檔；T13.6b — `number_cmd.py`（44 行）合入 `stamp_cmd.py`，`gov-ai number` 仍由 main 註冊；T13.6c — `replace_cmd.py`（44 行）合入 `redact_cmd.py`，backup 失敗測試改 patch 新位置；T13.6d — `batch_io.py`（22 行）合入 `batch_runner.py`，persist `__init__` 僅 re-export；全量 3951 tests passed ✅，T13.6b/c targeted 44 passed ✅，fat-gate red=0 yellow=6 ✅；**T13.7 回歸門 PASS（3951 passed, fat red=0, HIGH=0）✅**；待辦：T13.1e shim 清除、T13.2–T13.5 iceberg 解耦。
+- [x] **T-CLI-FAT-ROTATE-V3**（2026-04-26 閉；P1；ACL-free；openspec only）— `openspec/changes/13-cli-fat-rotate-v3/` proposal + tasks 落地：(a) `utils.py` 拆 utils_io/utils_display/utils_text 三模組逐 importer 切換（T13.1a–e）；(b) 4 高風險 import 改公共介面：`lint_service`/`cite_service`/`verify_service`/`history_store`（T13.2–T13.5）；(c) 4 micro 合併（T13.6a–d）；(d) 回歸門（T13.7）；**本輪實作閉環（2026-04-26）：T13.1b — `utils_io.py`（306 行）建立，26 個 importer 全切，`src.cli.utils` 降為 51 行 shim；T13.1e — 切換剩餘測試 importer 到 `utils_io` 並刪除 `src/cli/utils.py`，直接 importer = 0；T13.1c — `utils_display.py`（11 行）Console singleton；T13.1d — `utils_text.py` placeholder，utils.py ≤ 80 行，fat-gate OK red=0 yellow=6；T13.6a — `highlight_cmd.py`（43 行）合入 `search_cmd.py`，刪源檔；T13.6b — `number_cmd.py`（44 行）合入 `stamp_cmd.py`，`gov-ai number` 仍由 main 註冊；T13.6c — `replace_cmd.py`（44 行）合入 `redact_cmd.py`，backup 失敗測試改 patch 新位置；T13.6d — `batch_io.py`（22 行）合入 `batch_runner.py`，persist `__init__` 僅 re-export；全量 3951 tests passed ✅，T13.6b/c targeted 44 passed ✅，fat-gate red=0 yellow=6 ✅；**T13.7 回歸門 PASS（3951 passed, fat red=0, HIGH=0）✅**；T13.1e 補驗 `python -m pytest tests -q --ignore=tests/integration` = 3951 passed / 231.91s。
 - [ ] **T-COPILOT-WRAPPER-HOST-PATCH**（P1；host/Admin SLA 48 hr）— `docs/auto-commit-host-action.md` 升 actionable handoff：(a) supervise interval 5 min → 30 min；(b) squash window 同窗口 commit 合併；(c) message 模板強制 `feat|fix|refactor|docs|test|chore` 真語意。驗收 SLA：48 hr 內 sensor `auto_commit_rate ≥ 70%`、`git log -n 30 --format=%s` 0 條 `chore(auto-engineer): patch` / 0 條 `chore(copilot): batch`。**6+ 輪在 P2/P1 凍結 = 3.25 累計**，本輪不再凍。
 - [x] **T-CI-REMOTE-VERIFY**（2026-04-26 閉；P1；ACL-free）— `git remote -v` = empty（無 origin）；`docs/integration-ci-first-run.md` 末尾已補 "local-only verification, GitHub Actions integration job pending remote setup" 標記；升 P0 開 **T-GITHUB-REMOTE-SETUP**。
 
