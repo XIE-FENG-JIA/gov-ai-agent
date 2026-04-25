@@ -706,3 +706,4 @@ PASS T-INTEGRATION-CI-WIRE        # 2026-04-25 23:15 added integration job to ci
 [2026-04-26 02:03:49] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=00d9b0e) — 若先前 FAIL 是 ACL denied，此條即救援對應 | .copilot-loop.state.json,docs/acl-v3-rca-handoff.md,docs/cli-module-audit.md,docs/integration-ci-first-run.md,engineer-log.md,openspec/changes/13-cli-fat-rotate-v3/.openspec.yaml
 [2026-04-26 02:05:32] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=694c585) — 若先前 FAIL 是 ACL denied，此條即救援對應 | results.log
 [2026-04-26 02:14:14] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=20f437b) — 若先前 FAIL 是 ACL denied，此條即救援對應 | results.log
+[2026-04-26 02:15:56] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=4ad4da8) — 若先前 FAIL 是 ACL denied，此條即救援對應 | results.log
