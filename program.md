@@ -23,6 +23,7 @@
 
 - [x] **T-OPENSPEC-PROMOTE-AUDIT**（2026-04-25 閉；P0；ACL-free）— 驗證 specs 已 promote（14 spec files in openspec/specs/）；移除 11 個重複 active change folders（archive 早已有 date-prefixed copy）；建立 `openspec/changes/archive/INDEX.md`（11 條目全齊）；寫 `docs/openspec-promotion-audit-202604.md` 收尾報告。驗收：`ls openspec/changes/` 僅剩 `12-commit-msg-noise-floor` ✅；`openspec/specs/` 14 spec files（≥10）✅；INDEX.md 建立 ✅。
 - [x] **T-LITELLM-MOCK-CONTRACT-FIX**（2026-04-25 20:36 閉；P0；ACL-free）— 實測 litellm mock contract 已對齊目前依賴；`python -m pytest tests/test_robustness.py -W error::UserWarning -q` = 299 passed / 0 warning，未重現 `ModelResponse / Choices / Message` pydantic schema warning；全量非 integration `python -m pytest -q --ignore=tests/integration --tb=line` = 3949 passed。
+- [ ] **P0-WRITER-FALLBACK-REGRESSION**（2026-04-25 21:36；P0；worktree fix ready / commit blocked）— 已在工作樹修復 writer fallback regression：KB `Exception` 降級為無範例 legacy draft；open-notebook runtime fallback 補 `_last_open_notebook_diagnostics`（service/mode/used_fallback/fallback_stage/fallback_reason）。驗證 targeted 10 passed；全量非 integration `python -m pytest -q --ignore=tests/integration --tb=line` = 3949 passed；但 git commit 被 `.git/index.lock: Permission denied` / `.git` write PermissionError 阻斷。
 
 ### P0（v7.8b 18:35 反思新增；本輪必動 45 min）
 

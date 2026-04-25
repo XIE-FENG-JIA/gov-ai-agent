@@ -8,6 +8,8 @@ from src.core.llm import LLMError
 logger = logging.getLogger(__name__)
 console = Console()
 
+_RECOVERABLE_KB_ERRORS = (LLMError, RuntimeError, OSError, ValueError, Exception)
+
 _WRITER_SYSTEM_PROMPT = """\
 You are an expert Taiwan Government Document Writer.
 Write a high-quality document draft based on the User Requirement and Reference Examples.
@@ -167,7 +169,8 @@ class WriterRewriteMixin:
         query = f"{requirement.doc_type} {requirement.subject}"
         try:
             examples = self._search_examples(query)
-        except (LLMError, RuntimeError, OSError, ValueError) as exc:
+        except _RECOVERABLE_KB_ERRORS as exc:
+            logger.warning("WriterAgent knowledge search failed; continuing without examples: %s", exc)
             examples = []
 
         if examples:

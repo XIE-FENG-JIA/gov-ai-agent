@@ -176,6 +176,13 @@ class WriterAskServiceMixin:
             console.print(f"[yellow]open-notebook 不可用，退回 legacy writer：{exc}[/yellow]")
             return None
         except (RuntimeError, OSError, ConnectionError) as exc:
+            self._last_open_notebook_diagnostics = {
+                "service": "open-notebook",
+                "mode": runtime_mode,
+                "used_fallback": "true",
+                "fallback_stage": "runtime",
+                "fallback_reason": str(exc),
+            }
             console.print(f"[yellow]open-notebook 執行失敗，退回 legacy writer：{exc}[/yellow]")
             return None
 
