@@ -595,3 +595,4 @@ PASS T-SYNTHETIC-AUDIT-SCRIPT 2026-04-25 scripts/audit_synthetic_flag.py created
 [2026-04-25 18:09:28] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=1cf654e) — 若先前 FAIL 是 ACL denied，此條即救援對應 | program.md,results.log
 [2026-04-25 18:16:31] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=482727b) — 若先前 FAIL 是 ACL denied，此條即救援對應 | docs/archive/program-history-202604k.md,program.md,results.log,scripts/squash_checkpoint_window.py,tests/test_squash_checkpoint_window.py
 [2026-04-25 18:17:35 +0800] | P2-PROGRAM-MD-SOFT-CAP | PASS | 封存 v7.3–v7.7 sensor/header 至 docs/archive/program-history-202604k.md；program.md 280→119 行，sensor hard=[]，program_md soft cap 清除；pytest tests/test_sensor_refresh.py tests/test_dedupe_results_log.py -q = 21 passed。
+[2026-04-25 18:19:39] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=37cd069) — 若先前 FAIL 是 ACL denied，此條即救援對應 | docs/squash-checkpoint-plan.md,results.log
