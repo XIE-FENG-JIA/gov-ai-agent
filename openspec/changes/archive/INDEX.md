@@ -15,8 +15,9 @@ This index records all completed and archived openspec change sets.
 | 09-fat-rotate-iter3 | 2026-04-25 | 肥大模組旋轉第三輪（kb/rebuild 572→190 / datagovtw 410→split / routes/agents 397→split；全 ≤300 lines） | T9.1–T9.5 | 100% (5/5) |
 | 10-test-local-binding-audit-systematic | 2026-04-25 | 測試 local binding 系統化稽核（audit_local_binding.py AST / rebind_local helper / CONTRIBUTING mock rules / taxonomy doc） | T10.1–T10.6 | 100% (6/6) |
 | 11-bare-except-iter6-regression | 2026-04-25 | 裸 except iter6 回歸修復（writer/editor/fact_checker typed bucket 加 RuntimeError/ConnectionError；3949 passed） | T11.1–T11.5 | 100% (5/5) |
-
 | 12-commit-msg-noise-floor | 2026-04-25 | 提交訊息噪音下限（commit_msg_lint reject pseudo-semantic / wrapper 升級 chore(auto-engineer): patch 格式 / 30-commit 驗證 0 violations） | T12.1–T12.5 | 100% (5/5) |
+| 13-cli-fat-rotate-v3 | 2026-04-26 | CLI fat-rotate v3（utils god-object split / Track B shared services / micro-file mergers / full regression gate） | T13.1a–T13.7 | 100% (14/14) |
+| 14-13-acceptance-audit | 2026-04-26 | Change 13 acceptance audit（gap evidence / remediation paths / red-line v8 wrapper structural payload） | T14.1–T14.5 | 100% (5/5) |
 
 ## Notes
 

@@ -21,7 +21,7 @@
   Validation: `python -m pytest tests/test_cli_commands.py -q` passes; `wc -l src/cli/utils.py` ≤ 80.
   Commit: `refactor(cli): extract utils_text from utils.py (fat-rotate-v3 C)`
 
-- [ ] **T13.1e** — Delete `src/cli/utils.py` after confirming zero direct importers remain.
+- [x] **T13.1e** — Delete `src/cli/utils.py` after confirming zero direct importers remain.
   Requirements: `grep -rn "from src.cli.utils import\|from .utils import" src/cli/` = 0 results.
   Validation: `python -m pytest tests/ -q --ignore=tests/integration` exits 0.
   Commit: `refactor(cli): remove utils.py shim after full importer migration`
