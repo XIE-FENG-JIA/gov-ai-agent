@@ -144,6 +144,15 @@ rewritten under `P0.S-REBASE-APPLY` (legacy frozen).
 - v7: agent commit-message authoring (auto-engineer / copilot / future)
   must run `commit_msg_lint.py` pre-validation **inside** the wrapper
   runtime — git hooks are blocked under current ACL posture.
+- **v8 (LOOP5, 2026-04-26): wrapper template structural payload
+  requirement.** Every wrapper-emitted commit subject MUST contain at
+  least one of: explicit task tag (`T-XXX`/`Pn.X`/`EPIC<N>`), concrete
+  module / file path, or meaningful verb-object pair. Generic fallback
+  (`patch`, `<N> files`, `AUTO-RESCUE` alone) — wrapper aborts cycle
+  rather than emit. Breaks the cat-and-mouse where every new fallback
+  shape becomes the next sensor `_CHECKPOINT_NOISE_RE` target.
+  See `docs/change-13-acceptance-audit.md` Gap 3 for v0→v4 escalation
+  lineage and Spectra change `14-13-acceptance-audit`.
 
 ---
 
