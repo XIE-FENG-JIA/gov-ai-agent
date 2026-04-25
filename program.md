@@ -22,7 +22,7 @@
 ### P0（v7.8c 20:08 /pua 深度回顧新增；治理優先；本輪必動）
 
 - [ ] **T-OPENSPEC-PROMOTE-AUDIT**（30 min；P0；2026-04-25 20:08；ACL-free）— `openspec/changes/` 12 個有 11 個 100% / 1 個 4/5（12-commit T12.5），但 `openspec/changes/archive/` 為空 + `openspec/specs/` 僅 3 個（sources / open-notebook / citation-tw-format）；spec deltas 從未 promote → 規格漂白第三型。執行：(a) 對每個 100% change，將 `specs/<capability>/spec.md` 的 deltas 套入 `openspec/specs/<capability>.md`；(b) 整個 change folder 移到 `openspec/changes/archive/<id>/`；(c) 補 `openspec/changes/archive/INDEX.md` 條目（id / 完成日 / 摘要）；(d) 更新 `.spectra.yaml` 對齊；(e) 寫 `docs/openspec-promotion-audit-202604.md` 收尾報告。**驗收**：`ls openspec/changes/` 僅剩 1 active（12-commit），`openspec/specs/` 從 3 → ≥10，`spectra status` 全綠。**規格不是 source of truth = 任務帳面閉環的漂白**。
-- [ ] **T-LITELLM-MOCK-CONTRACT-FIX**（20 min；P0；2026-04-25 20:08；ACL-free）— `tests/test_robustness.py::TestProductionReadinessIteration2::test_middleware_logs_non_health_requests` + `test_middleware_skips_health_check_logging` 跑出 pydantic warning：`Expected 10 fields but got 5/6`（Message）+ `Expected StreamingChoices`（Choices）；mock 結構偏離 litellm 升版後 schema，未來升版會引爆。修：對齊 litellm `ModelResponse / Choices / Message` 真實欄位（10 個）+ 用 `StreamingChoices` 而非 `Choices`；驗收：`python -m pytest tests/test_robustness.py -W error::UserWarning -q` 全綠 0 warning。**未顯化的技術債 = 未來 P0**。
+- [x] **T-LITELLM-MOCK-CONTRACT-FIX**（2026-04-25 20:36 閉；P0；ACL-free）— 實測 litellm mock contract 已對齊目前依賴；`python -m pytest tests/test_robustness.py -W error::UserWarning -q` = 299 passed / 0 warning，未重現 `ModelResponse / Choices / Message` pydantic schema warning；全量非 integration `python -m pytest -q --ignore=tests/integration --tb=line` = 3949 passed。
 
 ### P0（v7.8b 18:35 反思新增；本輪必動 45 min）
 
