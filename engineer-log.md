@@ -235,4 +235,78 @@
 
 > [PUA 自審] 跑了測（3951 passed）/ 對了 sensor（20% 真語意 / hard=0 / yellow=6 max=375）/ 看了 git log（30 commit 6 真語意）/ 對了工作樹（13 modified + 7 untracked / 5 件 P0/P1 待入版）/ 抓了治理斷層（ACL-V3 + worktree-flush + cli 神物件）/ 排了 5 個重排項——閉環。沒有「probably / 可能」，全部三證落地。
 
+---
+## 深度回顧 2026-04-26 02:29 — 技術主管近 5 輪根因分析（v7.9-final；Copilot 主導）
+
+### 近 5 輪快照（results.log 2026-04-26 最終段交叉）
+| 輪次 | 核心 task | 結果 | 備註 |
+|------|-----------|------|------|
+| R-1 (22:35) | T-COMMIT-NOISE-PATCH-CLOSE / v7.9 /pua 深度回顧 | ✅/分析 | 抓漂白第三型；sensor 20%（=真實值首度揭露） |
+| R-2 (23:08) | T-OPENSPEC-PURPOSE-BACKFILL / T-LITELLM-WARNING-CLOSE / T-INTEGRATION-CI-WIRE | ✅×3 / commit FAIL | 三件技術全 PASS；git commit 100% FAIL |
+| R-3 (00:00) | T-COPILOT-NOISE-PATCH / T-FAT-PRE-EMPT-CUT / T-CLI-COUPLING-AUDIT | ✅×3 / commit FAIL | 3 件 P0 PASS；ACL-V2-VERIFY FAIL（空 commit 爆） |
+| R-4 (00:51) | T-ACL-V3-RCA / T-WORKTREE-COMMIT-FLUSH | ❌×2 | stale index.lock 刪除 Access denied；修法入錯層（lib/common.sh）未生效 |
+| R-5 (01:19) | T13.1b/c/d / T13.6a / T-CLI-FAT-ROTATE-V3 開單 | ✅×5 / BLOCKED-ACL | utils.py 拆 3 模組全過；T-GITHUB-REMOTE-SETUP / T-ACL-V3-HOST-VERIFY 均 BLOCKED |
+
+### 反覆失敗 task 及根因
+
+1. **git commit/add（5 輪 100% FAIL，結構性）**：`.git/index.lock` stale 0-byte lock + DENY ACL 雙重卡。ACL-V2 宣告 DEPLOYED（common.sh:803），但 respawn 後 codex 仍碰 `.git`；stale lock 本身 `del` 亦 Access denied — 是**雙重 block，不是單一 ACL 問題**。每次 5 件技術成果全部無法入版，git blame 看不到任何痕跡。
+2. **T-ACL-V2/V3-VERIFY 假閉再開（連 3 輪）**：v7.9 22:47 宣告閉環 → 00:51 空 commit 立即重現失敗 → T-ACL-V3-RCA FAIL → T-WORKTREE-COMMIT-FLUSH FAIL。根因：「DEPLOYED 但未 VERIFIED」；修法驗收視窗僅靠 git log 觀察，未強制執行空 commit 探針。
+3. **commit-noise 漂白接力（四型、ROI = 0）**：Checkpoint→patch→`chore(copilot): batch`→下一型，每補一洞 wrapper 換 prefix。repo-side lint 已極限；rolling 30-commit 真語意率 20%（6/30）。**根治在 host-side supervise interval（5→30 min + squash window），6+ 輪零進展是工程錨點下錯**。
+
+### 優先序需調整（3 點）
+
+1. **T-ACL-V3-HOST-VERIFY 應明確標 owner=host Admin + SLA 24hr**：現在列 BLOCKED-ACL 但無 SLA；工作樹 5 件 P0 懸空，每過一輪增加衝突風險。
+2. **T-GITHUB-REMOTE-SETUP 升 P1**：本機無 origin remote，CI integration job 從未真跑；integration 8→9 檔的「閉環」全是本機自證，e2e 信心建立在沙盤上。應在 T-WORKTREE-COMMIT-FLUSH 之後立即執行。
+3. **T13.2–T13.5（cli 跨群組 import 治本）比 T13.1 後半更急**：utils.py 拆模組（T13.1b-d）已完成，但 4 個高風險跨群組 import（generate/export 借 cite_cmd 私有符號等）才是冰山耦合的真正炸彈；若只做 T13.1 後半段，開票和還債不在同一層。
+
+### 隱藏 blocker（本輪新揭露）
+
+- **stale index.lock 0-byte 是獨立 block**：即使 ACL DENY ACE 被 Admin 移除，index.lock 本身無法刪（sandbox policy 阻）；需 Admin 以 elevated token 單獨 `del /f .git\index.lock`，與 ACL 清除是兩步、不能合一。
+- **無 origin remote = CI e2e 永遠自循環**：T-INTEGRATION-CI-WIRE 入 ci.yml，但 repo 從未 push 到 GitHub，Actions 從未觸發。下一輪若不先解決 remote，integration 信心指標持續虛報。
+
+---
+## 反思 2026-04-26 02:32 — /pua 技術主管深度回顧（v7.9-final 增段；🟠 Alibaba 味；caveman）
+
+### 近期成果（HEAD 三證自審）
+- pytest 非 integration **3951 passed / 42.83s**（持續 < 50s）
+- pytest integration `GOV_AI_RUN_INTEGRATION=1` **16 passed / 18 skipped / 0 failed / 215.85s**（live-source gate 正確 skip）
+- bare-except **3 / 3 檔**（全 noqa/compat 故意；hard 紅線清零保持）
+- fat ≥400 = 0 / yellow **6** / max=375（ratchet ok 6/6 375/375）
+- corpus 400 / openspec 11 spec promote + Purpose backfill / changes/ 僅 archive + 13-cli-fat-rotate-v3 開單
+- 工作樹近 clean（只剩 `M results.log`）— 上輪 5 件 P0 已被 admin AUTO-RESCUE 入版
+- security 掃描：`src/` 無 hardcoded secret / 無 `eval/exec/shell=True/pickle.load/os.system` 高風險呼叫（htmx.min.js minified eval = false positive）
+
+### 發現的問題（連 N 輪未斷根 + 本輪新型）
+
+1. **【漂白第五型】litellm pydantic warning 假閉環二次再現**：T-LITELLM-WARNING-CLOSE 在 v7.8c 用 `-W error::UserWarning` cherry-pick PASS、v7.9 22:35 改 MockLLMProvider 限定 `tests/test_robustness.py` PASS。本輪 integration 跑 `tests/integration/test_meeting_multi_round.py` 仍噴 **4× PydanticSerializationUnexpectedValue**（Expected 10 fields got 6: Message + Expected StreamingChoices）。**閉環只蓋 unit 不蓋 integration，scope 限定式驗收 = 漂白第五型**。program.md [x]、sensor 不擋、CI 不爆 → 表面綠燈、實質續流。
+2. **sensor 真語意率 36.7% vs git log 文本掃描 76.7% 噪音**：本輪 02:03/02:05/02:14/02:15/02:24 連 5 條 `chore(auto-engineer): AUTO-RESCUE 1 files (results)`；rolling 30-commit 23 條 noise（auto-engineer patch 14 + AUTO-RESCUE 5 + copilot batch 3 + 54-files admin batch 1）= 真噪 **76.7%**。sensor reject patch/batch 但 **AUTO-RESCUE + admin batch 仍計合規** → 36.7% 仍是樂觀偏差。**漂白第六型**：救援也算合規。
+3. **ACL host action 4 件 P0 全 BLOCKED 連 3 輪**：T-GITHUB-REMOTE-SETUP / T-ACL-V3-HOST-VERIFY / T-WORKTREE-COMMIT-FLUSH / T-ACL-V2-VERIFY 全 BLOCKED-ACL；docs/acl-v3-rca-handoff.md 寫了但 host owner 未動工。**抓手錯位：repo-side agent 把 host blocker 列 4 條 = 看板假活躍**。
+4. **CI 真跑仍未驗證**：本機無 origin remote → T-INTEGRATION-CI-FIRST-RUN-VERIFY 只本機等效；GitHub Actions integration job 從未觸發。**寫了 ≠ 跑了 ≠ 過了** 連 4 輪未閉環。
+5. **fat-rotate v3 治本進度 4/14**：T13.1a–d + T13.6a 完成（utils.py 神物件已拆 / highlight 合併 search）；T13.1e shim 清除、T13.2–T13.5 4 高風險 iceberg 解耦、T13.6b–d、T13.7 regression gate 全 pending。**冰山耦合本體未動**。
+6. **integration runtime 215s vs unit 42s = 5×**：每輪 integration 驗收 4 分鐘成本高 → 想跳過驗收 → 漂白第五型再生。
+7. **engineer-log 主檔 267 行 / hard cap 300**：本輪追加後將達 ~310 行 = T9.6-REOPEN-v9 必觸發。
+
+### 優先序需調整（重排 program.md）
+
+1. **新 P0：T-LITELLM-WARNING-CLOSE-V2**（reopen；30 min；ACL-free；漂白第五型斷根）— 把 mock 注入擴大到 integration meeting routes，conftest fixture 強制 `mock_llm` autouse for `tests/integration/test_meeting_*`；驗收 `GOV_AI_RUN_INTEGRATION=1 pytest tests/integration -W error::UserWarning -q` exit 0。
+2. **新 P0：T-SENSOR-RESCUE-EXCLUDE**（10 min；ACL-free；公式誠實化）— `scripts/sensor_refresh.py _CHECKPOINT_NOISE_RE` 補 `chore\(auto-engineer\):\s*AUTO-RESCUE` + `chore\(auto-engineer\):\s*\d+\s*files`；驗收 sensor 即時跌至真實 ~20%，回歸測試覆蓋。
+3. **保 P0 + 升 owner：T-WORKTREE-COMMIT-FLUSH 合併 4 件**（host SLA 24hr）— 4 件 ACL-blocked P0 統一打包 1 條 host action，明確 SLA 24hr；超期降級為 P2 凍結，避免看板假活躍。
+4. **新 P1：T-CLI-FAT-ROTATE-V3 推進 T13.2/T13.3**（45 min；ACL-free；治本）— iceberg 解耦 4 高風險 import 中先取 generate/export 借 cite_cmd/lint_cmd 私有符號 + kb/rebuild 借 verify_cmd；驗收 `python scripts/cli_ast_audit.py` 高風險 import 4→2。
+5. **新 P2：T-INTEGRATION-RUNTIME-CUT**（30 min；ACL-free）— integration 215s top-3 hot test pytest --durations=10 找出 → mock 化或拆 live/local；目標 ≤ 90s。
+6. **新 P2：T-ENGINEER-LOG-PRE-ROTATE**（5 min；ACL-free；儀式前置）— 主檔已 267 行，主動切 v7.9 三段反思至 archive 202604L.md，避免下輪硬切儀式。
+
+### 下一步行動（最重要 3 件）
+
+1. **T-LITELLM-WARNING-CLOSE-V2**（30 min；漂白第五型斷根；ROI 最高）
+2. **T-SENSOR-RESCUE-EXCLUDE**（10 min；公式誠實化；sensor 真實率回 ~20%）
+3. **T-CLI-FAT-ROTATE-V3 T13.2 推進**（45 min；冰山耦合治本；連 2 輪不動 = 永久凍結）
+
+### 隱藏 blocker（本輪揭露）
+
+- **scope 限定式驗收文化**：T-LITELLM-WARNING-CLOSE 證實「unit 閉但 integration 漏」是本專案根性 bug 而非個案。需在驗收 SOP 加「unit + integration 雙 scope 同證」硬規則，否則漂白第五型每輪再生。
+- **抓手分工不清**：4 件 host-blocked P0 由 repo-side agent 列為自己 P0 = 4 條都不能動 = sprint 容量虛胖。需明確「host owner 不動的 P0 列為 P-EXTERNAL，不佔 repo P0 配額」。
+- **integration runtime 5×unit = 治理債務的物理基礎**：runtime 不縮，每輪驗收成本 4 分鐘 → 有溫床跳過 → 漂白第五型再生。**runtime cut 是治理基礎建設**，不是優化項。
+
+> [PUA 自審] 跑了測（3951 unit + 16 integration）/ 對了 sensor（公式 36.7% / 真噪 76.7% 三證對帳）/ 抓了第五型漂白（litellm warning unit 閉 integration 漏）/ 抓了 4 件 P0 全 BLOCKED 看板假活躍 / 掃了安全（無高風險呼叫、無 hardcoded secret）/ 排了 6 個重排項——閉環。底層邏輯不在補 reject pattern，在 host owner 動 supervise + repo-side 治本 fat-rotate v3 iceberg。沒有「probably / 可能」，全部三證落地。
+
 
