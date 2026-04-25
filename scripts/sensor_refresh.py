@@ -66,6 +66,8 @@ class SensorReport:
     bare_except_top: list[tuple[str, int]] = field(default_factory=list)
     fat_files_red: list[tuple[str, int]] = field(default_factory=list)
     fat_files_yellow: list[tuple[str, int]] = field(default_factory=list)
+    fat_ratchet_ok: bool = True
+    fat_ratchet_detail: str = ""
     corpus_count: int = 0
     engineer_log_lines: int = 0
     program_md_lines: int = 0
@@ -86,6 +88,8 @@ class SensorReport:
             "fat_files": {
                 "red_over_400": self.fat_files_red,
                 "yellow_350_to_400": self.fat_files_yellow,
+                "ratchet_ok": self.fat_ratchet_ok,
+                "ratchet_detail": self.fat_ratchet_detail,
             },
             "corpus_count": self.corpus_count,
             "log_lines": {
@@ -226,10 +230,42 @@ def epic6_progress(repo: Path) -> tuple[int, int]:
     return done, total
 
 
-def build_report(repo: Path) -> SensorReport:
+def check_fat_ratchet(repo: Path, red: list[tuple[str, int]], yellow: list[tuple[str, int]]) -> tuple[bool, str]:
+    """讀 scripts/fat_baseline.json，驗證 yellow ratchet 未退步.
+
+    Returns (ok, detail_message).
+    """
+    baseline_path = repo / "scripts" / "fat_baseline.json"
+    if not baseline_path.exists():
+        return True, "no baseline (skip ratchet check)"
+    try:
+        baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return True, f"baseline unreadable ({exc}), skip"
+
+    baseline_count = baseline.get("yellow_count_max", 0)
+    baseline_max = baseline.get("yellow_max_lines", 0)
+    cur_count = len(yellow)
+    cur_max = yellow[0][1] if yellow else 0
+
+    violations: list[str] = []
+    if cur_count > baseline_count:
+        violations.append(f"yellow count {cur_count} > baseline {baseline_count}")
+    if baseline_max > 0 and cur_max > baseline_max:
+        violations.append(f"yellow max_lines {cur_max} > baseline {baseline_max}")
+    if red:
+        violations.append(f"red files {len(red)} ≥ 400 lines")
+
+    if violations:
+        return False, "; ".join(violations)
+    return True, f"ok (count={cur_count}/{baseline_count}, max_lines={cur_max}/{baseline_max})"
+
+
+
     r = SensorReport()
     r.bare_except_total, r.bare_except_files, r.bare_except_top = count_bare_except(repo)
     r.fat_files_red, r.fat_files_yellow = scan_fat_files(repo)
+    r.fat_ratchet_ok, r.fat_ratchet_detail = check_fat_ratchet(repo, r.fat_files_red, r.fat_files_yellow)
     r.corpus_count = count_corpus(repo)
     r.engineer_log_lines = count_lines(repo / "engineer-log.md")
     r.program_md_lines = count_lines(repo / "program.md")
@@ -258,6 +294,8 @@ def build_report(repo: Path) -> SensorReport:
         r.violations_hard.append(
             f"fat_file_count_red {len(r.fat_files_red)} > {_HARD_LIMITS['fat_file_count_red']}"
         )
+    if not r.fat_ratchet_ok:
+        r.violations_hard.append(f"fat_ratchet: {r.fat_ratchet_detail}")
 
     # Soft violations (only if not already hard-flagged by total)
     if (
@@ -309,6 +347,7 @@ def format_human(r: SensorReport) -> str:
 
     lines.append(
         f"- **胖檔**: red (>400) = {len(r.fat_files_red)} / yellow (350-400) = {len(r.fat_files_yellow)}"
+        f" / ratchet={'✅' if r.fat_ratchet_ok else '🔴'} {r.fat_ratchet_detail}"
     )
     if r.fat_files_red:
         for path, n in r.fat_files_red[:5]:
