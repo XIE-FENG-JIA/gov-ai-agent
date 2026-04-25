@@ -5,7 +5,7 @@
 > **v7.9-sensor 校準段（2026-04-25 21:40；HEAD + sensor + pytest 三源獨立 cold-start）**：
 > - ✅ **pytest 3949 passed / 0 failed**（`python -m pytest -q --ignore=tests/integration --tb=line`）
 > - ✅ **sensor_refresh.py exit 0**；`violations.hard = []`
-> - ✅ **bare-except 20 處 / 20 檔**（刀10+11：39→30→20；刀11 10 檔 typed bucket fix：validators/fact_checker/dependencies/config/style_checker/rewrite/strategy/knowledge/flow/ask_service）
+> - ✅ **bare-except 19 處 / 19 檔**（刀10+11+12：39→30→20→19；刀12 收斂 checklist docx 開檔例外 bucket）
 > - ✅ **fat files 0 over 400**；yellow 9 檔（validators 390 / _execution 389 / law_fetcher 377 ...）；ratchet ok (9/10, max=390)
 > - ✅ **corpus 400 ≥ target 200**
 > - ✅ **auto-commit 語意率 100%（30/30）**（T-COMMIT-T12.5-VERIFY 閉；change-12 archived；0 violations）
@@ -29,6 +29,7 @@
 - [x] **T-WORKTREE-COMMIT-LINT**（5 min；P0；2026-04-25 18:35）— `scripts/commit_msg_lint.py` + `tests/test_commit_msg_lint.py` + `program.md` 改動仍在工作樹未入版；以單一 `feat(scripts): commit_msg_lint reject pseudo-semantic checkpoint` 落版；驗證 `git status` clean（扣除 copilot session 檔）+ `python -m pytest tests/test_commit_msg_lint.py -q` ≥ 既有 case 全綠。**不入版 = 規則沒生效**。
 - [x] **T-BARE-EXCEPT-AUDIT 刀 10**（30 min；P0；2026-04-25 18:35）— sensor top-5 共 9 處：`graph/aggregator(2) / graph/refiner(2) / knowledge/realtime_lookup(2) / knowledge/fetchers/law_fetcher(2) / agents/consistency_checker(1)` → typed bucket（`LLMError|RuntimeError|OSError` 視 callsite）；目標 39 → 30；**全量 `pytest -x` 收尾**防刀 8 回歸再現。
 - [x] **T-BARE-EXCEPT-KNIFE-11**（2026-04-25 閉；P1；ACL-free）— 刀11：30→20（10 檔 typed bucket fix）：validators/fact_checker/dependencies/config/style_checker/rewrite/strategy/knowledge_routes/editor_flow/ask_service；strategy.py 補 `from src.core.llm import LLMError` import + rewrite.py 同步加入 LLMError bucket 防 test_writer_exception 回歸；全量非 integration 3949 passed ✅。
+- [x] **T-BARE-EXCEPT-KNIFE-12**（2026-04-25 閉；P2；ACL-free）— `src/cli/checklist_cmd.py` docx 讀取失敗從裸 `Exception` 改為 `OSError|ValueError|PackageNotFoundError|BadZipFile` typed bucket；bare-except 20→19；驗證 `python -m pytest tests/test_cli_commands.py -q -k checklist` = 10 passed、`python scripts/sensor_refresh.py --human` hard/soft violations=[] ✅。
 - [x] **T-AUTO-COMMIT-RATE-RECOMPUTE**（10 min；P0；2026-04-25 18:35）— `scripts/sensor_refresh.py` auto-commit 公式把 `chore(auto-engineer): checkpoint snapshot` 視為合規是樂觀偏差；改成只認 `feat|fix|refactor|docs|test|chore(scope!=auto-engineer)` 真語意；實際率回到 13–15%；驗證 `python scripts/sensor_refresh.py --human` 顯示真實率 + `tests/test_sensor_refresh.py` 加 1 條防回歸。**統計口徑放水 = 漂白第二型**。
 
 ### P1（連 2 輪延宕 = 3.25）

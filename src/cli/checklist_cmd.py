@@ -34,13 +34,15 @@ def checklist(
     if ext == ".docx":
         try:
             from docx import Document
+            from docx.opc.exceptions import PackageNotFoundError
+            from zipfile import BadZipFile
         except ImportError:
             console.print("[red]錯誤：需要 python-docx 套件。[/red]")
             raise typer.Exit(1)
         try:
             doc = Document(file)
             content = "\n".join(p.text for p in doc.paragraphs)
-        except Exception as e:
+        except (OSError, ValueError, PackageNotFoundError, BadZipFile) as e:
             console.print(f"[red]無法開啟文件：{e}[/red]")
             raise typer.Exit(1)
     elif ext in (".md", ".txt"):
