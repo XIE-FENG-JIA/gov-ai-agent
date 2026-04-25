@@ -185,7 +185,7 @@
 
 #### v7.8 反思新增 — 結構治理（連 5+ 輪同根因，需上工程而非 patch）
 
-- [ ] **T-AUTO-COMMIT-RUNTIME-SEAT**（60 min；P1；2026-04-25 v7.8 開；外掛工程）— 6+ 輪 in-repo lint/hook 全擋，根因 = `supervise.sh` / auto-engineer wrapper **out-of-repo**；本任務探勘真位點：`tasklist /v | findstr -i auto-engineer` + `where supervise` + `.auto-engineer.state.json` 的 PID 引用路徑 + `.copilot-loop.state.json`；輸出 `docs/auto-commit-runtime-seat.md` 落地實際路徑、修改點、修改方法；如完全 out-of-machine 不可達 → 降 P2 凍結並寫 limitation note。
+- [x] **T-AUTO-COMMIT-RUNTIME-SEAT**（2026-04-25 17:35 閉；P1→P2 凍結）— 已輸出 `docs/auto-commit-runtime-seat.md`：`.auto-engineer.state.json` 指向 PID 12668、`.auto-engineer.pid` 一致、`.copilot-loop.state.json` 無 formatter；`tasklist /v` 在本 shell `Access denied`、`where supervise` 無結果、repo scan 無 `auto-commit:` template。結論：commit formatter 在 external wrapper / scheduler / Admin rescue layer，repo 內不可直修；已寫 host-side patch point、validator 接法與驗收條件。
 - [ ] **T-COMMIT-NOISE-FLOOR**（30 min；P1；2026-04-25 v7.8 開）— 近 30 commit 28 條 = `auto-commit checkpoint` 噪音 93%，git blame/bisect 失效；治本兩刀：(a) 改 supervise loop interval 從 5 min → 30 min；(b) 5 min 窗口內 squash + 補語意 message 模板；驗證下個 24 hr 內 git log 噪音 ≤ 50%。
 - [ ] **T-FAT-RATCHET-GATE**（30 min；P1；2026-04-25 v7.8 開）— `scripts/check_fat_files.py` + CI hook：任一檔 ≥ 400 = exit 1；ratchet 紀錄當前 yellow 11 檔基線（max 391），不允許新增 yellow（除非同 PR 拆走一個）；驗證 `python scripts/check_fat_files.py --strict` exit 0、加入 sensor_refresh.py downstream check。
 
@@ -209,6 +209,7 @@
 ### P2（Admin/key 依賴，不能當 P1 佔坑）
 
 - [x] **EPIC6-DISCOVERY**（2026-04-24 16:58 閉；commit `33bf8ce`）— `openspec/changes/06-live-ingest-quality-gate/` proposal (43) + tasks (82) + `specs/quality-gate/spec.md` (111) = 236 行骨架；3 dimensions（volume floor / schema integrity / provenance signal）× 4 named failures（LiveIngestBelowFloor / SchemaIntegrityError / StaleRecord / SyntheticContamination）+ 5 個 T-LIQG-1..5 後續 tasks（gate 模組 + CLI + 失敗矩陣 doc）。
+- [ ] **P2-AUTO-COMMIT-EXTERNAL-PATCH**（P2；2026-04-25 凍結）— 需 elevated host-side access 修改 external wrapper / scheduler / Admin rescue commit formatter；驗收：下一輪 `git log -n 30 --format=%s` 無 `auto-commit:` / `checkpoint`，且 auto-engineer subject 通過 `scripts/validate_auto_commit_msg.py`。
 - [ ] **P2-CHROMA-NEMOTRON-VALIDATE** — `OPENROUTER_API_KEY` 已驗證有效（2026-04-25 13:56 `curl /api/v1/auth/key` 200，付費帳號 is_free_tier=false，limit=null 無限額，累計 usage=$0.000035）→ **unblocked，可執行**：跑 `gov-ai kb rebuild --only-real`（走 `nvidia/llama-nemotron-embed-vl-1b-v2:free` dim=2048 重建 ChromaDB）+ 撰寫 `docs/embedding-validation.md` 記錄向量化前後 search recall@k 對比。
 - [x] **T6.1**（2026-04-26 閉；ACL-free；注：full 30-item eval 需啟動 API server）— blind eval baseline：`docs/benchmark-baseline.md` 記錄 v2.1 快照（afterfix17 limit=2, avg_score=0.8766, success_rate=1.0）+趨勢表+完整執行步驟；`benchmark/baseline_v2.1.json` 以 afterfix17 2 題快照為底；完整 30 題需 `python scripts/run_blind_eval.py --limit 30`。
 - [x] **T6.2**（2026-04-26 閉；ACL-free）— benchmark trend：`scripts/benchmark_trend.py` 建立（append + 10% regression gate）；`benchmark/trend.jsonl` 以 8 個歷史 afterfix run 種子；`tests/test_benchmark_trend.py` = 19 passed；每次 T2.x 後可呼叫 `python scripts/benchmark_trend.py <result.json>` 追加趨勢並自動偵測 regression。
@@ -247,6 +248,7 @@
 
 ## 已完成
 
+- [x] **T-AUTO-COMMIT-RUNTIME-SEAT**（2026-04-25 17:35 閉；本輪）— 完成 runtime-seat audit 文件 `docs/auto-commit-runtime-seat.md`；確認 repo-local validators 已存在但違規 formatter 不在 repo，可執行修補點移交外部 Admin wrapper。
 - [x] **T-VALIDATORS-AUDIT**（2026-04-25 本輪閉；ACL-free）— `src/agents/validators.py` 391 行確認 yellow watch（≤400；單一 `ValidatorRegistry` 類 10 方法；只有 auditor + citation_checker 兩個 import face；`validator_registry` 模組級實例；下輪若新增方法 > 400 才觸發 fat-rotate）。
 - [x] **T-SENSOR-HEAD-REFRESH-v4**（2026-04-25 本輪閉；ACL-free）— v7.5 sensor 區塊加入 program.md；HEAD 獨立量測：bare except 2/2、fat >400 = 0、validators 391 yellow watch、engineer-log 133、program.md 238（後為 224+sensor）、auto-commit 48.1%（13/27）、pytest 3914 passed。
 - [x] **T-PROGRAM-MD-TRIM**（2026-04-25 本輪閉；ACL-free）— v7.0–v7.2 三段 sensor/header（71 行）封存至 `docs/archive/program-history-202604j.md`；主檔 294→224 行（soft cap 250 ✅）。

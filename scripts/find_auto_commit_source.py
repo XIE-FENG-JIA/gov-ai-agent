@@ -196,9 +196,45 @@ def summarize_findings(hits: Sequence[CandidateHit], scheduler: SchedulerProbe) 
     return summary
 
 
+def read_runtime_state(root: Path = Path(".")) -> list[str]:
+    state_path = root / ".auto-engineer.state.json"
+    pid_path = root / ".auto-engineer.pid"
+    copilot_path = root / ".copilot-loop.state.json"
+    lines = [
+        "- decision: repo scan can document the runtime seat, but cannot patch an external wrapper from this shell.",
+    ]
+    if state_path.exists():
+        lines.append(f"- `.auto-engineer.state.json`: {state_path.read_text(encoding='utf-8', errors='replace').strip().replace(chr(10), ' ')}")
+    else:
+        lines.append("- `.auto-engineer.state.json`: missing")
+    if pid_path.exists():
+        lines.append(f"- `.auto-engineer.pid`: `{pid_path.read_text(encoding='utf-8', errors='replace').strip()}`")
+    else:
+        lines.append("- `.auto-engineer.pid`: missing")
+    if copilot_path.exists():
+        lines.append(f"- `.copilot-loop.state.json`: {copilot_path.read_text(encoding='utf-8', errors='replace').strip().replace(chr(10), ' ')}")
+    else:
+        lines.append("- `.copilot-loop.state.json`: missing")
+    lines.extend([
+        "- `tasklist /v`: unavailable in this shell when probed manually (`ERROR: Access denied`).",
+        "- `where supervise`: no repo-local executable found in this shell.",
+    ])
+    return lines
+
+
 def render_report(hits: Sequence[CandidateHit], scheduler: SchedulerProbe, targets: Sequence[Path]) -> str:
     lines = [
-        "# Admin Rescue Template",
+        "# Auto-Commit Runtime Seat Audit",
+        "",
+        "## §runtime-state",
+        "",
+        *read_runtime_state(),
+        "",
+        "## §repo-scan-result",
+        "",
+        "- repo-local validators already exist: `scripts/validate_auto_commit_msg.py` and `scripts/commit_msg_lint.py`.",
+        "- latest generated scan below lists scheduler/hook-adjacent clues and exact template hits when present.",
+        "- conclusion: if no exact `auto-commit:` hit appears, the formatter is an external wrapper / scheduler / Admin rescue layer.",
         "",
         "## §candidates",
         "",
@@ -256,6 +292,21 @@ def render_report(hits: Sequence[CandidateHit], scheduler: SchedulerProbe, targe
             "- docs/admin-rescue-template.md",
             "```",
             "",
+            "## §required-external-change",
+            "",
+            "Patch the external wrapper at the place that calls `git commit` for auto-engineer rescue/checkpoint work:",
+            "",
+            "```sh",
+            "python scripts/validate_auto_commit_msg.py \"$subject\"",
+            "git commit -m \"$subject\" -m \"$body\"",
+            "```",
+            "",
+            "Expected subject shape for auto-engineer commits:",
+            "",
+            "```text",
+            "chore(auto-engineer): fix-meaningful-kebab-summary @2026-04-25T17:35:00+08:00",
+            "```",
+            "",
             "## §admin-action",
             "",
             "1. Inspect the external wrapper or scheduler that stages rescue commits. Repo hooks and PowerShell profile do not define the `auto-commit:` template.",
@@ -263,6 +314,14 @@ def render_report(hits: Sequence[CandidateHit], scheduler: SchedulerProbe, targe
             "3. Re-run one rescue cycle and verify `git log --oneline -5` has no `auto-commit:` or `checkpoint` subject.",
             "4. Keep `AUTO-RESCUE` in the commit body so `results.log` and git history still correlate.",
             "5. If Task Scheduler remains inaccessible in-shell, inspect the Admin session launcher manually from elevated PowerShell.",
+            "",
+            "## §validation-after-admin-patch",
+            "",
+            "1. Run one external auto-engineer/rescue cycle.",
+            "2. Run `git log -n 30 --format=%s`.",
+            "3. Pass condition: zero subjects match `auto-commit:` or `checkpoint`.",
+            "4. Pass condition: new auto-engineer subjects pass `python scripts/validate_auto_commit_msg.py \"<subject>\"`.",
+            "5. Then update `openspec/changes/07-auto-commit-semantic-enforce/tasks.md` T7.3 from blocked to done.",
             "",
             "## scheduler-probe",
             "",
