@@ -7,6 +7,7 @@ from typer.testing import CliRunner
 from src.sources.quality_config import QualityPolicy
 
 
+# click 8.2 移除 CliRunner(mix_stderr=) ctor arg, 默認已分離 stdout/stderr
 runner = CliRunner()
 
 

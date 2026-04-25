@@ -1,0 +1,144 @@
+# 法規-文件類型映射表
+# 用途：FactChecker 交叉比對引用的法規是否適用於該公文類型
+# 規則：若公文類型不在該法規的 applicable_doc_types 清單中，標記為 error
+#
+# doc_types 定義：
+#   函: 一般行政函文
+#   公告: 公告類公文
+#   簽: 簽呈（內部）
+#   令: 法規命令發布
+#   書函: 機關間書函
+#   開會通知單: 會議通知
+#   會議紀錄: 會議紀錄
+#   人事令: 人事任免遷調
+#   環保公告: 環保相關公告
+#   採購公告: 政府採購公告
+#   訴願決定書: 訴願案件決定
+
+regulations:
+  # ===== 基礎行政法規（幾乎所有公文類型都適用）=====
+  公文程式條例:
+    pcode: A0030018
+    applicable_doc_types: [函, 公告, 簽, 令, 書函, 開會通知單, 會議紀錄, 人事令, 環保公告, 採購公告, 訴願決定書]
+    description: 公文格式與程式的基本規範，所有公文皆適用
+
+  行政程序法:
+    pcode: A0030055
+    applicable_doc_types: [函, 公告, 簽, 令, 書函, 環保公告, 採購公告, 訴願決定書]
+    description: 行政處分、行政契約等程序規範
+
+  中央法規標準法:
+    pcode: A0030133
+    applicable_doc_types: [函, 公告, 令, 簽]
+    description: 法規制定與發布程序
+
+  檔案法:
+    pcode: A0030134
+    applicable_doc_types: [函, 公告, 簽, 令, 書函, 開會通知單, 會議紀錄]
+    description: 檔案管理與保存規範
+
+  印信條例:
+    pcode: A0030011
+    applicable_doc_types: [函, 公告, 令, 人事令]
+    description: 機關印信使用規範
+
+  # ===== 人事相關法規 =====
+  公務人員任用法:
+    pcode: S0020001
+    applicable_doc_types: [人事令, 函, 簽]
+    description: 公務人員任用資格與程序
+    not_applicable: [環保公告, 採購公告]
+
+  公務員服務法:
+    pcode: S0020038
+    applicable_doc_types: [人事令, 函, 簽]
+    description: 公務員義務與服務規範
+    not_applicable: [環保公告, 採購公告]
+
+  # ===== 資訊與隱私法規 =====
+  個人資料保護法:
+    pcode: I0050021
+    applicable_doc_types: [函, 公告, 簽, 書函]
+    description: 個人資料蒐集處理利用規範
+
+  政府資訊公開法:
+    pcode: I0020026
+    applicable_doc_types: [函, 公告, 簽]
+    description: 政府資訊主動公開與申請提供
+
+  # ===== 法律救濟法規 =====
+  行政罰法:
+    pcode: A0030210
+    applicable_doc_types: [函, 公告, 簽, 訴願決定書]
+    description: 行政裁罰之要件與程序
+    not_applicable: [人事令, 開會通知單]
+
+  訴願法:
+    pcode: A0030020
+    applicable_doc_types: [函, 訴願決定書, 簽]
+    description: 訴願程序與決定
+    not_applicable: [人事令, 採購公告, 環保公告]
+
+  行政訴訟法:
+    pcode: A0030154
+    applicable_doc_types: [函, 簽, 訴願決定書]
+    description: 行政訴訟程序
+    not_applicable: [人事令, 採購公告]
+
+  國家賠償法:
+    pcode: I0020004
+    applicable_doc_types: [函, 簽, 訴願決定書]
+    description: 國家賠償請求與程序
+
+  # ===== 採購相關法規 =====
+  政府採購法:
+    pcode: A0030057
+    applicable_doc_types: [採購公告, 函, 簽, 公告]
+    description: 政府採購程序與規範
+    not_applicable: [人事令, 環保公告]
+
+  # ===== 勞動法規 =====
+  勞動基準法:
+    pcode: N0030001
+    applicable_doc_types: [函, 公告, 簽]
+    description: 勞動條件最低標準
+    not_applicable: [人事令, 採購公告]
+
+  # ===== 環保相關法規 =====
+  廢棄物清理法:
+    pcode: N0060001
+    applicable_doc_types: [環保公告, 函, 公告, 簽]
+    description: 廢棄物清除處理規範
+    not_applicable: [人事令, 採購公告]
+
+  空氣污染防制法:
+    pcode: O0020001
+    applicable_doc_types: [環保公告, 函, 公告, 簽]
+    description: 空氣品質維護與污染防制
+    not_applicable: [人事令, 採購公告]
+
+  水污染防治法:
+    pcode: O0040001
+    applicable_doc_types: [環保公告, 函, 公告, 簽]
+    description: 水體品質保護與污染防治
+    not_applicable: [人事令, 採購公告]
+
+  環境影響評估法:
+    pcode: O0090001
+    applicable_doc_types: [環保公告, 函, 公告, 簽]
+    description: 開發行為環境影響評估
+    not_applicable: [人事令, 採購公告]
+
+  土壤及地下水污染整治法:
+    pcode: O0110001
+    applicable_doc_types: [環保公告, 函, 公告, 簽]
+    description: 土壤及地下水污染整治
+    not_applicable: [人事令, 採購公告]
+
+# ===== 映射規則說明 =====
+# 1. applicable_doc_types: 此法規「適合」引用的公文類型
+# 2. not_applicable: 此法規「明確不適用」的公文類型（可選，用於強調）
+# 3. 若引用的法規不在此映射表中，不做交叉比對（不擋未知法規）
+# 4. 若法規存在於映射表中但公文類型不在 applicable_doc_types 中，
+#    且在 not_applicable 中，標記為 error
+#    不在 not_applicable 中，標記為 warning
