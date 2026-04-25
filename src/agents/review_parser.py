@@ -235,7 +235,7 @@ def parse_review_response(
             score=default_score,
             confidence=default_confidence,
         )
-    except (AttributeError, KeyError, TypeError, ValueError, RuntimeError) as exc:
+    except (AttributeError, KeyError, TypeError, ValueError, RuntimeError, OverflowError, ArithmeticError) as exc:
         return ReviewResult(
             agent_name=agent_name,
             issues=[],

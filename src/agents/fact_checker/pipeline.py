@@ -60,6 +60,7 @@ class FactChecker:
                 verification_context = format_verification_results(citation_checks)
             except (ImportError, RuntimeError, OSError, AttributeError) as exc:
                 logger.warning("即時法規驗證失敗，降級為純 LLM 審查: %s", exc)
+                verification_failed = True
 
         verification_degraded = verification_failed or is_verification_degraded(self.law_verifier, citation_checks)
         repo_issues = build_repo_owned_issues(
@@ -170,7 +171,7 @@ IMPORTANT: Each issue MUST include a concrete "suggestion" that tells the user e
 Do NOT write vague suggestions like "請確認引用是否正確". Give the specific fix or clearly state what needs verification."""
         try:
             response = self.llm.generate(prompt, temperature=LLM_TEMPERATURE_PRECISE)
-        except LLMError as exc:
+        except (LLMError, RuntimeError, OSError) as exc:
             logger.warning("FactChecker LLM 呼叫失敗: %s", exc)
             return merge_repo_issues(
                 llm_result=ReviewResult(agent_name=self.AGENT_NAME, issues=[], score=0.0, confidence=0.0),

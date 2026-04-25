@@ -2513,11 +2513,15 @@ class TestUserSimulation:
         mock_llm.generate.side_effect = [
             # RequirementAgent
             _make_mock_llm_json_response(requirement_json),
-            # WriterAgent
+            # WriterAgent.write_draft actual draft generation (no refine needed: KB returns relevant result)
             "### 主旨\n超長需求測試\n### 說明\n一、測試說明。",
         ]
 
-        mock_kb.search_hybrid.return_value = []
+        # Return a result with good distance so _check_relevance passes and _refine_query is not called
+        mock_kb.search_hybrid.return_value = [
+            {"id": "1", "content": "範例公文", "distance": 0.5,
+             "metadata": {"title": "範例", "source": "gazette", "source_level": "B"}}
+        ]
 
         # === RequirementAgent 不應崩潰 ===
         req_agent = RequirementAgent(mock_llm)
@@ -2615,7 +2619,10 @@ class TestUserSimulation:
                 _make_mock_llm_json_response(requirement_json),
                 "### 主旨\n一般公文\n### 說明\n一、正常說明。",
             ]
-            mock_kb.search_hybrid.return_value = []
+            mock_kb.search_hybrid.return_value = [
+                {"id": "1", "content": "範例公文", "distance": 0.5,
+                 "metadata": {"doc_type": "函", "title": "範例"}}
+            ]
 
             # === RequirementAgent 應能處理不崩潰 ===
             req_agent = RequirementAgent(mock_llm)

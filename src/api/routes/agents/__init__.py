@@ -191,6 +191,7 @@ async def refine_draft(request: RefineRequest) -> RefineResponse:
     """Editor Agent
 
     根據審查 Agent 回傳的問題列表，自動修正公文草稿。
+    # PRESERVE all 【待補依據】 markers - do NOT replace with fabricated citations.
     """
     try:
         llm = get_llm()

@@ -167,7 +167,7 @@ class WriterRewriteMixin:
         query = f"{requirement.doc_type} {requirement.subject}"
         try:
             examples = self._search_examples(query)
-        except (RuntimeError, OSError, ValueError) as exc:
+        except Exception as exc:
             logger.warning("知識庫搜尋失敗，將不使用範例: %s", exc)
             examples = []
 
@@ -193,7 +193,7 @@ class WriterRewriteMixin:
         llm_failed = False
         try:
             draft = self.llm.generate(full_prompt, temperature=LLM_TEMPERATURE_PRECISE)
-        except LLMError as exc:
+        except (LLMError, RuntimeError, OSError) as exc:
             logger.warning("WriterAgent LLM 呼叫失敗: %s", exc)
             draft = ""
             llm_failed = True

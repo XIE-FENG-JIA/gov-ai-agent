@@ -86,6 +86,7 @@ class OrganizationalMemory:
                     pass
                 raise
         except OSError as e:
+            logger.warning("儲存偏好設定失敗：%s", e)
             console.print(f"[red]儲存偏好設定失敗：{e}[/red]")
 
     def get_agency_profile(self, agency_name: str) -> dict[str, Any]:
