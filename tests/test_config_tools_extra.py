@@ -251,7 +251,7 @@ class TestSafeConfigWrite:
 
     def test_normal_write_creates_backup(self, tmp_path):
         """正常寫入（key 數量不變）→ 建立 .bak 備份"""
-        from src.cli.utils import safe_config_write
+        from src.cli.utils_io import safe_config_write
         cfg = tmp_path / "config.yaml"
         original = {"api": {}, "llm": {}, "providers": {}, "kb": {}}
         cfg.write_text(yaml.dump(original), encoding="utf-8")
@@ -271,14 +271,14 @@ class TestSafeConfigWrite:
     def test_shrink_guard_warns_and_backs_up(self, tmp_path, caplog):
         """新 config key 數量少於 50% → 警告 + 備份 + 仍然寫入"""
         import logging
-        from src.cli.utils import safe_config_write
+        from src.cli.utils_io import safe_config_write
         cfg = tmp_path / "config.yaml"
         original = {"api": {}, "llm": {}, "providers": {}, "kb": {}, "org": {}}
         cfg.write_text(yaml.dump(original), encoding="utf-8")
 
         # 只寫入 1 個 key（5 → 1 = 80% 縮減）
         shrunken = {"providers": {"openrouter": {"model": "test"}}}
-        with caplog.at_level(logging.WARNING, logger="src.cli.utils"):
+        with caplog.at_level(logging.WARNING, logger="src.cli.utils_io"):
             safe_config_write(str(cfg), shrunken)
 
         assert "shrink guard" in caplog.text
@@ -292,7 +292,7 @@ class TestSafeConfigWrite:
 
     def test_empty_existing_config_no_crash(self, tmp_path):
         """既有 config 為空 → 不 crash，正常寫入"""
-        from src.cli.utils import safe_config_write
+        from src.cli.utils_io import safe_config_write
         cfg = tmp_path / "config.yaml"
         cfg.write_text("", encoding="utf-8")
 
@@ -304,7 +304,7 @@ class TestSafeConfigWrite:
 
     def test_nonexistent_config_no_crash(self, tmp_path):
         """config 不存在 → 不 crash，正常建立"""
-        from src.cli.utils import safe_config_write
+        from src.cli.utils_io import safe_config_write
         cfg = tmp_path / "config.yaml"
 
         new_data = {"llm": {"provider": "gemini"}}
@@ -319,13 +319,13 @@ class TestSafeConfigWrite:
     def test_no_shrink_guard_when_adding_keys(self, tmp_path, caplog):
         """新 config key 數量增加 → 無 shrink guard 警告"""
         import logging
-        from src.cli.utils import safe_config_write
+        from src.cli.utils_io import safe_config_write
         cfg = tmp_path / "config.yaml"
         original = {"llm": {}}
         cfg.write_text(yaml.dump(original), encoding="utf-8")
 
         bigger = {"llm": {}, "api": {}, "providers": {}}
-        with caplog.at_level(logging.WARNING, logger="src.cli.utils"):
+        with caplog.at_level(logging.WARNING, logger="src.cli.utils_io"):
             safe_config_write(str(cfg), bigger)
 
         assert "shrink guard" not in caplog.text
@@ -336,14 +336,14 @@ class TestSafeConfigWrite:
         """備份建立失敗 → 記錄警告但仍完成寫入（不 crash）"""
         import logging
         from unittest.mock import patch
-        from src.cli.utils import safe_config_write
+        from src.cli.utils_io import safe_config_write
         cfg = tmp_path / "config.yaml"
         original = {"api": {}, "llm": {}, "providers": {}}
         cfg.write_text(yaml.dump(original), encoding="utf-8")
 
         new_data = {"api": {"v2": True}, "llm": {}, "providers": {}}
         with patch("src.cli.utils_io.shutil.copy2", side_effect=OSError("disk full")):
-            with caplog.at_level(logging.WARNING, logger="src.cli.utils"):
+            with caplog.at_level(logging.WARNING, logger="src.cli.utils_io"):
                 safe_config_write(str(cfg), new_data)
 
         assert "無法建立設定檔備份" in caplog.text

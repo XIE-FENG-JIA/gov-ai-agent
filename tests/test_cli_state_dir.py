@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 from src.cli import profile_cmd, wizard_cmd, workflow_cmd
-from src.cli.utils import JSONStore, configure_state_dir, resolve_state_read_path, set_state_dir
+from src.cli.utils_io import JSONStore, configure_state_dir, resolve_state_read_path, set_state_dir
 
 
 def test_json_store_uses_user_state_dir_in_repo_root(tmp_path, monkeypatch):

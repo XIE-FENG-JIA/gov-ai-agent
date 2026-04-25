@@ -3,7 +3,7 @@ import json
 from unittest.mock import patch
 
 from src.cli.stats_cmd import stats
-from src.cli.utils import set_state_dir
+from src.cli.utils_io import set_state_dir
 
 
 class TestStatsCommand:

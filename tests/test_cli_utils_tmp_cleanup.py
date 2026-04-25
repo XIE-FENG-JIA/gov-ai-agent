@@ -1,7 +1,7 @@
 import os
 import time
 
-from src.cli.utils import atomic_text_write, cleanup_orphan_tmps
+from src.cli.utils_io import atomic_text_write, cleanup_orphan_tmps
 
 
 def test_atomic_write_cleans_only_stale_atomic_tmp_files(tmp_path):

@@ -901,7 +901,7 @@ class TestAtomicJsonWrite:
 
     def test_basic_write_and_read(self, tmp_path):
         """正常寫入後讀回應取得相同資料。"""
-        from src.cli.utils import atomic_json_write
+        from src.cli.utils_io import atomic_json_write
         target = str(tmp_path / "test.json")
         data = {"key": "值", "list": [1, 2, 3]}
         atomic_json_write(target, data)
@@ -911,7 +911,7 @@ class TestAtomicJsonWrite:
 
     def test_no_temp_file_left_on_success(self, tmp_path):
         """成功寫入後不應殘留暫存檔。"""
-        from src.cli.utils import atomic_json_write
+        from src.cli.utils_io import atomic_json_write
         target = str(tmp_path / "clean.json")
         atomic_json_write(target, [1, 2])
         leftover = [f for f in os.listdir(tmp_path) if f.endswith(".tmp")]
@@ -919,7 +919,7 @@ class TestAtomicJsonWrite:
 
     def test_original_preserved_on_failure(self, tmp_path):
         """寫入失敗時原始檔案應保持不變。"""
-        from src.cli.utils import atomic_json_write
+        from src.cli.utils_io import atomic_json_write
         target = str(tmp_path / "preserve.json")
         original = {"original": True}
         atomic_json_write(target, original)
@@ -934,7 +934,7 @@ class TestAtomicJsonWrite:
 
     def test_no_temp_file_left_on_failure(self, tmp_path):
         """寫入失敗後不應殘留暫存檔。"""
-        from src.cli.utils import atomic_json_write
+        from src.cli.utils_io import atomic_json_write
         target = str(tmp_path / "fail.json")
         with pytest.raises(TypeError):
             atomic_json_write(target, {"bad": object()})
@@ -943,7 +943,7 @@ class TestAtomicJsonWrite:
 
     def test_creates_parent_dirs(self, tmp_path):
         """目標目錄不存在時應自動建立。"""
-        from src.cli.utils import atomic_json_write
+        from src.cli.utils_io import atomic_json_write
         target = str(tmp_path / "sub" / "dir" / "data.json")
         atomic_json_write(target, {"nested": True})
         with open(target, "r", encoding="utf-8") as f:
@@ -951,7 +951,7 @@ class TestAtomicJsonWrite:
 
     def test_json_store_uses_atomic_write(self, tmp_path, monkeypatch):
         """JSONStore.save() 應走 atomic_json_write 路徑。"""
-        from src.cli.utils import JSONStore
+        from src.cli.utils_io import JSONStore
         monkeypatch.chdir(tmp_path)
         store = JSONStore("store_test.json", default=[])
         store.save([{"id": 1}])
@@ -964,7 +964,7 @@ class TestAtomicYamlWrite:
 
     def test_basic_write_and_read(self, tmp_path):
         """正常寫入後讀回應取得相同 YAML 資料。"""
-        from src.cli.utils import atomic_yaml_write
+        from src.cli.utils_io import atomic_yaml_write
         target = str(tmp_path / "test.yaml")
         data = {"llm": {"provider": "ollama", "model": "mistral"}, "api": {"auth_enabled": True}}
         atomic_yaml_write(target, data)
@@ -974,7 +974,7 @@ class TestAtomicYamlWrite:
 
     def test_unicode_preserved(self, tmp_path):
         """YAML 寫入應保留 Unicode（繁體中文）。"""
-        from src.cli.utils import atomic_yaml_write
+        from src.cli.utils_io import atomic_yaml_write
         target = str(tmp_path / "unicode.yaml")
         data = {"description": "公文管理系統", "items": ["環保", "教育"]}
         atomic_yaml_write(target, data)
@@ -986,7 +986,7 @@ class TestAtomicYamlWrite:
 
     def test_no_temp_file_left_on_success(self, tmp_path):
         """成功寫入後不應殘留暫存檔。"""
-        from src.cli.utils import atomic_yaml_write
+        from src.cli.utils_io import atomic_yaml_write
         target = str(tmp_path / "clean.yaml")
         atomic_yaml_write(target, {"key": "val"})
         leftover = [f for f in os.listdir(tmp_path) if f.endswith(".tmp")]
@@ -994,7 +994,7 @@ class TestAtomicYamlWrite:
 
     def test_original_preserved_on_failure(self, tmp_path):
         """寫入失敗時原始 YAML 檔案應保持不變。"""
-        from src.cli.utils import atomic_yaml_write
+        from src.cli.utils_io import atomic_yaml_write
         target = str(tmp_path / "preserve.yaml")
         original = {"original": True}
         atomic_yaml_write(target, original)
@@ -1010,7 +1010,7 @@ class TestAtomicYamlWrite:
 
     def test_no_temp_file_left_on_failure(self, tmp_path):
         """寫入失敗後不應殘留暫存檔。"""
-        from src.cli.utils import atomic_yaml_write
+        from src.cli.utils_io import atomic_yaml_write
         target = str(tmp_path / "fail.yaml")
         with patch("src.cli.utils_io.os.replace", side_effect=OSError("disk full")):
             with pytest.raises(OSError):
@@ -1020,7 +1020,7 @@ class TestAtomicYamlWrite:
 
     def test_creates_parent_dirs(self, tmp_path):
         """目標目錄不存在時應自動建立。"""
-        from src.cli.utils import atomic_yaml_write
+        from src.cli.utils_io import atomic_yaml_write
         target = str(tmp_path / "sub" / "dir" / "data.yaml")
         atomic_yaml_write(target, {"nested": True})
         with open(target, "r", encoding="utf-8") as f:
