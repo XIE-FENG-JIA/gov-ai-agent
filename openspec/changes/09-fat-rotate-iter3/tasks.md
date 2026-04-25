@@ -1,6 +1,6 @@
 # Tasks: 09-fat-rotate-iter3
 
-- [ ] **T9.1** Split `src/cli/kb/rebuild.py 572` → `src/cli/kb/rebuild/{__init__, orchestrate, adapters, quality_gate_integration}.py`.
+- [ ] **T9.1 [BACKLOG-next-fat-rotate]** Split `src/cli/kb/rebuild.py 572` → `src/cli/kb/rebuild/{__init__, orchestrate, adapters, quality_gate_integration}.py`.
   Requirements:
   - No module larger than 300 lines after rotation
   - Import contract preserved through `__init__.py` re-exports
@@ -21,13 +21,13 @@
   Validation: `wc -l src/api/routes/agents/*.py` all ≤ 300; `pytest tests/test_api_server.py -q -k agent` green; FastAPI router path stable (`gov-ai` CLI or curl smoke).
   Commit: `refactor(api): split routes/agents 397 into read/write`
 
-- [ ] **T9.4** Sensor regression check — fat-file red tier hits 0, yellow excludes the three ex-fat modules.
+- [ ] **T9.4 [BLOCKED-by-T9.1]** Sensor regression check — fat-file red tier hits 0, yellow excludes the three ex-fat modules.
   Requirements:
   - No module larger than 300 lines after rotation
   Validation: `python scripts/sensor_refresh.py --human` reports `fat_files.red_over_400 == []` and `rebuild/datagovtw/routes-agents` not in yellow list.
   Commit: `chore(sensor): record iter3 fat-rotate 572+410+397 → ≤ 300`
 
-- [ ] **T9.5** Regression: full `pytest -q --ignore=tests/integration` green in ≤ 200 s.
+- [x] **T9.5** Regression: full `pytest -q --ignore=tests/integration` green in ≤ 200 s.
   Requirements:
   - Import contract preserved through `__init__.py` re-exports
   Validation: `pytest -q --ignore=tests/integration --durations=10 --tb=no` exits 0 with runtime line ≤ 200 s.

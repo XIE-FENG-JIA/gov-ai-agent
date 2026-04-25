@@ -30,7 +30,7 @@
   Validation: `wc -l docs/test-mock-iceberg-taxonomy.md` ≥ 80; `rg "Type [1-3]" docs/test-mock-iceberg-taxonomy.md` finds all three headings.
   Commit: `docs(tests): add mock iceberg taxonomy Type 1/2/3 with diffs`
 
-- [ ] **T10.6** Regression: `python scripts/sensor_refresh.py` still runs; `pytest -q --ignore=tests/integration` still green ≤ 200 s.
+- [x] **T10.6** Regression: `python scripts/sensor_refresh.py` still runs; `pytest -q --ignore=tests/integration` still green ≤ 200 s.
   Requirements:
   - Systematic audit must not regress repo baselines
   Validation: sensor + pytest logs confirm thresholds.

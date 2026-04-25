@@ -12,7 +12,7 @@
   Validation: `python -m pytest tests/test_validate_auto_commit_msg.py -q` all pass in < 5s
   Commit: `test(governance): cover validate_auto_commit_msg 8 cases`
 
-- [ ] **T7.3** Locate and document the auto-engineer commit-message call site (likely `supervise.sh` or `.auto-engineer/*` runtime) and route every subject through the validator.
+- [ ] **T7.3 [BLOCKED-by-runtime-callsite-missing]** Locate and document the auto-engineer commit-message call site (likely `supervise.sh` or `.auto-engineer/*` runtime) and route every subject through the validator.
   Requirements:
   - Commit-message lint must run inside the auto-engineer runtime pre-commit path
   Validation: inject a bad message in a fixture run and verify the cycle aborts with the rejection envelope; `git log -n 30 --format=%s` contains zero `auto-commit: checkpoint` strings among Auto-Dev Engineer commits on HEAD+30.
