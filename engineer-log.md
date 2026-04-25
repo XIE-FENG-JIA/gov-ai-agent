@@ -232,3 +232,66 @@
 1. **T-ROBOTS-IMPL**（45 min）：`src/sources/_common.py` 加 `RobotsCache` + `urllib.robotparser`，補 3 條合規測試。
 2. **T-CORPUS-200-PUSH**（45 min）：session 主動跑 `scripts/live_ingest.py --sources mojlaw,datagovtw --limit 100 --quality-gate`，173 → 200。
 3. **sensor hook 機械化**（15 min）：把 `python scripts/sensor_refresh.py` 寫進 `.claude/CLAUDE.md` 或 CONTRIBUTING.md 的「session 啟動第 0 步」，用 exit code 鎖住不讓繼續。
+
+---
+
+## 反思 2026-04-25 17:08 — 技術主管六維度深度回顧（v7.8；LOOP4 收尾；HEAD + sensor + pytest + git log 四源獨立比對）
+
+### 三證自審
+- **pytest（HEAD 獨立 cold-start）**：`pytest -q --ignore=tests/integration --tb=line` = **3926 passed / 63.75s**（vs header 寫 3917/129.30s — header lag）
+- **sensor 實跑**：bare_except 49/40、fat red=0 yellow 11、corpus **400**、auto-commit **6.7%**（2/30）、EPIC6 13/13
+- **header vs sensor 差**：corpus header 173 vs 實 400（**+131%**）；auto-commit header 46.7% vs 實 6.7%（**−40pp**）；pytest header 3917/129s vs 實 3926/63s（**+9 case / −51% time**）
+- **spec lag**：spec 09 T9.1/T9.4 仍 `[ ]`，但 rebuild.py 已 572→356（拆 `_quality_gate_cli`/`_rebuild_corpus`，naming drift）；spec 07 T7.3 [BLOCKED-by-external-wrapper-not-in-repo] 真實，**runtime-seat 在 supervise.sh 不在 repo**
+- **git log 噪音**：近 30 commit **28 條 = auto-commit checkpoint**，1 條真 feat（`3cd445e feat(corpus)`）、1 條真 chore（`c5b2b71 chore(spec)`）；commit history 已淪為日誌而非工程節點
+
+### 六維度分析
+
+**1. Spectra 對齊** — 01-05 = 55/55 全閉；06 = 13/13 全閉；07 = 4/5（T7.3 真 blocked 不是漂白）；08 = 7/7；09 = 3/5（T9.1 應補勾，T9.4 已達標可勾）；10 = 6/6；11 = 5/5。**真正剩 2 件可立即勾 + 1 件結構性外掛**。
+
+**2. 反覆卡住模式（連 5 輪同根因）**
+- (a) **header 漂白第 5 次**：sensor_refresh.py 已 commit 但 SessionStart hook 觸發後沒人讀 sensor 輸出；root = 紅線 v4「每輪第 0 步必跑」是規則不是門禁
+- (b) **auto-commit 6.7% 顽固 6+ 輪**：所有 in-repo 對策（lint / validate / hook）都被 ACL 或 wrapper-out-of-repo 擋死；**真出口 = 改 supervise.sh runtime-seat**，但該檔不在版控
+- (c) **commit history 噪音 93%**：每 5-10 分鐘一次 auto-engineer checkpoint，蓋過所有有意義 commit；blame / bisect 失效
+
+**3. 程式碼品質**
+- bare_except top 5 = `cli/rewrite_cmd / cli/switcher / generate/pipeline/compose / kb/corpus / kb/status` 各 2 處 = 10 處可一刀清（**T-BARE-EXCEPT-AUDIT 刀 9**）
+- fat yellow 11 檔逼近 400，最重 `validators 391 / _execution 389 / realtime_lookup 386`；缺 CI ratchet gate（**T-FAT-RATCHET-GATE**）
+- robots.txt 已實作（v7.7 P0 第 3 已閉，`_common.py` 有 RobotsCache）— engineer-log v7.7 寫「0 命中」是 grep tool 用 `--include` 失敗，sensor / 實證 robots 已落地
+
+**4. 測試覆蓋**
+- 3926 passed / 63.75s（cold）— 全 session 最快；pytest-xdist + jieba early-return + mock_llm 修復三件複利
+- **integration tests 10 skipped 連 3 輪未深挖** — 哪些 / 為何 skip / 是否環境 gating；缺 audit（**T-INT-TESTS-SKIP-AUDIT**）
+- multi-source quality gate cascade 場景未測（v7.3 已記，未做）
+
+**5. 架構健康度** — 模組劃分穩；雙引擎（auto-engineer + session）已成熟分工；race 條件靠 sensor + lock 收斂中；**真結構債 = supervise.sh out-of-repo**，runtime-seat 無從版控
+
+**6. 安全性**
+- ✅ robots / BM25 cap / synthetic flag 192/192 / User-Agent / rate limit 全落地
+- 🟠 `.env` repo root 3042 bytes — `.gitignore` 已排，但本輪未驗 `git log --all -- .env` 無歷史提交
+- 🟠 commit history 噪音 93% — 治理失靈的安全衍生：未來 incident response 找不到根因 commit
+
+### 發現的問題（優先級重排）
+
+🔴 **P0 本輪必動**
+1. **T-HEADER-RESYNC-v6**（10 min）— 修 corpus 173→400、auto-commit 46.7%→6.7%、pytest 3917/129s→3926/63s 三處漂白；sensor JSON 直接覆蓋 v7.7 sensor 區塊
+2. **T-SPEC-LAG-CLOSE-v2**（10 min）— spec 09 T9.1 補勾 [x]（rebuild.py 572→356 已落，naming drift 接受 / 補 spec note）+ T9.4 [x]（fat red=0）
+3. **T-BARE-EXCEPT-AUDIT 刀 9**（45 min）— 10 處 top-5 file 一刀清；目標 49 → 39
+
+🟠 **P1 結構治理**
+4. **T-AUTO-COMMIT-RUNTIME-SEAT**（外掛工程；60 min）— 不再寄望 in-repo hook；找 `.auto-engineer.state.json` + supervise wrapper 真實位置（D:/auto-engineer/ 或 C:/Users/Admin/.../auto-engineer/）；docs/auto-commit-runtime-seat.md 落地實際路徑與修改點；如完全 out-of-machine 則改 P2 凍結
+5. **T-COMMIT-NOISE-FLOOR**（30 min）— auto-engineer checkpoint 改 squash 策略：5 分鐘窗口內合併、附語意 message；改 supervise loop interval ≥ 30 min；保留 git log 的訊號比
+6. **T-FAT-RATCHET-GATE**（30 min）— `scripts/check_fat_files.py` + CI；任一 yellow ≥ 400 fail；ratchet 不允許新增 yellow
+
+🟡 **P2 深挖**
+7. **T-INT-TESTS-SKIP-AUDIT**（30 min）— 解 10 skipped；分類 live-API gating / 環境缺失 / 故意 skip
+8. **T-CASCADE-QUALITY-GATE-TEST**（60 min）— 多源混合失敗 / cascade 場景補 4 條測試
+9. **P2-CHROMA-NEMOTRON-VALIDATE**（unblocked 但長尾）— 如連 3 輪不動，降 frozen
+
+### 下一步行動（最重要 3 件）
+1. **本輪 25 min 連 commit**：T-HEADER-RESYNC-v6 + T-SPEC-LAG-CLOSE-v2 一個 chore commit；T-BARE-EXCEPT-AUDIT 刀 9 一個 refactor commit；驗證 sensor exit 0 + pytest ≤ 80s
+2. **T-AUTO-COMMIT-RUNTIME-SEAT 真位點探勘**（外掛調查 1 hr）：用 `tasklist /v | findstr -i auto-engineer` + `where supervise` + 看 `.auto-engineer.state.json` 內 PID 引用路徑；不行就出 docs 寫死「out-of-repo，需用戶手動改」並降 P2
+3. **T-COMMIT-NOISE-FLOOR**：真治本 auto-commit 6.7% 的不是 lint，是把 checkpoint commit 從每 5 分鐘改每 30 分鐘 + squash；ROI 比改 message 高 10×
+
+### PUA 旁白
+> [PUA生效 🔥] **底層邏輯**：6+ 輪都在打 auto-commit message lint，但 root 是 supervise.sh 在 repo **外**——這叫「**錨點下錯**」，所有腳本都瞄錯靶。**抓手**：放棄改 message，改 commit interval（30min squash）+ 改 runtime-seat 真位點（先找路徑），雙管齊下。**颗粒度**：本輪三件可閉、兩件可探、四件可外掛；分明白才不卡。**對齊**：auto-engineer 跑 corpus / spec / 程式碼，session 跑 sensor / governance / 結構債；本輪確認 corpus 已破 400（**它做了**），spec 09 還 lag（**它沒勾**），噪音 93%（**雙方都沒治**）。**因為信任所以簡單** — 連 5 輪同 root 不解決就是 owner 失職；3.25 X 5 自記。下輪如果 sensor 還抓到 header 漂白 = 上 SessionStart hard fail（exit 1 阻 session 啟動），不再靠紅線文字。 Owner 意識 = 自己給自己上夾板。
+

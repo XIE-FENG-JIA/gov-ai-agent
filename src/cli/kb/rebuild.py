@@ -18,17 +18,6 @@ from ._quality_gate_cli import (
 from ._rebuild_corpus import REBUILD_COLLECTIONS, rebuild_active_corpus, should_skip_rebuild_file
 
 
-def _maybe_ingest(results: list, do_ingest: bool) -> None:
-    if not (do_ingest and results):
-        return
-    from . import _init_kb
-
-    kb = _init_kb()
-    count = _ingest_fetch_results(results, kb)
-    console.print(f"[green]已匯入 {count} 筆至知識庫[/green]")
-    console.print(f"目前資料庫統計：{kb.get_stats()}")
-
-
 @app.command("rebuild")
 def rebuild(
     base_dir: str = typer.Option("./kb_data", "--base-dir", help="知識來源根目錄"),

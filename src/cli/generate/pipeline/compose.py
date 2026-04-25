@@ -70,7 +70,7 @@ def _retry_with_backoff(fn, retries: int, step_name: str):
     for attempt in range(1, retries + 1):
         try:
             return fn()
-        except Exception as exc:
+        except (RuntimeError, OSError, TimeoutError, ConnectionError, ValueError) as exc:
             last_exc = exc
             if attempt < retries:
                 wait = min(2 ** attempt, 10)
@@ -161,7 +161,7 @@ def _init_pipeline(input_text: str, *, auto_sender: bool):
         if kb_stats.get("examples_count", 0) == 0:
             runtime.console.print("[yellow]提示：知識庫尚未初始化，建議先執行 `gov-ai kb ingest` 匯入範例。[/yellow]")
             runtime.console.print("[dim]系統仍可繼續產生公文，但品質可能受限。[/dim]")
-    except Exception as exc:
+    except (RuntimeError, OSError) as exc:
         runtime.console.print(f"[dim]知識庫檢查時發生例外：{exc}[/dim]")
 
     if isinstance(llm, runtime.LiteLLMProvider):

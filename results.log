@@ -563,3 +563,5 @@ PASS T-SYNTHETIC-AUDIT-SCRIPT 2026-04-25 scripts/audit_synthetic_flag.py created
 [2026-04-25 16:54:55] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=79709da) — 若先前 FAIL 是 ACL denied，此條即救援對應 | results.log
 [2026-04-25 16:57:32] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=0a77ae8) — 若先前 FAIL 是 ACL denied，此條即救援對應 | results.log
 [2026-04-25 17:05:24] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=7eef908) — 若先前 FAIL 是 ACL denied，此條即救援對應 | results.log
+[2026-04-25 17:07:32] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=6140e26) — 若先前 FAIL 是 ACL denied，此條即救援對應 | results.log
+[2026-04-25 17:08:00] | [REFLECT-v7.8] | [PASS] | 技術主管六維度回顧 v7.8 寫入 engineer-log.md（追加段；234→283 行）；發現 v7.7 三處 header 漂白（corpus 173→400 / auto-commit 46.7%→6.7% / pytest 3917-129s→3926-63s）+ root = supervise.sh out-of-repo；program.md P0 重排為 T-HEADER-RESYNC-v6 + T-SPEC-LAG-CLOSE-v2 + T-BARE-EXCEPT 刀9；P1 加 T-AUTO-COMMIT-RUNTIME-SEAT + T-COMMIT-NOISE-FLOOR + T-FAT-RATCHET-GATE | engineer-log.md, program.md, results.log

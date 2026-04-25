@@ -2,23 +2,24 @@
 
 > 歷史 v7.0–v7.2 sensor/header 已封存：[docs/archive/program-history-202604j.md](docs/archive/program-history-202604j.md)
 
-> **v7.7-sensor 校準段（2026-04-25 15:52；HEAD + SessionStart hook）**：
-> - ✅ **pytest 3917 passed / 0 failed / 129.30s**（`python -m pytest -q --ignore=tests/integration --tb=short`）
-> - ✅ **sensor_refresh.py exit 0**；`violations.hard = []`（soft 只做預警；`--strict-soft` 才 exit 1）
-> - 🟡 **bare-except 49 處 / 40 檔**（有效 naked bucket；不再寫「2/2 全部保留」）
-> - ✅ **fat files 0 over 400**；yellow 11 檔（validators.py 391 / workflow _execution 389 / realtime_lookup 386...）
+> **v7.8-sensor 校準段（2026-04-25 17:08；HEAD + sensor + pytest 三源獨立 cold-start）**：
+> - ✅ **pytest 3926 passed / 0 failed / 63.75s**（`python -m pytest -q --ignore=tests/integration --tb=line`；vs v7.7 header 寫 3917/129.30s — header lag 已修）
+> - ✅ **sensor_refresh.py exit 0**；`violations.hard = []`
+> - 🟡 **bare-except 49 處 / 40 檔**（top 5 各 2 處可一刀清：`cli/rewrite_cmd / cli/switcher / generate/pipeline/compose / kb/corpus / kb/status`）
+> - ✅ **fat files 0 over 400**；yellow 11 檔（validators 391 / _execution 389 / realtime_lookup 386 ...）
 > - 🟡 **program.md soft cap 258 > 250**；hard cap 500 未破
-> - 🟡 **corpus 173 < target 200**；T-CORPUS-200-PUSH 未閉
-> - 🟡 **auto-commit 語意率 46.7%（14/30）< 90%**；外部 wrapper 仍需治理
-> - ✅ **EPIC6 13/13 全閉**
+> - ✅ **corpus 400 ≥ target 200**（v7.7 header 寫 173 為漂白；T-CORPUS-200-PUSH + P2-CORPUS-300 已閉）
+> - 🔴 **auto-commit 語意率 6.7%（2/30）<< 90%**（v7.7 header 寫 46.7% 為漂白；近 30 commit 28 條 = `auto-commit checkpoint` 噪音 93%；root = supervise.sh runtime-seat **out-of-repo**）
+> - ✅ **EPIC6 13/13 全閉**；EPIC1-5 = 55/55；spec 07/08/09/10/11 = 27/29 + 1 真 blocked + 1 待補勾
 >
-> **v7.7 P0**：
-> 1. ✅ **T-HEADER-RESYNC-v5**（本輪閉；`.claude/settings.json` SessionStart hook 已掛 `python scripts/sensor_refresh.py`）
-> 2. ✅ **T-SPEC-LAG-CLOSE**（已閉）
-> 3. ✅ **T-ROBOTS-IMPL**（已閉；見 results.log）
-> 4. ✅ **T-PYC-CLEAN**（已閉；見 results.log）
-> 5. 🔴 **T-CORPUS-200-PUSH**（下一件 P0）
-> 6. ✅ **T-PYTEST-RUNTIME-REGRESSION-iter6**（本輪閉；實測 3919 passed / 69.51s ≤ 200s）
+> **v7.8 P0（本輪三件，25 min 可閉）**：
+> 1. 🔴 **T-HEADER-RESYNC-v6**（修上輪 3 處漂白：corpus 173→400 / auto-commit 46.7%→6.7% / pytest 3917/129s→3926/63s）
+> 2. 🔴 **T-SPEC-LAG-CLOSE-v2**（spec 09 T9.1 + T9.4 補勾，rebuild.py 572→356 已落 naming drift 接受）
+> 3. 🔴 **T-BARE-EXCEPT-AUDIT 刀 9**（10 處一刀清；49→39）
+
+> **v7.7-sensor 校準段（2026-04-25 15:52；HEAD + SessionStart hook；歷史封存）**：
+> - 注：本段 corpus 173 / auto-commit 46.7% 兩處 sensor 數值為**漂白**，已於 v7.8 修正。
+> - 真實值看 v7.8 段。
 
 > **v7.3-sensor 校準段（2026-04-25 02:45；第四十四輪深度回顧；HEAD 全獨立跑）**：
 > - ✅ **pytest cross-session cold-start = 3801 passed / 152.98s / exit 0**（破下 epoch ≤ 200s 目標 47s 裕量；BM25 cap 真效非 cache 假象確認；演進 960→773→547→461→340→343→179→173→**153s** 累計 -84%）
@@ -146,9 +147,15 @@
 
 ### P0（連 1 輪延宕 = 紅線 X 3.25）
 
-#### v7.6 反思新增 — 5 件本輪必動（按 ROI 排序）
+#### v7.8 反思新增 — 3 件本輪必動 + 3 件 P1 結構治理
 
-- [x] **T-HEADER-RESYNC-v5**（2026-04-25 本輪閉；ACL-free）— sensor 實跑：bare-except 49/40、fat 0 over 400、corpus 173、engineer-log 234、program.md 271、auto-commit 46.7%、EPIC6 13/13；violations.hard = [] ✅；v7.7 sensor header 加入 program.md 頂部；T-ROBOTS-IMPL + T-PYC-CLEAN 同輪閉環確認。
+- [ ] **T-HEADER-RESYNC-v6**（10 min；P0；2026-04-25 v7.8 開）— v7.7 header 三處漂白實測：corpus 173→**400**、auto-commit 46.7%→**6.7%**、pytest 3917/129s→**3926/63s**；本輪以 sensor JSON 實值覆蓋 v7.7 sensor 區塊；驗證 `python scripts/sensor_refresh.py --human` 三項數字 = program.md 頂部 v7.8 sensor 區塊。
+- [ ] **T-SPEC-LAG-CLOSE-v2**（10 min；P0；2026-04-25 v7.8 開）— `openspec/changes/09-fat-rotate-iter3/tasks.md` T9.1 補勾 [x]（rebuild.py 572→356 已落，拆 `_quality_gate_cli` + `_rebuild_corpus`，naming 與 spec 寫的 `orchestrate/adapters/quality_gate_integration` 不同 = naming drift，補 spec note）+ T9.4 補勾 [x]（fat red=0 已達標）；驗證 `grep -c "^- \[ \]" openspec/changes/09-fat-rotate-iter3/tasks.md` = 0。
+- [ ] **T-BARE-EXCEPT-AUDIT 刀 9**（45 min；P0；2026-04-25 v7.8 開）— top 5 file 各 2 處共 10 處 bare except 一刀清：`src/cli/rewrite_cmd.py`、`src/cli/switcher.py`、`src/cli/generate/pipeline/compose.py`、`src/cli/kb/corpus.py`、`src/cli/kb/status.py`；改 typed bucket + `logger.warning`；驗證 sensor `bare_except.total ≤ 39`、`pytest -q --ignore=tests/integration` 全綠。
+
+#### v7.6 反思新增 — 5 件本輪必動（已完成；保留追歷史）
+
+- [x] **T-HEADER-RESYNC-v5**（2026-04-25 v7.6 閉；ACL-free）— sensor 實跑：bare-except 49/40、fat 0 over 400、corpus 173、engineer-log 234、program.md 271、auto-commit 46.7%、EPIC6 13/13；violations.hard = [] ✅；v7.7 sensor header 加入 program.md 頂部。**注：corpus / auto-commit 兩數值在 v7.8 證實為漂白**，v7.8 已修。
 - [x] **T-SPEC-LAG-CLOSE**（15 min；P0；2026-04-25 v7.6 反思開）— `openspec/changes/08-bare-except-audit-iter6/tasks.md` 7 task 全勾 [x]（71→47 已落）；`openspec/changes/11-bare-except-iter6-regression/tasks.md` 5 task 全勾 [x]（commit `827e601` 已修 12 測試）；`07/09/10` 半閉項補勾或新增 [BLOCKED-by-X] 註記。驗證 `for d in 07 08 09 10 11; do grep -c "^- \[ \]" openspec/changes/$d-*/tasks.md; done` 全 0 或明確 backlog。
 - [x] **T-ROBOTS-IMPL**（2026-04-25 本輪閉；ACL-free）— `src/sources/_common.py` 加 `RobotsCache`（urllib.robotparser，TTL 1hr）、`RobotsDisallowedError`、`_robots_cache` module-level singleton；`request_with_proxy_bypass` 加 robots check 前置；`tests/conftest.py` 加 `_bypass_robots_cache_in_tests` session autouse（防 unit test 發真實 HTTP）；`tests/test_robots_compliance.py` 4 passed（allow / disallow / parse-fail fallback / request_with_proxy_bypass raises）。驗證 `python -m pytest tests/test_robots_compliance.py tests/test_sources_base.py -q` = 8 passed。
 - [x] **T-PYC-CLEAN**（2026-04-25 本輪閉；ACL-free）— 刪除 3862 個 xdist worker .pyc.* 殘留；`.gitignore` 已含 `*.pyc.*` pattern（line 4）；`tests/conftest.py` 加 `_cleanup_xdist_pyc_star` session autouse fixture。驗證 `find src -name "*.pyc.*" | wc -l` = 0。
@@ -175,6 +182,19 @@
 - [x] **T-PROGRAM-MD-ARCHIVE-REAL**（2026-04-22；前輪）— 頭部 v5.5-v6.4 歷史 header 真封存至 `docs/archive/program-history-202604g.md`；主檔收斂到 v7.0 單 header + 規則 + 活任務。
 
 ### P1（連 2 輪延宕 = 3.25）
+
+#### v7.8 反思新增 — 結構治理（連 5+ 輪同根因，需上工程而非 patch）
+
+- [ ] **T-AUTO-COMMIT-RUNTIME-SEAT**（60 min；P1；2026-04-25 v7.8 開；外掛工程）— 6+ 輪 in-repo lint/hook 全擋，根因 = `supervise.sh` / auto-engineer wrapper **out-of-repo**；本任務探勘真位點：`tasklist /v | findstr -i auto-engineer` + `where supervise` + `.auto-engineer.state.json` 的 PID 引用路徑 + `.copilot-loop.state.json`；輸出 `docs/auto-commit-runtime-seat.md` 落地實際路徑、修改點、修改方法；如完全 out-of-machine 不可達 → 降 P2 凍結並寫 limitation note。
+- [ ] **T-COMMIT-NOISE-FLOOR**（30 min；P1；2026-04-25 v7.8 開）— 近 30 commit 28 條 = `auto-commit checkpoint` 噪音 93%，git blame/bisect 失效；治本兩刀：(a) 改 supervise loop interval 從 5 min → 30 min；(b) 5 min 窗口內 squash + 補語意 message 模板；驗證下個 24 hr 內 git log 噪音 ≤ 50%。
+- [ ] **T-FAT-RATCHET-GATE**（30 min；P1；2026-04-25 v7.8 開）— `scripts/check_fat_files.py` + CI hook：任一檔 ≥ 400 = exit 1；ratchet 紀錄當前 yellow 11 檔基線（max 391），不允許新增 yellow（除非同 PR 拆走一個）；驗證 `python scripts/check_fat_files.py --strict` exit 0、加入 sensor_refresh.py downstream check。
+
+#### v7.8 反思新增 — 深挖類
+
+- [ ] **T-INT-TESTS-SKIP-AUDIT**（30 min；P1；2026-04-25 v7.8 開）— 連 3 輪未深挖 10 skipped；分類 live-API gating / 環境缺失 / 故意 skip；輸出 `docs/integration-skip-audit.md` + 標 reason category。
+- [ ] **T-CASCADE-QUALITY-GATE-TEST**（60 min；P1；2026-04-25 v7.8 開）— EPIC6 quality gate 4 named failure 各 1 test，但多源混合失敗 / cascade 場景未測；補 `tests/test_quality_gate_cascade.py` 至少 4 條（多源 fail-stop / partial pass / cascade ordering / mixed named errors）。
+
+#### 既有 P1（保留追蹤）
 
 - [x] **T-TEST-LOCAL-BINDING-AUDIT**（2026-04-25 閉；commit `23802ec`；ACL-free）— `scripts/audit_local_binding.py` AST-based Type 1 iceberg scanner（67 候選）；`tests/test_audit_local_binding.py` 19 passed；`tests/conftest.py` `rebind_local()` helper with docstring；`CONTRIBUTING.md` Mock contract rules 三型完整章節（adb531c/c0933f9/1eef399）；`docs/test-mock-iceberg-taxonomy.md` 133 行 pre/post diff per type。
 - [x] **T-PYTEST-RUNTIME-FIX-v3**（2026-04-25 07:30 閉；ACL-free）— 目標 ≤ 300s（現雙 baseline **179/173s** 已破；守穩住下輪 cold-start 若 > 220s = regression）。本輪修復：conftest.py mock_llm fixture regression（234 errors → 0）+ `_bm25_search` jieba early-return + pytest-xdist `-n auto`。結果：**146.67s / 3889 passed（-n auto, 20 workers）**；≤ 300s ✅；regression guard ≤ 220s ✅；歷史基線 179/173s 均優 ✅。

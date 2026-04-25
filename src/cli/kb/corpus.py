@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import yaml
 import typer
 from rich.table import Table
 
@@ -16,12 +17,10 @@ def parse_markdown_with_metadata(file_path: Path) -> tuple[dict[str, Any], str]:
         try:
             parts = content.split("---", 2)
             if len(parts) >= 3:
-                import yaml
-
                 metadata = yaml.safe_load(parts[1]) or {}
                 body = parts[2].strip()
                 return metadata, body
-        except Exception as exc:
+        except (yaml.YAMLError, ValueError) as exc:
             console.print(f"[yellow]解析 {file_path.name} 時發生警告：{exc}[/yellow]")
     return {}, content
 
@@ -68,7 +67,7 @@ def _load_full_document(kb, file_path: Path, content: str) -> str | None:
         return None
     try:
         return file_path.read_text(encoding="utf-8")
-    except Exception as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         logger.warning("讀取完整文件 %s 失敗，使用片段 fallback：%s", file_path, exc)
         return content
 

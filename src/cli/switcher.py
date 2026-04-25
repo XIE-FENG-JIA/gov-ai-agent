@@ -32,7 +32,7 @@ def switch(
     try:
         with open(cm.config_path, 'r', encoding='utf-8') as f:
             raw_config = yaml.safe_load(f) or {}
-    except Exception as e:
+    except (OSError, yaml.YAMLError) as e:
         console.print(f"[red]載入設定檔時發生錯誤：{e}[/red]")
         raise typer.Exit(1)
 
@@ -105,5 +105,5 @@ def switch(
                     console.print("[dim]請確認 Ollama 已啟動：ollama serve[/dim]")
                 else:
                     console.print("[dim]請檢查 API Key 和網路連線。[/dim]")
-    except Exception as e:
+    except (RuntimeError, OSError, ConnectionError) as e:
         console.print(f"[dim]連線測試發生例外：{e}[/dim]")  # 不影響切換結果

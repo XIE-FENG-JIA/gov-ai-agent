@@ -47,7 +47,7 @@ def rewrite(
     try:
         config = ConfigManager().config
         llm = get_llm_factory(config.get("llm", {}), full_config=config)
-    except Exception as e:
+    except (ValueError, RuntimeError, OSError, ImportError) as e:
         console.print(f"[red]無法初始化 LLM：{e}[/red]")
         raise typer.Exit(code=1)
 
@@ -62,7 +62,7 @@ def rewrite(
     )
     try:
         result = llm.generate(prompt)
-    except Exception as e:
+    except (RuntimeError, OSError, TimeoutError) as e:
         console.print(f"[red]LLM 改寫失敗：{e}[/red]")
         raise typer.Exit(code=1)
 

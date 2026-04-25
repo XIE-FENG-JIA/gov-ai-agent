@@ -46,7 +46,7 @@ def info() -> None:
 
     try:
         kb_path = ConfigManager().config.get("knowledge_base", {}).get("path", "./kb_data")
-    except Exception as exc:
+    except (OSError, RuntimeError, ValueError) as exc:
         console.print(f"[dim]設定檔載入失敗，使用預設路徑：{exc}[/dim]")
         kb_path = "./kb_data"
 
@@ -264,7 +264,7 @@ def auto_update(
                 count = _ingest_fetch_results(results, kb)
                 console.print(f"  [green]已匯入 {count} 筆至知識庫[/green]")
             updated_count += 1
-        except Exception as exc:
+        except (RuntimeError, OSError) as exc:
             console.print(f"  [red]❌ 更新失敗：{exc}[/red]")
             logger.exception("auto_update: %s 更新失敗", source.source_name)
             failed_count += 1
