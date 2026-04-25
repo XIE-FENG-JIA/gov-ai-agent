@@ -3,7 +3,7 @@ from pathlib import Path
 
 import typer
 
-from src.cli.verify_cmd import collect_citation_verification_checks, render_citation_verification_results
+from src.cli.shared.verify_service import collect_citation_verification_checks, render_citation_verification_results
 from src.sources.ingest import _adapter_registry
 from src.sources.quality_gate import QualityGate, QualityGateError
 
