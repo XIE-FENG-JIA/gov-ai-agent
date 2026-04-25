@@ -12,7 +12,8 @@
   Validation: `python -m pytest tests/test_validate_auto_commit_msg.py -q` all pass in < 5s
   Commit: `test(governance): cover validate_auto_commit_msg 8 cases`
 
-- [ ] **T7.3 [BLOCKED-by-runtime-callsite-missing]** Locate and document the auto-engineer commit-message call site (likely `supervise.sh` or `.auto-engineer/*` runtime) and route every subject through the validator.
+- [ ] **T7.3 [BLOCKED-by-external-wrapper-not-in-repo]** Locate and document the auto-engineer commit-message call site (likely `supervise.sh` or `.auto-engineer/*` runtime) and route every subject through the validator.
+  Refined finding (2026-04-25 15:30): `scripts/find_auto_commit_source.py` 跑出 5 targets / 2 hits / 0 direct template，repo 內**找不到** `auto-commit:` template 來源。`auto-engineer.sh:249` 用 `auto-engineer:` prefix（非違規來源）。違規 commit 來自 **external wrapper / AUTO-RESCUE 機制**（session-wrapper 或 Windows Task Scheduler 內），需要 admin 權限存取 repo 外位置才能修。`docs/admin-rescue-template.md` 57 行已含建議 diff（`auto-commit: → chore(rescue):`）。下一步：admin 識別並修改該 external wrapper formatter，然後在 repo 端跑 1 輪驗證 `git log --oneline -5` 0 violations。
   Requirements:
   - Commit-message lint must run inside the auto-engineer runtime pre-commit path
   Validation: inject a bad message in a fixture run and verify the cycle aborts with the rejection envelope; `git log -n 30 --format=%s` contains zero `auto-commit: checkpoint` strings among Auto-Dev Engineer commits on HEAD+30.
