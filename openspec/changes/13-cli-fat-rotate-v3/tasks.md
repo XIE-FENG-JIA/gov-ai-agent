@@ -30,15 +30,15 @@
 
 ## Track B — Break Iceberg Cross-Command Coupling
 
-- [ ] **T13.2** — Extract `_run_lint` from `lint_cmd.py` to `src/cli/shared/lint_service.py`.
-  Requirements: `lint_cmd.py` still registers the CLI command but calls `lint_service._run_lint`; `generate/export.py` imports from `lint_service`.
-  Validation: `python -m pytest tests/test_cli_commands.py -q -k lint` passes; `grep -n "from src.cli.lint_cmd import" src/ -r` = 0 results.
-  Commit: `refactor(cli): extract _run_lint to shared/lint_service (iceberg fix)`
+- [x] **T13.2** — Extract generate lint invocation to `src/cli/_shared/lint_invocation.py`.
+  Requirements: `lint_cmd.py` still registers the CLI command; `generate/export.py` imports the public `run_lint` interface from `_shared/lint_invocation.py`.
+  Validation: `python -m pytest tests/test_generate_pipeline.py tests/test_lint_cmd.py -q` passes; `grep -n "from src.cli.lint_cmd import" src/ -r` has no high-risk generate import.
+  Commit: `refactor(cli): route generate lint through shared invocation (iceberg fix)`
 
-- [ ] **T13.3** — Extract cite_cmd private symbols (`_MAPPING_PATH`, `_filter_applicable`, `_load_mapping`) to `src/cli/shared/cite_service.py`.
-  Requirements: `cite_cmd.py` uses `cite_service`; `generate/export.py` imports from `cite_service`.
-  Validation: `python -m pytest tests/test_cli_commands.py -q -k cite` passes; `grep -n "from src.cli.cite_cmd import _" src/ -r` = 0 results.
-  Commit: `refactor(cli): extract cite private symbols to shared/cite_service (iceberg fix)`
+- [x] **T13.3** — Extract citation mapping/format helpers to `src/cli/_shared/citation_format.py`.
+  Requirements: `cite_cmd.py` and `generate/export.py` use the public citation formatting interface instead of cross-command private symbols.
+  Validation: `python -m pytest tests/test_generate_pipeline.py tests/test_cite_cmd.py -q` passes; `grep -n "from src.cli.cite_cmd import _" src/ -r` has no high-risk generate import.
+  Commit: `refactor(cli): route generate citations through shared formatter (iceberg fix)`
 
 - [ ] **T13.4** — Move `collect_citation_verification_checks` + `render_citation_verification_results` to `src/cli/shared/verify_service.py`.
   Requirements: Both `verify_cmd.py` and `kb/rebuild.py` import from `verify_service`; `verify_cmd.py` public interface unchanged.

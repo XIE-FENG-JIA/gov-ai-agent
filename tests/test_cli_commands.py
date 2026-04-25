@@ -12349,7 +12349,7 @@ class TestShowCiteSuggestions:
         test_console = Console(file=buf, width=120)
 
         with patch("src.cli.generate.console", test_console), \
-             patch("src.cli.cite_cmd._MAPPING_PATH", mapping_file):
+             patch("src.cli._shared.citation_format.MAPPING_PATH", mapping_file):
             from src.cli.generate import _show_cite_suggestions
             _show_cite_suggestions("函")
 
@@ -12372,7 +12372,7 @@ class TestShowCiteSuggestions:
         buf = io.StringIO()
         test_console = Console(file=buf, width=120)
         with patch("src.cli.generate.console", test_console), \
-             patch("src.cli.cite_cmd._MAPPING_PATH", mapping_file):
+             patch("src.cli._shared.citation_format.MAPPING_PATH", mapping_file):
             from src.cli.generate import _show_cite_suggestions
             _show_cite_suggestions("不存在的類型")
 
@@ -12391,7 +12391,7 @@ class TestShowCiteSuggestions:
         buf = io.StringIO()
         test_console = Console(file=buf, width=120)
         with patch("src.cli.generate.console", test_console), \
-             patch("src.cli.cite_cmd._MAPPING_PATH", nonexistent):
+             patch("src.cli._shared.citation_format.MAPPING_PATH", nonexistent):
             from src.cli.generate import _show_cite_suggestions
             _show_cite_suggestions("函")
 
@@ -12413,7 +12413,7 @@ class TestShowCiteSuggestions:
         buf = io.StringIO()
         test_console = Console(file=buf, width=120)
         with patch("src.cli.generate.console", test_console), \
-             patch("src.cli.cite_cmd._MAPPING_PATH", mapping_file):
+             patch("src.cli._shared.citation_format.MAPPING_PATH", mapping_file):
             from src.cli.generate import _show_cite_suggestions
             _show_cite_suggestions("公告")
 
@@ -12565,7 +12565,7 @@ class TestShowLintResults:
         nonexistent = tmp_path / "no_such_file.yaml"
 
         with caplog.at_level("WARNING"):
-            with patch("src.cli.cite_cmd._MAPPING_PATH", nonexistent):
+            with patch("src.cli._shared.citation_format.MAPPING_PATH", nonexistent):
                 gen._show_cite_suggestions("函")
 
         assert "引用建議顯示失敗" in caplog.text
@@ -12657,3 +12657,4 @@ class TestShowLintResults:
         ])
         assert result.exit_code == 0
         mock_show_lint.assert_called_once()
+

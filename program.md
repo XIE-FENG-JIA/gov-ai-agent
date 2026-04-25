@@ -63,7 +63,7 @@
 
 ### P1（v7.9-final 02:32 /pua 新增 — fat-rotate 治本推進）
 
-- [ ] **T-CLI-FAT-ROTATE-V3-T13.2-T13.3**（P1；45 min；ACL-free；治本不可凍）— `openspec/changes/13-cli-fat-rotate-v3/tasks.md` T13.2 + T13.3 iceberg 解耦推進：(a) **T13.2** `generate/export.py` 借 `cite_cmd._format_citations` 私有符號 → 抽 `src/cli/_shared/citation_format.py` 公共介面；(b) **T13.3** `generate/export.py` 借 `lint_cmd._lint_draft_lines` 私有符號 → 抽 `src/cli/_shared/lint_invocation.py` 公共介面。驗收：`python scripts/cli_ast_audit.py` 高風險跨群組 import 4→2、`python -m pytest tests/test_generate_pipeline.py tests/test_cite_cmd.py tests/test_lint_cmd.py -q` 既有 case 全綠、`python scripts/check_fat_files.py --strict` exit 0。**連 2 輪不動 = 神物件治理永久凍結**。
+- [x] **T-CLI-FAT-ROTATE-V3-T13.2-T13.3**（2026-04-26 閉；P1；ACL-free）— `generate/export.py` 已改走 `src/cli/_shared/citation_format.py` 與 `src/cli/_shared/lint_invocation.py` 公共介面，移除對 `cite_cmd` / `lint_cmd` 私有實作的高風險耦合；同步勾選 openspec T13.2/T13.3。驗收：`python scripts/cli_ast_audit.py` exit 0、`python scripts/check_fat_files.py --strict` = red 0 / yellow 6、`python -m pytest tests/test_cite_cmd.py tests/test_lint_cmd.py -q` = 89 passed、`python -m pytest tests/test_cli_commands.py -q -k "cite or lint or generate"` = 47 passed。
 
 ### P2（v7.9-final 02:32 /pua 新增 — 治理基礎建設 + 儀式前置）
 

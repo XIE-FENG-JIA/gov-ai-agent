@@ -725,3 +725,4 @@ PASS T-SENSOR-RESCUE-EXCLUDE 2026-04-26 sensor/lint AUTO-RESCUE+N-files patterns
 PASS T-LITELLM-WARNING-CLOSE-V2 2026-04-26 tests/integration/conftest.py MockLLMProvider injection; GOV_AI_RUN_INTEGRATION=1 -W error::UserWarning 17 passed 0 UserWarning
 [2026-04-26 03:06:43] | P0 API import/test gate repair | PASS | 修復 workflow 執行模組匯出相容註記；確認 API 匯入、sensor、非 integration 全測試 3951 passed
 [2026-04-26 03:07:30] | P0 API import/test gate repair | FAIL-COMMIT-BLOCKED | 驗證 PASS（sensor hard=[]；pytest tests/ --ignore=tests/integration = 3951 passed），但 git commit 兩次失敗：.git/index.lock Permission denied（無 index.lock 殘留）
+[2026-04-26 03:16:39 +0800] | [T-CLI-FAT-ROTATE-V3-T13.2-T13.3] | [PASS] | generate/export.py 已使用 _shared citation_format + lint_invocation 公共介面；openspec T13.2/T13.3 勾選；fat gate red=0 yellow=6；pytest cite/lint 89 passed，CLI cite/lint/generate 47 passed。
