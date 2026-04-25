@@ -522,3 +522,4 @@ PASS T-SYNTHETIC-AUDIT-SCRIPT 2026-04-25 scripts/audit_synthetic_flag.py created
 [2026-04-25 14:47:00] | [T-PROGRAM-MD-TRIM] | [PASS] | v7.0–v7.2 sensor/header 71 行封存至 docs/archive/program-history-202604j.md；program.md 294→224 行 (soft cap 250 ✅) | docs/archive/program-history-202604j.md, program.md
 [2026-04-25 14:47:00] | [T-SENSOR-HEAD-REFRESH-v4] | [PASS] | v7.5 sensor 區塊加入 program.md；HEAD 獨立量測完成：bare except 2/2 noqa, fat>400 = 0, validators 391 yellow, engineer-log 133, auto-commit 48.1%, pytest 3914 | program.md
 [2026-04-25 14:47:00] | [T-VALIDATORS-AUDIT] | [PASS] | validators.py 391 行 yellow watch 確認；10 方法單一類；下輪 >400 才觸發 fat-rotate | src/agents/validators.py
+[2026-04-25 15:01:31] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=2436dd5) — 若先前 FAIL 是 ACL denied，此條即救援對應 | .copilot-loop.state.json
