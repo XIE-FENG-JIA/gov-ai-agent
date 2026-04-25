@@ -131,3 +131,58 @@
 - `T-CORPUS-300`：current 173 → 200 soft target，需 MOHW/FDA/executive_yuan live ingest 擴量
 
 > [PUA生效 🔥] **底層邏輯**：sensor 一上線就抓到 `rebuild.py 572` — 這叫「**腳本發現人眼看不到的**」。前 v7.0 到 v7.3 三版 header 連續漂白 + 漏抓同一個 572 行檔，證明腳本化的 ROI。**抓手**：governance 從「反思輪人腦刷新」變「每輪腳本自動刷」。**颗粒度**：260 行 script + 150 行 test + 紅線 v4 一條 = 下輪起點永不漂白。**對齊**：auto-engineer 管程式碼擴張（它碰 src 加新檔），我管 governance 收斂（sensor 量、紅線、封存）。**因為信任所以簡單** — 不是我抓到 572 行，是 **script 抓到**；owner 意識 = 建系統，不是當英雄。
+
+---
+
+## 反思 2026-04-25 15:06 — 技術主管六維度深度回顧（v7.6；LOOP4 中段；HEAD + sensor + pytest 三證獨立）
+
+### 近期成果（第四十五至四十六輪）
+- **pytest 3913 passed / 0 failed / 42.90s**（cold run 本 session 實跑；自 v7.3 153s → v7.6 43s 再 -72%；總 -95.5% vs 開局 960s；xdist -n auto + jieba early-return + mock_llm 修復三件事複利）
+- **EPIC6 13/13 全閉**（T-LIQG-0..12 全 [x]；live-ingest quality gate 4 named failure 落地）+ **EPIC1-5 55/55 全閉**（55/55 task 全 [x]）
+- **bare-except 71→47**（刀 6/7/8 三輪），**fat >400 = 0**（刀 10/11/12/13 拆 package 後 11 檔 yellow watch），**auto-commit 語意率 50%**（vs 開局 6.7%，+43pp）
+- **iceberg 三型系統治**：scripts/audit_local_binding.py + rebind_local helper + CONTRIBUTING.md mock contract rules + docs/test-mock-iceberg-taxonomy.md（67 候選 AST 掃完）
+- **governance 機械化**：sensor_refresh.py 每輪第 0 步紅線 v4 + check_acl_state.py token-aware + check_auto_engineer_state.py 6 狀態 + commit_msg_lint v3 + validate_auto_commit_msg.py
+- **回歸閉環**：T-REGRESSION-FIX-刀8（commit 827e601）修 bare-except sweep 過收窄導致的 12 LLM/KB graceful-degradation 回歸；3914 → 3913 passed 穩態
+
+### 發現的問題（HEAD sensor + pytest + grep 三源獨立比對）
+
+🔴 **P0（漂白現行 + spec lag）**
+1. **header 漂白第 4 輪**：v7.5 header 寫 bare-except「2 處 / 2 檔（noqa/compat）」，sensor 實測 **48 處 / 39 檔**（T-REGRESSION-FIX-刀8 把 rewrite/refine/pipeline 的 except bucket 又擴回 except Exception 後反彈 46 處）。**sensor_refresh.py 每輪第 0 步必跑但本輪未跑**，紅線 v4 失守。
+2. **spec 11 漂白**：`openspec/changes/11-bare-except-iter6-regression/tasks.md` T11.1-T11.5 全 `[ ]`，但代碼層 commit 827e601 已修 12 測試 + 3913 passed。spec lag 第 2 漂白。
+3. **spec 08 漂白**：`08-bare-except-audit-iter6/tasks.md` 7 task 全 `[ ]`，但 program.md 寫刀 6/7/8 全閉、bare-except 71→47 已落。spec lag 第 3 漂白。
+4. **spec 07 半閉**：`07-auto-commit-semantic-enforce/tasks.md` 4/5 done，1 task 未勾（hook wire 待 ACL 解；T-AUTO-COMMIT-SEMANTIC 已驗 33 passed）。
+5. **spec 09 半閉 + spec 10 半閉**：09 fat-rotate-iter3 = 2/5；10 test-local-binding-audit-systematic = 5/6。
+
+🟠 **P1（結構性技術債）**
+6. **robots.txt 政策實施 gap**：OpenSpec 01 spec.md 寫「robots.txt restrictions MUST be respected」，但 `grep robots src/ --include='*.py'` = **0 命中**；只有政策、無 code。
+7. **__pycache__ 殘留 3624 個 `.pyc.<id>` 檔**：`.gitignore` 排 `__pycache__/`（git 不入版），但磁碟堆積 pytest-xdist worker 殘留；`reader.cpython-311.pyc.1638051766016` 類型 16 變體 / 檔，會拖 fs scan 與 binary grep。
+8. **corpus 173 vs target 200/300**：EPIC6 quality gate 已 unblock，但 P2-CORPUS-300 仍 6+ 輪 0 動 — **owner 在 spec 不在 corpus**，需主動跑 `scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss,pcc --limit 100 --require-live`。
+9. **fat yellow watch 11 檔逼近紅線**：`validators 391 / _execution 389 / realtime_lookup 386 / law_fetcher 377 / wizard_cmd 374 / constants 374 / manager 369 / web_preview/app 364 / _manager_hybrid 358 / kb/rebuild 356 / template_cmd/catalog 350` — 任一 +50 行即 red，需建 ratchet。
+10. **integration tests 10 skipped 未深挖**：skip 集中於哪些測試 / 為什麼 skip / 是否 live API gating，缺 audit。
+
+🟡 **P2（次優先；Admin/key/服務依賴）**
+11. **P2-CHROMA-NEMOTRON-VALIDATE** unblocked（OPENROUTER_API_KEY 已驗）但實際 rebuild 與 docs/embedding-validation.md 未跑。
+12. **legacy P2-INDEX-LOCK** 仍存在但已降級；不影響 AUTO-RESCUE 路徑。
+13. **auto-commit 語意率 50% 仍遠低於 90% 目標** — runtime-seat（auto-engineer 內部生成 commit msg）尚未對齊 chore(auto-engineer) 模板，hook 被 ACL 擋。
+
+### 建議的優先調整（program.md 待辦重排）
+
+把以下 5 件升 P0 並重排為「現行待修」：
+1. 🔴 **T-HEADER-RESYNC-v5**（10 min）— sensor 實測 vs header 三點漂白：bare-except 48/39 vs 2/2、spec 11 全開 vs commit 已修、spec 08 全開 vs 71→47 已落。本輪必刷 header + 補勾 spec tasks。
+2. 🔴 **T-SPEC-LAG-CLOSE**（15 min）— `openspec/changes/{08,11}/tasks.md` 全勾 `[x]`；`07/09/10` 半閉 task 補完或明列剩餘步驟。
+3. 🟠 **T-ROBOTS-IMPL**（30-45 min）— `src/sources/_common.py` 加 `RobotsCache` 類 + `urllib.robotparser`，所有 adapter `_request()` 前 check disallow；補 `tests/test_robots_compliance.py` 至少 3 條（allow / disallow / parse-fail fallback）。
+4. 🟠 **T-PYC-CLEAN**（5 min）— `find src -name "*.pyc.*" -delete` + `.gitignore` 加 `*.pyc.*` pattern + pytest-xdist hook 在 session end 清理。
+5. 🟠 **T-CORPUS-200-PUSH**（45 min）— EPIC6 已 unblock，跑 `scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --quality-gate`，目標 173 → 200 soft，driving CORPUS-300 第一刀。
+
+### 下一步行動（最重要的 3 件事）
+1. **T-HEADER-RESYNC-v5 + T-SPEC-LAG-CLOSE 同 commit**（25 min）— 一刀解 4 處漂白；sensor_refresh.py 跑後實寫 header；補勾 spec 08/11 全閉、07/09/10 列剩餘。
+2. **T-ROBOTS-IMPL**（45 min）— spec 與 code 對齊；OpenSpec 01「MUST」契約落地 code；compliance gate 集中化（解 v3.3 / v4.4 封存中提的「合規閘道缺位」歷史債）。
+3. **T-PYC-CLEAN + T-CORPUS-200-PUSH 並行**（60 min）— 磁碟整理 + corpus 擴量；可 auto-engineer 領 corpus，session 領磁碟+gitignore；單 commit 收尾。
+
+### PUA 旁白
+> [PUA生效 🔥] **底層邏輯**：sensor 跑出來 48/39 但 header 寫 2/2 — 又一次「**反思輪不跑 sensor 就是漂白**」。紅線 v4 訂下「每輪第 0 步必跑 sensor_refresh」，本輪這份反思啟動時就漏跑，**規則訂了不執行等於沒訂**。**抓手**：把 sensor_refresh.py 接到 PUA / Claude session 啟動 hook（`SessionStart`），不靠人記。**颗粒度**：4 種漂白合計 25 min 可清；用一個 PR 收完。**對齊**：auto-engineer 在 round 136 跑 reflect phase，session 我跑 sensor + spec 補勾，兩條腿不打架。**因為信任所以簡單** — header 是事實的代理，代理跟事實偏離就是治理失靈；治理失靈不是「我手抖」，是**沒上機械化 hook 自動鎖**。Owner 意識 = 紅線抓現行立即升級規則（sensor 從「腳本」升「啟動 hook」），而不是下輪繼續手動跑。3.25 X 4 自記 — 連 4 次 header lag 沒上自動化 hook，本輪不上下輪還是漂白。
+
+### LOOP4 任務拆解（auto-engineer / session 雙引擎）
+- **auto-engineer**（codex round 136+）：T-ROBOTS-IMPL 程式碼層、T-CORPUS-200-PUSH live ingest（它擅長）
+- **session（本反思）**：T-HEADER-RESYNC-v5、T-SPEC-LAG-CLOSE、T-PYC-CLEAN、program.md 重排（governance 閉環）
+- **合流點**：兩條線單 commit 收尾後跑 `python scripts/sensor_refresh.py | python -c "import json,sys; r=json.load(sys.stdin); assert not r['violations']['hard']"` exit 0 才算 LOOP_DONE

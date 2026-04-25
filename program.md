@@ -16,6 +16,23 @@
 > 1. ✅ **T-WORKTREE-CLEAN-v3**（2026-04-25 本輪閉；commit `827e601`；T-REGRESSION-FIX-刀8 exception 擴寬 7 檔已入）
 > 2. ✅ **T-PROGRAM-MD-TRIM**（2026-04-25 本輪閉；294→224 行；v7.0–v7.2 封存至 program-history-202604j.md）
 
+> **v7.6-sensor 校準段（2026-04-25 15:06；第四十六輪反思；HEAD + sensor + pytest 三證獨立）**：
+> - ✅ **pytest 3913 passed / 0 failed / 42.90s**（cold run 本 session 實跑；自開局 960s → 42.90s 累計 -95.5%）
+> - 🔴 **header 漂白第 4 輪**：v7.5 寫 bare-except 2/2，sensor 實測 **48/39**（T-REGRESSION-FIX-刀8 把 except bucket 又擴回 except Exception 後反彈）
+> - 🔴 **spec lag**：openspec changes/`08-bare-except-audit-iter6` 0/7、`11-bare-except-iter6-regression` 0/5 全 [ ]，但 commit 已修；`07` 4/5、`09` 2/5、`10` 5/6 半閉
+> - 🟠 **robots.txt 政策實施 gap**：OpenSpec 01 spec 寫 MUST，`grep robots src/ --include='*.py'` = 0
+> - 🟠 **__pycache__ 殘留 3624 個 `.pyc.<id>`**：xdist worker 殘留；`.gitignore` 未含 `*.pyc.*`
+> - 🟠 **fat yellow watch 11 檔**：validators 391 / _execution 389 / realtime_lookup 386（5 檔 ≥ 374，需建 ratchet）
+> - 🟡 **corpus 173 vs target 200/300**：EPIC6 已 unblock，仍 6+ 輪 0 動
+> - 🟡 **auto-commit 語意率 50%**：vs 90% 目標差 40pp；hook 被 ACL 擋
+>
+> **v7.6 P0（本輪新增；技術主管反思 v7.6 落地）**：
+> 1. 🔴 **T-HEADER-RESYNC-v5**（10 min）— sensor 實測 vs header 三點漂白，本輪必刷 header + 紅線 v5 把 sensor 升 SessionStart hook
+> 2. 🔴 **T-SPEC-LAG-CLOSE**（15 min）— `openspec/changes/{08,11}/tasks.md` 全勾 [x]；`07/09/10` 半閉 task 補完或明列剩餘
+> 3. 🟠 **T-ROBOTS-IMPL**（45 min）— `src/sources/_common.py` 加 RobotsCache + urllib.robotparser；adapter `_request()` check disallow；補 `tests/test_robots_compliance.py` ≥ 3 條
+> 4. 🟠 **T-PYC-CLEAN**（5 min）— `find src -name "*.pyc.*" -delete` + `.gitignore` 加 `*.pyc.*` + xdist session-end hook
+> 5. 🟠 **T-CORPUS-200-PUSH**（45 min）— `scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --quality-gate`；目標 173 → 200 soft
+
 > **v7.3-sensor 校準段（2026-04-25 02:45；第四十四輪深度回顧；HEAD 全獨立跑）**：
 > - ✅ **pytest cross-session cold-start = 3801 passed / 152.98s / exit 0**（破下 epoch ≤ 200s 目標 47s 裕量；BM25 cap 真效非 cache 假象確認；演進 960→773→547→461→340→343→179→173→**153s** 累計 -84%）
 > - 🔴 **engineer-log 351 行** 破 300 hard cap 51 行（T9.6-v6 才閉 4 天就再犯 → v7 強制本輪）
@@ -142,6 +159,16 @@
 
 ### P0（連 1 輪延宕 = 紅線 X 3.25）
 
+#### v7.6 反思新增 — 5 件本輪必動（按 ROI 排序）
+
+- [ ] **T-HEADER-RESYNC-v5**（10 min；P0；2026-04-25 v7.6 反思開）— sensor 跑 `python scripts/sensor_refresh.py` 後實寫 v7.5 header 三處漂白：bare-except 2/2 → 48/39、auto-commit 48.1% → 50%、剔除「全部故意保留」誤導文案；紅線 v5 把 sensor_refresh 從「每輪第 0 步腳本」升「SessionStart hook」（在 `.claude/settings.json` 或 PUA SKILL.md 掛勾），自動鎖住「漂白 0 觸發」。驗證 `sensor_refresh.py` exit 0 + violations.hard 為空陣列。
+- [ ] **T-SPEC-LAG-CLOSE**（15 min；P0；2026-04-25 v7.6 反思開）— `openspec/changes/08-bare-except-audit-iter6/tasks.md` 7 task 全勾 [x]（71→47 已落）；`openspec/changes/11-bare-except-iter6-regression/tasks.md` 5 task 全勾 [x]（commit `827e601` 已修 12 測試）；`07/09/10` 半閉項補勾或新增 [BLOCKED-by-X] 註記。驗證 `for d in 07 08 09 10 11; do grep -c "^- \[ \]" openspec/changes/$d-*/tasks.md; done` 全 0 或明確 backlog。
+- [ ] **T-ROBOTS-IMPL**（45 min；P0；2026-04-25 v7.6 反思開）— OpenSpec 01 spec.md 寫「robots.txt restrictions MUST be respected」但 `grep robots src/ --include='*.py'` = 0；於 `src/sources/_common.py` 加 `RobotsCache` 類（用 `urllib.robotparser`，TTL 1hr），所有 adapter 在 `_request()` 前 `cache.allowed(url, user_agent)` check；補 `tests/test_robots_compliance.py` ≥ 3 條（allow / disallow / parse-fail fallback to allow + log warning）。驗證 `python -m pytest tests/test_robots_compliance.py tests/test_sources_base.py -q` 全綠。
+- [ ] **T-PYC-CLEAN**（5 min；P0；2026-04-25 v7.6 反思開）— `find src -name "*.pyc.*" -delete`（3624 個 xdist worker 殘留 byte-compile artifacts）+ `.gitignore` 補 `*.pyc.*` pattern；`tests/conftest.py` 加 session-end fixture 自動清。驗證 `find src -name "*.pyc.*" | wc -l` = 0。
+- [ ] **T-CORPUS-200-PUSH**（45 min；P0；2026-04-25 v7.6 反思開；原 P1 P2-CORPUS-300 升 P0 拆第一刀）— EPIC6 quality gate 已 unblock；跑 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --quality-gate` 把 corpus 173 → 200 soft target；產出 `docs/corpus-200-push-2026-04-25.md` 記錄各 source 抓 N / gate pass / dedup 後增量。驗證 `find kb_data/corpus -name "*.md" | wc -l` ≥ 200。
+
+#### v7.5 已閉項（保留追歷史）
+
 - [x] **T9.6-REOPEN-v7**（2026-04-25 閉；ACL-free）— engineer-log v7.0/v7.1/v7.2 五段封存至 `docs/archive/engineer-log-202604i.md`；主檔 437→107 行（≤ 300 ✅）；`ls docs/archive/engineer-log-202604i.md` ✅。
 - [x] **T-HEADER-SENSOR-REFRESH**（2026-04-25 閉；commit `99619d3`；ACL-free）— `scripts/sensor_refresh.py` 301 行已 commit；wc/rg/git/find 全量跑回寫 program.md sensor 區塊；`tests/test_sensor_refresh.py` 12 passed / 2.13s；掛 loop starter 第 0 步；紅線 v4 落地。
 - [x] **T-ACL-STATE-RECALIBRATE**（2026-04-25 03:08 閉；ACL/advisory 校準）— 以 PowerShell `WindowsIdentity` 取當前 SID `S-1-5-21-1271297351-773185924-864452041-500`，確認不匹配 `.git` foreign DENY SID `S-1-5-21-541253457-2268935619-321007557-692795393`，且該 SID 不在當前 token；`git commit --dry-run --allow-empty` 仍重現 `.git/index.lock: Permission denied`、`.git/index` 僅 `A` 屬性。結論：**P0.D 前提錯**，foreign SID DENY 降為 advisory / legacy，現行 blocker 改記 `.git/index.lock` 寫鎖問題；`scripts/check_acl_state.py` 已補 token-aware mismatch 判讀，證據見 `docs/acl-recalibrate-2026-04-25.md`。
@@ -168,7 +195,7 @@
 - [x] **T-SYNTHETIC-AUDIT**（P1；2026-04-25 建；2026-04-26 全補閉）— `scripts/audit_synthetic_flag.py`（97 行）建立；`tests/test_audit_synthetic_flag.py` = 18 passed；**37 份 gazette 未標 `synthetic:` 已於本輪補 `synthetic: false`；`--strict` exit 0，192/192 tagged ✓**；與 T-LIQG-1 `SyntheticContamination` 檢測契合，CORPUS-300 擴量掃雷完成。
 - [x] **EPIC6 T-LIQG-1**（2026-04-25 02:20 閉；commit `c53a947` auto-engineer 吃 checkpoint 格式）— `src/sources/quality_gate.py`（171 行）+ `tests/test_quality_gate.py`（99 行）：`QualityGate.evaluate` + 4 named failure 合約落地。⚠️ auto-engineer commit message 違反 T-COMMIT-SEMANTIC-GUARD（用 `auto-commit: checkpoint` 裸格式），T-AUTO-COMMIT-SEMANTIC 升 P0 處理。
 - [x] **T-PYTEST-RUNTIME-FIX**（2026-04-24 本輪四段對症；全部達標）— (1) 2026-04-22 11:03 `src/cli/main.py` help-only boot gate (28.84s → 0.43s)；(2) 第四十一輪 `f2fc2ad` + `adb531c fix(test): preflight re-bind` 修 StopIteration flake + `src.api.app.get_config` local binding；(3) **本輪 `cc5ac3c perf(tests)` autouse `_no_fetcher_backoff_sleep` 清 6 × 7s retry backoff = 42s**；(4) **本輪 `6b41335 perf(tests)` patch `src.api.routes.workflow.get_llm/get_kb` local binding — meeting_exporter 119.77s → 2.53s 省 117s**。runtime 演進：**960s → 773s → 547s → 461.20s → 340.21s (-64.5% vs 開局)**。3790 passed / 5:40。**LOOP2 ≤ 700s ✅（裕量 360s）+ 內部 ≤ 500s ✅ + 下 epoch 新目標 ≤ 300s 只差 40s**。新 Top 1 `TestEditorSafeLowNoRefine::test_safe_score_no_auto_refine` 12.54s + `TestKBEdgeCases::test_search_very_long_string` 11.27s 留給 **T-TEST-LOCAL-BINDING-AUDIT**（冰山法則：所有 `from src.api.dependencies import ...` 的 module local binding 掃一遍同類 patch bypass）。
-- [ ] **P2-CORPUS-300**（待 mojlaw/datagovtw/executive_yuan_rss/pcc live 續抓）— corpus 173 → 300；`scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss,pcc --limit 100 --require-live --prune-fixture-fallback`。
+- [ ] **P2-CORPUS-300**（拆第一刀為 P0 `T-CORPUS-200-PUSH`；本任務剩餘 200→300 待）— corpus 200 → 300；T-CORPUS-200-PUSH 跑後若 dedup/quality-gate 留量足，可一刀續推；`scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss,pcc --limit 100 --require-live --prune-fixture-fallback --quality-gate`。
 - [x] **P0.1-MOHW-LIVE-DIAG**（2026-04-24 17:01 閉；commit `7c46761`）— `docs/mohw-endpoint-probe.md`（128 行）實測：endpoint HTTP 200 / 25511 bytes / 1.20s / feed 10 items / today 2026-04-24 新聞 / `fixture_fallback=False` / `synthetic=False`；列 4 個已知限制（`source_doc_no` URL fallback / description HTML 含 `<style>` 塊 / RSS TTL 20min vs freshness_window / 無分頁無歷史）全部跨引到 EPIC6 T-LIQG-2 / T-LIQG-3 backlog；手動 probe 3 步驟 SOP + 失敗排查表。本 session live adapter call 獨立驗證：`MohwRssAdapter().list(limit=5)` 0.53s / 5 entries / cache 20 / 所有 normalize() OK。
 
 ### P2（Admin/key 依賴，不能當 P1 佔坑）
