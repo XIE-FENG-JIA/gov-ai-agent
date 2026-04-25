@@ -18,7 +18,7 @@
   Validation: inject a bad message in a fixture run and verify the cycle aborts with the rejection envelope; `git log -n 30 --format=%s` contains zero `auto-commit: checkpoint` strings among Auto-Dev Engineer commits on HEAD+30.
   Commit: `feat(governance): wire auto-engineer runtime to validate commit msg`
 
-- [ ] **T7.4** Update `docs/commit-plan.md` to v4 documenting runtime-seat enforcement, hook deprecation under current ACL, expected `chore(auto-engineer): <type>-<summary> @<timestamp>` shape.
+- [x] **T7.4** Update `docs/commit-plan.md` to v4 documenting runtime-seat enforcement, hook deprecation under current ACL, expected `chore(auto-engineer): <type>-<summary> @<timestamp>` shape.
   Requirements:
   - Non-semantic commits MUST fail the cycle, not log a warning
   Validation: `grep -n "v4" docs/commit-plan.md` present and `rg "chore\\(auto-engineer\\)" docs/commit-plan.md` hits the template.

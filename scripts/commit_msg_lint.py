@@ -33,9 +33,15 @@ _HEADER_RE = re.compile(
 )
 
 # Naked / lazy patterns — reject loudly
+# Background: 2026-04-25 LOOP3 抓到 auto-engineer / copilot 兩條 agent runtime
+# 都以類前綴格式繞過 lint：auto-commit / copilot-auto。把任何 `<agent>-<state>:`
+# 形式的非語意前綴一律拒，迫使 agent 走 chore(auto-engineer) / chore(copilot)
+# 等 Conventional Commit 形狀（contract 見 docs/commit-plan.md v4）。
 _REJECT_PATTERNS = (
     re.compile(r"^auto-commit:\s*checkpoint", re.IGNORECASE),
     re.compile(r"^auto-commit:?\s*$", re.IGNORECASE),
+    re.compile(r"^copilot-auto:", re.IGNORECASE),  # Copilot batch round 違規
+    re.compile(r"^[a-z]+-auto:", re.IGNORECASE),   # 通用 <agent>-auto: 兜底
     re.compile(r"^WIP\s*$", re.IGNORECASE),
     re.compile(r"^(fix|update|change|tmp|temp|misc)\s*$", re.IGNORECASE),
     re.compile(r"^checkpoint\s*$", re.IGNORECASE),
