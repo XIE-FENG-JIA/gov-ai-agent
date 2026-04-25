@@ -1,5 +1,4 @@
-from .batch_io import _load_batch_csv
-from .batch_runner import _run_batch
+from .batch_runner import _load_batch_csv, _run_batch
 from .item_processor import _process_batch_item
 
 __all__ = [

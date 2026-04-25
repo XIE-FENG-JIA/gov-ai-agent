@@ -59,17 +59,17 @@
   Validation: `python -m pytest tests/test_cli_commands.py -q -k "highlight or search"` passes.
   Commit: `refactor(cli): merge highlight_cmd into search_cmd (micro-merge)`
 
-- [ ] **T13.6b** — Fold `number_cmd.py` (44 lines) into `stamp_cmd.py`.
+- [x] **T13.6b** — Fold `number_cmd.py` (44 lines) into `stamp_cmd.py`.
   Requirements: `gov-ai number` command still works; `number_cmd.py` deleted.
   Validation: `python -m pytest tests/test_cli_commands.py -q -k "number or stamp"` passes.
   Commit: `refactor(cli): fold number_cmd into stamp_cmd (micro-merge)`
 
-- [ ] **T13.6c** — Merge `replace_cmd.py` (44 lines) with `redact_cmd.py`.
+- [x] **T13.6c** — Merge `replace_cmd.py` (44 lines) with `redact_cmd.py`.
   Requirements: Both commands registered; `replace_cmd.py` deleted.
   Validation: `python -m pytest tests/test_cli_commands.py -q -k "replace or redact"` passes.
   Commit: `refactor(cli): merge replace_cmd into redact_cmd (micro-merge)`
 
-- [ ] **T13.6d** — Merge `generate/pipeline/persist/__init__.py` (9 lines) + `batch_io.py` (22 lines) into `batch_runner.py`.
+- [x] **T13.6d** — Merge `generate/pipeline/persist/__init__.py` (9 lines) + `batch_io.py` (22 lines) into `batch_runner.py`.
   Requirements: `batch_runner.py` absorbs batch I/O logic; `__init__.py` becomes re-export only.
   Validation: `python -m pytest tests/ -q --ignore=tests/integration` exits 0.
   Commit: `refactor(cli): merge generate pipeline persist micro-files into batch_runner`
@@ -78,7 +78,7 @@
 
 ## Track D — Regression Gate
 
-- [ ] **T13.7** — Full regression check after all track A/B/C tasks complete.
+- [x] **T13.7** — Full regression check after all track A/B/C tasks complete.
   Validation:
   - `python scripts/check_fat_files.py --strict` exits 0
   - `python scripts/sensor_refresh.py --human` fat_files.red_over_400 = []

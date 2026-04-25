@@ -710,3 +710,8 @@ PASS T-INTEGRATION-CI-WIRE        # 2026-04-25 23:15 added integration job to ci
 [2026-04-26 02:24:36] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=c220b11) — 若先前 FAIL 是 ACL denied，此條即救援對應 | results.log
 [2026-04-26 02:26:19] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=3c9520b) — 若先前 FAIL 是 ACL denied，此條即救援對應 | results.log
 [2026-04-26 02:35:00] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=82acbe8) — 若先前 FAIL 是 ACL denied，此條即救援對應 | engineer-log.md,results.log
+[2026-04-26 02:36:41] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=c9043ca) — 若先前 FAIL 是 ACL denied，此條即救援對應 | program.md,results.log
+[2026-04-26 02:41:48 +0800] | [T13.6b fold number_cmd into stamp_cmd] | [PASS] | 刪除 src/cli/number_cmd.py；number 命令改由 src/cli/stamp_cmd.py 匯出並在 main.py 註冊；openspec task 勾選；pytest tests/test_cli_commands.py -q -k "number or stamp" = 24 passed。
+[2026-04-26 02:43:24 +0800] | [T13.6c merge replace_cmd into redact_cmd] | [PASS] | 刪除 src/cli/replace_cmd.py；replace 命令改由 src/cli/redact_cmd.py 匯出並在 main.py 註冊；backup 失敗測試 patch 位置同步；pytest tests/test_cli_commands.py -q -k "replace or redact" = 21 passed。
+[2026-04-26 02:45:09 +0800] | [T13.6d merge batch_io into batch_runner] | [PASS] | 刪除 src/cli/generate/pipeline/persist/batch_io.py；_load_batch_csv 移入 batch_runner.py；persist __init__ 改 re-export；python scripts/check_fat_files.py --strict = red=0 yellow=6。
+[2026-04-26 02:46:22 +0800] | [T13.6b-c-d Track C micro-merges full regression] | [PASS] | pytest tests/ -q --ignore=tests/integration = 3951 passed in 46.47s；完成 number/stamp、replace/redact、persist batch_io micro 合併。

@@ -122,16 +122,14 @@ else:
     from src.cli.search_cmd import highlight as highlight_cmd, search as search_cmd
     from src.cli.lint_cmd import lint as lint_cmd
     from src.cli.merge_cmd import merge as merge_cmd
-    from src.cli.number_cmd import number as number_cmd
+    from src.cli.stamp_cmd import stamp as stamp_cmd, number as number_cmd
     from src.cli.preview_cmd import preview as preview_cmd
     from src.cli.quickstart import quickstart as quickstart_cmd
-    from src.cli.redact_cmd import redact as redact_cmd
-    from src.cli.replace_cmd import replace_text as replace_cmd
+    from src.cli.redact_cmd import redact as redact_cmd, replace_text as replace_cmd
     from src.cli.review_cmd import review as review_cmd
     from src.cli.rewrite_cmd import rewrite as rewrite_cmd
     from src.cli.sample_cmd import sample as sample_cmd
     from src.cli.split_cmd import split as split_cmd
-    from src.cli.stamp_cmd import stamp as stamp_cmd
     from src.cli.stats_cmd import stats as stats_cmd
     from src.cli.status_cmd import status as status_dashboard_cmd
     from src.cli.summarize_cmd import summarize as summarize_cmd

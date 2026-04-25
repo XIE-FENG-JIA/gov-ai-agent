@@ -221,6 +221,33 @@
 
 2. **保 P0：T-ACL-V3-RCA**（host/Admin 依賴）— 仍是源頭，但 repo 內手段已耗盡；改為主動上升請求，附 `docs/acl-v3-rca-handoff.md`（記錄已試 3 種清法 + stale lock/tmp 位置 + recommended 順序）。
 
+---
+## 深度回顧 2026-04-26 02:40 — 技術主管近 5 輪根因分析（v7.9-final；Copilot 主導）
+
+### 近 5 輪快照（三源交叉：results.log + sensor + program.md）
+| 輪次 | 核心 task | 結果 | 備註 |
+|------|-----------|------|------|
+| v7.8c 20:08 | T-OPENSPEC-PROMOTE-AUDIT / T-LITELLM-MOCK-CONTRACT-FIX | ✅/假閉 | litellm cherry-pick scope 漏 integration |
+| v7.9 21:46 | ACL-RESCUE-FINAL-V2 / T-BARE-EXCEPT 刀11-14 | ✅/⚠️ | 刀工閉；ACL DEPLOYED 後 22:05 仍 8 條 AUTO-RESCUE |
+| v7.9-sensor 22:35 | T-COMMIT-NOISE-PATCH-CLOSE + T-OPENSPEC-PURPOSE-BACKFILL | ✅ | sensor 20%；距 90% 目標 4.5× |
+| v7.9-sensor 01:05 | T-FAT-PRE-EMPT-CUT / T-COPILOT-NOISE-PATCH / T-CLI-FAT-ROTATE-V3 | ✅（未入版） | ACL block — 13 modified + 7 untracked 全滯留 |
+| v7.9-final 02:32 | T-SENSOR-RESCUE-EXCLUDE / T-LITELLM-WARNING-CLOSE-V2 / T-WORKTREE-COMMIT-FLUSH-MERGED | ⬜（未啟動） | 三件 P0 仍掛；host SLA 24hr 倒計時 |
+
+### 反覆失敗 task 及根因
+
+1. **git commit FAIL（結構性；每輪無例外）**：ACL 修法三次宣告 DEPLOYED 均假閉——ACL-RESCUE watcher（19:15）→ ACL-RESCUE-FINAL-V2 lib/common.sh（21:46）→ ACL-V3-RCA handoff（01:20）。根因：每次修法都沒跑「5 次空 commit 全綠 + AUTO-RESCUE count=0」這條驗收線；「DEPLOYED」被當成「VERIFIED」。目前 stale `.git/index.lock` 0 bytes + orphan DENY ACE 雙重卡死，repo 內手段已窮，只有 host Admin 能清。
+
+2. **sensor 漂白多型接力（第二→三→四→六型）**：每補一條 `_REJECT_PATTERNS`，host wrapper 換個 prefix 繼續噴（`checkpoint snapshot` → `patch` → `chore(copilot): batch` → `AUTO-RESCUE` / N-files batch）。repo 內篩子每輪修一個洞，噪音源頭（supervise interval 5 min + 無 squash）從未動。**工程錨點下錯**：6+ 輪對抗症狀，不對抗根因。
+
+3. **T-LITELLM-WARNING-CLOSE 假閉兩次（漂白第五型 scope-limited verification）**：v7.8c 用 `-W error::UserWarning` 限定 unit scope；v7.9 /pua 驗出預設跑仍有 warning；v7.9-final 發現 integration meeting routes 漏網。根因：每次驗收只覆蓋當下可見失敗，未主動問「還有哪個 scope 沒測到」。
+
+### 優先序調整與隱藏 blocker
+
+- **優先序需調整**：T-WORKTREE-COMMIT-FLUSH-MERGED（SLA 2026-04-27 02:32）是當前唯一真正阻斷點——13 件已驗通的工作量因 ACL 全數歸零；T-LITELLM-WARNING-CLOSE-V2 + T-SENSOR-RESCUE-EXCLUDE 均 ACL-free 可立刻動，應在 host Admin 行動前先把 ACL-free P0 清完，縮短 flush 時的 commit 數量。
+- **隱藏 blocker（三件）**：(1) GitHub Actions 從未真跑：無 origin remote，所有 integration CI 宣稱「wire 已通電」均是本機自證，外部可驗證性為零；(2) sensor 誠實值估算 ≤ 25%：即使 T-SENSOR-RESCUE-EXCLUDE 閉環，AUTO-RESCUE 歷史 commit 仍污染 rolling window，治本仍在 host wrapper 未動；(3) T-CLI-FAT-ROTATE-V3 T13.2/T13.3 iceberg 解耦連 2 輪在 P1 無人認領，generate/export 借 cite_cmd/lint_cmd 私有符號的冰山耦合若不斷根，下次 fat-rotate 仍會暴露同根因。
+
+> [Copilot 自審] 讀了 results.log 706 行、engineer-log.md 223 行、program.md 147 行三源交叉 — 閉環。結論：repo 本輪的真正瓶頸不是缺工作，而是 1cm 最後入版被 ACL 卡死，加上驗收口徑每輪仍有 scope 縮減傾向。
+
 3. **新 P1：T-CLI-FAT-ROTATE-V3** — 開新 openspec change `13-cli-fat-rotate-v3`：(a) `utils.py` 拆成 atomic_io / formatting / discovery 三模組，逐 importer 切換；(b) 4 高風險跨群組 import 改公共介面（generate/export 不再借私有符號）；(c) 9 micro 合併、11 fat 排優先級。**v7 系列只談「拆 ≤ 400/300」是表面，真正治本是冰山耦合 + 神物件**。
 
 4. **新 P1：T-COPILOT-WRAPPER-HOST-PATCH** — 把 `docs/auto-commit-host-action.md` 升級為 actionable handoff：明確要求 host owner 改 supervise interval 5→30 min + squash 窗口 + message 模板；驗收 SLA：48 hr 內 sensor rate ≥ 70%。**6+ 輪在 P2/P1 凍結 = 累計 3.25**。

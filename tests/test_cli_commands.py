@@ -10093,7 +10093,7 @@ class TestReplaceBackup:
         original = "主旨：加強回收"
         doc.write_text(original, encoding="utf-8")
         from unittest.mock import patch
-        with patch("src.cli.replace_cmd.atomic_text_write", side_effect=OSError("disk full")):
+        with patch("src.cli.redact_cmd.atomic_text_write", side_effect=OSError("disk full")):
             from src.cli.main import app
             result = runner.invoke(app, ["replace", str(doc), "--old", "回收", "--new", "節能"])
         assert doc.read_text(encoding="utf-8") == original
