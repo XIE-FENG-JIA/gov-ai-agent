@@ -187,7 +187,7 @@
 
 - [x] **T-AUTO-COMMIT-RUNTIME-SEAT**（2026-04-25 17:35 閉；P1→P2 凍結）— 已輸出 `docs/auto-commit-runtime-seat.md`：`.auto-engineer.state.json` 指向 PID 12668、`.auto-engineer.pid` 一致、`.copilot-loop.state.json` 無 formatter；`tasklist /v` 在本 shell `Access denied`、`where supervise` 無結果、repo scan 無 `auto-commit:` template。結論：commit formatter 在 external wrapper / scheduler / Admin rescue layer，repo 內不可直修；已寫 host-side patch point、validator 接法與驗收條件。
 - [ ] **T-COMMIT-NOISE-FLOOR**（30 min；P1；2026-04-25 v7.8 開）— 近 30 commit 28 條 = `auto-commit checkpoint` 噪音 93%，git blame/bisect 失效；治本兩刀：(a) 改 supervise loop interval 從 5 min → 30 min；(b) 5 min 窗口內 squash + 補語意 message 模板；驗證下個 24 hr 內 git log 噪音 ≤ 50%。
-- [x] **T-FAT-RATCHET-GATE**（2026-04-25 閉；P1；ACL-free）— `scripts/check_fat_files.py` 建立（120 行）：任一 src/ Python 檔 ≥ 400 行 = exit 1；`scripts/fat_baseline.json` 記錄 yellow 10 檔基線（max 391）；`--strict` 驗 ratchet（count + max_lines 不得增）；`sensor_refresh.py` 加 `check_fat_ratchet()` downstream check + `fat_ratchet_ok/detail` 欄位；驗證 `python scripts/check_fat_files.py --strict` exit 0 ✅、`python scripts/sensor_refresh.py --human` ratchet=✅。
+- [x] **T-FAT-RATCHET-GATE**（2026-04-25 閉；P1；ACL-free）— `scripts/check_fat_files.py` 建立：任一 src/ Python 檔 ≥ 400 行 = exit 1；`scripts/fat_baseline.json` 記錄 yellow 10 檔基線（max 391）；`--strict` 驗 ratchet（count + max_lines 不得增）；`sensor_refresh.py` 對齊 ≥400 red downstream hard check + `fat_ratchet_ok/detail` 欄位；CI 已接 `python scripts/check_fat_files.py --strict`；新增 `tests/test_check_fat_files.py` 防 400 行邊界 / yellow ratchet 退化。驗證 `python scripts/check_fat_files.py --strict` exit 0 ✅、`python -m pytest tests/test_check_fat_files.py tests/test_sensor_refresh.py -q --tb=short` = 20 passed ✅。
 
 #### v7.8 反思新增 — 深挖類
 
