@@ -121,11 +121,12 @@ _SEMANTIC_RE = re.compile(
     r"(?:\([^)]+\))?!?:\s+.{10,}"
 )
 
-# Pseudo-semantic checkpoint noise — passes _SEMANTIC_RE but is NOT truly semantic.
+# Pseudo-semantic auto-engineer noise — passes _SEMANTIC_RE but is NOT truly semantic.
 # e.g. `chore(auto-engineer): checkpoint snapshot (2026-04-25 18:17:35 +0800) @ 18:19`
+# e.g. `chore(auto-engineer): patch`
 # Aligned with commit_msg_lint._REJECT_PATTERNS; excluded from semantic count.
 _CHECKPOINT_NOISE_RE = re.compile(
-    r"^chore\(auto-engineer\):\s*checkpoint(?:\s+snapshot)?\b",
+    r"^chore\(auto-engineer\):\s*(?:checkpoint(?:\s+snapshot)?|patch)\b",
     re.IGNORECASE,
 )
 

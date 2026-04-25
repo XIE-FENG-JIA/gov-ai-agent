@@ -2,7 +2,27 @@
 
 ## Purpose
 
-TBD - created by archiving change '08-bare-except-audit-iter6'. Update Purpose after archive.
+Sensor `scripts/sensor_refresh.py` run against HEAD reports **89 bare-except
+occurrences across 58 files**. After iterations 1–5 cleared the historical
+top hotspots (`web_preview/app`, `cli/kb/stats`, `manager`, `gazette_fetcher`,
+`_manager_search`, `core/llm`, `generate/export`, `auditor`, `fact_checker`),
+the residue migrated to a **new tier of 6 files each carrying 3 occurrences**:
+
+- `src/agents/compliance_checker.py`
+- `src/agents/editor/__init__.py`
+- `src/api/routes/workflow/_endpoints.py`
+- `src/cli/config_tools.py`
+- `src/graph/nodes/reviewers.py`
+- `src/knowledge/_manager_hybrid.py`
+
+Bare `except Exception` / `except:` handlers at these locations swallow
+unexpected exceptions silently, block typed error analytics, and break the
+red-line rule "downstream callers must see a `logger.warning` record when a
+dependency fails". Two hotspots (`editor/__init__.py` and
+`workflow/_endpoints.py`) sit on the critical rewrite path — a silent swallow
+there is indistinguishable from a degraded-agent fallback, which has already
+caused one pre-existing flake (`test_preflight_check_warns_missing_*` series,
+see `adb531c`).
 
 ## Requirements
 

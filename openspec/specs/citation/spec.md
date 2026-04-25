@@ -2,7 +2,15 @@
 
 ## Purpose
 
-TBD - created by archiving change '03-citation-tw-format'. Update Purpose after archive.
+Current export and review flows can mention sources, but the repo still lacks a
+single approved contract for Taiwan-style citation output. Citation behavior is
+split across `src/knowledge/realtime_lookup.py`, `src/document/exporter.py`,
+review agents, and ad hoc metadata assumptions. There is no change proposal that
+defines when a generated document MUST emit a `## 引用來源` section, which
+source identifiers must survive into the exported artifact, or how a future
+`gov-ai verify <docx>` path should compare the finished DOCX against knowledge
+base evidence. That gap blocks Epic 3 because implementation work would
+otherwise guess at formatting, verification scope, and metadata keys.
 
 ## Requirements
 

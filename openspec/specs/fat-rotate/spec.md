@@ -2,7 +2,23 @@
 
 ## Purpose
 
-TBD - created by archiving change '09-fat-rotate-iter3'. Update Purpose after archive.
+`scripts/sensor_refresh.py` run against HEAD shows **3 Python files breaching
+the repo-wide 400-line anchor** (set in v7.0 header, confirmed by
+`openspec/config.yaml` "each task within 2 hours" rule which implies bounded
+module size):
+
+- `src/cli/kb/rebuild.py` — **572 lines** (historical sensor blind spot;
+  first discovered by `scripts/sensor_refresh.py` first run on 2026-04-25)
+- `src/sources/datagovtw.py` — 410 lines (listed in v7.0 header for 3+
+  rounds, iteration 10 waiting)
+- `src/api/routes/agents.py` — 397 lines (yellow-tier in v7.3 sensor, rising
+  toward red; preempt before drift)
+
+`rebuild.py 572` is the largest unreported fat file in repo history — it
+slipped past every manual fat-watch pass in v7.0, v7.2-sensor, and v7.3-sensor
+because the curated "top" list stopped at two candidates. Sensor automation
+caught it on first run, which validates the new "每輪第 0 步跑 sensor" red
+line (v4). Letting it keep growing blocks future refactoring windows.
 
 ## Requirements
 

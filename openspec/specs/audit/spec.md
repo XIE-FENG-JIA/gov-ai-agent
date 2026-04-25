@@ -2,7 +2,25 @@
 
 ## Purpose
 
-TBD - created by archiving change '04-audit-citation'. Update Purpose after archive.
+Epic 3 already fixed citation output and DOCX verification metadata, but the
+review layer still has no approved contract for how citation traceability is
+audited before export. Current behavior is spread across
+`src/agents/fact_checker.py`, `src/agents/auditor.py`,
+`src/agents/validators.py`, and `src/knowledge/realtime_lookup.py`:
+
+- `FactChecker` mixes real-time law verification, document-type cross checks,
+  and semantic similarity checks
+- `FormatAuditor` runs citation-related validators, but only as part of a broad
+  format audit path
+- there is no repo-owned `citation_checker` seam that focuses on source
+  traceability, orphan references, and missing evidence links as one review
+  responsibility
+- there is no approved failure matrix for cases where retrieval evidence,
+  reference definitions, or law-verification data are missing
+
+That gap blocks Epic 4. Without a change package, future audit work would keep
+drifting between validators, LLM prompts, and export verification without one
+stable definition of "citation audit passed".
 
 ## Requirements
 

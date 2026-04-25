@@ -28,6 +28,16 @@ def _require_live_integration() -> None:
         pytest.skip("set GOV_AI_RUN_INTEGRATION=1 to run meeting API multi-round tests")
 
 
+def _auth_headers() -> dict[str, str]:
+    from src.core.config import ConfigManager
+
+    api_keys = ConfigManager().get("api.api_keys", [])
+    api_key = os.getenv("API_CLIENT_KEY") or (api_keys[0] if api_keys else "")
+    if not isinstance(api_key, str) or not api_key:
+        return {}
+    return {"Authorization": f"Bearer {api_key}"}
+
+
 # ---------------------------------------------------------------------------
 # Server fixture (same pattern as test_api_server_smoke)
 # ---------------------------------------------------------------------------
@@ -117,6 +127,7 @@ def test_meeting_happy_path_returns_session_id(meeting_api_server: str) -> None:
             "max_rounds": 1,
             "output_docx": False,
         },
+        headers=_auth_headers(),
         timeout=120.0,
     )
     assert resp.status_code == 200, f"meeting happy path: {resp.status_code} {resp.text[:300]}"
@@ -137,8 +148,18 @@ def test_meeting_two_requests_get_different_session_ids(meeting_api_server: str)
         "output_docx": False,
     }
 
-    resp1 = requests.post(f"{meeting_api_server}/api/v1/meeting", json=payload, timeout=120.0)
-    resp2 = requests.post(f"{meeting_api_server}/api/v1/meeting", json=payload, timeout=120.0)
+    resp1 = requests.post(
+        f"{meeting_api_server}/api/v1/meeting",
+        json=payload,
+        headers=_auth_headers(),
+        timeout=120.0,
+    )
+    resp2 = requests.post(
+        f"{meeting_api_server}/api/v1/meeting",
+        json=payload,
+        headers=_auth_headers(),
+        timeout=120.0,
+    )
 
     assert resp1.status_code == 200
     assert resp2.status_code == 200
@@ -162,6 +183,7 @@ def test_meeting_empty_user_input_returns_error_or_400(meeting_api_server: str) 
     resp = requests.post(
         f"{meeting_api_server}/api/v1/meeting",
         json={"user_input": "", "skip_review": True, "max_rounds": 1, "output_docx": False},
+        headers=_auth_headers(),
         timeout=30.0,
     )
     # Server must not crash (5xx)
@@ -189,6 +211,7 @@ def test_meeting_oversized_input_handled_gracefully(meeting_api_server: str) -> 
     resp = requests.post(
         f"{meeting_api_server}/api/v1/meeting",
         json={"user_input": oversized, "skip_review": True, "max_rounds": 1, "output_docx": False},
+        headers=_auth_headers(),
         timeout=30.0,
     )
     assert resp.status_code < 500, (

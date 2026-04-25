@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change '02-open-notebook-fork'. Update Purpose after archive.
+Current writer flow is still a single-file, retrieval-light path. Epic 2 requires `ask_service`-style orchestration, review layers, and source-grounded reasoning, but the repo has no approved spec for how an `open-notebook` fork enters the system. Without that contract, integration work will drift and SurrealDB discussions will keep front-running the actual application boundary.
 
 ## Requirements
 

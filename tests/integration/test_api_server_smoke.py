@@ -35,6 +35,16 @@ def _require_live_integration() -> None:
         pytest.skip("set GOV_AI_RUN_INTEGRATION=1 to run API server smoke tests")
 
 
+def _auth_headers() -> dict[str, str]:
+    from src.core.config import ConfigManager
+
+    api_keys = ConfigManager().get("api.api_keys", [])
+    api_key = os.getenv("API_CLIENT_KEY") or (api_keys[0] if api_keys else "")
+    if not isinstance(api_key, str) or not api_key:
+        return {}
+    return {"Authorization": f"Bearer {api_key}"}
+
+
 # ---------------------------------------------------------------------------
 # Server fixture helpers
 # ---------------------------------------------------------------------------
@@ -158,6 +168,7 @@ def test_api_v1_meeting_happy_path(live_api_server: str) -> None:
     resp = requests.post(
         f"{live_api_server}/api/v1/meeting",
         json=payload,
+        headers=_auth_headers(),
         timeout=120.0,
     )
     # 200 with success=True/False expected; 5xx = server crash = fail

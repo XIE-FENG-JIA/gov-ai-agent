@@ -2,7 +2,29 @@
 
 ## Purpose
 
-TBD - created by archiving change '05-kb-governance'. Update Purpose after archive.
+Epic 5 already proved the end-to-end rewrite flow can generate five traced DOCX
+outputs, and the repo now keeps nine real corpus files plus guards that reject
+fixture-backed evidence in rewrite and verify paths. But the knowledge-base
+governance boundary is still implicit across scattered code paths instead of one
+approved change package:
+
+- `src/sources/ingest.py` decides when fixture fallback is allowed and when
+  `require_live` MUST fail loudly
+- `src/cli/kb/rebuild.py` now supports `--only-real`, but there is no approved
+  contract for when rebuilds MUST exclude `synthetic` or `fixture_fallback`
+  records
+- `src/e2e_rewrite.py` and `src/cli/verify_cmd.py` already skip synthetic or
+  fixture-backed corpus entries, but that rule is not written as a stable
+  knowledge-base requirement
+- `tests/test_corpus_provenance_guard.py` enforces the current corpus state, but
+  the repo still lacks one governance proposal that defines provenance,
+  rebuild, and retirement expectations together
+
+Without a formal Epic 5 proposal, future cleanup work risks drifting between
+CLI flags, ingest behavior, Chroma rebuild habits, and ad hoc corpus hygiene.
+That would reopen the same failure mode Epic 1 just closed: fake-green corpus
+state where fallback data silently mixes into production rewrite and verify
+flows.
 
 ## Requirements
 

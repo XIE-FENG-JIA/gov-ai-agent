@@ -2,7 +2,28 @@
 
 ## Purpose
 
-TBD - created by archiving change '10-test-local-binding-audit-systematic'. Update Purpose after archive.
+Iterations across change 07's sibling hotfixes (`adb531c` preflight re-bind,
+`6b41335` workflow local-binding, `c0933f9` realtime_lookup preload,
+`1eef399` BM25 cap) confirmed three distinct "test misses production cost"
+iceberg types are alive in the repo:
+
+- **Type 1 — `from X import Y` module-level local binding.** Patching
+  `X.Y` never reaches the local name bound inside the importing module.
+  Two confirmed patients (`src.api.app.get_config`,
+  `src.api.routes.workflow.get_llm/get_kb`).
+- **Type 2 — external service instantiation inside production `__init__`
+  with hidden HTTP.** Tests only patch the service class, not its
+  `_ensure_cache` HTTP call. One confirmed patient (`EditorInChief.__init__`
+  triggering `LawVerifier._ensure_cache` → `law.moj.gov.tw` cold-boot 40 s).
+- **Type 3 — production function lacks input-size cap, turning test
+  fixtures into DoS vectors.** One confirmed patient
+  (`_bm25_search` before `_MAX_QUERY_CHARS = 500` cap; `jieba.cut` on
+  30 k-char query fixture = 8 s).
+
+Four patients fixed so far. Sensor still lists residual candidates
+(`test_switch_direct_provider` 2.4–3.3 s, `test_generate_post_returns_result`
+2.5–3.2 s) without a systematic way to detect whether they belong to one of
+the three types or to a genuine slow path.
 
 ## Requirements
 

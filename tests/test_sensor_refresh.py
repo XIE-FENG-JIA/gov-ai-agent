@@ -278,6 +278,7 @@ def test_auto_commit_rate_excludes_checkpoint_noise(tmp_path: Path) -> None:
     messages = [
         "feat(api): add endpoint for document export",  # semantic
         "chore(auto-engineer): checkpoint snapshot (2026-04-25 18:17:35 +0800) @ 18:19",  # noise
+        "chore(auto-engineer): patch",  # noise
         "chore(auto-engineer): feat-add-foo @2026-04-25",  # semantic (has real description)
         "fix(cli): correct argument parsing for long options list",  # semantic
     ]
@@ -286,7 +287,7 @@ def test_auto_commit_rate_excludes_checkpoint_noise(tmp_path: Path) -> None:
         subprocess.run(["git", "-C", str(repo), "add", f"f{i}.txt"], check=True)
         subprocess.run(["git", "-C", str(repo), "commit", "-m", msg, "-q"], check=True)
 
-    semantic, rate = _mod.auto_commit_rate(repo, n=4)
+    semantic, rate = _mod.auto_commit_rate(repo, n=5)
     # feat + chore(auto-engineer) real-desc + fix = 3; checkpoint noise excluded
     assert semantic == 3, f"expected 3 semantic, got {semantic}"
-    assert rate == pytest.approx(0.75, abs=0.01)
+    assert rate == pytest.approx(0.60, abs=0.01)

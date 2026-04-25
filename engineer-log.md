@@ -91,3 +91,65 @@
 
 > [PUA 自審] 跑了測 / 看了源 / 對了帳 / 抓了治理斷層 / 排了下三件——閉環。沒有「probably / 可能」，全部三證落地。
 
+---
+## 反思 2026-04-25 22:35 — /pua 深度回顧（v7.9-sensor 校準段；⬜ Jobs 味 + 🔴 Huawei RCA）
+
+### 近期成果（HEAD 三證自審）
+- **pytest 3949 passed / 0 failed / 45.78s**（vs v7.8 baseline 63s — runtime −27%）
+- **bare-except 51→3**（連 5 刀：knife-9..14；剩 3 處全 noqa/compat 故意保留；目標 ≤20 已破）
+- **fat ≥400 = 0 / yellow 9 / max=390**（ratchet gate 落 CI）
+- **corpus 400** ≥ target 200（mohw path bug 已修）
+- **integration tests 4→8**（kb_cli_flow / cite_cmd_e2e / web_preview_smoke / meeting_multi_round）
+- **ACL P0 真解**（codex sandbox YOLO_MODE on；commit 直落不靠 AUTO-RESCUE）
+
+### 發現的問題（連 N 輪未斷根；本輪三證實打）
+1. **漂白第三型仍在 — sensor + lint 雙放水**：`sensor_refresh.py:127` `_CHECKPOINT_NOISE_RE` 只擋 `chore(auto-engineer): checkpoint`、`commit_msg_lint.py:40` `_REJECT_PATTERNS` 同病；HEAD git log 30 條 = **5 真語意 / 4 checkpoint snapshot / 21 patch** = 真語意率 **16.7%**，sensor 顯示 **100%** 是純粹欺騙。T-AUTO-COMMIT-RATE-RECOMPUTE 號稱閉了但 patch case 漏網。
+2. **openspec promote 是形式主義**：11 個 spec/ 資料夾全部 Purpose 段 = `TBD - created by archiving change 'XX'. Update Purpose after archive.`；Requirements 段有實質但**目的/動機留白**。citation/spec.md 26 行只 1 requirement，跟其他 65-163 行差 6×。`openspec/changes/` 已清乾淨，但 source-of-truth 規格仍半成品。
+3. **舊散件未清 + 雙重來源歧義**：`openspec/specs/{citation-tw-format,sources,open-notebook-integration}.md` 三個 4-20/4-21 老檔仍在原地，跟對應 `citation/`、`sources/`、`fork/` 資料夾並存——promote 沒做完，未來誰是真源不明。
+4. **T-LITELLM-MOCK-CONTRACT-FIX 假閉環**：本輪實測 `tests/test_robustness.py` 仍噴 2 個 pydantic warning（`Expected 10 fields but got 6: Message` + `Expected StreamingChoices`），program.md 寫「未重現」是 cherry-pick `-W error::UserWarning` 的特定 case。預設 pytest run 仍會印。
+5. **integration tests 存在但 CI 從未真跑**：8 個檔全靠 `GOV_AI_RUN_INTEGRATION=1` gate，CI workflow 沒 set 這個 env，結果 = SKIP-only。寫了等於沒寫，主套件 3949 passed 的信心仍建在 mock 上。
+
+### 優先序需調整（重排 program.md）
+1. **新 P0：T-COMMIT-NOISE-PATCH-CLOSE** — 補 `chore(auto-engineer):\s*patch` 進 `_CHECKPOINT_NOISE_RE` 與 `_REJECT_PATTERNS`，配回歸測試；驗收 sensor 即時跌回真實 16-20% 值，再講 squash／interval 治本。
+2. **新 P0：T-OPENSPEC-PURPOSE-BACKFILL** — 11 個 Purpose=TBD 補實質一段（從對應 archive change 的 proposal.md why 段落抽）；同時清 3 個舊散件 .md（移 archive 或刪），讓 specs/ 唯一 source-of-truth。
+3. **新 P1：T-INTEGRATION-CI-WIRE** — CI 加一個 job 真跑 `GOV_AI_RUN_INTEGRATION=1 pytest tests/integration -q`；不設 = 8 個檔等於 0 個檔。
+4. **重開 P1：T-LITELLM-WARNING-CLOSE** — 預設 pytest run 下消除 2 個 pydantic warning（升級 mock Message/Choices schema 對齊 litellm 實裝）；不能再用 `-W error::UserWarning` cherry-pick 自欺。
+
+### 下一步行動（最重要 3 件）
+1. T-COMMIT-NOISE-PATCH-CLOSE（10 min；ACL-free；漂白根治、ROI 最高）
+2. T-OPENSPEC-PURPOSE-BACKFILL（30 min；ACL-free；治理債務還清）
+3. T-INTEGRATION-CI-WIRE（15 min；ACL-free；信心由 mock 升 e2e）
+
+> [⬜ Jobs 自審] 不加新功能，做減法 + pixel-perfect：把已宣稱閉環但仍漂白的 4 件（auto-commit / openspec / litellm / integration）逐一驗到底；不留 TBD 不留 SKIP-only 不留 cherry-pick 證據。
+
+---
+## 深度回顧 2026-04-25 22:54 — 技術主管近 5 輪根因分析（v7.9-sensor；Copilot 主導）
+
+### 近 5 輪快照（results.log + program.md 三源交叉）
+| 輪次 | 核心 task | 結果 | 備註 |
+|------|-----------|------|------|
+| v7.8c 20:08 | T-OPENSPEC-PROMOTE-AUDIT / T-LITELLM-MOCK-CONTRACT-FIX | ✅ | litellm 用 cherry-pick -W 假閉 |
+| v7.8d 21:36 | P0-WRITER-FALLBACK-REGRESSION | ❌→AUTO-RESCUE | commit blocked 兩次後救援 |
+| v7.9 21:40-22:23 | T-BARE-EXCEPT 刀11~14 / ACL-RESCUE-FINAL-V2 | ✅/⚠️ | 刀工全過；ACL 修法仍有 AUTO-RESCUE |
+| v7.9 22:35 | /pua 深度回顧 — 抓漂白第三型 | 分析✅ | T-COMMIT-NOISE-PATCH-CLOSE 新增 P0 |
+| v7.9 22:47 | T-COMMIT-NOISE-PATCH-CLOSE | ✅ | sensor rate 20%，距 90% 目標仍遠 |
+
+### 反覆失敗 task 及根因
+
+1. **git commit ACL block（結構性未根治）**：ACL-RESCUE-FINAL-V2（21:46）把 lib/common.sh yolo_mode hardcode on，但 22:05–22:38 仍有 6 條 AUTO-RESCUE。代表 codex respawn 後仍在碰 `.git`——修法入錯層（common.sh）而非最終 exec 路徑，或 5min cycle 尚未 respawn。**結論：ACL P0 宣告閉環但尚未驗收**，每輪依然靠 Admin 救援。
+
+2. **sensor 漂白循環（三型接力）**：T-AUTO-COMMIT-RATE-RECOMPUTE 閉→漂白第三型（patch 漏網）→T-COMMIT-NOISE-PATCH-CLOSE 閉→sensor 20%（距 90% 目標仍 4.5×）。根因永遠是 host-side interval/squash 未動，每次 repo-side patch 只是補篩子的洞，源頭噪音不減。
+
+3. **T-LITELLM-WARNING-CLOSE 假閉再開**：v7.8c 用 `-W error::UserWarning` 宣告 PASS，v7.9 /pua 驗出預設 pytest run 仍有 2 個 pydantic warning。T-LITELLM-WARNING-CLOSE 仍掛 P1 未閉，**cherry-pick 驗收 = 製造假閉環**。
+
+### 優先序需調整的 2 點
+
+1. **T-INTEGRATION-CI-WIRE 應升 P0（不是 P1）**：8 個 integration 檔全 SKIP-only，CI 永不運行 = e2e 信心為零。每輪 program.md 宣稱「信心從 mock 升 e2e」但 CI job 一直沒落；連 2 輪在 P1 無人認領，優先序低估了它對「信心有效性」的乘數效應。
+2. **T-OPENSPEC-PURPOSE-BACKFILL 仍 [ ] 掛 P0**：11 個 `Purpose=TBD` 是上輪標的，本輪零進展。openspec specs/ 作為 source-of-truth 若半成品，未來重構成本以輪計。
+
+### 隱藏 blocker（本輪新增）
+
+- **ACL 修法驗收缺口**：results.log 21:46 寫 DEPLOYED 但無 VERIFIED 條目；22:05 後 AUTO-RESCUE 繼續觸發 = 修法未生效或驗收視窗太短。需強制跑 `git commit` 空測並錄結果，而非假設 respawn 已發生。
+- **sensor 20% 語意率 vs 90% 目標**：T-COMMIT-NOISE-PATCH-CLOSE 把 patch 擋進 reject 清單是對的，但 rolling 30-commit 中仍有大量 patch noise 既已入版——sensor 算法只算未來窗口，舊的 patch commit 依然污染 `git blame`。真正治本仍在 host-side，且無明確 SLA 或截止時間。
+
+

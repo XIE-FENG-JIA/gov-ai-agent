@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change '01-real-sources'. Update Purpose after archive.
+Current knowledge-base intake still depends on synthetic examples and manual file drops. Epic 1 requires public, real government documents, but the repo has no approved source-onboarding spec, no acceptance boundary for provenance metadata, and no shared definition of "real-source ready". This blocks adapter work from landing with a stable contract.
 
 ## Requirements
 

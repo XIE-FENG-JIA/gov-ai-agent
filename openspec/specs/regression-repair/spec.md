@@ -2,7 +2,43 @@
 
 ## Purpose
 
-TBD - created by archiving change '11-bare-except-iter6-regression'. Update Purpose after archive.
+T10.6 (change 10) regression check ran a full pytest baseline against HEAD
+after `03ebca6` (T7.5 + T10.3) and surfaced **22 failed / 3891 passed /
+136.90 s** — runtime budget held but the LLM/KB graceful-degradation contract
+broke. All 22 failures cluster on the same theme:
+
+- `test_*_llm_exception_*` — writer / editor / fact_checker / robustness
+- `test_*_kb_failure_*` / `test_kb_unavailable_*` / `test_kb_init_failure_*`
+- `test_verification_degraded_becomes_repo_owned_error`
+- `test_save_preferences_failure_logs_warning`
+- `test_generic_exception_returns_default_score`
+- `test_scenario_long_requirement` / `test_scenario_malicious_input`
+  (e2e fallout from the same root)
+
+Bare-except iteration 6 (change 08) is **partially landed in working tree
+but not yet committed** — sensor shows `bare_except.total` dropped from 89
+→ 47 (across 38 files) without a corresponding commit on HEAD. Some sites
+on the swept files now use a **typed bucket that does not include
+`RuntimeError`** (the exception class injected by the failing tests'
+mocks), so the rewrite turned a previously-handled timeout-style failure
+into an unhandled propagation.
+
+Symptom traceback (representative case):
+
+```
+tests/test_robustness.py::TestWriterAgentLLMException::test_writer_llm_exception_uses_fallback
+RuntimeError: Connection timeout
+src\agents\writer\strategy.py:102: in _refine_query
+    refined = self.llm.generate(prompt, temperature=LLM_TEMPERATURE_PRECISE)
+```
+
+The inner `_refine_query` already has `try / except Exception`, so the
+escape path is upstream — a caller in the writer / editor / fact_checker
+chain that previously caught a wide `except` and now uses a typed bucket
+missing `RuntimeError`.
+
+This violates change 08's own acceptance criterion #1 ("rewrite MUST stay
+contract-safe") and blocks T10.6's pytest-green requirement.
 
 ## Requirements
 

@@ -2,7 +2,15 @@
 
 ## Purpose
 
-TBD - created by archiving change '06-live-ingest-quality-gate'. Update Purpose after archive.
+Epic 1 (`01-real-sources`) shipped seven public adapters and `gov-ai kb rebuild --only-real`, so the corpus has a real-source path. Epic 5 (`05-kb-governance`) added `--require-live` and post-rebuild verification. But there is no shared **quality gate** between live ingest and corpus promotion: a fetcher can return zero records, fall through to fixture fallback, or import unreadable PDFs, and nothing on the path stops it from landing in the active retrieval set.
+
+Symptoms already observed:
+
+- MOHW fetcher silently returns `[]` while `--require-live` blocks the rebuild but leaves no diagnostic
+- FDA adapter's first probe took five rounds of debug because no schema check ran on returned payloads
+- Corpus regression from 200 → 173 markdown files went undetected for two rounds because no SLO existed
+
+Without an explicit quality contract, scaling the corpus past 300 docs amplifies these silent failures.
 
 ## Requirements
 

@@ -37,6 +37,7 @@ def test_accepts_semantic_messages(msg: str) -> None:
         ("auto-commit: checkpoint (2026-04-22 04:19:55) @ 2026-04-22 04:29", "naked auto-commit checkpoint"),
         ("auto-commit:", "bare auto-commit prefix"),
         ("chore(auto-engineer): checkpoint snapshot (2026-04-25 18:17:35 +0800) @ 2026-04-25 18:19", "semantic-looking checkpoint noise"),
+        ("chore(auto-engineer): patch", "semantic-looking patch noise"),
         ("copilot-auto: batch round 2 (2026-04-25 05:30:00) @ 05:34", "copilot-auto batch prefix"),
         ("github-auto: nightly batch", "generic <agent>-auto: prefix"),
         ("WIP", "WIP placeholder"),

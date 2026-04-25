@@ -2,7 +2,23 @@
 
 ## Purpose
 
-TBD - created by archiving change '07-auto-commit-semantic-enforce'. Update Purpose after archive.
+Auto-engineer commit message generator has a fallback path that emits bare
+`auto-commit: auto-engineer checkpoint (timestamp) @ timestamp` strings whenever
+its semantic path fails or is not invoked. The repo captured **7 violations in
+48 hours** (`c53a947 / 1eef399 / 6eb9907 / 96c9d05 / 8d42cc8 / 6d1ed6f /
+2e5df97`) despite `scripts/commit_msg_lint.py` being in place since
+`T-COMMIT-SEMANTIC-GUARD` (commit `2678b10`, 2026-04-24).
+
+`commit_msg_lint.py` exists but is **not wired** into the auto-engineer
+commit path. Only the session-driven pua-loop honors it. `git log --grep` is
+therefore unreliable on the auto-engineer half of history, and the sensor
+(`scripts/sensor_refresh.py`) reports the semantic rate drifting from 86.7% →
+73.3% within a single session.
+
+The `.git/hooks/commit-msg` path is blocked: `index.lock` permission issues
+(recorded in `T-ACL-STATE-RECALIBRATE`, commit `6d1ed6f?`) prevent installing
+a native hook. Enforcement must live in the auto-engineer runtime layer, not
+the git layer.
 
 ## Requirements
 
