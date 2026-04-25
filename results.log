@@ -589,3 +589,4 @@ PASS T-SYNTHETIC-AUDIT-SCRIPT 2026-04-25 scripts/audit_synthetic_flag.py created
 
 [2026-04-25 18:06:28+0800] | [T-FAT-RATCHET-GATE-CI] | [PASS] | 強化 fat-file gate：sensor red 邊界改為 ≥400 即 hard；CI 加 `python scripts/check_fat_files.py --strict`；新增 tests/test_check_fat_files.py 覆蓋 400 行 red、yellow count ratchet、non-strict 行為；驗證 ruff passed、20 focused tests passed、strict gate exit 0。 | scripts/check_fat_files.py, scripts/sensor_refresh.py, tests/test_check_fat_files.py, tests/test_sensor_refresh.py, .github/workflows/ci.yml, program.md
 [2026-04-25 18:07:12+0800] | [T-FAT-RATCHET-GATE-CI-COMMIT] | [FAIL] | 實作與驗證 PASS，但 git add program.md results.log 失敗：Unable to create .git/index.lock Permission denied；保留 working tree 等 Auto-Rescue / 外部 ACL 修復提交。 | .git/index.lock
+[2026-04-25 18:09:28] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=1cf654e) — 若先前 FAIL 是 ACL denied，此條即救援對應 | program.md,results.log
