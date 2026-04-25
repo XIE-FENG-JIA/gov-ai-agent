@@ -40,12 +40,12 @@
   Validation: `python -m pytest tests/test_generate_pipeline.py tests/test_cite_cmd.py -q` passes; `grep -n "from src.cli.cite_cmd import _" src/ -r` has no high-risk generate import.
   Commit: `refactor(cli): route generate citations through shared formatter (iceberg fix)`
 
-- [ ] **T13.4** — Move `collect_citation_verification_checks` + `render_citation_verification_results` to `src/cli/shared/verify_service.py`.
+- [x] **T13.4** — Move `collect_citation_verification_checks` + `render_citation_verification_results` to `src/cli/shared/verify_service.py`.
   Requirements: Both `verify_cmd.py` and `kb/rebuild.py` import from `verify_service`; `verify_cmd.py` public interface unchanged.
   Validation: `python -m pytest tests/test_cli_commands.py -q -k "verify or kb_rebuild"` passes.
   Commit: `refactor(cli): extract verify helpers to shared/verify_service (iceberg fix)`
 
-- [ ] **T13.5** — Move `history.append_record` to `src/core/history_store.py`; update `history/__init__.py` and `generate/__init__.py`.
+- [x] **T13.5** — Move `history.append_record` to `src/core/history_store.py`; update `history/__init__.py` and `generate/__init__.py`.
   Requirements: `generate/__init__.py` imports `history_store.append_record`; no direct `history` CLI group import in generate.
   Validation: `python -m pytest tests/test_cli_commands.py -q -k "generate or history"` passes.
   Commit: `refactor(core): extract history_store.append_record from cli/history layer`
