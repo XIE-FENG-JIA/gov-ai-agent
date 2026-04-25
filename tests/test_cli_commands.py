@@ -10100,14 +10100,14 @@ class TestReplaceBackup:
 
     def test_atomic_text_write_creates_file(self, tmp_path):
         """atomic_text_write 基本功能驗證"""
-        from src.cli.utils import atomic_text_write
+        from src.cli.utils_io import atomic_text_write
         target = tmp_path / "output.txt"
         atomic_text_write(str(target), "測試內容")
         assert target.read_text(encoding="utf-8") == "測試內容"
 
     def test_atomic_text_write_no_partial_on_error(self, tmp_path):
         """atomic_text_write 失敗時不應留下損毀檔案"""
-        from src.cli.utils import atomic_text_write
+        from src.cli.utils_io import atomic_text_write
         from unittest.mock import patch
         target = tmp_path / "output.txt"
         target.write_text("原始", encoding="utf-8")
