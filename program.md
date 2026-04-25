@@ -230,7 +230,7 @@
 ### P2（Admin/key 依賴，不能當 P1 佔坑）
 
 - [x] **EPIC6-DISCOVERY**（2026-04-24 16:58 閉；commit `33bf8ce`）— `openspec/changes/06-live-ingest-quality-gate/` proposal (43) + tasks (82) + `specs/quality-gate/spec.md` (111) = 236 行骨架；3 dimensions（volume floor / schema integrity / provenance signal）× 4 named failures（LiveIngestBelowFloor / SchemaIntegrityError / StaleRecord / SyntheticContamination）+ 5 個 T-LIQG-1..5 後續 tasks（gate 模組 + CLI + 失敗矩陣 doc）。
-- [ ] **P2-CHROMA-NEMOTRON-VALIDATE** — 待人工填 `OPENROUTER_API_KEY` 後跑 `gov-ai kb rebuild --only-real` + `docs/embedding-validation.md`。
+- [ ] **P2-CHROMA-NEMOTRON-VALIDATE** — `OPENROUTER_API_KEY` 已驗證有效（2026-04-25 13:56 `curl /api/v1/auth/key` 200，付費帳號 is_free_tier=false，limit=null 無限額，累計 usage=$0.000035）→ **unblocked，可執行**：跑 `gov-ai kb rebuild --only-real`（走 `nvidia/llama-nemotron-embed-vl-1b-v2:free` dim=2048 重建 ChromaDB）+ 撰寫 `docs/embedding-validation.md` 記錄向量化前後 search recall@k 對比。
 - [x] **T6.1**（2026-04-26 閉；ACL-free；注：full 30-item eval 需啟動 API server）— blind eval baseline：`docs/benchmark-baseline.md` 記錄 v2.1 快照（afterfix17 limit=2, avg_score=0.8766, success_rate=1.0）+趨勢表+完整執行步驟；`benchmark/baseline_v2.1.json` 以 afterfix17 2 題快照為底；完整 30 題需 `python scripts/run_blind_eval.py --limit 30`。
 - [x] **T6.2**（2026-04-26 閉；ACL-free）— benchmark trend：`scripts/benchmark_trend.py` 建立（append + 10% regression gate）；`benchmark/trend.jsonl` 以 8 個歷史 afterfix run 種子；`tests/test_benchmark_trend.py` = 19 passed；每次 T2.x 後可呼叫 `python scripts/benchmark_trend.py <result.json>` 追加趨勢並自動偵測 regression。
 
