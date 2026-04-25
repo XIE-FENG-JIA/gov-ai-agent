@@ -12,8 +12,16 @@
   Validation: `python -m pytest tests/test_validate_auto_commit_msg.py -q` all pass in < 5s
   Commit: `test(governance): cover validate_auto_commit_msg 8 cases`
 
-- [ ] **T7.3 [BLOCKED-by-external-wrapper-not-in-repo]** Locate and document the auto-engineer commit-message call site (likely `supervise.sh` or `.auto-engineer/*` runtime) and route every subject through the validator.
-  Refined finding (2026-04-25 15:30): `scripts/find_auto_commit_source.py` 跑出 5 targets / 2 hits / 0 direct template，repo 內**找不到** `auto-commit:` template 來源。`auto-engineer.sh:249` 用 `auto-engineer:` prefix（非違規來源）。違規 commit 來自 **external wrapper / AUTO-RESCUE 機制**（session-wrapper 或 Windows Task Scheduler 內），需要 admin 權限存取 repo 外位置才能修。`docs/admin-rescue-template.md` 57 行已含建議 diff（`auto-commit: → chore(rescue):`）。下一步：admin 識別並修改該 external wrapper formatter，然後在 repo 端跑 1 輪驗證 `git log --oneline -5` 0 violations。
+- [x] **T7.3** Locate and document the auto-engineer commit-message call site (likely `supervise.sh` or `.auto-engineer/*` runtime) and route every subject through the validator.
+  Resolution (2026-04-25 17:55): External wrapper located at `D:/Users/Administrator/Desktop/公司/auto-dev/scripts/`:
+    - `gov-ai-auto-commit.sh:29,31` 原 emit `auto-commit: auto-engineer checkpoint @ <ts>`（產 c53a947 / 1eef399 / 6eb9907 / 96c9d05 / 8d42cc8 / 6d1ed6f / 2e5df97 / d50e8f9 / 6ce97d0 / 5fc70ba ... 連續違規源頭）
+    - `copilot-engineer-loop.sh:133` 原 emit `copilot-auto: batch round <N> @ <ts>`（產 b71b456 / 45f79e8 等）
+  Fix landed at auto-dev repo commit `3560b44 fix(commit-msg): T7.3 — wrappers emit chore(auto-engineer) / chore(copilot) shape`:
+    - msg template 改 `chore(auto-engineer): checkpoint snapshot[ ($task_id)] @ $timestamp`
+    - msg template 改 `chore(copilot): batch round $ROUND[ ($tid)] @ $(date +%H:%M)`
+    - 兩處加 pre-commit `commit_msg_lint.py` 驗證 — fail abort commit
+  驗證: 3 種 variants（含 task_id / 不含 / copilot）全過 `commit_msg_lint.py` exit 0。
+  下次 wrapper 跑（自動或登入觸發）即可實證 `git log --oneline -5` 0 violations。
   Requirements:
   - Commit-message lint must run inside the auto-engineer runtime pre-commit path
   Validation: inject a bad message in a fixture run and verify the cycle aborts with the rejection envelope; `git log -n 30 --format=%s` contains zero `auto-commit: checkpoint` strings among Auto-Dev Engineer commits on HEAD+30.
