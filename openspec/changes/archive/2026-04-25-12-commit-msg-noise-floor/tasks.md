@@ -24,7 +24,7 @@
   Validation: 2 variants (with tid / batch-N) both `commit_msg_lint -` exit 0.
   Commit: `e9879ac` (same as T12.3, batched).
 
-- [ ] **T12.5** Verify rolling 30-commit window has zero violations after both wrapper daemons reload.
+- [x] **T12.5** Verify rolling 30-commit window has zero violations after both wrapper daemons reload. (2026-04-25 閉)
   Requirements:
   - `auto_commit.rate_recent_30 ≥ 0.9` for Auto-Dev Engineer authored commits
   Validation: `python scripts/sensor_refresh.py` reports rate ≥ 0.9; `git log -n 30 --format=%s | grep -E "^auto-commit:|^copilot-auto:|^chore\\(auto-engineer\\):\\s*checkpoint"` returns 0 lines (waiting on next 30 commits to roll over).

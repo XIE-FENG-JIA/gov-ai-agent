@@ -25,8 +25,7 @@ class ValidatorRegistry:
         try:
             with open(term_path, 'r', encoding='utf-8') as f:
                 self.terms = json.load(f)
-        except Exception as e:
-            logger.debug("術語字典不存在（選用功能）: %s", e)
+        except (OSError, json.JSONDecodeError, ValueError) as e:
             self.terms = {}
 
     def check_date_logic(self, draft_text: str, **kwargs) -> list[dict]:

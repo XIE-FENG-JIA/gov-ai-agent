@@ -291,8 +291,7 @@ class EditorFlowMixin:
         for future, agent_name in future_to_agent.items():
             try:
                 results.append(future.result())
-            except Exception as exc:
-                logger.error("targeted review agent '%s' failed: %s", agent_name, exc)
+            except (RuntimeError, OSError, ValueError) as exc:
                 results.append(
                     ReviewResult(
                         agent_name=agent_name,

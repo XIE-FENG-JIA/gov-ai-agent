@@ -20,8 +20,7 @@ def _load_regulation_doc_type_mapping() -> dict[str, dict[str, Any]]:
         with open(_MAPPING_PATH, encoding="utf-8") as file:
             data = yaml.safe_load(file)
         return data.get("regulations", {}) if isinstance(data, dict) else {}
-    except Exception as exc:
-        logger.warning("載入法規-文件類型映射表失敗：%s", exc)
+    except (OSError, yaml.YAMLError, ValueError) as exc:
         return {}
 
 

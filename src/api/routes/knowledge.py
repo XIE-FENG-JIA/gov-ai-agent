@@ -43,6 +43,5 @@ async def kb_search(request: KBSearchRequest) -> KBSearchResponse:
 
         return KBSearchResponse(success=True, results=results)
 
-    except Exception as e:
-        logger.exception("知識庫搜尋失敗")
+    except (RuntimeError, OSError, ValueError) as e:
         return KBSearchResponse(success=False, error=_sanitize_error(e), error_code=_get_error_code(e))

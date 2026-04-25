@@ -97,8 +97,7 @@ Do NOT write vague suggestions like "請使用正式用語". Always give the cor
 """
         try:
             response = self.llm.generate(prompt, temperature=LLM_TEMPERATURE_PRECISE)
-        except Exception as exc:
-            logger.warning("StyleChecker LLM 呼叫失敗: %s", exc)
+        except (RuntimeError, OSError) as exc:
             return ReviewResult(agent_name=self.AGENT_NAME, issues=[], score=0.0, confidence=0.0)
         return parse_review_response(
             response,

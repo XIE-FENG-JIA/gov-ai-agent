@@ -175,15 +175,7 @@ class WriterAskServiceMixin:
             logger.warning("open-notebook writer path unavailable; fallback to legacy LLM: %s", exc)
             console.print(f"[yellow]open-notebook 不可用，退回 legacy writer：{exc}[/yellow]")
             return None
-        except Exception as exc:
-            self._last_open_notebook_diagnostics = {
-                "service": "open-notebook",
-                "mode": runtime_mode,
-                "used_fallback": "true",
-                "fallback_stage": "runtime",
-                "fallback_reason": str(exc),
-            }
-            logger.warning("open-notebook writer path failed unexpectedly; fallback to legacy LLM: %s", exc)
+        except (RuntimeError, OSError, ConnectionError) as exc:
             console.print(f"[yellow]open-notebook 執行失敗，退回 legacy writer：{exc}[/yellow]")
             return None
 

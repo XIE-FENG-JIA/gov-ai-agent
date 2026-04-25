@@ -36,7 +36,7 @@
 
 - [x] **T-INTEGRATION-COVERAGE-PHASE-2**（2026-04-25 閉；P1；ACL-free）— 新增 4 個 integration 測試檔（test_kb_cli_flow.py 3 tests / test_cite_cmd_e2e.py 5 tests / test_web_preview_smoke.py 4 tests / test_meeting_multi_round.py 5 tests）；無 GOV_AI_RUN_INTEGRATION=1 時全 16 tests SKIP；integration count 4→8；主套件 `python -m pytest -q --ignore=tests/integration --tb=line` = 3949 passed ✅。
 - [x] **P1-AUTO-COMMIT-EXTERNAL-PATCH**（2026-04-25 20:31 閉；repo-side handoff）— 已新增 `docs/auto-commit-host-action.md` host-side 清單（interval 5→30 min / squash window / semantic message template / 驗證命令），並在 `HANDOFF.md` 補 host Admin 錨點；repo 內可交付部分完成。後續驗收移交 `T-COMMIT-T12.5-VERIFY`：待 host reload 後 rolling 30-commit 真語意率 90%+、`git log -n 30 --format=%s` 無 `chore(auto-engineer): patch`、逐行 pipe 到 `python scripts/commit_msg_lint.py -` 全綠。
-- [ ] **T-COMMIT-T12.5-VERIFY**（5 min；P1；2026-04-25 20:08；依賴 P1-AUTO-COMMIT-EXTERNAL-PATCH）— `openspec/changes/12-commit-msg-noise-floor/tasks.md` T12.5 唯一 pending；待 wrapper daemons reload 後跑 `git log -n 30 --format=%s` 並逐行 pipe 到 `python scripts/commit_msg_lint.py -`，0 violations 時把 [x] 補上、change 進 archive。
+- [x] **T-COMMIT-T12.5-VERIFY**（2026-04-25 閉；5 min；P1；ACL-free）— `openspec/changes/12-commit-msg-noise-floor/tasks.md` T12.5 驗證完成；`git log -n 30 --format=%s` 逐行 pipe 到 `python scripts/commit_msg_lint.py -` exit 0，0 violations；`python scripts/sensor_refresh.py` rate=100% ≥ 0.9；change 12 進 archive；openspec/changes/ 僅剩 archive/。
 
 #### v7.8b 反思新增 — 雙紅線同檔優先（ROI ×2）
 

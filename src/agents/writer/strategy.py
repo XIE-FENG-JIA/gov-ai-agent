@@ -108,8 +108,7 @@ class WriterStrategyMixin:
                 len(refined) if refined else 0,
             )
             return original_query
-        except Exception as exc:
-            logger.warning("Agentic RAG 精煉查詢失敗: %s", exc)
+        except (RuntimeError, OSError, ValueError) as exc:
             return original_query
 
     def _search_examples(self, query: str) -> list[dict]:

@@ -122,7 +122,7 @@ class ConfigManager:
             with open(self.config_path, 'r', encoding='utf-8') as f:
                 raw_config = yaml.safe_load(f) or {}
                 return self._expand_env_vars(raw_config)
-        except Exception as e:
+        except (OSError, yaml.YAMLError, ValueError) as e:
             logger.error("設定檔載入失敗: %s", e)
             return self._create_default_config()
 
