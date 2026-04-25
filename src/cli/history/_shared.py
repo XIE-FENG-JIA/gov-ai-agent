@@ -9,49 +9,15 @@ import typer
 from rich.console import Console
 
 from src.cli.utils_io import JSONStore, atomic_json_write, resolve_state_path, resolve_state_read_path
+from src.core.history_store import _history_store, append_record
 
 console = Console()
-_MAX_HISTORY = 100
 _TAGS_FILE = os.path.join(".history", "tags.json")
 _PINS_FILE = os.path.join(".history", "pins.json")
 _ARCHIVE_EXCLUDE = {"tags.json", "pins.json"}
 
-_history_store = JSONStore(".gov-ai-history.json", default=[])
 _tags_store = JSONStore(_TAGS_FILE, default={})
 _pins_store = JSONStore(_PINS_FILE, default=[])
-
-
-def append_record(
-    input_text: str,
-    doc_type: str,
-    output_path: str,
-    score: float | None = None,
-    risk: str | None = None,
-    rounds_used: int | None = None,
-    elapsed: float | None = None,
-    status: str = "success",
-) -> None:
-    """Append one history record."""
-    record = {
-        "timestamp": datetime.now().isoformat(),
-        "input": input_text[:200],
-        "doc_type": doc_type,
-        "output": output_path,
-        "score": score,
-        "risk": risk,
-        "rounds_used": rounds_used,
-        "elapsed_sec": round(elapsed, 1) if elapsed else None,
-        "status": status,
-    }
-    history = _history_store.load()
-    history.append(record)
-    if len(history) > _MAX_HISTORY:
-        history = history[-_MAX_HISTORY:]
-
-    try:
-        _history_store.save(history)
-    except OSError:
-        pass
 
 
 def get_state_file_path(relative_path: str, *, for_write: bool) -> str:

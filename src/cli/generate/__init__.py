@@ -18,11 +18,11 @@ from src.agents.editor import EditorInChief
 from src.agents.requirement import RequirementAgent
 from src.agents.template import TemplateEngine
 from src.agents.writer import WriterAgent
-from src.cli.history import append_record
 from src.cli.utils_io import atomic_json_write, atomic_text_write
 from src.core.config import ConfigManager
 from src.core.constants import MAX_USER_INPUT_LENGTH
 from src.core.error_analyzer import ErrorAnalyzer
+from src.core.history_store import append_record
 from src.core.llm import LiteLLMProvider, get_llm_factory
 from src.document.exporter import DocxExporter
 from src.knowledge.manager import KnowledgeBaseManager
