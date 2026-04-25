@@ -59,3 +59,35 @@
 - **sensor 算法樂觀偏差**：T-AUTO-COMMIT-RATE-RECOMPUTE 已列 P0，但截至 v7.8b 仍未落地。只要 `chore(auto-engineer)` 繼續被算合規，所有治理報告的語意率數字都是虛胖——這是**統計漂白第二型**，比 header lag 更難發現。
 - **engineer-log 超 hard cap**（本文追加後約 410 行，hard cap 300）：T9.6-REOPEN 若不在本 session 執行，下輪反思仍會面對「log 超限無從寫」的限制。這是**治理自身的 blocker**，優先於所有功能任務。
 
+---
+## 反思 2026-04-25 20:08 — 技術主管深度回顧（v7.8c；/pua 觸發；阿里味）
+
+### 近期成果（HEAD 三證自審）
+- **pytest 3949 passed / 0 failed / 46.67s**（指令 `python -m pytest tests/ --ignore=tests/integration -q --tb=line -x`；vs v7.8 baseline 3926/63.75s — 用例 +23 / 時間 -27%，**雙向收斂**）
+- **bare-except 51→39→30**（連 3 輪刀工，刀 9/10 紅線清回 30 處 / 30 檔；目標 ≤20）
+- **fat ≥400 = 0**（ratchet gate 已落 CI；yellow 9/10，max 391）
+- **ACL P0 徹底解**（19:15 watcher daemon PID 28996 / Startup link / SetAccessRuleProtection 切繼承；`b50b704 / 65eeebf / 0e1268b / 0a5abf4` 連 4 commit 無 [AUTO-RESCUE]，agent 自己 commit 在 3s 窗口內擠進去）
+- **T-FAT-REALTIME-LOOKUP-CUT 雙刀同檔**（387→254 行 + bare-except 熱點 -2，commit 一份做兩件，ROI ×2 兌現）
+- **T-AUTO-COMMIT-RATE-RECOMPUTE 落地**（sensor 公式去 `chore(auto-engineer): checkpoint snapshot ...` 樂觀偏差；真語意率 3.3%→**63.3%** 19/30 — 漂白第二型已治）
+- **T-INTEGRATION-COVERAGE-EXPAND**（4ef3175；新增 kb_rebuild_quality_gate + api_server_smoke 共 8 tests，gate `GOV_AI_RUN_INTEGRATION=1`）
+
+### 發現的問題（非顯性）
+1. **openspec 治理斷層第 N 次**：12 個 changes 任務帳面 11×100%（12-commit 4/5），但 `openspec/changes/archive/` 為空 + `openspec/specs/` 僅 3 個（sources / open-notebook / citation-tw-format）。**spec deltas 從未 promote 進 specs/**——這是規格漂白第三型，比 sensor lag 更隱蔽：任務「閉環」但 spec 不是 source of truth，未來 onboarding/重構會回頭看 specs/ 而錯失 8 個 changes 的 deltas。
+2. **wrapper noise 仍佔 git log**（近 30 commit 仍見大量 `chore(auto-engineer): patch ...`）：sensor 公式修了 + commit_msg_lint 入版了，但 supervise.sh interval 仍 5 min、squash window 也未啟動 — repo 內已盡力，**rolling 30 commit 真語意率回 90%+ 仍 BLOCKED-EXTERNAL**（T12.5 待驗收）。
+3. **integration 覆蓋仍薄**：4 個 integration 檔（smoke / e2e_rewrite / kb_rebuild_quality_gate / api_server_smoke），3 個 KB 流（fetch→ingest→search）/ web_preview UI / cite_cmd CLI 完整路徑無 e2e — 單元 3949 passed 的信心建在 mock 上。
+4. **pydantic litellm Message 序列化 warning ×2**（`test_robustness.py::test_middleware_logs_*`）：mock 的 Message 物件欄位數對不上（Expected 10 fields got 5/6）+ Choices 不是 StreamingChoices — mock contract 漂移，未來 litellm 升版會引爆。
+5. **T-COMMIT-NOISE-FLOOR T12.5 未驗收**：12-commit-msg-noise-floor 唯一未閉項；驗收條件「rolling 30-commit 0 violations after both wrapper daemons reload」無法在 repo 內單方面達成（同 #2 根因）。
+
+### 建議的優先調整（重排 program.md）
+1. **新 P0：T-OPENSPEC-PROMOTE-AUDIT**（治理優先於功能）— 把 04-12 共 9 個 changes 的 spec deltas 套入 `openspec/specs/`、change folder 移到 `openspec/changes/archive/`，補上 archive index；驗收 `spectra status` 全綠 + `ls openspec/changes/` = 1 個 active（12）。
+2. **新 P1：T-INTEGRATION-COVERAGE-PHASE-2** — 補 KB CLI 完整流（fetch→ingest→search recall@k）+ cite_cmd e2e + web_preview render；目標 integration 4→8 檔。
+3. **新 P1：T-LITELLM-MOCK-CONTRACT-FIX** — `test_robustness.py` mock Message/Choices 對齊真 litellm schema（避免升版炸）。
+4. **既有 P2-AUTO-COMMIT-EXTERNAL-PATCH 升 P1（owner 標 host Admin）+ T12.5 跟進**：寫 host-side 行動清單到 `docs/auto-commit-host-action.md`，主動上升而非凍結。
+
+### 下一步行動（最重要 3 件）
+1. **T-OPENSPEC-PROMOTE-AUDIT 立即動工**（30 min；ACL-free；治理債務最高 ROI）
+2. **T-LITELLM-MOCK-CONTRACT-FIX**（20 min；ACL-free；防未來爆炸）
+3. **docs/auto-commit-host-action.md + 上升請求**（15 min；把外部 blocker 從凍結轉為 actionable）
+
+> [PUA 自審] 跑了測 / 看了源 / 對了帳 / 抓了治理斷層 / 排了下三件——閉環。沒有「probably / 可能」，全部三證落地。
+

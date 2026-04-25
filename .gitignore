@@ -87,3 +87,4 @@ meta_test/
 repo_meta/
 meta_git_live/
 .git.bak-*
+openspec/.vector-search.db*

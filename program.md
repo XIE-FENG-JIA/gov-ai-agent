@@ -19,6 +19,11 @@
 
 > **v7.3–v7.7 sensor/header 歷史已封存**：詳見 [docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)。
 
+### P0（v7.8c 20:08 /pua 深度回顧新增；治理優先；本輪必動）
+
+- [ ] **T-OPENSPEC-PROMOTE-AUDIT**（30 min；P0；2026-04-25 20:08；ACL-free）— `openspec/changes/` 12 個有 11 個 100% / 1 個 4/5（12-commit T12.5），但 `openspec/changes/archive/` 為空 + `openspec/specs/` 僅 3 個（sources / open-notebook / citation-tw-format）；spec deltas 從未 promote → 規格漂白第三型。執行：(a) 對每個 100% change，將 `specs/<capability>/spec.md` 的 deltas 套入 `openspec/specs/<capability>.md`；(b) 整個 change folder 移到 `openspec/changes/archive/<id>/`；(c) 補 `openspec/changes/archive/INDEX.md` 條目（id / 完成日 / 摘要）；(d) 更新 `.spectra.yaml` 對齊；(e) 寫 `docs/openspec-promotion-audit-202604.md` 收尾報告。**驗收**：`ls openspec/changes/` 僅剩 1 active（12-commit），`openspec/specs/` 從 3 → ≥10，`spectra status` 全綠。**規格不是 source of truth = 任務帳面閉環的漂白**。
+- [ ] **T-LITELLM-MOCK-CONTRACT-FIX**（20 min；P0；2026-04-25 20:08；ACL-free）— `tests/test_robustness.py::TestProductionReadinessIteration2::test_middleware_logs_non_health_requests` + `test_middleware_skips_health_check_logging` 跑出 pydantic warning：`Expected 10 fields but got 5/6`（Message）+ `Expected StreamingChoices`（Choices）；mock 結構偏離 litellm 升版後 schema，未來升版會引爆。修：對齊 litellm `ModelResponse / Choices / Message` 真實欄位（10 個）+ 用 `StreamingChoices` 而非 `Choices`；驗收：`python -m pytest tests/test_robustness.py -W error::UserWarning -q` 全綠 0 warning。**未顯化的技術債 = 未來 P0**。
+
 ### P0（v7.8b 18:35 反思新增；本輪必動 45 min）
 
 - [x] **T-WORKTREE-COMMIT-LINT**（5 min；P0；2026-04-25 18:35）— `scripts/commit_msg_lint.py` + `tests/test_commit_msg_lint.py` + `program.md` 改動仍在工作樹未入版；以單一 `feat(scripts): commit_msg_lint reject pseudo-semantic checkpoint` 落版；驗證 `git status` clean（扣除 copilot session 檔）+ `python -m pytest tests/test_commit_msg_lint.py -q` ≥ 既有 case 全綠。**不入版 = 規則沒生效**。
@@ -26,6 +31,12 @@
 - [x] **T-AUTO-COMMIT-RATE-RECOMPUTE**（10 min；P0；2026-04-25 18:35）— `scripts/sensor_refresh.py` auto-commit 公式把 `chore(auto-engineer): checkpoint snapshot` 視為合規是樂觀偏差；改成只認 `feat|fix|refactor|docs|test|chore(scope!=auto-engineer)` 真語意；實際率回到 13–15%；驗證 `python scripts/sensor_refresh.py --human` 顯示真實率 + `tests/test_sensor_refresh.py` 加 1 條防回歸。**統計口徑放水 = 漂白第二型**。
 
 ### P1（連 2 輪延宕 = 3.25）
+
+#### v7.8c 20:08 /pua 深度回顧新增 — integration 補漏 + 外部 blocker 上升
+
+- [ ] **T-INTEGRATION-COVERAGE-PHASE-2**（90 min；P1；2026-04-25 20:08；ACL-free）— integration 4 檔（smoke / e2e_rewrite / kb_rebuild_quality_gate / api_server_smoke）覆蓋仍薄；缺：(1) KB CLI 完整流（`gov-ai kb fetch → ingest → search` recall@k 對比）；(2) `cite_cmd` e2e（CLI 拉條件 → 出引用）；(3) `web_preview` render smoke（`uvicorn boot → GET / → 渲染標的元素 assert`）；(4) `meeting` API 多輪互動（happy + 邊界）。目標 integration 4→8，每檔 GOV_AI_RUN_INTEGRATION 開關；驗收 `GOV_AI_RUN_INTEGRATION=1 pytest tests/integration -q` 全綠 + 無增加主套件時間。**單元 3949 passed 的信心建在 mock 上 = 盲飛**。
+- [ ] **P1-AUTO-COMMIT-EXTERNAL-PATCH**（從 P2 升級；P1；owner = host Admin；2026-04-25 20:08）— 連 6+ 輪卡 supervise.sh 5 min interval out-of-repo；不再凍結，主動上升。產出：(a) `docs/auto-commit-host-action.md` host-side 清單（檔位 / 修改點 / 驗證命令）；(b) 列「希望 host Admin 做的 3 件」：interval 5→30 min / squash window 啟動 / message template 補語意 prefix；(c) 通信錨點寫 `HANDOFF.md` 待 host 簽收。驗收：rolling 30-commit 真語意率 63.3%→90%+ + `git log -n 30 --format=%s` 無 `chore(auto-engineer): patch` 條目 + 12-commit T12.5 可閉。**外部 blocker 凍結 = 永久污染**。
+- [ ] **T-COMMIT-T12.5-VERIFY**（5 min；P1；2026-04-25 20:08；依賴 P1-AUTO-COMMIT-EXTERNAL-PATCH）— `openspec/changes/12-commit-msg-noise-floor/tasks.md` T12.5 唯一 pending；待 wrapper daemons reload 後跑 `python scripts/commit_msg_lint.py --rolling 30`，0 violations 時把 [x] 補上、change 進 archive。
 
 #### v7.8b 反思新增 — 雙紅線同檔優先（ROI ×2）
 
@@ -58,7 +69,7 @@
 ### P2（Admin/key 依賴，不能當 P1 佔坑）
 
 - [x] **EPIC6-DISCOVERY**（2026-04-24 16:58 閉；commit `33bf8ce`）— `openspec/changes/06-live-ingest-quality-gate/` proposal (43) + tasks (82) + `specs/quality-gate/spec.md` (111) = 236 行骨架；3 dimensions（volume floor / schema integrity / provenance signal）× 4 named failures（LiveIngestBelowFloor / SchemaIntegrityError / StaleRecord / SyntheticContamination）+ 5 個 T-LIQG-1..5 後續 tasks（gate 模組 + CLI + 失敗矩陣 doc）。
-- [ ] **P2-AUTO-COMMIT-EXTERNAL-PATCH**（P2；2026-04-25 凍結）— 需 elevated host-side access 修改 external wrapper / scheduler / Admin rescue commit formatter；驗收：下一輪 `git log -n 30 --format=%s` 無 `auto-commit:` / `checkpoint`，且 auto-engineer subject 通過 `scripts/validate_auto_commit_msg.py`。
+- [→P1] **P2-AUTO-COMMIT-EXTERNAL-PATCH**（2026-04-25 20:08 升級為 **P1-AUTO-COMMIT-EXTERNAL-PATCH**；見上方 P1 區塊；本條保留作回溯）— 原凍結為 P2 已連 6 輪無進展，/pua 反思判定：不再凍結，主動上升 host Admin。
 - [ ] **P2-CHROMA-NEMOTRON-VALIDATE** — `OPENROUTER_API_KEY` 已驗證有效（2026-04-25 13:56 `curl /api/v1/auth/key` 200，付費帳號 is_free_tier=false，limit=null 無限額，累計 usage=$0.000035）→ **unblocked，可執行**：跑 `gov-ai kb rebuild --only-real`（走 `nvidia/llama-nemotron-embed-vl-1b-v2:free` dim=2048 重建 ChromaDB）+ 撰寫 `docs/embedding-validation.md` 記錄向量化前後 search recall@k 對比。
 - [x] **T6.1**（2026-04-26 閉；ACL-free；注：full 30-item eval 需啟動 API server）— blind eval baseline：`docs/benchmark-baseline.md` 記錄 v2.1 快照（afterfix17 limit=2, avg_score=0.8766, success_rate=1.0）+趨勢表+完整執行步驟；`benchmark/baseline_v2.1.json` 以 afterfix17 2 題快照為底；完整 30 題需 `python scripts/run_blind_eval.py --limit 30`。
 - [x] **T6.2**（2026-04-26 閉；ACL-free）— benchmark trend：`scripts/benchmark_trend.py` 建立（append + 10% regression gate）；`benchmark/trend.jsonl` 以 8 個歷史 afterfix run 種子；`tests/test_benchmark_trend.py` = 19 passed；每次 T2.x 後可呼叫 `python scripts/benchmark_trend.py <result.json>` 追加趨勢並自動偵測 regression。
