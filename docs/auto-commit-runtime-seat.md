@@ -3,9 +3,9 @@
 ## §runtime-state
 
 - decision: repo scan can document the runtime seat, but cannot patch an external wrapper from this shell.
-- `.auto-engineer.state.json`: {   "round": "142",   "total_pass": "112",   "total_fail": "16",   "total_idle": "7",   "consecutive_errors": "0",   "consecutive_idle": "0",   "cumulative_seconds": "158473",   "cumulative_cost": "0",   "last_round_cost": "0",   "last_update": "2026-04-25T17:36:34+08:00",   "project": "公文ai agent",   "model": "gpt-5.5",   "engine": "codex",   "reflect_model": "claude-opus-4-7",   "pid": "12668",   "status": "running",   "phase": "execute",   "current_cooldown": "60" }
+- `.auto-engineer.state.json`: pid=12668, status=running, phase=execute, engine=codex, model=gpt-5.5, current_cooldown=60
 - `.auto-engineer.pid`: `12668`
-- `.copilot-loop.state.json`: {   "round": 8,   "last_update": "2026-04-25T17:16:36+08:00" }
+- `.copilot-loop.state.json`: round=8
 - `tasklist /v`: unavailable in this shell when probed manually (`ERROR: Access denied`).
 - `where supervise`: no repo-local executable found in this shell.
 

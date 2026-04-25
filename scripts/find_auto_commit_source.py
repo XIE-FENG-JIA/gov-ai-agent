@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import csv
 import io
+import json
 import os
 import subprocess
 from dataclasses import dataclass
@@ -176,7 +177,12 @@ def probe_scheduler(runner: Runner = run_command) -> SchedulerProbe:
         if any(token in joined for token in ("claude", "codex", "auto", "rescue", "engineer")):
             matches.append(f"{task_name} => {task_to_run}")
     if matches:
-        return SchedulerProbe(command=command, status="candidate-found", detail="scheduler candidates found", matches=tuple(matches[:10]))
+        return SchedulerProbe(
+        command=command,
+        status="candidate-found",
+        detail="scheduler candidates found",
+        matches=tuple(matches[:10]),
+    )
     return SchedulerProbe(command=command, status="no-match", detail="scheduler query returned no related task names")
 
 
@@ -190,10 +196,26 @@ def summarize_findings(hits: Sequence[CandidateHit], scheduler: SchedulerProbe) 
     if scheduler.status == "candidate-found":
         summary.append("Task Scheduler returned related tasks; inspect them before touching repo-side configs.")
     elif scheduler.status == "unavailable":
-        summary.append("Task Scheduler query failed in this shell; external scheduler/wrapper remains the leading suspect.")
+        summary.append(
+            "Task Scheduler query failed in this shell; "
+            "external scheduler/wrapper remains the leading suspect."
+        )
     else:
         summary.append("Task Scheduler query returned no obvious Claude/Codex rescue task names.")
     return summary
+
+
+def _load_json_object(path: Path) -> dict[str, object]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8", errors="replace"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def _compact_fields(value: dict[str, object], fields: Sequence[str]) -> str:
+    parts = [f"{field}={value[field]}" for field in fields if field in value]
+    return ", ".join(parts) if parts else "present, but no expected fields found"
 
 
 def read_runtime_state(root: Path = Path(".")) -> list[str]:
@@ -204,15 +226,21 @@ def read_runtime_state(root: Path = Path(".")) -> list[str]:
         "- decision: repo scan can document the runtime seat, but cannot patch an external wrapper from this shell.",
     ]
     if state_path.exists():
-        lines.append(f"- `.auto-engineer.state.json`: {state_path.read_text(encoding='utf-8', errors='replace').strip().replace(chr(10), ' ')}")
+        state = _load_json_object(state_path)
+        lines.append(
+            "- `.auto-engineer.state.json`: "
+            + _compact_fields(state, ("pid", "status", "phase", "engine", "model", "current_cooldown"))
+        )
     else:
         lines.append("- `.auto-engineer.state.json`: missing")
     if pid_path.exists():
-        lines.append(f"- `.auto-engineer.pid`: `{pid_path.read_text(encoding='utf-8', errors='replace').strip()}`")
+        pid = pid_path.read_text(encoding="utf-8", errors="replace").strip()
+        lines.append(f"- `.auto-engineer.pid`: `{pid}`")
     else:
         lines.append("- `.auto-engineer.pid`: missing")
     if copilot_path.exists():
-        lines.append(f"- `.copilot-loop.state.json`: {copilot_path.read_text(encoding='utf-8', errors='replace').strip().replace(chr(10), ' ')}")
+        copilot = _load_json_object(copilot_path)
+        lines.append("- `.copilot-loop.state.json`: " + _compact_fields(copilot, ("round",)))
     else:
         lines.append("- `.copilot-loop.state.json`: missing")
     lines.extend([
@@ -232,9 +260,15 @@ def render_report(hits: Sequence[CandidateHit], scheduler: SchedulerProbe, targe
         "",
         "## §repo-scan-result",
         "",
-        "- repo-local validators already exist: `scripts/validate_auto_commit_msg.py` and `scripts/commit_msg_lint.py`.",
+        (
+            "- repo-local validators already exist: `scripts/validate_auto_commit_msg.py` "
+            "and `scripts/commit_msg_lint.py`."
+        ),
         "- latest generated scan below lists scheduler/hook-adjacent clues and exact template hits when present.",
-        "- conclusion: if no exact `auto-commit:` hit appears, the formatter is an external wrapper / scheduler / Admin rescue layer.",
+        (
+            "- conclusion: if no exact `auto-commit:` hit appears, the formatter is "
+            "an external wrapper / scheduler / Admin rescue layer."
+        ),
         "",
         "## §candidates",
         "",
@@ -267,7 +301,10 @@ def render_report(hits: Sequence[CandidateHit], scheduler: SchedulerProbe, targe
             "",
             "## §template-diff",
             "",
-            "Replace the Admin rescue commit message template. Keep the `AUTO-RESCUE` audit token in the body, not the subject.",
+            (
+                "Replace the Admin rescue commit message template. Keep the `AUTO-RESCUE` "
+                "audit token in the body, not the subject."
+            ),
             "",
             "```diff",
             "- auto-commit: auto-engineer checkpoint (<ts>)",
@@ -309,19 +346,34 @@ def render_report(hits: Sequence[CandidateHit], scheduler: SchedulerProbe, targe
             "",
             "## §admin-action",
             "",
-            "1. Inspect the external wrapper or scheduler that stages rescue commits. Repo hooks and PowerShell profile do not define the `auto-commit:` template.",
+            (
+                "1. Inspect the external wrapper or scheduler that stages rescue commits. "
+                "Repo hooks and PowerShell profile do not define the `auto-commit:` template."
+            ),
             "2. Change only the commit message formatter. Do not change the rescue staging logic yet.",
-            "3. Re-run one rescue cycle and verify `git log --oneline -5` has no `auto-commit:` or `checkpoint` subject.",
+            (
+                "3. Re-run one rescue cycle and verify `git log --oneline -5` "
+                "has no `auto-commit:` or `checkpoint` subject."
+            ),
             "4. Keep `AUTO-RESCUE` in the commit body so `results.log` and git history still correlate.",
-            "5. If Task Scheduler remains inaccessible in-shell, inspect the Admin session launcher manually from elevated PowerShell.",
+            (
+                "5. If Task Scheduler remains inaccessible in-shell, inspect the Admin "
+                "session launcher manually from elevated PowerShell."
+            ),
             "",
             "## §validation-after-admin-patch",
             "",
             "1. Run one external auto-engineer/rescue cycle.",
             "2. Run `git log -n 30 --format=%s`.",
             "3. Pass condition: zero subjects match `auto-commit:` or `checkpoint`.",
-            "4. Pass condition: new auto-engineer subjects pass `python scripts/validate_auto_commit_msg.py \"<subject>\"`.",
-            "5. Then update `openspec/changes/07-auto-commit-semantic-enforce/tasks.md` T7.3 from blocked to done.",
+            (
+                "4. Pass condition: new auto-engineer subjects pass "
+                "`python scripts/validate_auto_commit_msg.py \"<subject>\"`."
+            ),
+            (
+                "5. Then update `openspec/changes/07-auto-commit-semantic-enforce/tasks.md` "
+                "T7.3 from blocked to done."
+            ),
             "",
             "## scheduler-probe",
             "",
