@@ -18,7 +18,7 @@
 > 3. ✅ **T-ROBOTS-IMPL**（已閉；見 results.log）
 > 4. ✅ **T-PYC-CLEAN**（已閉；見 results.log）
 > 5. 🔴 **T-CORPUS-200-PUSH**（下一件 P0）
-> 6. 🟠 **T-PYTEST-RUNTIME-REGRESSION-iter6**（目前實測 129.30s ≤ 200s，待正式關閉）
+> 6. ✅ **T-PYTEST-RUNTIME-REGRESSION-iter6**（本輪閉；實測 3919 passed / 69.51s ≤ 200s）
 
 > **v7.3-sensor 校準段（2026-04-25 02:45；第四十四輪深度回顧；HEAD 全獨立跑）**：
 > - ✅ **pytest cross-session cold-start = 3801 passed / 152.98s / exit 0**（破下 epoch ≤ 200s 目標 47s 裕量；BM25 cap 真效非 cache 假象確認；演進 960→773→547→461→340→343→179→173→**153s** 累計 -84%）
@@ -153,7 +153,7 @@
 - [x] **T-ROBOTS-IMPL**（2026-04-25 本輪閉；ACL-free）— `src/sources/_common.py` 加 `RobotsCache`（urllib.robotparser，TTL 1hr）、`RobotsDisallowedError`、`_robots_cache` module-level singleton；`request_with_proxy_bypass` 加 robots check 前置；`tests/conftest.py` 加 `_bypass_robots_cache_in_tests` session autouse（防 unit test 發真實 HTTP）；`tests/test_robots_compliance.py` 4 passed（allow / disallow / parse-fail fallback / request_with_proxy_bypass raises）。驗證 `python -m pytest tests/test_robots_compliance.py tests/test_sources_base.py -q` = 8 passed。
 - [x] **T-PYC-CLEAN**（2026-04-25 本輪閉；ACL-free）— 刪除 3862 個 xdist worker .pyc.* 殘留；`.gitignore` 已含 `*.pyc.*` pattern（line 4）；`tests/conftest.py` 加 `_cleanup_xdist_pyc_star` session autouse fixture。驗證 `find src -name "*.pyc.*" | wc -l` = 0。
 - [ ] **T-CORPUS-200-PUSH**（45 min；P0；2026-04-25 v7.6 反思開；原 P1 P2-CORPUS-300 升 P0 拆第一刀）— EPIC6 quality gate 已 unblock；跑 `python scripts/live_ingest.py --sources mojlaw,datagovtw,executive_yuan_rss --limit 100 --require-live --quality-gate` 把 corpus 173 → 200 soft target；產出 `docs/corpus-200-push-2026-04-25.md` 記錄各 source 抓 N / gate pass / dedup 後增量。驗證 `find kb_data/corpus -name "*.md" | wc -l` ≥ 200。
-- [ ] **T-PYTEST-RUNTIME-REGRESSION-iter6**（30 min；P0；2026-04-25 新增）— full suite 已由 22 fail 修成 0 fail，但 runtime 440s > 200s budget；用 `pytest --durations=20 --tb=no` 定位慢測/重試/外連，優先移除 LLM retry sleep 與不必要 cold-start。驗證 `python -m pytest -q --ignore=tests/integration --tb=no` ≤ 200s 且 0 failed。
+- [x] **T-PYTEST-RUNTIME-REGRESSION-iter6**（2026-04-25 本輪閉；ACL-free）— full suite runtime regression 正式關閉；`python -m pytest -q --ignore=tests/integration --tb=short` = **3919 passed / 69.51s**，低於 ≤ 200s budget，0 failed。
 
 #### v7.5 已閉項（保留追歷史）
 
