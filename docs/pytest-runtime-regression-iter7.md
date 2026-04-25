@@ -83,7 +83,7 @@ python -m pytest -q --ignore=tests/integration -p no:xdist --no-header
 
 | candidate | command run | runtime | verdict |
 |-----------|------------|---------|---------|
-| C4 — xdist | (T15.3 pending) | — | — |
+| C4 — xdist | `pytest -p no:xdist --override-ini="addopts=-q"` HEAD `8868f69` | **589.4 s** | **RULED OUT** — removing xdist is 2.8× *slower* (589 s vs 214 s). xdist provides genuine parallel speedup; not a boot-overhead sink. |
 | C2 — click | (T15.4 pending) | — | — |
 | C1 — dispersal | (deferred until 13 closes) | — | — |
 

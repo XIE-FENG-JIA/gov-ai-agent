@@ -12,7 +12,7 @@
   Validation: `rg "v9" docs/loop4-closure-report.md` matches; wording covers cold-start + median requirement.
   Commit: included in T15.5.
 
-- [ ] **T15.3** Bisection step 1 — `pytest -p no:xdist` on HEAD `e222a45`. If runtime drops ≤ 200 s, xdist worker boot is the root cause.
+- [x] **T15.3** Bisection step 1 — `pytest -p no:xdist` on HEAD `e222a45`. If runtime drops ≤ 200 s, xdist worker boot is the root cause.
   Requirements:
   - Each candidate root cause has a reproducible bisection command
   Validation: append result line to `docs/pytest-runtime-regression-iter7.md` "Bisection results" section; runtime + verdict.
