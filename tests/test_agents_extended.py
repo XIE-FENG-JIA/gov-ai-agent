@@ -4,6 +4,7 @@ src/agents/ 的延伸測試
 """
 import importlib
 import os
+import sys
 import pytest
 import json
 from unittest.mock import MagicMock
@@ -2156,6 +2157,7 @@ class TestCLIOutputPath:
         assert result == "passwd_backup.docx"
         assert "/" not in result and "\\" not in result
 
+    @pytest.mark.skipif(sys.platform != "win32", reason="Windows-only path stripping test")
     def test_windows_absolute_path_stripped(self):
         """Windows 絕對路徑應被攔截"""
         result = self._resolve_output_path("C:\\Windows\\evil.docx")

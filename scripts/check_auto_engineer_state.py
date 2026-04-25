@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -64,7 +65,6 @@ def _pid_alive(pid: int) -> bool:
         return False
     try:
         if os.name == "nt":
-            import subprocess
             result = subprocess.run(  # noqa: S603,S607
                 ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
                 capture_output=True, text=True, timeout=5,
@@ -72,7 +72,7 @@ def _pid_alive(pid: int) -> bool:
             return str(pid) in result.stdout
         os.kill(pid, 0)
         return True
-    except (OSError, subprocess.SubprocessError, ImportError):
+    except (OSError, subprocess.SubprocessError):
         return False
 
 

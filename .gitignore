@@ -58,6 +58,7 @@ experiments.log
 kb_init_report.json
 openapi_temp.json
 *.ps1
+!scripts/run_nightly_integration.ps1
 .gov-ai-history.json
 test_kb_temp/
 test_kb/
