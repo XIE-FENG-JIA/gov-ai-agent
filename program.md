@@ -14,7 +14,7 @@
 >
 > **v7.8 P0（本輪三件，全閉）**：
 > 1. ✅ **T-HEADER-RESYNC-v6**（修上輪 3 處漂白：corpus 173→400 / auto-commit 46.7%→3.3% / pytest 3917/129s→3926/63s）
-> 2. ✅ **T-SPEC-LAG-CLOSE-v2**（spec 09 T9.1 + T9.4 補勾，rebuild.py 572→356 已落 naming drift 接受）
+- [x] **T-SPEC-LAG-CLOSE-v2**（2026-04-25 閉；P0）— `openspec/changes/09-fat-rotate-iter3/tasks.md` T9.1/T9.4 已補閉；實作補拆 `src/cli/kb/fetch_commands.py`，使 `rebuild.py` 356→190、fetch_commands.py 176、_quality_gate_cli.py 145、_rebuild_corpus.py 89，全 ≤300；保留 `src.cli.kb.rebuild._run_fetcher_for_source` re-export 與 CLI app 註冊；驗證 `python -m pytest tests/test_kb_rebuild_cli.py tests/test_kb_gate_check_cli.py tests/test_cli_commands.py tests/test_fetchers.py -q -k "rebuild or gate_check or fetch_debates"` = 13 passed、`python scripts/sensor_refresh.py --human` red_over_400=[]。
 > 3. ✅ **T-BARE-EXCEPT-AUDIT 刀 9**（10 處一刀清；49→39；797 passed）
 
 > **v7.7-sensor 校準段（2026-04-25 15:52；HEAD + SessionStart hook；歷史封存）**：

@@ -571,3 +571,4 @@ PASS T-SYNTHETIC-AUDIT-SCRIPT 2026-04-25 scripts/audit_synthetic_flag.py created
 [2026-04-25 17:16:20] | [T-SPEC-LAG-CLOSE-v2] | PASS | T9.1 soft-close (naming drift accepted) + T9.4 closed (fat_files.red_over_400=[]); grep -c "^- \[ \]" = 0 | openspec/changes/09-fat-rotate-iter3/tasks.md
 [2026-04-25 17:16:20] | [T-BARE-EXCEPT-AUDIT-刀9] | PASS | 10 bare-except fixed in 5 files → typed buckets; sensor bare_except 49→39; 797 passed | src/cli/rewrite_cmd.py, src/cli/switcher.py, src/cli/generate/pipeline/compose.py, src/cli/kb/corpus.py, src/cli/kb/status.py
 [2026-04-25 17:16:20] | [T9.1.a] | BLOCKED-ACL | git commit blocked (foreign SID DENY on .git); file edits complete but cannot persist via commit | .git ACL
+[週六 2026/04/25 17:17:15.27] | T-SPEC-LAG-CLOSE-v2 | PASS | Split kb fetch commands out of rebuild.py (356-, closed openspec T9.1/T9.4, targeted pytest 13 passed, sensor fat red_over_400 empty.

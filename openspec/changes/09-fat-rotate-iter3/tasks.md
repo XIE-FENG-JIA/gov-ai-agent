@@ -4,8 +4,9 @@
   Requirements:
   - No module larger than 300 lines after rotation
   - Import contract preserved through `__init__.py` re-exports
-  Validation: `wc -l src/cli/kb/rebuild/*.py` all ≤ 300; `pytest tests/test_cli_kb_rebuild*.py tests/test_cli_commands.py -q -k rebuild` green.
-  Commit: `refactor(cli): split kb/rebuild 572 into orchestrate/adapters/quality_gate_integration`
+  Validation: `python -c "from pathlib import Path; ..."` reports rebuild.py 190 / fetch_commands.py 176 / _quality_gate_cli.py 145 / _rebuild_corpus.py 89 / _shared.py 8, all ≤ 300; `python -m pytest tests/test_kb_rebuild_cli.py tests/test_kb_gate_check_cli.py tests/test_cli_commands.py tests/test_fetchers.py -q -k "rebuild or gate_check or fetch_debates"` = 13 passed.
+  Commit: `refactor(cli): split kb rebuild fetch commands from core rebuild`
+  Note: implemented as sibling modules rather than a `rebuild/` package to preserve the existing `src.cli.kb.rebuild` patch/import surface used by tests and status refresh code.
   **Status (2026-04-25 v7.8 soft-close)**: naming drift accepted — actual impl split to `_quality_gate_cli.py` + `_rebuild_corpus.py` (356 lines combined) vs spec's `orchestrate/adapters/quality_gate_integration`; functional goal achieved. `rebuild/*.py` all ≤ 300; full test suite green.
 
 - [x] **T9.2** Split `src/sources/datagovtw.py 410` → `src/sources/datagovtw/{__init__, client, normalize, fixtures}.py`.
@@ -25,7 +26,7 @@
 - [x] **T9.4 [BLOCKED-by-T9.1]** Sensor regression check — fat-file red tier hits 0, yellow excludes the three ex-fat modules.
   Requirements:
   - No module larger than 300 lines after rotation
-  Validation: `python scripts/sensor_refresh.py --human` reports `fat_files.red_over_400 == []` and `rebuild/datagovtw/routes-agents` not in yellow list.
+  Validation: `python scripts/sensor_refresh.py --human` reports `fat_files.red_over_400 == []`; yellow list excludes `src/cli/kb/rebuild.py`, `src/sources/datagovtw/*`, and `src/api/routes/agents/*`.
   Commit: `chore(sensor): record iter3 fat-rotate 572+410+397 → ≤ 300`
   **Status (2026-04-25 v7.8 closed)**: `fat_files.red_over_400 == []` confirmed by sensor_refresh.py — goal achieved.
 
