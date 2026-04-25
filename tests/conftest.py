@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 # 確保 src 在 Python 路徑中
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.cli.utils import cleanup_orphan_tmps
+from src.cli.utils_io import cleanup_orphan_tmps
 from src.core.logging_config import install_litellm_async_cleanup_filter
 from src.core.llm import LLMProvider
 from src.core.models import PublicDocRequirement
@@ -105,6 +105,25 @@ def _preload_empty_realtime_lookup_caches():
     if RecentPolicyFetcher._cache is None:
         RecentPolicyFetcher._cache = _GazetteCacheEntry(records=[])
     yield
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _prewarm_jieba():
+    """Pre-warm jieba dictionary at worker startup to avoid cold-start in tests.
+
+    jieba loads its dictionary (~1-5s) on first call per process. With xdist,
+    each worker pays this cost when it first runs a BM25/keyword search test.
+    Pre-warming here moves the cost to session setup (parallel across workers)
+    and keeps BM25 tests from showing inflated individual durations.
+
+    Tests that patch jieba (e.g. test_knowledge.py) are unaffected — they
+    replace jieba.cut after initialization.
+    """
+    try:
+        import jieba
+        jieba.initialize()
+    except Exception:
+        pass
 
 
 def make_api_config(**overrides) -> dict:

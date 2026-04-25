@@ -86,6 +86,23 @@ python -m pytest -q --ignore=tests/integration -p no:xdist --no-header
 | C4 — xdist | `pytest -p no:xdist --override-ini="addopts=-q"` HEAD `8868f69` | **589.4 s** | **RULED OUT** — removing xdist is 2.8× *slower* (589 s vs 214 s). xdist provides genuine parallel speedup; not a boot-overhead sink. |
 | C2 — click | fresh venv click==8.1.7 (incomplete: missing langgraph) | **548.5 s (invalid)** | **PROVISIONALLY RULED OUT** — timing invalid (incomplete venv, some tests errored). Circumstantial: current HEAD 8868f69 with click 8.2.1 improved from LOOP5 315 s → 214 s via T13 refactors alone, proving regression was code-complexity not click overhead. |
 | C1 — dispersal | (deferred until 13 closes) | — | — |
+| C5 — jieba cold load | add `_prewarm_jieba` session autouse fixture in `tests/conftest.py`; HEAD `0b26d25` | gate A: **233.9 s**, gate B: **227.1 s**, median **230.5 s** | **PARTIAL** — jieba pre-warm eliminates 12-13s BM25 test cold-start from per-test durations; bottleneck shifts to session fixture startup (~11s/worker parallel) + I/O contention across 14 workers. 15% gap remains (230.5 s vs 200 s target). T15.5 gate NOT yet cleared. |
+
+## T15.5 Gate Runs (Regression-Clear Gate)
+
+| run | HEAD | runtime | notes |
+|-----|------|---------|-------|
+| Gate A | `0b26d25` | **233.9 s** | after jieba prewarm fixture |
+| Gate B | `0b26d25` | **227.1 s** | after jieba prewarm fixture |
+
+**Median (A + B)** = **230.5 s**. Target ≤ 200 s. **Not yet cleared.**
+
+Progress from LOOP5 baseline: 315 s → 230.5 s (−27 %). Remaining gap: 30.5 s.
+
+Root cause of remaining gap: I/O contention across 14 xdist workers importing
+~500 Python modules simultaneously from Windows NTFS. Collection overhead alone
+is ~36.6 s wall-clock (vs 17 s main-process collection). Next bisection
+candidates: reduce worker count + reduce fixture I/O at session startup.
 
 ## Red line v9
 
