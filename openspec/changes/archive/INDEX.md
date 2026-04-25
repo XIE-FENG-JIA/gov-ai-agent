@@ -18,6 +18,8 @@ This index records all completed and archived openspec change sets.
 | 12-commit-msg-noise-floor | 2026-04-25 | 提交訊息噪音下限（commit_msg_lint reject pseudo-semantic / wrapper 升級 chore(auto-engineer): patch 格式 / 30-commit 驗證 0 violations） | T12.1–T12.5 | 100% (5/5) |
 | 13-cli-fat-rotate-v3 | 2026-04-26 | CLI fat-rotate v3（utils god-object split / Track B shared services / micro-file mergers / full regression gate） | T13.1a–T13.7 | 100% (14/14) |
 | 14-13-acceptance-audit | 2026-04-26 | Change 13 acceptance audit（gap evidence / remediation paths / red-line v8 wrapper structural payload） | T14.1–T14.5 | 100% (5/5) |
+| 15-pytest-runtime-regression-iter7 | 2026-04-26 | pytest runtime regression iter7（LOOP5 drift 315s→median 189.81s；-n auto→-n 8；red-line v9 two-baseline median） | T15.1–T15.5 | 100% (5/5) |
+| 16-regulation-doc-type-mapping | 2026-04-26 | 公文種類對應規範（kb_data/regulation_doc_type_mapping.yaml schema contract；7 schema+roundtrip tests） | T16.1–T16.3 | 100% (3/3) |
 
 ## Notes
 

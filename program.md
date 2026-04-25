@@ -2,6 +2,11 @@
 
 > 歷史 v7.0–v7.7 sensor/header 已封存：[docs/archive/program-history-202604j.md](docs/archive/program-history-202604j.md)、[docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)
 
+> **v8.0 批次回合（2026-04-26 07:50 /pua；T15.5 commit + openspec 15/16 promote/archive + sensor + pytest -n 8 驗收）**：
+> - ✅ **T15.5 commit 62b2d85**：`pyproject.toml addopts` `-n auto → -n 8`（NTFS/import I/O 飽和修正）；Gate C 183.98s / Gate D 195.64s；median 189.81s ≤ 200s ✅
+> - ✅ **openspec changes 15/16 全部 promote → archive**：`openspec/changes/` 僅剩 `archive`（0 active changes）；`openspec/specs/runtime-baseline/` 新建；INDEX.md 補 15/16 條目
+> - ⚠️ pytest -n 8 預期：3958 passed（待本輪驗收）；sensor hard violations 待確認
+>
 > **v7.9-final 後段（2026-04-26 /pua 深度回顧；五源 HEAD + sensor + pytest -n auto + 單跑 + git diff 獨立量測）**：
 > - ⚠️ **pytest -n auto 全量**：`python -m pytest tests/ -q --ignore=tests/integration` = **3948 passed / 1 failed / 14 errors / 263.64s** —— 與 sensor `--human` 報「3950 passed / 0 failed」**不一致 → 漂白第七型 xdist race 隱藏失敗**
 > - ⚠️ **單跑同檔全綠**：`pytest tests/test_kb_rebuild_cli.py` = 2 passed；`pytest tests/test_e2e_rewrite.py::...not_traceable` = 1 passed → race 確證 xdist worker collect 污染 + fixture 跨 worker state 漏洗
