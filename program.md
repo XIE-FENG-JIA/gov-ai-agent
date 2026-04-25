@@ -2,10 +2,12 @@
 
 > 歷史 v7.0–v7.7 sensor/header 已封存：[docs/archive/program-history-202604j.md](docs/archive/program-history-202604j.md)、[docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)
 
-> **v8.0 批次回合（2026-04-26 07:50 /pua；T15.5 commit + openspec 15/16 promote/archive + sensor + pytest -n 8 驗收）**：
+> **v8.0 批次回合（2026-04-26 08:10 /pua；T15.5 commit + openspec 15/16 promote/archive + sensor + pytest -n 8 驗收）**：
 > - ✅ **T15.5 commit 62b2d85**：`pyproject.toml addopts` `-n auto → -n 8`（NTFS/import I/O 飽和修正）；Gate C 183.98s / Gate D 195.64s；median 189.81s ≤ 200s ✅
-> - ✅ **openspec changes 15/16 全部 promote → archive**：`openspec/changes/` 僅剩 `archive`（0 active changes）；`openspec/specs/runtime-baseline/` 新建；INDEX.md 補 15/16 條目
-> - ⚠️ pytest -n 8 預期：3958 passed（待本輪驗收）；sensor hard violations 待確認
+> - ✅ **openspec changes 15/16 全部 promote → archive**：`openspec/changes/` 僅剩 `archive`（0 active changes）；`openspec/specs/runtime-baseline/` 新建；INDEX.md 補 15/16 條目（共 16 條）
+> - ✅ **pytest -n 8 全量**：`python -m pytest tests/ -q --ignore=tests/integration` = **3958 passed / 0 failed / 167.13s**（< 200s 目標 ✅）
+> - ✅ **sensor hard=[]**：bare_except=3（全 noqa/compat）；fat red=0 / yellow=6 / ratchet OK；corpus=400；program.md 223
+> - ⚠️ **auto_commit_rate 83.3%**（25/30）< 90% target（soft only）
 >
 > **v7.9-final 後段（2026-04-26 /pua 深度回顧；五源 HEAD + sensor + pytest -n auto + 單跑 + git diff 獨立量測）**：
 > - ⚠️ **pytest -n auto 全量**：`python -m pytest tests/ -q --ignore=tests/integration` = **3948 passed / 1 failed / 14 errors / 263.64s** —— 與 sensor `--human` 報「3950 passed / 0 failed」**不一致 → 漂白第七型 xdist race 隱藏失敗**
@@ -34,7 +36,18 @@
 
 > **v7.3–v7.7 sensor/header 歷史已封存**：詳見 [docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)。
 
-### P0（2026-04-26 05:55 /pua 深度回顧新增；本輪必動 — 治理底線 + T15.5 紅線真閉環）
+### P0（2026-04-26 07:50 /pua 深度回顧新增；本輪必動 — 治理斷層第八型 + fat 預先收尾 + T15.5 證據鏈入版）
+
+- [ ] **T-OPENSPEC-FLUSH-15-16-ARCHIVE**（10 min；P0；ACL-free；治理底線真閉環）— `openspec/changes/15-pytest-runtime-regression-iter7/` 仍在 active（T15.1–T15.5 全 [x]，archive 副本已存，僅 INDEX 缺 15）+ `openspec/changes/16-regulation-doc-type-mapping/`（T16.1–T16.3 全 [x]，archive 連副本都沒）。對策：(a) `git rm -r openspec/changes/15-pytest-runtime-regression-iter7`；(b) `git mv openspec/changes/16-regulation-doc-type-mapping openspec/changes/archive/2026-04-26-16-regulation-doc-type-mapping`；(c) `archive/INDEX.md` 補 15+16 兩列；commit message: `chore(openspec): promote changes 15/16 to archive — T-OPENSPEC-FLUSH-15-16`。**驗收**：`ls openspec/changes/` 只剩 archive/；0 active dir；`spectra status` 全綠。**底層邏輯**：實作 → 副本 → active 刪除 → INDEX，四步必須同步，否則漂白第八型。
+- [ ] **T-WORKTREE-FLUSH-LOOP6**（10 min；P0；ACL-free；T15.5 證據鏈入版）— 6 檔 worktree 滯留（含 T15.5 PASS 證據：`pyproject.toml addopts -n 8` + `docs/pytest-runtime-regression-iter7.md` + `openspec/changes/15…/tasks.md`）。對策分 2 語意 commit：(a) `perf(pytest): T15.5 pyproject -n 8 + iter7 docs evidence`（pyproject.toml + docs/pytest-runtime-regression-iter7.md + 15/tasks.md）；(b) `docs(governance): mark T15.5 closed + program/results sync`（program.md + results.log + engineer-log.md）。**驗收**：`git status` clean（扣 `.copilot-loop.state.json`，後者由 T-COPILOT-LOOP-STATE-GITIGNORE 處理）。
+- [ ] **T-FAT-PRE-EMPT-CUT-V2**（45 min；P0；ACL-free；防下輪炸 ≥400）— max=375 距 400 紅線僅 25 行；六黃線檔 (`knowledge/manager.py 375 / cli/wizard_cmd.py 374 / core/constants.py 374 / web_preview/app.py 364 / knowledge/_manager_hybrid.py 358 / cli/template_cmd/catalog.py 350`)。對策：top-3 (manager/wizard/constants) 各抽 80–100 行公共介面（同 v7.9 T-FAT-PRE-EMPT-CUT 成功模式：validators 390→275、_execution 389→208、law_fetcher 377→296）。目標：max ≤ 350、yellow ≤ 4；驗收 `python scripts/check_fat_files.py --strict` exit 0 + ratchet 收緊 + `python -m pytest tests/ -q --ignore=tests/integration` ≥ 3958 passed。
+
+### P1（2026-04-26 07:50 /pua 深度回顧新增；wrapper noise 第二刀 + owner 認領）
+
+- [ ] **T-COPILOT-LOOP-STATE-GITIGNORE**（5 min；P1；ACL-free；wrapper noise 第二刀）— `.gitignore` 已收 `.auto-engineer.state.json` 但 `.copilot-loop.state.json` 漏網 → `git status` 永遠髒，6 檔滯留判斷誤導；漂白第九型「治理 noise 漏網」。對策：`.gitignore` 加入 `.copilot-loop.state.json`；驗收 `git status` 不再列此檔。
+- [→升 P1] **T-NEMOTRON-EMBEDDING-VALIDATE**（45 min；P1；ACL-free；OPENROUTER_API_KEY unblocked）— 從 P2 升 P1：`OPENROUTER_API_KEY` 已驗 unblocked（2026-04-25 13:56；付費帳號 is_free_tier=false），任務寫「unblocked，可執行」但無 owner 認領 4+ 輪 = 3.25 累計第 4 次。對策：跑 `gov-ai kb rebuild --only-real`（nemotron embed dim=2048）+ 寫 `docs/embedding-validation.md` 對照 search recall@k；owner = auto-engineer。
+
+### P0（2026-04-26 05:55 /pua 深度回顧新增；本輪必動 — 治理底線 + T15.5 紅線真閉環；已全閉，保留追溯）
 
 - [x] **T-WORKTREE-FLUSH-LOOP5**（2026-04-26 閉；P0；ACL-free；治理底線）— 已 flush 13/14 openspec promote、`src/cli/utils.py` shim removal、`tests/test_cli_commands.py` xdist/state cleanup 與治理文件更新；驗證 `python -m pytest tests/ -q --ignore=tests/integration` = 3951 passed / 248.81s。剩餘活 spec 僅 `15-pytest-runtime-regression-iter7`；T15.5 因 runtime > 200s 仍未關。
 - [x] **T15.5-MEDIAN-COLD-START**（2026-04-26 閉；P0；ACL-free；紅線 v9 真閉環）— 根因為 Windows NTFS/import I/O 被 xdist 14 workers 過飽和；`pyproject.toml` 將 pytest `addopts` 從 `-n auto` 改為 `-n 8`。驗證同 HEAD `4d105f5` 冷啟動雙跑（每次前清 `__pycache__` + `.pytest_cache`）：Gate C `3958 passed / 183.98s`、Gate D `3958 passed / 195.64s`，median **189.81s ≤ 200s**；詳見 `docs/pytest-runtime-regression-iter7.md`。
