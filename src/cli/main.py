@@ -76,9 +76,14 @@ def _register_help_stubs(app: typer.Typer) -> None:
     def _stub_command(name: str) -> None:
         raise RuntimeError(f"help-only stub should not execute: {name}")
 
+    def _make_stub(cmd_name: str):
+        def stub() -> None:
+            _stub_command(cmd_name)
+        stub.__name__ = f"{cmd_name.replace('-', '_')}_stub"
+        return stub
+
     for name, help_text in _DIRECT_COMMANDS:
-        stub = lambda _name=name: _stub_command(_name)
-        stub.__name__ = f"{name.replace('-', '_')}_stub"
+        stub = _make_stub(name)
         stub.__doc__ = help_text
         app.command(name=name, help=help_text)(stub)
 

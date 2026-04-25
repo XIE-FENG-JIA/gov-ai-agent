@@ -23,7 +23,7 @@ from src.api.routes._agents_parallel import run_parallel_review, run_format_audi
 from src.api.helpers import (
     _sanitize_error,
     _get_error_code,
-    review_result_to_dict,
+    review_result_to_dict,  # noqa: F401
     run_in_executor,
 )
 from src.api.models import (

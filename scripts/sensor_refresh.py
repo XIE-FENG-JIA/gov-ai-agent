@@ -125,9 +125,12 @@ _SEMANTIC_RE = re.compile(
 # e.g. `chore(auto-engineer): checkpoint snapshot (2026-04-25 18:17:35 +0800) @ 18:19`
 # e.g. `chore(auto-engineer): patch`
 # e.g. `chore(copilot): batch round 17`
+# e.g. `chore(auto-engineer): AUTO-RESCUE missing import`     (漂白第六型 admin rescue)
+# e.g. `chore(auto-engineer): 54 files (restore corpus)`      (漂白第六型 bulk admin batch)
 # Aligned with commit_msg_lint._REJECT_PATTERNS; excluded from semantic count.
 _CHECKPOINT_NOISE_RE = re.compile(
-    r"^chore\((?:auto-engineer|copilot)\):\s*(?:checkpoint(?:\s+snapshot)?|patch|batch)\b",
+    r"^chore\((?:auto-engineer|copilot)\):\s*"
+    r"(?:checkpoint(?:\s+snapshot)?|patch|batch|AUTO-RESCUE|\d+\s*files)\b",
     re.IGNORECASE,
 )
 

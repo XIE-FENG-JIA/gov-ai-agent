@@ -51,9 +51,9 @@ _FORMAT_OPTION_DEFS: tuple[tuple[str, str, dict[str, str], str | None, str | Non
     ("lang", "公文語言", {"zh-tw": "繁體中文", "zh-cn": "簡體中文", "en": "英文"}, "zh-tw", "zh-TW/zh-CN/en"),
 )
 
-from .cli import generate
-from .content_metadata import _apply_content_metadata, _display_format_options
-from .export import (
+from .cli import generate  # noqa: E402
+from .content_metadata import _apply_content_metadata, _display_format_options  # noqa: E402
+from .export import (  # noqa: E402
     _display_summary,
     _export_document,
     _export_qa_report,
@@ -61,7 +61,7 @@ from .export import (
     _show_cite_suggestions,
     _show_lint_results,
 )
-from .pipeline import (
+from .pipeline import (  # noqa: E402
     _handle_confirm,
     _handle_dry_run,
     _handle_estimate,

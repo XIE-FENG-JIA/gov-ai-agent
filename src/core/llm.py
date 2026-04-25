@@ -5,9 +5,9 @@ from src.core.warnings_compat import suppress_known_third_party_deprecations
 
 suppress_known_third_party_deprecations()
 
-import litellm
-from src.core.config import LLMProvider
-from src.core.constants import LLM_GENERATION_TIMEOUT, LLM_CHECK_TIMEOUT
+import litellm  # noqa: E402
+from src.core.config import LLMProvider  # noqa: E402
+from src.core.constants import LLM_GENERATION_TIMEOUT, LLM_CHECK_TIMEOUT  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

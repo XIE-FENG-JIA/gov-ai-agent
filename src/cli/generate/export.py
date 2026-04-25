@@ -169,9 +169,9 @@ def _show_lint_results(content: str) -> None:
     """生成完成後對草稿執行輕量 lint 檢查，以 Panel 顯示問題摘要（靜默降級）。"""
     runtime = _runtime()
     try:
-        from src.cli.lint_cmd import _run_lint
+        from src.cli._shared.lint_invocation import run_lint
 
-        issues = _run_lint(content)
+        issues = run_lint(content)
         runtime.console.print()
         if not issues:
             runtime.console.print(
@@ -208,10 +208,14 @@ def _show_cite_suggestions(doc_type: str) -> None:
     """生成完成後自動顯示適用法規引用建議（靜默降級）。"""
     runtime = _runtime()
     try:
-        from src.cli.cite_cmd import _MAPPING_PATH, _filter_applicable, _load_mapping
+        from src.cli._shared.citation_format import (
+            MAPPING_PATH,
+            filter_applicable_citations,
+            load_citation_mapping,
+        )
 
-        regulations = _load_mapping(_MAPPING_PATH)
-        applicable = _filter_applicable(regulations, doc_type)
+        regulations = load_citation_mapping(MAPPING_PATH)
+        applicable = filter_applicable_citations(regulations, doc_type)
         if not applicable:
             return
         runtime.console.print()

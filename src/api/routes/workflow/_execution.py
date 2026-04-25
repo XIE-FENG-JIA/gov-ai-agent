@@ -7,8 +7,8 @@ import re
 from importlib import import_module
 from typing import Any
 
-from ._graph_report import _GraphQAReport
-from ._ralph_loop import _count_report_issues, _is_ralph_goal_met, _run_ralph_loop
+from ._graph_report import _GraphQAReport  # noqa: F401
+from ._ralph_loop import _count_report_issues, _is_ralph_goal_met, _run_ralph_loop  # noqa: F401
 
 
 def _workflow_package():

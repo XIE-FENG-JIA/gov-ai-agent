@@ -3,17 +3,17 @@ import os
 import re
 
 from docx import Document
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH  # noqa: F401
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt
 
 from src.agents.template import TemplateEngine, clean_markdown_artifacts
 from src.core.constants import (
     CHINESE_NUMBERS,
-    FIRST_LINE_INDENT,
-    FONT_LOG,
+    FIRST_LINE_INDENT,  # noqa: F401
+    FONT_LOG,  # noqa: F401
     FONT_SIZE_BODY,
-    FONT_SIZE_LOG,
+    FONT_SIZE_LOG,  # noqa: F401
     FONT_SIZE_META,
     FONT_SIZE_SECTION_LABEL,
     FONT_SIZE_TITLE,

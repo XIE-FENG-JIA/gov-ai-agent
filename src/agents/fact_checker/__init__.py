@@ -24,6 +24,6 @@ def _load_regulation_doc_type_mapping() -> dict[str, dict[str, Any]]:
         return {}
 
 
-from src.agents.fact_checker.pipeline import FactChecker
+from src.agents.fact_checker.pipeline import FactChecker  # noqa: E402
 
 __all__ = ["FactChecker", "_MAPPING_PATH", "_load_regulation_doc_type_mapping"]
