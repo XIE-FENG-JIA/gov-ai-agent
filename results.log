@@ -703,3 +703,4 @@ PASS T-INTEGRATION-CI-WIRE        # 2026-04-25 23:15 added integration job to ci
 [2026-04-26] | [T13.1c] | [PASS] | Created src/cli/utils_display.py (11 lines) with Console singleton; utils.py no longer imports rich
 [2026-04-26] | [T13.1d] | [PASS] | Created src/cli/utils_text.py placeholder; utils.py=51 lines<=80; fat-gate OK red=0 yellow=6; 3951 full tests passed
 [2026-04-26] | [T13.6a] | [PASS] | Merged highlight_cmd.py into search_cmd.py; deleted highlight_cmd.py; main.py updated; 3951 full tests passed
+[2026-04-26 02:03:49] | [AUTO-RESCUE] | [PASS] | Admin session 代 auto-engineer commit (hash=00d9b0e) — 若先前 FAIL 是 ACL denied，此條即救援對應 | .copilot-loop.state.json,docs/acl-v3-rca-handoff.md,docs/cli-module-audit.md,docs/integration-ci-first-run.md,engineer-log.md,openspec/changes/13-cli-fat-rotate-v3/.openspec.yaml
