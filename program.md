@@ -41,7 +41,7 @@
 ### P1（2026-04-26 11:30 /pua v8.1 深度回顧新增；治理 + spec 軌跡 + 預先 fat 抽刀）
 
 - [x] **T-PROGRAM-MD-ARCHIVE-202604L**（15 min；P1；ACL-free；soft 紅線收尾）— 把 v7.9-sensor / v7.8 / v7.3-v7.7 verbose batch header（line 37-49 範圍）封存到 `docs/archive/program-history-202604L.md`；主檔降 ≤ 250 行；驗收 sensor `--human` soft=[]。
-- [ ] **T-OPENSPEC-ARCHIVE-ACL-CLEANUP**（10 min；P1；需 Admin/ACL；治理殘留）— `spectra archive 17-embedding-provider-rest-fallback -y` 已 promote spec 與建立 archive copy，但 active dir `openspec/changes/17-embedding-provider-rest-fallback/` 刪除被 Windows ACL `WinError 5` 擋，`spectra list` 仍顯示 3/3。驗收：解除 ACL 後刪 active dir；`spectra list` 無 active changes；保留 `openspec/changes/archive/2026-04-26-17-embedding-provider-rest-fallback/` 與 `openspec/specs/embedding-provider/spec.md`。
+- [x] **T-OPENSPEC-ARCHIVE-ACL-CLEANUP**（2026-04-26 12:30 閉；P1；ACL 診斷過期）— 實測 `openspec/changes/17-embedding-provider-rest-fallback/` SDDL 已**無** DENY ACE（只有 Allow），4-20 git separate-git-dir 遷移 (`C:/gov-ai-git`) 時隨之清掉，program.md 的 ACL-blocked 是過期診斷。`Remove-Item -Recurse -Force` 一次過；`spectra list` = `No active changes.` ✅；archive copy 與 `specs/embedding-provider/` 保留。
 - [x] **T-FAT-CATALOG-PRE-CUT**（30 min；P1；ACL-free；單檔 ROI 預先抽）— `src/cli/template_cmd/catalog.py` 350 行 = yellow 紅線正中點；單檔下次微改即翻紅。預防性抽 `_catalog_data.py` 80 行降至 270，破除邊緣值。驗收 `scripts/check_fat_files.py --strict` ratchet 收緊 + 3968 passed 不退（含 flaky 修後）。
 
 ### P0（2026-04-26 09:42 /pua 深度回顧新增；本輪必動 — 漂白第十型 + push 漏 + nemotron 半閉）
@@ -57,8 +57,8 @@
 
 ### P1（2026-04-26 07:50 /pua 深度回顧新增；wrapper noise 第二刀 + owner 認領）
 
-- [ ] **T-COPILOT-LOOP-STATE-GITIGNORE**（5 min；P1；ACL-blocked；wrapper noise 第二刀）— `.gitignore` 已加入 `.copilot-loop.state.json`，但 `git rm --cached .copilot-loop.state.json` 被 `.git/index` ACL DENY 擋下，tracked state 尚未停止追蹤；待 Admin 清 `.git` orphan DENY 後補 `git rm --cached` + commit。驗收 `git status --short -- .copilot-loop.state.json` 無輸出。
-- [ ] **T-GIT-ACL-DENY-UNBLOCK**（P0；Admin-gated；commit path blocked）— `git rm --cached .copilot-loop.state.json` 失敗：`fatal: Unable to create .../.git/index.lock: Permission denied`；`icacls .git/index` 顯示 `S-1-5-21-541253457-2268935619-321007557-692795393:(I)(DENY)(W,D,Rc,DC)`，且本 shell 無 PowerShell / 無權 `icacls .git /reset`。對策：Admin 執行 `scripts/acl_clean_orphan_deny.ps1` 或等效 SDDL 清理後重跑本任務。
+- [x] **T-COPILOT-LOOP-STATE-GITIGNORE**（2026-04-26 12:30 閉；P1）— `.gitignore` line 78 早已含 `.copilot-loop.state.json`；`git rm --cached .copilot-loop.state.json` 一次過，索引顯示 `D .copilot-loop.state.json` 待 commit；隨本輪治理 commit 入版。
+- [x] **T-GIT-ACL-DENY-UNBLOCK**（2026-04-26 12:30 閉；P0；ACL 已自然消失）— 4-20 `gov-ai-git-migration` 遷 separate-git-dir 後 orphan SID DENY ACE 已不存在，`git rm --cached` 與 `Remove-Item` 全可直接執行；P0 task 正式收口；不再需 admin elevation。
 - [→併入 P0 T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE] **T-NEMOTRON-EMBEDDING-VALIDATE**（45 min；P1→P0；ACL-free；OPENROUTER_API_KEY unblocked）— cf26345 已部分解（REST 直連），但驗收文件未補；併入本輪新 P0 `T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE` 收尾。3.25 累計第 5 次（連 5 輪未認領 + 部分解但未閉）。
 
 ### P0（v7.8c 20:08 /pua 深度回顧新增；治理優先；已全閉，保留追溯）

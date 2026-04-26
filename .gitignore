@@ -71,6 +71,8 @@ scripts/autoresearch_eval.py
 .json_*.tmp
 .txt_*.tmp
 .yaml_*.tmp
+*.tmp
+out*
 .auto-engineer.pid
 .auto-engineer.state.json
 .copilot-loop.state.json
