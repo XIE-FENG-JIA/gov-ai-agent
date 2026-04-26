@@ -9,10 +9,10 @@ Status legend: `[ ]` pending · `[~]` in-progress · `[x]` done
 **Goal:** Build `kb_data/eval_set/recall_eval.jsonl` with ≥ 30 query–doc_id pairs
 derived from public government documents already in the KB corpus.
 
-- [ ] Scan `kb_data/` for existing corpus doc IDs
-- [ ] Write 30+ pairs: `{"query": "...", "expected_doc_id": "..."}` in JSONL
-- [ ] Validate every `expected_doc_id` exists in the KB index
-- [ ] Acceptance: `wc -l kb_data/eval_set/recall_eval.jsonl` ≥ 30
+- [x] Scan `kb_data/` for existing corpus doc IDs
+- [x] Write 30+ pairs: `{"query": "...", "expected_doc_id": "..."}` in JSONL
+- [x] Validate every `expected_doc_id` exists in the KB index
+- [x] Acceptance: `wc -l kb_data/eval_set/recall_eval.jsonl` ≥ 30
 
 ---
 

@@ -886,3 +886,7 @@ PASS T-RUNTIME-BASELINE-TRUE-MEASURE-v3 2026-04-26 22:20 ceiling+tolerance+last_
 PASS T-ENGINEER-LOG-ARCHIVE-202604N 2026-04-26 22:20 engineer-log.md 315->187; v8.5/v8.6 to docs/archive/engineer-log-202604N.md commit 2ae766e
 PASS T-OPENSPEC-EPIC-19-DISCOVERY 2026-04-26 22:20 openspec/changes/19-kb-recall-validation-pipeline/ proposal+6 tasks commit 939172b
 PASS T-FAT-WATCH-CUT-V5-CLI-MODULE 2026-04-26 22:20 batch_tools 314->252 config_tools 312->234 lint_cmd 309->72; 129 tests pass commit 32189d3
+[2026-04-26 22:21:50 +08:00] | 決策：P1 T19.1 建立 KB recall eval set，因 active openspec 優先 | PASS | 新增 kb_data/eval_set/recall_eval.jsonl 35 筆 query/expected_doc_id；全部 expected_doc_id 已在 Chroma source_id index；更新 openspec T19.1 checklist；全量 pytest -x -q 先前 PASS：4002 passed / 34 skipped / 231.63s
+[2026-04-26 22:22:17 +08:00] | 決策：提交 T19.1 scoped 變更 | FAIL-BLOCKED | git add/commit kb_data/eval_set/recall_eval.jsonl openspec/.../tasks.md results.log 失敗：.git/index.lock exists / unable to create index.lock；approval=never，不刪 ACL/lock；保留工作樹變更
+[2026-04-26 22:36:51 +08:00] | P0 test regression: config_tools LiteLLMProvider patch surface missing | PASS | restored src.cli.config_tools.test_connectivity wrapper and LiteLLMProvider import; pytest tests/test_cli_commands.py -q = 758 passed; pytest tests/ -q --ignore=tests/integration = 4001 passed
+[2026-04-26 22:37:35 +08:00] | Commit blocked | FAIL-BLOCKED | scoped git add/commit failed because .git/index.lock exists; no git process found; policy blocked lock removal; changes left in worktree
