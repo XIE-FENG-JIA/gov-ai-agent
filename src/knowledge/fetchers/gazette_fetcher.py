@@ -4,7 +4,6 @@ from __future__ import annotations
 import io
 import logging
 import re
-import defusedxml.ElementTree as ET
 import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -19,38 +18,16 @@ from src.knowledge.fetchers.constants import (
     GAZETTE_DETAIL_URL,
     SOURCE_LEVEL_A,
 )
+from src.knowledge.fetchers._parser import (
+    _GAZETTE_PARSE_EXCEPTIONS,
+    _GAZETTE_ZIP_MEMBER_EXCEPTIONS,
+    _build_gazette_body,
+    _category_to_collection,
+    _extract_pdf_text,
+    _parse_xml,
+)
 
 logger = logging.getLogger(__name__)
-
-_GAZETTE_PARSE_EXCEPTIONS = (
-    ET.ParseError,
-    TypeError,
-    ValueError,
-    Exception,
-)
-_GAZETTE_ZIP_MEMBER_EXCEPTIONS = (
-    OSError,
-    ValueError,
-    zipfile.BadZipFile,
-    Exception,
-)
-_GAZETTE_PDF_EXCEPTIONS = (
-    OSError,
-    RuntimeError,
-    ValueError,
-    Exception,
-)
-
-
-def _category_to_collection(category: str) -> str:
-    """依據公報 Category 分配目標集合。"""
-    if not category:
-        return "examples"
-    if "行政規則" in category or "法規命令" in category:
-        return "regulations"
-    if "施政計畫" in category:
-        return "policies"
-    return "examples"
 
 
 class GazetteFetcher(BaseFetcher):
@@ -118,6 +95,7 @@ class GazetteFetcher(BaseFetcher):
             body_text = html_to_markdown(html_content) if html_content else ""
 
             source_url = GAZETTE_DETAIL_URL.format(meta_id=meta_id)
+            body = _build_gazette_body(title, pub_gov, date_str, category, body_text)
             metadata = {
                 "title": title,
                 "doc_type": "公報",
@@ -130,16 +108,6 @@ class GazetteFetcher(BaseFetcher):
                 "source_level": SOURCE_LEVEL_A,
                 "source_url": source_url,
             }
-
-            body = f"# {title}\n\n"
-            if pub_gov:
-                body += f"**發布機關**：{pub_gov}\n\n"
-            if date_str:
-                body += f"**發布日期**：{date_str}\n\n"
-            if category:
-                body += f"**類別**：{category}\n\n"
-            if body_text:
-                body += f"## 內容\n\n{body_text}"
 
             # 依 collection 決定輸出子目錄
             if collection == "regulations":
@@ -240,21 +208,10 @@ class GazetteFetcher(BaseFetcher):
 
             source_url = GAZETTE_DETAIL_URL.format(meta_id=meta_id)
 
-            body = f"# {title}\n\n"
-            if pub_gov:
-                body += f"**發布機關**：{pub_gov}\n\n"
-            if date_str:
-                body += f"**發布日期**：{date_str}\n\n"
-            if category:
-                body += f"**類別**：{category}\n\n"
-            if body_text:
-                body += f"## 內容\n\n{body_text}"
-
             # 嘗試匹配 PDF 全文
             pdf_text = pdf_texts.get(meta_id, "")
             has_pdf_text = bool(pdf_text)
-            if pdf_text:
-                body += f"\n\n## PDF 全文\n\n{pdf_text}"
+            body = _build_gazette_body(title, pub_gov, date_str, category, body_text, pdf_text=pdf_text)
 
             # 依 collection 決定輸出子目錄
             if collection == "regulations":
@@ -295,37 +252,6 @@ class GazetteFetcher(BaseFetcher):
         logger.info("GazetteFetcher bulk 擷取完成：%d 個檔案", len(results))
         return results
 
-    # ------------------------------------------------------------------
-    # 內部方法
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _extract_pdf_text(pdf_bytes: bytes) -> str:
-        """從 PDF bytes 提取全文。需安裝 pdfplumber。"""
-        try:
-            import pdfplumber
-        except ImportError:
-            logger.warning("pdfplumber 未安裝，跳過 PDF 全文提取。安裝：pip install pdfplumber")
-            return ""
-        try:
-            with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
-                return "\n\n".join(
-                    page.extract_text() or "" for page in pdf.pages
-                ).strip()
-        except _GAZETTE_PDF_EXCEPTIONS as exc:
-            logger.warning("PDF 全文提取失敗：%s", exc)
-            return ""
-
-    @staticmethod
-    def _parse_xml(data: bytes) -> list[dict]:
-        """解析公報 XML，回傳 Record 字典清單。"""
-        root = ET.fromstring(data)
-        records: list[dict] = []
-
-        for record_elem in root.iter("Record"):
-            rec: dict[str, str] = {}
-            for child in record_elem:
-                rec[child.tag] = child.text or ""
-            records.append(rec)
-
-        return records
+    # Backward-compatible static method aliases (implementation in _parser.py)
+    _extract_pdf_text = staticmethod(_extract_pdf_text)
+    _parse_xml = staticmethod(_parse_xml)

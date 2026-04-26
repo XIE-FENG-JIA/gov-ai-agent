@@ -42,18 +42,18 @@ def _mock_response(status_code=200, json_data=None):
 class TestApiHeaders:
     def test_with_api_keys(self):
         cfg = {"api": {"api_keys": ["test-key-123"]}}
-        with patch("src.web_preview.app.get_config", return_value=cfg):
+        with patch("src.web_preview._helpers.get_config", return_value=cfg):
             headers = _api_headers()
             assert headers == {"Authorization": "Bearer test-key-123"}
 
     def test_without_api_keys(self):
         cfg = {"api": {"api_keys": []}}
-        with patch("src.web_preview.app.get_config", return_value=cfg):
+        with patch("src.web_preview._helpers.get_config", return_value=cfg):
             headers = _api_headers()
             assert headers == {}
 
     def test_no_api_section(self):
-        with patch("src.web_preview.app.get_config", return_value={}):
+        with patch("src.web_preview._helpers.get_config", return_value={}):
             headers = _api_headers()
             assert headers == {}
 

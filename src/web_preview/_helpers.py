@@ -6,6 +6,8 @@ import os
 
 import httpx
 
+from src.api.dependencies import get_config
+
 logger = logging.getLogger(__name__)
 
 # ── 可預期的 Web UI 例外桶 ────────────────────────────
@@ -53,3 +55,12 @@ def _sanitize_web_error(exc: Exception) -> str:
 def _log_web_warning(action: str, exc: Exception) -> None:
     """記錄可預期的 Web UI 降級錯誤。"""
     logger.warning("%s 失敗: %s", action, exc)
+
+
+def _api_headers() -> dict[str, str]:
+    """取得呼叫內部 API 所需的認證標頭。"""
+    config = get_config()
+    api_keys = config.get("api", {}).get("api_keys", [])
+    if api_keys:
+        return {"Authorization": f"Bearer {api_keys[0]}"}
+    return {}

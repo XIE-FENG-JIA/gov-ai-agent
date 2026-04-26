@@ -53,7 +53,7 @@
 ### P1（2026-04-26 14:30 /pua v8.3 新增；llm.py dual path + fat watch 預抽）
 
 - [x] **T-LLM-DUAL-PATH-EXTRACT**（2026-04-26 閉；P1；ACL-free）— `src/core/llm.py` 377→279 行；抽出 `src/core/_openrouter_rest.py`（exceptions、_LazyLiteLLM、_LocalEmbedder、_openrouter_embed_rest）；fat-gate ratchet OK (red=0 yellow=0)；`pytest tests/test_llm.py -q` = 52 passed；全量 3970 passed 34 skipped / 40.17s。
-- [ ] **T-FAT-WATCH-CUT-V3**（45 min；P2；ACL-free；3 檔同刀 ROI ×3）— 預先抽 `web_preview/app.py` 347→285（拆 `_handlers.py`）+ `gazette_fetcher.py` 331→260（拆 `_parser.py`）+ `review_parser.py` 326→260（拆 `_scoring.py`）；驗收 fat watch 300-400 ≤ 9 檔、targeted pytest 全綠。
+- [x] **T-FAT-WATCH-CUT-V3**（2026-05-14 閉；P2；ACL-free）— `web_preview/app.py` 348→300（拆 `_handlers.py`）+ `gazette_fetcher.py` 332→257（拆 `_parser.py`）+ `review_parser.py` 327→245（拆 `_scoring.py`）；fat watch 300-400 = 9 檔（≤9 ✓）；265 targeted tests 全綠。
 
 
 

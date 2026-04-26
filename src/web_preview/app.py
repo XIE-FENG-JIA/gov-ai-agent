@@ -19,16 +19,20 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from src.core.constants import MAX_USER_INPUT_LENGTH
-from src.core.models import VALID_DOC_TYPES
-from src.api.dependencies import get_config
 from src.cli.utils_io import detect_state_dir
+from src.api.dependencies import get_config  # noqa: F401 — re-exported for tests
 from src.web_preview._helpers import (  # noqa: F401 — re-exported for tests
     _WEB_UI_EXCEPTIONS,
+    _api_headers,
     _log_web_warning,
     _parse_env_float,
     _parse_env_int,
     _sanitize_web_error,
+)
+from src.web_preview._handlers import (
+    _build_meeting_payload,
+    _check_session_id,
+    _prepare_generate_input,
 )
 from src.web_preview._history import load_recent_history
 
@@ -51,15 +55,6 @@ _API_BASE = os.environ.get("WEB_UI_API_BASE", "http://127.0.0.1:8000")
 
 _WEB_UI_RALPH_MAX_CYCLES = max(1, _parse_env_int("WEB_UI_RALPH_MAX_CYCLES", 2))
 _WEB_UI_RALPH_TARGET_SCORE = max(0.0, min(1.0, _parse_env_float("WEB_UI_RALPH_TARGET_SCORE", 1.0)))
-
-
-def _api_headers() -> dict[str, str]:
-    """取得呼叫內部 API 所需的認證標頭。"""
-    config = get_config()
-    api_keys = config.get("api", {}).get("api_keys", [])
-    if api_keys:
-        return {"Authorization": f"Bearer {api_keys[0]}"}
-    return {}
 
 # SSRF 防護：僅允許本機地址與安全協議
 _parsed = urlparse(_API_BASE)
@@ -96,50 +91,24 @@ async def generate(
     ralph_loop: bool = Form(False),
 ):
     """呼叫 /api/v1/meeting 端點生成公文，回傳結果頁"""
-    error = None
+    error, effective_input = _prepare_generate_input(user_input, doc_type)
+    if error:
+        return templates.TemplateResponse(
+            request, "generate.html",
+            {"user_input": user_input, "result": None, "error": error},
+        )
+
     result = None
-
-    # 輸入長度驗證
-    stripped = user_input.strip()
-    if len(stripped) < 5:
-        return templates.TemplateResponse(
-            request, "generate.html",
-            {"user_input": user_input, "result": None, "error": "需求描述至少需要 5 個字。"},
-        )
-    if len(stripped) > MAX_USER_INPUT_LENGTH:
-        return templates.TemplateResponse(
-            request, "generate.html",
-            {"user_input": user_input, "result": None,
-             "error": f"需求描述不可超過 {MAX_USER_INPUT_LENGTH} 字（目前 {len(stripped)} 字）。"},
-        )
-
-    # 若使用者指定了合法公文類型，附加到 user_input 提示中
-    effective_input = stripped
-    if doc_type and doc_type in VALID_DOC_TYPES:
-        effective_input = f"[公文類型：{doc_type}] {stripped}"
-
+    payload, meeting_timeout = _build_meeting_payload(
+        effective_input, skip_review, ralph_loop,
+        _WEB_UI_RALPH_MAX_CYCLES, _WEB_UI_RALPH_TARGET_SCORE,
+    )
     try:
-        meeting_timeout = 600.0 if (not skip_review and ralph_loop) else 180.0
         async with httpx.AsyncClient(timeout=meeting_timeout) as client:
-            meeting_payload = {
-                "user_input": effective_input,
-                "skip_review": skip_review,
-                "output_docx": True,
-            }
-            if not skip_review:
-                meeting_payload["ralph_loop"] = ralph_loop
-                if ralph_loop:
-                    meeting_payload.update({
-                        "use_graph": False,
-                        "max_rounds": 2,
-                        "ralph_max_cycles": _WEB_UI_RALPH_MAX_CYCLES,
-                        "ralph_target_score": _WEB_UI_RALPH_TARGET_SCORE,
-                    })
-
             resp = await client.post(
                 f"{_API_BASE}/api/v1/meeting",
                 headers=_api_headers(),
-                json=meeting_payload,
+                json=payload,
             )
             data = resp.json()
             if resp.status_code == 200 and data.get("success"):
@@ -153,11 +122,7 @@ async def generate(
     return templates.TemplateResponse(
         request,
         "generate.html",
-        {
-            "user_input": user_input,
-            "result": result,
-            "error": error,
-        },
+        {"user_input": user_input, "result": result, "error": error},
     )
 
 
@@ -315,18 +280,9 @@ async def detailed_review(session_id: str = ""):
     代理轉發至後端 API 取得完整 QA 報告 JSON。
     此端點供前端 HTMX 或外部系統使用。
     """
-    if not session_id:
-        return JSONResponse(
-            status_code=400,
-            content={"success": False, "error": "缺少 session_id 參數"},
-        )
-    # session_id 格式驗證：僅允許英數字與連字號
-    import re as _re
-    if not _re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", session_id):
-        return JSONResponse(
-            status_code=400,
-            content={"success": False, "error": "session_id 格式無效"},
-        )
+    err = _check_session_id(session_id)
+    if err:
+        return JSONResponse(status_code=400, content={"success": False, "error": err})
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -335,10 +291,7 @@ async def detailed_review(session_id: str = ""):
                 headers=_api_headers(),
                 params={"session_id": session_id},
             )
-            return JSONResponse(
-                status_code=resp.status_code,
-                content=resp.json(),
-            )
+            return JSONResponse(status_code=resp.status_code, content=resp.json())
     except _WEB_UI_EXCEPTIONS as e:
         _log_web_warning("取得詳細審查報告", e)
         return JSONResponse(
