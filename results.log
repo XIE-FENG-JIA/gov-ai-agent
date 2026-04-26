@@ -108,3 +108,8 @@ PASS T-ENGINEER-LOG-ROTATE-v11 2026-04-27 engineer-log 262->138 lines; v8.3/v8.3
 PASS T-OPENSPEC-EPIC-20-DISCOVERY 2026-04-27 openspec/changes/20-pytest-runtime-regression-guard/ created (.openspec.yaml + proposal.md + tasks.md); sensor active_epic=20 total=25
 PASS T-SENSOR-ZERO-ACTIVE 2026-04-27 sensor empty active_epic handled gracefully (epic_id='', done=0, total=0); 37 tests passed
 PASS T-PROGRAM-MD-V8.13-HEADER 2026-04-27 program.md v8.13 header added; 5 tasks [x]; results.log 5 lines appended
+PASS T20.1-MEASURE-SCRIPT 2026-04-27 02:55 scripts/measure_pytest_runtime.py created; --dry-run exits 0; ratchet-down semantics; ceiling=last_s*1.5
+PASS T20.2-SENSOR-INTEGRATION 2026-04-27 02:55 check_pytest_runtime() + sensor[pytest_runtime] field; soft violation at ceiling*1.21; 45 sensor tests passed
+PASS T20.3-UNIT-TESTS 2026-04-27 02:55 tests/test_pytest_runtime_guard.py 8 tests all passed (dry-run/ratchet-down/no-ratchet-up/violation/ok/skip/wired)
+PASS T20.4-HUMAN-OUTPUT 2026-04-27 02:55 sensor_refresh.py --human includes pytest_runtime line with ceiling_s/last_s/status
+PASS T20.5-DOCS 2026-04-27 02:55 CONTRIBUTING.md Pytest Runtime Baseline section added; grep pytest_runtime CONTRIBUTING.md hits line 194

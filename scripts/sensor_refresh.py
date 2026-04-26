@@ -84,6 +84,7 @@ class SensorReport:
     pytest_cold_runtime_secs: float = 0.0
     marked_done_uncommitted: dict = field(default_factory=lambda: {"count": 0, "slugs": []})
     recall_health: dict = field(default_factory=lambda: {"ok": True, "detail": "no baseline (skip)"})
+    pytest_runtime: dict = field(default_factory=lambda: {"status": "skip", "ceiling_s": 0.0, "last_s": 0.0})
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -120,6 +121,7 @@ class SensorReport:
             "pytest_cold_runtime_secs": self.pytest_cold_runtime_secs,
             "marked_done_uncommitted": self.marked_done_uncommitted,
             "recall_health": self.recall_health,
+            "pytest_runtime": self.pytest_runtime,
         }
 
 
@@ -517,6 +519,44 @@ def check_recall_health(repo: Path) -> tuple[bool, str]:
     )
 
 
+def check_pytest_runtime(repo: Path) -> dict:
+    """Check latest pytest runtime against ceiling from pytest_runtime_baseline.json (T20.2).
+
+    Returns:
+        dict with keys ``status`` ("ok" | "violation" | "skip"),
+        ``ceiling_s``, ``last_s``.
+        status="skip" means no baseline file exists.
+    """
+    baseline_path = repo / "scripts" / "pytest_runtime_baseline.json"
+    if not baseline_path.exists():
+        return {"status": "skip", "ceiling_s": 0.0, "last_s": 0.0}
+    try:
+        data = json.loads(baseline_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"status": "skip", "ceiling_s": 0.0, "last_s": 0.0}
+
+    ceiling_s = float(data.get("ceiling_s", 0.0))
+    last_s = float(data.get("last_s", 0.0))
+    tolerance = float(data.get("tolerance", 0.20))
+
+    if ceiling_s <= 0 or last_s <= 0:
+        return {"status": "skip", "ceiling_s": ceiling_s, "last_s": last_s}
+
+    threshold = ceiling_s * (1 + tolerance)
+    if last_s > threshold:
+        return {
+            "status": "violation",
+            "ceiling_s": ceiling_s,
+            "last_s": last_s,
+            "threshold": round(threshold, 2),
+            "detail": (
+                f"pytest-runtime-regression: last_s={last_s:.2f}s"
+                f" > ceiling_s={ceiling_s:.2f}s * (1+{tolerance:.0%})={threshold:.2f}s"
+            ),
+        }
+    return {"status": "ok", "ceiling_s": ceiling_s, "last_s": last_s}
+
+
 def build_report(repo: Path) -> SensorReport:
     r = SensorReport()
     r.bare_except_total, r.bare_except_files, r.bare_except_top = count_bare_except(repo)
@@ -537,6 +577,7 @@ def build_report(repo: Path) -> SensorReport:
     r.marked_done_uncommitted = count_marked_done_uncommitted(repo)
     _recall_ok, _recall_detail = check_recall_health(repo)
     r.recall_health = {"ok": _recall_ok, "detail": _recall_detail}
+    r.pytest_runtime = check_pytest_runtime(repo)
     _ceiling, _tolerance = read_ceiling_params(repo)
 
     # Hard violations
@@ -631,6 +672,10 @@ def build_report(repo: Path) -> SensorReport:
     if not r.recall_health.get("ok", True):
         r.violations_soft.append(r.recall_health["detail"])
 
+    # Pytest runtime regression guard (T20.2)
+    if r.pytest_runtime.get("status") == "violation":
+        r.violations_soft.append(r.pytest_runtime.get("detail", "pytest-runtime-regression"))
+
     return r
 
 
@@ -663,6 +708,12 @@ def format_human(r: SensorReport) -> str:
     )
     if r.pytest_cold_runtime_secs > 0:
         lines.append(f"- **pytest cold runtime**: {r.pytest_cold_runtime_secs:.1f}s (soft≤200s / hard≤300s)")
+    pr = r.pytest_runtime
+    pr_icon = "🔴" if pr.get("status") == "violation" else ("✅" if pr.get("status") == "ok" else "⏭")
+    lines.append(
+        f"- **pytest_runtime**: {pr_icon} ceiling_s={pr.get('ceiling_s', 0):.1f}s"
+        f" / last_s={pr.get('last_s', 0):.1f}s / status={pr.get('status', 'skip')}"
+    )
     if r.marked_done_uncommitted.get("count", 0) > 0:
         lines.append(
             f"- **marked_done_uncommitted**: {r.marked_done_uncommitted['count']} slugs"

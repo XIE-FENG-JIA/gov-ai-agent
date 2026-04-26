@@ -157,3 +157,39 @@ To run a full live recall evaluation (requires a populated KB):
 ```bash
 GOV_AI_RUN_INTEGRATION=1 python scripts/eval_recall.py
 ```
+
+### Pytest Runtime Baseline
+
+The runtime regression guard (`scripts/measure_pytest_runtime.py`) records how
+long the test suite takes and enforces a ratchet-down ceiling so regressions are
+caught automatically.
+
+**Quick start (dry-run — no actual pytest)**:
+
+```bash
+python scripts/measure_pytest_runtime.py --dry-run
+```
+
+**Full measurement with custom timeout**:
+
+```bash
+python scripts/measure_pytest_runtime.py --timeout 300
+```
+
+The script writes `scripts/pytest_runtime_baseline.json` with:
+
+| Field | Meaning |
+|---|---|
+| `ceiling_s` | Ratchet-down ceiling (only improves, never worsens) |
+| `last_s` | Most-recently measured elapsed time |
+| `tolerance` | Allowed over-run fraction (default 0.20 = 20%) |
+| `measured_at` | ISO-8601 timestamp of last measurement |
+
+**Ratchet-down semantics**: if the new run is faster than the current ceiling,
+`ceiling_s` is updated to `last_s × 1.5` (a fresh buffer).  If the run is
+slower, `ceiling_s` stays unchanged — the ceiling can only improve, never
+worsen.  When `last_s > ceiling_s × (1 + tolerance)`, `sensor_refresh.py`
+fires a `pytest-runtime-regression` soft violation.
+
+The `pytest_runtime` field appears in `python scripts/sensor_refresh.py --human`
+output showing `ceiling_s`, `last_s`, and `status` (ok / violation / skip).
