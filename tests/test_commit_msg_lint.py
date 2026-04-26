@@ -17,7 +17,7 @@ lint = _lint_mod.lint
 @pytest.mark.parametrize(
     "msg",
     [
-        "feat(api): add /v2/refine endpoint",
+        "feat(cli): add /v2/refine command",
         "fix(cli): handle missing config gracefully when LLM_API_KEY absent",
         "refactor(monolith→package): split fact_checker into checks + pipeline",
         "docs(spec): 01-real-sources add specs/sources + tasks.md",
@@ -77,3 +77,32 @@ def test_multiline_with_body_accepted() -> None:
     )
     ok, reason = lint(msg)
     assert ok, reason
+
+
+@pytest.mark.parametrize(
+    "msg",
+    [
+        "feat(llm): route OpenRouter embeddings through REST\n\npytest tests/test_llm.py = 52 passed\n",
+        "feat(core): add history store append contract\n\npytest tests/test_core.py = 117 passed\n",
+        "feat(api): validate uploaded document MIME type\n\npytest tests/test_api_server.py = 259 passed\n",
+    ],
+)
+def test_high_risk_feat_scopes_accept_same_scope_pytest_evidence(msg: str) -> None:
+    ok, reason = lint(msg)
+    assert ok, reason
+
+
+@pytest.mark.parametrize(
+    "msg, expected",
+    [
+        ("feat(llm): route OpenRouter embeddings through REST", "tests/test_llm.py"),
+        ("feat(core): add history store append contract\n\npytest tests/test_llm.py = 52 passed\n", "tests/test_core.py"),
+        ("feat(api): validate uploaded document MIME type\n\npytest tests/test_api_server.py passed\n", "tests/test_api_server.py"),
+        ("feat(api): validate uploaded document MIME type\n\npytest tests/test_api_server.py = 0 passed\n", "tests/test_api_server.py"),
+        ("feat(llm): route OpenRouter embeddings through REST\n\npytest tests/test_llm.py = 52 failed\n", "tests/test_llm.py"),
+    ],
+)
+def test_high_risk_feat_scopes_require_counted_same_scope_pytest_evidence(msg: str, expected: str) -> None:
+    ok, reason = lint(msg)
+    assert not ok
+    assert expected in reason

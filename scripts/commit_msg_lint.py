@@ -27,7 +27,7 @@ _ALLOWED_TYPES = (
 )
 _HEADER_RE = re.compile(
     rf"^(?P<type>{'|'.join(_ALLOWED_TYPES)})"
-    r"(?:\([^)]+\))?"  # optional (scope)
+    r"(?:\((?P<scope>[^)]+)\))?"  # optional (scope)
     r"!?"  # optional breaking-change marker
     r":\s+(?P<subject>.+)$"
 )
@@ -53,6 +53,31 @@ _REJECT_PATTERNS = (
 )
 
 _MIN_SUBJECT_LEN = 10
+_HIGH_RISK_FEAT_SCOPES = {
+    "api": ("tests/test_api_server.py",),
+    "core": ("tests/test_core.py",),
+    "llm": ("tests/test_llm.py",),
+}
+_PYTEST_EVIDENCE_RE = re.compile(
+    r"pytest\s+(?P<target>tests/test_[\w_]+\.py)\s*=\s*(?P<count>[1-9]\d*)\s+passed\b",
+    re.IGNORECASE,
+)
+
+
+def _missing_high_risk_pytest_evidence(message: str, commit_type: str, scope: str | None) -> str:
+    if commit_type != "feat" or scope not in _HIGH_RISK_FEAT_SCOPES:
+        return ""
+
+    expected_targets = _HIGH_RISK_FEAT_SCOPES[scope]
+    for evidence in _PYTEST_EVIDENCE_RE.finditer(message):
+        if evidence.group("target") in expected_targets:
+            return ""
+
+    expected = " or ".join(expected_targets)
+    return (
+        f"feat({scope}) requires same-scope pytest evidence in the commit body\n"
+        f"  Add a line like: pytest {expected} = N passed"
+    )
 
 
 def _read_message(arg: str) -> str:
@@ -102,6 +127,10 @@ def lint(message: str) -> tuple[bool, str]:
             "  Describe what changed and (briefly) why — placeholders like "
             "'fix bug' or 'update' are not enough."
         )
+
+    pytest_reason = _missing_high_risk_pytest_evidence(message, match.group("type"), match.group("scope"))
+    if pytest_reason:
+        return False, pytest_reason
 
     return True, ""
 
