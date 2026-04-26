@@ -105,3 +105,4 @@ codex-*.lock
 # Runtime/request transient files (not version-controlled)
 req*.json
 scripts/runtime_baseline.json
+recall_report.json
