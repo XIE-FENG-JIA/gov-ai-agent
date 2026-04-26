@@ -350,3 +350,61 @@ def test_sensor_soft_violation_when_runtime_between_200_and_300s(tmp_path: Path)
         f"Expected soft violation for 250s runtime; got soft={r.violations_soft}"
     )
     assert not any("pytest_cold_runtime_secs" in v for v in r.violations_hard)
+
+
+# ── T-RUNTIME-RATCHET-LIVE-MEASURE tests ──────────────────────────────────────
+
+def test_save_runtime_baseline_writes_json(tmp_path: Path) -> None:
+    """save_runtime_baseline writes pytest_cold_runtime_secs to scripts/runtime_baseline.json."""
+    repo = tmp_path
+    scripts_dir = repo / "scripts"
+    scripts_dir.mkdir()
+    _mod.save_runtime_baseline(repo, 123.45)
+    data = json.loads((scripts_dir / "runtime_baseline.json").read_text(encoding="utf-8"))
+    assert data["pytest_cold_runtime_secs"] == pytest.approx(123.45)
+
+
+def test_save_runtime_baseline_updates_existing(tmp_path: Path) -> None:
+    """save_runtime_baseline updates an existing file, preserving other keys."""
+    repo = tmp_path
+    scripts_dir = repo / "scripts"
+    scripts_dir.mkdir()
+    (scripts_dir / "runtime_baseline.json").write_text(
+        '{"pytest_cold_runtime_secs": 50.0, "_note": "original"}', encoding="utf-8"
+    )
+    _mod.save_runtime_baseline(repo, 87.6)
+    data = json.loads((scripts_dir / "runtime_baseline.json").read_text(encoding="utf-8"))
+    assert data["pytest_cold_runtime_secs"] == pytest.approx(87.6)
+    assert data.get("_note") == "original"
+
+
+def test_measure_runtime_flag_updates_baseline(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """--measure-runtime flag runs measure_cold_runtime, writes baseline, and returns non-50.0."""
+    repo = _make_repo(tmp_path)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    (repo / "engineer-log.md").write_text("x\n" * 50, encoding="utf-8")
+    (repo / "program.md").write_text("x\n" * 50, encoding="utf-8")
+    scripts_dir = repo / "scripts"
+    scripts_dir.mkdir()
+    (scripts_dir / "runtime_baseline.json").write_text(
+        '{"pytest_cold_runtime_secs": 50.0}', encoding="utf-8"
+    )
+    (scripts_dir / "fat_baseline.json").write_text(
+        '{"yellow_count_max": 0, "yellow_max_lines": 0}', encoding="utf-8"
+    )
+
+    # Monkeypatch measure_cold_runtime to avoid actually running pytest
+    original = _mod.measure_cold_runtime
+    try:
+        _mod.measure_cold_runtime = lambda repo: 38.5
+        rc = _mod.main(["--repo", str(repo), "--measure-runtime"])
+    finally:
+        _mod.measure_cold_runtime = original
+
+    assert rc == 0
+    data = json.loads((scripts_dir / "runtime_baseline.json").read_text(encoding="utf-8"))
+    assert data["pytest_cold_runtime_secs"] == pytest.approx(38.5), (
+        "runtime_baseline.json should be updated with measured value, not hardcoded 50.0"
+    )
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["pytest_cold_runtime_secs"] == pytest.approx(38.5)

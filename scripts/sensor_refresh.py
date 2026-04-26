@@ -25,6 +25,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -227,6 +228,35 @@ def auto_commit_rate(
         if _SEMANTIC_RE.match(s) and not _CHECKPOINT_NOISE_RE.match(s)
     )
     return semantic, semantic / len(subjects)
+
+
+def measure_cold_runtime(repo: Path) -> float:
+    """Run pytest and return wall-clock seconds (0.0 on failure)."""
+    cmd = [
+        sys.executable, "-m", "pytest",
+        "tests/", "--ignore=tests/integration",
+        "-q", "--tb=no", "--no-header", "-n", "8",
+    ]
+    start = time.monotonic()
+    try:
+        subprocess.run(cmd, cwd=str(repo), check=False, capture_output=True)
+    except (OSError, subprocess.SubprocessError) as exc:
+        print(f"[sensor_refresh] pytest measurement failed: {exc}", file=sys.stderr)
+        return 0.0
+    return round(time.monotonic() - start, 2)
+
+
+def save_runtime_baseline(repo: Path, secs: float) -> None:
+    """Persist measured runtime to scripts/runtime_baseline.json."""
+    path = repo / "scripts" / "runtime_baseline.json"
+    try:
+        data: dict = {}
+        if path.exists():
+            data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        data = {}
+    data["pytest_cold_runtime_secs"] = secs
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def read_runtime_baseline(repo: Path) -> float:
@@ -440,7 +470,18 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="soft violations also return exit 1 (CI/nightly gate); default is hook-safe and only hard fails",
     )
+    parser.add_argument(
+        "--measure-runtime",
+        action="store_true",
+        help="真跑 pytest 量 cold-start 時間並更新 scripts/runtime_baseline.json",
+    )
     args = parser.parse_args(argv)
+
+    if args.measure_runtime:
+        print("[sensor_refresh] measuring cold-start pytest runtime …", file=sys.stderr)
+        secs = measure_cold_runtime(args.repo)
+        print(f"[sensor_refresh] measured: {secs:.1f}s — writing to runtime_baseline.json", file=sys.stderr)
+        save_runtime_baseline(args.repo, secs)
 
     report = build_report(args.repo)
     print(json.dumps(report.to_dict(), ensure_ascii=False))
