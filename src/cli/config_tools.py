@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import requests
@@ -6,6 +5,13 @@ import typer
 import yaml
 from rich.console import Console
 from rich.prompt import Confirm, Prompt
+from src.cli._config_io import (
+    _CONFIG_TOOL_EXCEPTIONS,
+    _PROVIDER_TEMPLATES,
+    _mask_sensitive,
+    _parse_value,
+    test_connectivity,
+)
 from src.cli.utils_io import atomic_yaml_write, safe_config_write
 from src.cli.config_tools_fetch_impl import fetch_models_impl
 from src.cli.config_tools_mutations_impl import (
@@ -18,36 +24,11 @@ from src.cli.config_tools_mutations_impl import (
     validate_impl,
 )
 from src.core.config import ConfigManager
-from src.core.llm import LiteLLMProvider
 
 logger = logging.getLogger(__name__)
-_CONFIG_TOOL_EXCEPTIONS = (AttributeError, OSError, RuntimeError, TypeError, ValueError, Exception)
-
 console = Console()
 app = typer.Typer()
 
-def test_connectivity(model_id: str, api_key: str) -> bool:
-    """嘗試使用模型產生簡短回應以測試連線。"""
-    if not api_key:
-        return False
-
-    # Construct provider config
-    # We assume OpenRouter because this tool fetches from OpenRouter
-    config = {
-        "provider": "openrouter",
-        "model": model_id,
-        "api_key": api_key,
-        "base_url": "https://openrouter.ai/api/v1"
-    }
-
-    try:
-        llm = LiteLLMProvider(config)
-        # Very short prompt to save time/tokens
-        llm.generate("Hi", max_tokens=1)
-        return True
-    except _CONFIG_TOOL_EXCEPTIONS as exc:
-        logger.debug("模型連線測試失敗（%s）: %s", model_id, exc)
-        return False
 
 @app.command()
 def show(
@@ -133,36 +114,6 @@ def fetch_models(
         raise typer.Exit(1)
 
 
-_PROVIDER_TEMPLATES = {
-    "ollama": {
-        "provider": "ollama",
-        "model": "llama3.1:8b",
-        "base_url": "http://127.0.0.1:11434",
-        "embedding_provider": "ollama",
-        "embedding_model": "llama3.1:8b",
-        "embedding_base_url": "http://127.0.0.1:11434",
-        "api_key": "",
-    },
-    "gemini": {
-        "provider": "gemini",
-        "model": "gemini-2.5-pro",
-        "api_key": "${GEMINI_API_KEY}",
-    },
-    "openrouter": {
-        "provider": "openrouter",
-        "model": "${LLM_MODEL}",
-        "api_key": "${LLM_API_KEY}",
-        "base_url": "https://openrouter.ai/api/v1",
-    },
-    "minimax": {
-        "provider": "minimax",
-        "model": "openai/MiniMax-M2.7",
-        "api_key": "${MINIMAX_API_KEY}",
-        "base_url": "https://api.minimax.io/v1",
-    },
-}
-
-
 @app.command()
 def init() -> None:
     """
@@ -185,23 +136,6 @@ def init() -> None:
         )
     except RuntimeError:
         raise typer.Exit()
-
-
-def _parse_value(value: str) -> None:
-    """自動判斷值的類型：布林、整數、浮點數或字串。"""
-    if value.lower() in ("true", "yes"):
-        return True
-    if value.lower() in ("false", "no"):
-        return False
-    try:
-        return int(value)
-    except ValueError:
-        pass
-    try:
-        return float(value)
-    except ValueError:
-        pass
-    return value
 
 
 @app.command(name="set")
@@ -234,18 +168,6 @@ def set_value(
     except _CONFIG_TOOL_EXCEPTIONS as e:
         console.print(f"[red]載入設定檔失敗：{e}[/red]")
         raise typer.Exit(1)
-
-
-def _mask_sensitive(data, _sensitive_keys=("api_key", "secret", "token", "password")) -> None:
-    """遞迴遮蔽敏感欄位。"""
-    if isinstance(data, dict):
-        return {
-            k: "***" if any(sk in k.lower() for sk in _sensitive_keys) else _mask_sensitive(v)
-            for k, v in data.items()
-        }
-    elif isinstance(data, list):
-        return [_mask_sensitive(item) for item in data]
-    return data
 
 
 @app.command()
