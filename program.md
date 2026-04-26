@@ -12,7 +12,7 @@
 
 ### P0（2026-04-26 17:30 /pua v8.4 深度回顧新增；本輪必動 — push 治理債重演 + runtime 哨兵漏網）
 
-- [ ] **T-COMMIT-PUSH-V8.4-WORKTREE-FLUSH**（20 min；P0；ACL-free；治理債重演 v8.0-r2 同型）— (a) `chore(cli): switcher lazy connectivity skip on missing API key`（src/cli/switcher.py 改用 raw_config + skip when no api_key）；(b) `docs(reflection): v8.4 deep-review batch` engineer-log.md；(c) `git push origin main` 4 commit（含本地 1b8d829 + 7f3f00a）；(d) 驗收：`git rev-list origin/main..HEAD` = 0 ✅ + `git status --short` clean（扣 codex lock 待 P0-3 處理）。owner = auto-engineer。
+- [x] **T-COMMIT-PUSH-V8.4-WORKTREE-FLUSH**（2026-04-26 閉；P0；ACL-free）— 推送 5 commits (ea22663→8e23d11)；含 CLI patch、engineer-log reflection、sensor ratchet、gitignore、openspec epic 18；`git rev-list origin/main..HEAD` = 0 ✅。
 - [x] **T-RUNTIME-RATCHET-SENSOR**（2026-04-26 閉；P0；ACL-free；漂白第十一型治本）— `scripts/sensor_refresh.py` 已加入 `pytest_cold_runtime_secs` JSON/human 欄位與 soft 200s / hard 300s violation；新增 `scripts/check_runtime.py` 與 `scripts/runtime_baseline.json`（initial=50s）；補 `tests/test_sensor_refresh.py` runtime 欄位、soft、hard 3 cases。驗收：`python -m pytest tests/test_sensor_refresh.py -q` = 20 passed / 12.51s；`python scripts/check_runtime.py --strict --no-measure` = PASS（50.0s）；`python scripts/sensor_refresh.py --human` 顯示 runtime 且 hard/soft 全綠。
 - [x] **T-GITIGNORE-CODEX-ALT-INDEX**（5 min；P0；ACL-free；同 v8.1 out.tmp 同型治本）— `.gitignore` 新增 `*alt-index*.lock` + `codex-*.lock` patterns（line 75 後）；`git rm --cached codex-alt-index-*.lock` + 系統刪檔；驗收：`git status --short` 不再列 codex lock + `git check-ignore codex-alt-index-*.lock` 命中。owner = auto-engineer。
 
