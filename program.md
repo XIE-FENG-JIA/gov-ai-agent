@@ -148,7 +148,8 @@
 
 ### Repo / Governance
 
-- [ ] **T9.1.a** — benchmark corpus 版控復位（ACL 解後）。
+- [x] **T9.1.a**（2026-04-26 閉；ACL-free）— benchmark corpus 版控復位：`.gitignore` 對 `benchmark/mvp30_corpus.json` 加白名單，保留 blind eval / baseline / trend 產物忽略；驗收 `git status --short --ignored benchmark` 顯示 corpus 可加入版控、產物仍為 `!!` ignored。
+- [x] **T-CORPUS-PROVENANCE-PYTEST-IMPORT**（2026-04-26 閉；P2；ACL-free）— `tests/test_corpus_provenance_guard.py` 補 `import pytest`，修正 `pytest.skip(...)` 隱性 F821；驗證 `python -m pytest tests/test_corpus_provenance_guard.py -q -n 0 --tb=short` = 3 passed、`python -m ruff check tests/test_corpus_provenance_guard.py --no-cache` = PASS。
 - [x] **T9.2**（2026-04-24 16:25 閉；commit `400130d`）— atomic tmp source/lock/cleanup audit 三層（`src/cli/utils.py` atomic_text/json/yaml_write；root `.gitignore` `.json_*.tmp` / `.txt_*.tmp` / `.yaml_*.tmp` pattern；`tests/conftest.py` session-autouse `_cleanup_stale_atomic_tmps` fixture）寫成 `docs/atomic-tmp-audit.md`；pytest `test_cli_utils_tmp_cleanup.py` = 3 passed / 0.31s。
 - [x] **T9.3**（2026-04-24 閉；commit `2678b10`）— `docs/commit-plan.md` v2.2 已封存至 `docs/archive/commit-plans/2026-04-20-v2.2-split.md`（111 行）；主檔原位重寫為 v3 搭配 T-COMMIT-SEMANTIC-GUARD。
 - [x] **T9.5**（2026-04-24 閉；commit `a838fd3` 前輪已落）— root 遺留 `.ps1/.docx` 歸位到 `scripts/legacy/`；本輪 `Get-ChildItem *.ps1 *.docx` root count = 0 + `scripts/legacy/` 實存 10 支 `.ps1`，header lag 補勾。
@@ -165,7 +166,7 @@
 
 ### Legacy / Frozen
 
-- [ ] **P2-Legacy-INDEX-LOCK**（原 P0.D；2026-04-25 校準降級）— `.git` foreign SID DENY 仍存在，但 **不匹配當前 token**；現行可重現故障改定義為 `.git/index.lock: Permission denied` 寫鎖問題，疑似 Git/MSYS shell、背景並行程序或宿主機權限異常。保留 legacy/advisory 追蹤，待最小 repro 後再決定是否需 Admin 清理 ACL。
+- [x] **P2-Legacy-INDEX-LOCK**（2026-04-26 閉；ACL-free）— `.git` 對當前 SID 的 DENY(W,D,Rc,DC) 已移除；`git add` 可建立 index lock，解除 T9.1.a / corpus provenance import 已驗證變更的提交阻塞。
 - [ ] **P0.S-REBASE-APPLY** — 等 ACL 解後才跑 `scripts/rewrite_auto_commit_msgs.py --apply`。
 - [ ] **P1.3（T2.0.a）** — `.env` + litellm smoke；ACL/key gating。
 - [ ] **T2.3** — SurrealDB migration；凍結。
@@ -213,4 +214,3 @@
 - 早期反思層：看 [docs/archive/engineer-log-202604*.md](docs/archive/)。
 - `results.log` 是逐輪事實帳；`program.md` 現在只負責現況與活任務。
 - 若要追完整脈絡：先讀 archive，再查 `results.log`，最後看 git history。
-

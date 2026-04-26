@@ -87,6 +87,7 @@ out*
 .serena/
 .spectra.yaml
 benchmark/*
+!benchmark/mvp30_corpus.json
 meta_git/
 meta_test/
 repo_meta/

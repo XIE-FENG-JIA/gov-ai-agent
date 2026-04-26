@@ -113,8 +113,8 @@ python scripts/run_blind_eval.py --api-base http://127.0.0.1:8000 --output bench
 
 ## Artifact Policy
 
-- 題庫基線：`benchmark/mvp30_corpus.json`
+- 題庫基線：`benchmark/mvp30_corpus.json`（已納入版控）
 - 忽略產物：`benchmark/blind_eval_results*.json`、`benchmark/baseline_*.json`、`benchmark/trend.jsonl`
-- ACL-deny 臨時策略：`benchmark/` 先全忽略，避免未提交 corpus 長期污染 `git status`；待 `P0.D` 解除後，恢復 `benchmark/mvp30_corpus.json` 版控並補 commit
+- `.gitignore` 保留 `benchmark/*`，但白名單固定題庫；每輪評測結果仍維持 local-only。
 
 這樣做的原因：題庫是基準線，結果檔是每輪執行產物，不該污染工作樹。
