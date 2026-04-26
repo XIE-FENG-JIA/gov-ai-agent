@@ -1,7 +1,7 @@
 {
-  "pytest_cold_runtime_secs": 50,
-  "last_measured_secs": 80.43,
+  "pytest_cold_runtime_secs": 9.47,
+  "last_measured_secs": 23.95,
   "ceiling_secs": 100.0,
-  "tolerance_pct": 0.20,
+  "tolerance_pct": 0.2,
   "_note": "floor ratchets down; ceiling triggers soft alert when runtime > ceiling*(1+tolerance); last_measured_secs is reported in sensor.json"
 }
