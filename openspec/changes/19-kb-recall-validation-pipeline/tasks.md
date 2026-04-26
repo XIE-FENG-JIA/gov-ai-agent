@@ -21,12 +21,12 @@ derived from public government documents already in the KB corpus.
 **Goal:** Runnable script that loads the eval set, queries the KB, and computes
 `recall@1`, `recall@3`, `recall@5`.
 
-- [ ] Accept `--k` flag (default 5); load `recall_eval.jsonl`
-- [ ] Call `knowledge_manager.search(query, k=k)` for each pair
-- [ ] Compute recall@k: fraction of queries where `expected_doc_id` in top-k
-- [ ] Write `recall_report.json`: `{"embedding_model": ..., "recall@1": ..., "recall@3": ..., "recall@5": ..., "n_eval": ...}`
-- [ ] Exit code 0 on success, 1 on any exception
-- [ ] Acceptance: `python scripts/eval_recall.py --dry-run` exits 0
+- [x] Accept `--k` flag (default 5); load `recall_eval.jsonl`
+- [x] Call `knowledge_manager.search(query, k=k)` for each pair
+- [x] Compute recall@k: fraction of queries where `expected_doc_id` in top-k
+- [x] Write `recall_report.json`: `{"embedding_model": ..., "recall@1": ..., "recall@3": ..., "recall@5": ..., "n_eval": ...}`
+- [x] Exit code 0 on success, 1 on any exception
+- [x] Acceptance: `python scripts/eval_recall.py --dry-run` exits 0
 
 ---
 

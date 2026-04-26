@@ -3,6 +3,32 @@
 > 歷史 v7.0–v8.3 batch header 已封存：[docs/archive/program-history-202604j.md](docs/archive/program-history-202604j.md)、[docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)、[docs/archive/program-history-202604L.md](docs/archive/program-history-202604L.md)、[docs/archive/program-history-202604M.md](docs/archive/program-history-202604M.md)
 > 歷史 v8.1/v8.3/v8.4/v8.5 完成任務已封存：[docs/archive/program-history-202604O.md](docs/archive/program-history-202604O.md)（T-PROGRAM-MD-ARCHIVE-202604O；2026-04-26 22:51）
 
+> **v8.10 批次回合（2026-04-26 23:32 /pua 深度回顧；HEAD=6426ad7 ≡ origin/main）**：
+> - ✅ **HEAD = origin/main = 6426ad7**（rev-list 0/0；v8.9 push flush 仍守）
+> - ✅ **pytest -x = 4001 passed / 158.43s**（vs v8.8 80.43s 漲 +97%；soft 200s 守住）
+> - ✅ **sensor 全綠真值**：bare=1 noqa / fat 0/0 / runtime cold 24.44s（v3 ceiling 100s+tolerance 0.2 真量測 ✓）
+> - ✅ **openspec active=1 真值**（19-kb-recall-validation-pipeline；T19.1 [x] eval set 35 筆）
+> - ⚠️ **漂白第一型 1 輪再生**：runtime_baseline.json (sensor side-effect 寫) + req.json/req-out.json 漂入 = v8.8 「4 輪終止」紀錄破
+> - ⚠️ **epic 19 stall 1/6 = 16%**：T19.2-T19.6 5 子任務 [ ]；不推 = active=1 名義真實質凍結，第 7 輪 treadmill 預兆
+> - ⚠️ **sensor.epic6_progress 死碼**：epic 6 已歸 archive 但欄位仍 done=0/total=0 = 漂白第二型口徑放水第二例
+> - ⚠️ **fat watch 300-350 = 3 檔邊緣**：utils_io 306 / editor/flow 304 / web_preview/app 300
+
+### P0（2026-04-26 23:32 /pua v8.10 深度回顧新增；本輪必動 — 漂白第一型 1 輪再生 + epic 19 stall）
+
+- [x] **T-WORKTREE-FLUSH-V9.0**（15 min；P0；ACL-free；漂白第一型 1 輪即生治本）— (a) `.gitignore` 加 `req*.json` 排除小型 FastAPI smoke 殘檔；(b) `scripts/sensor_refresh.save_runtime_baseline` 改 hook-safe 寫 `~/.cache/gov-ai/runtime_baseline.json` 非版控（治本反模式）或 commit baseline 真值並 carve out white-list；(c) 1 語意 commit 落版（chore(state) 或 fix(sensor)）；驗收 `git status --short` clean。**不修 = sensor 每輪都產 dirty = 「sensor 寫工作樹 = 漂白第一型永動機」結構債**。owner=auto-engineer。
+- [x] **T-EPIC-19-T19.2-EVAL-RECALL-IMPL**（45 min；P0；ACL-free；epic 19 推進治本 — 第 7 輪 treadmill 預警）— `scripts/eval_recall.py` 落地：load `kb_data/eval_set/recall_eval.jsonl`、call `knowledge_manager.search(q, k=5)`、計 recall@1/3/5、output `recall_report.json` schema `{embedding_model, recall@1, recall@3, recall@5, n_eval}`、`--dry-run` exit 0、`--k` 預設 5；新增 `tests/test_eval_recall.py` ≥5 cases（dry-run / k 旗標 / 空 jsonl 邊界 / search hit / search miss）；勾 `openspec/changes/19-*/tasks.md` T19.2 全部 sub-checkbox。驗收：`python scripts/eval_recall.py --dry-run` exit 0 + `tests/test_eval_recall.py` 5+ passed + targeted pytest 不退。
+
+### P1（2026-04-26 23:32 /pua v8.10 新增；sensor 字段失準 + fat 3 檔邊緣同刀）
+
+- [ ] **T-SENSOR-ACTIVE-EPIC-PROGRESS**（20 min；P1；ACL-free；漂白第二型治本 — 口徑放水第二例）— `scripts/sensor_refresh.py` 把 `epic6_progress` 字段改名 `active_epic_progress`；解析 `openspec/changes/` 第一個非 `archive/` 目錄的 `tasks.md` 計 `[x]` / 總 `[ ]+[x]+[~]` 比例；多個 active 取首個並列名；補 `tests/test_sensor_refresh.py` 2 cases（active=0 fallback / active=1 統計）；驗收：sensor.json `active_epic_progress.epic_id == "19-kb-recall-validation-pipeline"` + `done/total` 動態真值。
+- [ ] **T-FAT-WATCH-CUT-V6**（30 min；P1；ACL-free；3 檔同模組同刀 ROI ×3）— `src/cli/utils_io.py 306→260`（抽 `_atomic_writes.py` ≥40 行 atomic_text/json/yaml_write 三家）+ `src/agents/editor/flow.py 304→260`（抽 `_safe_low_path.py` ≥40 行 score/refine 邏輯）+ `src/web_preview/app.py 300→255`（抽 `_health_routes.py` ≥40 行 health/static 路由）；驗收 `python scripts/check_fat_files.py --watch-band 300-350` ≤ 1 檔 + 全量 pytest 不退。
+
+### P2（2026-04-26 23:32 /pua v8.10 新增；results.log 預治）
+
+- [x] **T-RESULTS-LOG-ARCHIVE-202604P**（10 min；P2；ACL-free；soft 1000 紅線預治）— results.log 897 行接近 soft 1000；下輪寫前必先把 v8.7-v8.9 三輪 PASS/FAIL-BLOCKED 條目（line ~700-880）封存到 `results-archive/202604P.log`；主檔 ≤ 300 留下輪空間；header pointer 補。
+
+
+
 > **v8.9 批次回合（2026-04-26 22:51 Copilot agent；HEAD=0ca2431→push）**：
 > - ✅ **HEAD = origin/main = 0ca2431**（10 commits 推送；rev-list 0/0；漂白第一型閉環）
 > - ✅ **fix(api)：middleware 補 engines/static/mockup 公開路徑**（T-ENGINES-API-LAND 收尾；tests/test_api_server.py 259 passed）
