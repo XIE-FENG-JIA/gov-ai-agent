@@ -94,3 +94,7 @@ repo_meta/
 meta_git_live/
 .git.bak-*
 openspec/.vector-search.db*
+
+# Codex alt-index lock files (same pattern as out.tmp, v8.1 fix)
+*alt-index*.lock
+codex-*.lock

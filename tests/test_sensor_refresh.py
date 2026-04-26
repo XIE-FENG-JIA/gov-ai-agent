@@ -292,3 +292,61 @@ def test_auto_commit_rate_excludes_checkpoint_noise(tmp_path: Path) -> None:
     # feat + chore(auto-engineer) real-desc + fix = 3; checkpoint noise excluded
     assert semantic == 3, f"expected 3 semantic, got {semantic}"
     assert rate == pytest.approx(0.50, abs=0.01)
+
+
+# ── T-RUNTIME-RATCHET-SENSOR tests ──────────────────────────────────────────
+
+def test_sensor_report_includes_pytest_cold_runtime(tmp_path: Path) -> None:
+    """sensor to_dict() must expose pytest_cold_runtime_secs field (T-RUNTIME-RATCHET-SENSOR)."""
+    repo = _make_repo(tmp_path)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    (repo / "engineer-log.md").write_text("x\n" * 50, encoding="utf-8")
+    (repo / "program.md").write_text("x\n" * 50, encoding="utf-8")
+    # Write a runtime_baseline.json
+    scripts_dir = repo / "scripts"
+    scripts_dir.mkdir()
+    (scripts_dir / "runtime_baseline.json").write_text(
+        '{"pytest_cold_runtime_secs": 42.5}', encoding="utf-8"
+    )
+    r = _mod.build_report(repo)
+    assert r.pytest_cold_runtime_secs == pytest.approx(42.5)
+    d = r.to_dict()
+    assert "pytest_cold_runtime_secs" in d
+    assert d["pytest_cold_runtime_secs"] == pytest.approx(42.5)
+
+
+def test_sensor_hard_violation_when_runtime_exceeds_300s(tmp_path: Path) -> None:
+    """Hard violation triggered when stored runtime > 300s (T-RUNTIME-RATCHET-SENSOR)."""
+    repo = _make_repo(tmp_path)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    (repo / "engineer-log.md").write_text("x\n" * 50, encoding="utf-8")
+    (repo / "program.md").write_text("x\n" * 50, encoding="utf-8")
+    scripts_dir = repo / "scripts"
+    scripts_dir.mkdir()
+    (scripts_dir / "runtime_baseline.json").write_text(
+        '{"pytest_cold_runtime_secs": 350.0}', encoding="utf-8"
+    )
+    r = _mod.build_report(repo)
+    assert r.pytest_cold_runtime_secs == pytest.approx(350.0)
+    assert any("pytest_cold_runtime_secs" in v for v in r.violations_hard), (
+        f"Expected hard violation for 350s runtime; got hard={r.violations_hard}"
+    )
+
+
+def test_sensor_soft_violation_when_runtime_between_200_and_300s(tmp_path: Path) -> None:
+    """Soft violation triggered when stored runtime in (200s, 300s] (T-RUNTIME-RATCHET-SENSOR)."""
+    repo = _make_repo(tmp_path)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    (repo / "engineer-log.md").write_text("x\n" * 50, encoding="utf-8")
+    (repo / "program.md").write_text("x\n" * 50, encoding="utf-8")
+    scripts_dir = repo / "scripts"
+    scripts_dir.mkdir()
+    (scripts_dir / "runtime_baseline.json").write_text(
+        '{"pytest_cold_runtime_secs": 250.0}', encoding="utf-8"
+    )
+    r = _mod.build_report(repo)
+    assert r.pytest_cold_runtime_secs == pytest.approx(250.0)
+    assert any("pytest_cold_runtime_secs" in v for v in r.violations_soft), (
+        f"Expected soft violation for 250s runtime; got soft={r.violations_soft}"
+    )
+    assert not any("pytest_cold_runtime_secs" in v for v in r.violations_hard)

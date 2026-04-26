@@ -1,0 +1,4 @@
+{
+  "pytest_cold_runtime_secs": 50,
+  "_note": "Updated by scripts/check_runtime.py after each cold-start measurement. soft=200s hard=300s ratchet."
+}

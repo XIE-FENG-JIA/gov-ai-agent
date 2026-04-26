@@ -38,6 +38,7 @@ _HARD_LIMITS = {
     "engineer_log_lines": 400,
     "program_md_lines": 500,
     "fat_file_count_red": 8,  # > 400 行的檔數
+    "pytest_cold_runtime_secs": 300.0,
 }
 
 # Soft limits (超過 → exit 1)
@@ -51,6 +52,7 @@ _SOFT_LIMITS = {
     # for the auto-engineer runtime once T7.1-T7.3 wire validate_auto_commit_msg
     # into the commit pipeline.
     "auto_commit_rate_min": 0.90,
+    "pytest_cold_runtime_secs": 200.0,
 }
 
 # Author identity used by the auto-engineer runtime; sensor measures rate
@@ -77,6 +79,7 @@ class SensorReport:
     epic6_progress: tuple[int, int] = (0, 0)  # (done, total)
     violations_hard: list[str] = field(default_factory=list)
     violations_soft: list[str] = field(default_factory=list)
+    pytest_cold_runtime_secs: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -109,6 +112,7 @@ class SensorReport:
                 "hard": self.violations_hard,
                 "soft": self.violations_soft,
             },
+            "pytest_cold_runtime_secs": self.pytest_cold_runtime_secs,
         }
 
 
@@ -225,6 +229,18 @@ def auto_commit_rate(
     return semantic, semantic / len(subjects)
 
 
+def read_runtime_baseline(repo: Path) -> float:
+    """Read pytest_cold_runtime_secs from scripts/runtime_baseline.json."""
+    path = repo / "scripts" / "runtime_baseline.json"
+    if not path.exists():
+        return 0.0
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return float(data.get("pytest_cold_runtime_secs", 0.0))
+    except (OSError, json.JSONDecodeError, ValueError):
+        return 0.0
+
+
 def epic6_progress(repo: Path) -> tuple[int, int]:
     """從 openspec/changes/06-*/tasks.md 數 [x] / 總 task."""
     tasks_files = list(repo.glob("openspec/changes/06-*/tasks.md"))
@@ -292,6 +308,7 @@ def build_report(repo: Path) -> SensorReport:
         repo, author=_AUTO_ENGINEER_AUTHOR_PATTERN
     )
     r.epic6_progress = epic6_progress(repo)
+    r.pytest_cold_runtime_secs = read_runtime_baseline(repo)
 
     # Hard violations
     if r.bare_except_total > _HARD_LIMITS["bare_except_total"]:
@@ -347,6 +364,19 @@ def build_report(repo: Path) -> SensorReport:
             f"auto_commit_rate {r.auto_commit_rate:.1%} < target {_SOFT_LIMITS['auto_commit_rate_min']:.0%}"
         )
 
+    # Runtime ratchet (T-RUNTIME-RATCHET-SENSOR)
+    if r.pytest_cold_runtime_secs > 0:
+        if r.pytest_cold_runtime_secs > _HARD_LIMITS["pytest_cold_runtime_secs"]:
+            r.violations_hard.append(
+                f"pytest_cold_runtime_secs {r.pytest_cold_runtime_secs:.1f}s"
+                f" > hard {_HARD_LIMITS['pytest_cold_runtime_secs']:.0f}s"
+            )
+        elif r.pytest_cold_runtime_secs > _SOFT_LIMITS["pytest_cold_runtime_secs"]:
+            r.violations_soft.append(
+                f"pytest_cold_runtime_secs {r.pytest_cold_runtime_secs:.1f}s"
+                f" > soft {_SOFT_LIMITS['pytest_cold_runtime_secs']:.0f}s"
+            )
+
     return r
 
 
@@ -377,6 +407,8 @@ def format_human(r: SensorReport) -> str:
     lines.append(
         f"- **auto-commit 語意率**: {r.auto_commit_rate:.1%} ({r.auto_commit_recent_30_semantic} / 近 30)"
     )
+    if r.pytest_cold_runtime_secs > 0:
+        lines.append(f"- **pytest cold runtime**: {r.pytest_cold_runtime_secs:.1f}s (soft≤200s / hard≤300s)")
     if r.epic6_progress[1] > 0:
         lines.append(
             f"- **EPIC6 T-LIQG 進度**: {r.epic6_progress[0]}/{r.epic6_progress[1]}"
