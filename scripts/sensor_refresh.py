@@ -255,8 +255,11 @@ def measure_cold_runtime(repo: Path) -> float:
 def save_runtime_baseline(repo: Path, secs: float) -> None:
     """Persist measured runtime to scripts/runtime_baseline.json.
 
-    Implements ratchet-down: only writes if secs <= current baseline, so
-    the baseline never increases from a slow measurement (e.g. loaded machine).
+    Implements ratchet-down for the floor baseline: only updates
+    pytest_cold_runtime_secs when secs <= current baseline.
+
+    Always updates last_measured_secs so sensor.json reports the real
+    value, not the historical minimum.
     """
     path = repo / "scripts" / "runtime_baseline.json"
     try:
@@ -269,25 +272,55 @@ def save_runtime_baseline(repo: Path, secs: float) -> None:
             data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         data = {}
-    current = float(data.get("pytest_cold_runtime_secs", 0.0))
-    if secs > 0 and (current <= 0 or secs <= current):
-        data["pytest_cold_runtime_secs"] = secs
-        try:
-            path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-        except OSError:
-            return
+    if secs > 0:
+        # Always record the most recent measurement for display / up-creep detection.
+        data["last_measured_secs"] = secs
+        current = float(data.get("pytest_cold_runtime_secs", 0.0))
+        if current <= 0 or secs <= current:
+            data["pytest_cold_runtime_secs"] = secs
+    try:
+        path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    except OSError:
+        return
 
 
 def read_runtime_baseline(repo: Path) -> float:
-    """Read pytest_cold_runtime_secs from scripts/runtime_baseline.json."""
+    """Read the most recent runtime value from scripts/runtime_baseline.json.
+
+    Prefers last_measured_secs (actual last run) over the floor baseline so
+    sensor.json reflects reality rather than the historical minimum.
+    Falls back to pytest_cold_runtime_secs for backwards compatibility.
+    """
     path = repo / "scripts" / "runtime_baseline.json"
     if not path.exists():
         return 0.0
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
+        # Prefer the most-recent real measurement if recorded.
+        last = float(data.get("last_measured_secs", 0.0))
+        if last > 0:
+            return last
         return float(data.get("pytest_cold_runtime_secs", 0.0))
     except (OSError, json.JSONDecodeError, ValueError):
         return 0.0
+
+
+def read_ceiling_params(repo: Path) -> tuple[float, float]:
+    """Read ceiling_secs and tolerance_pct from scripts/runtime_baseline.json.
+
+    Returns (ceiling_secs, tolerance_pct).  If not set, returns (0.0, 0.0)
+    meaning ceiling check is disabled.
+    """
+    path = repo / "scripts" / "runtime_baseline.json"
+    if not path.exists():
+        return 0.0, 0.0
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        ceiling = float(data.get("ceiling_secs", 0.0))
+        tolerance = float(data.get("tolerance_pct", 0.0))
+        return ceiling, tolerance
+    except (OSError, json.JSONDecodeError, ValueError):
+        return 0.0, 0.0
 
 
 def epic6_progress(repo: Path) -> tuple[int, int]:
@@ -402,6 +435,7 @@ def build_report(repo: Path) -> SensorReport:
     r.epic6_progress = epic6_progress(repo)
     r.pytest_cold_runtime_secs = read_runtime_baseline(repo)
     r.marked_done_uncommitted = count_marked_done_uncommitted(repo)
+    _ceiling, _tolerance = read_ceiling_params(repo)
 
     # Hard violations
     if r.bare_except_total > _HARD_LIMITS["bare_except_total"]:
@@ -468,6 +502,14 @@ def build_report(repo: Path) -> SensorReport:
             r.violations_soft.append(
                 f"pytest_cold_runtime_secs {r.pytest_cold_runtime_secs:.1f}s"
                 f" > soft {_SOFT_LIMITS['pytest_cold_runtime_secs']:.0f}s"
+            )
+        # Ceiling up-creep check (T-RUNTIME-BASELINE-TRUE-MEASURE-v3)
+        # If ceiling_secs is configured, flag when runtime exceeds ceiling*(1+tolerance)
+        elif _ceiling > 0 and r.pytest_cold_runtime_secs > _ceiling * (1 + _tolerance):
+            r.violations_soft.append(
+                f"pytest_cold_runtime_secs {r.pytest_cold_runtime_secs:.1f}s"
+                f" > ceiling {_ceiling:.1f}s * (1+{_tolerance:.0%}) ="
+                f" {_ceiling * (1 + _tolerance):.1f}s (up-creep)"
             )
 
     # marked_done_uncommitted ratchet (T-MARKED-DONE-COMMIT-RATCHET)

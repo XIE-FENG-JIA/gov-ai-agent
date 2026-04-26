@@ -1,4 +1,7 @@
 {
   "pytest_cold_runtime_secs": 50,
-  "_note": "Updated by scripts/check_runtime.py after each cold-start measurement. soft=200s hard=300s ratchet."
+  "last_measured_secs": 80.43,
+  "ceiling_secs": 100.0,
+  "tolerance_pct": 0.20,
+  "_note": "floor ratchets down; ceiling triggers soft alert when runtime > ceiling*(1+tolerance); last_measured_secs is reported in sensor.json"
 }

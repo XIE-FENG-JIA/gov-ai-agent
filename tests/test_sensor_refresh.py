@@ -454,6 +454,63 @@ def test_no_measure_flag_skips_measurement(tmp_path: Path, capsys: pytest.Captur
     assert data["pytest_cold_runtime_secs"] == pytest.approx(42.0)
 
 
+# ── T-RUNTIME-BASELINE-TRUE-MEASURE-v3 tests (ceiling / up-creep) ───────────
+
+
+def test_ceiling_violation_triggers_soft(tmp_path: Path) -> None:
+    """Soft violation when last_measured_secs > ceiling_secs * (1+tolerance_pct)."""
+    repo = _make_repo(tmp_path)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    (repo / "engineer-log.md").write_text("x\n" * 50, encoding="utf-8")
+    (repo / "program.md").write_text("x\n" * 50, encoding="utf-8")
+    scripts_dir = repo / "scripts"
+    scripts_dir.mkdir()
+    # ceiling=50s, tolerance=10% → threshold=55s; measured=70s → soft
+    (scripts_dir / "runtime_baseline.json").write_text(
+        json.dumps({
+            "pytest_cold_runtime_secs": 45.0,
+            "last_measured_secs": 70.0,
+            "ceiling_secs": 50.0,
+            "tolerance_pct": 0.10,
+        }),
+        encoding="utf-8",
+    )
+    r = _mod.build_report(repo)
+    assert r.pytest_cold_runtime_secs == pytest.approx(70.0), (
+        "last_measured_secs should be reported, not floor baseline"
+    )
+    assert any("up-creep" in v for v in r.violations_soft), (
+        f"Expected up-creep soft violation; got soft={r.violations_soft}"
+    )
+    assert not any("up-creep" in v for v in r.violations_hard)
+
+
+def test_ceiling_no_violation_within_tolerance(tmp_path: Path) -> None:
+    """No ceiling violation when last_measured_secs <= ceiling_secs * (1+tolerance_pct)."""
+    repo = _make_repo(tmp_path)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    (repo / "engineer-log.md").write_text("x\n" * 50, encoding="utf-8")
+    (repo / "program.md").write_text("x\n" * 50, encoding="utf-8")
+    scripts_dir = repo / "scripts"
+    scripts_dir.mkdir()
+    # ceiling=80s, tolerance=20% → threshold=96s; measured=90s → ok
+    (scripts_dir / "runtime_baseline.json").write_text(
+        json.dumps({
+            "pytest_cold_runtime_secs": 80.0,
+            "last_measured_secs": 90.0,
+            "ceiling_secs": 80.0,
+            "tolerance_pct": 0.20,
+        }),
+        encoding="utf-8",
+    )
+    r = _mod.build_report(repo)
+    assert r.pytest_cold_runtime_secs == pytest.approx(90.0)
+    assert not any("up-creep" in v for v in r.violations_soft + r.violations_hard), (
+        f"No up-creep violation expected for 90s ≤ 96s threshold; "
+        f"soft={r.violations_soft} hard={r.violations_hard}"
+    )
+
+
 # ── T-MARKED-DONE-COMMIT-RATCHET tests ──────────────────────────────────────
 
 
