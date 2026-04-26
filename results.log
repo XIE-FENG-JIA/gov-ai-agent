@@ -103,3 +103,8 @@ PASS T-RESULTS-LOG-SOFT-CAP-V8.18 2026-04-27 archived 10 lines to results-archiv
 PASS T-SENSOR-JSON-REFRESH-V8.18 2026-04-27 sensor.json updated: results_log=100 active_epic='' no violations; 37 sensor tests passed
 PASS T-OPENSPEC-EPIC-22-DISCOVERY 2026-04-27 openspec/changes/22-source-adapter-health-metrics/ created (.openspec.yaml+proposal+tasks); INDEX.md updated; sensor active_epic=22 total=6
 PASS T-PROGRAM-MD-V8.18-HEADER 2026-04-27 program.md v8.18 header added; 5 tasks [x]; results.log 5 lines appended
+PASS T22.1-ADAPTER-HEALTH-SCRIPT 2026-04-27 scripts/adapter_health.py created (AdapterHealthProbe+--dry-run+--human); --dry-run exits 0; report written
+PASS T22.2-SENSOR-INTEGRATION 2026-04-27 check_adapter_health() added to sensor_refresh.py; adapter_health field in sensor JSON; soft violation on count=0
+PASS T22.3-UNIT-TESTS 2026-04-27 tests/test_adapter_health.py 7 unit tests (mock adapters; no live calls); all passed
+PASS T22.4-SENSOR-VIOLATION-WIRING 2026-04-27 test_sensor_refresh.py +6 adapter_health tests; 50 targeted tests passed; soft violation wired
+PASS T22.5-HUMAN-CONTRIBUTING 2026-04-27 CONTRIBUTING.md Adapter Health section added; grep hits; 4041 passed / 11 pre-existing fails

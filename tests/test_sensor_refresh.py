@@ -667,3 +667,90 @@ def test_build_report_hard_violation_marked_done_gt_5(tmp_path: Path) -> None:
     assert any("marked_done_uncommitted" in v for v in r.violations_hard), (
         f"Expected hard violation for 6 slugs; got hard={r.violations_hard}"
     )
+
+
+# ── T22.4 — Adapter health sensor violation wiring ───────────────────────────
+
+def _make_adapter_report(tmp_path: Path, adapters: list) -> Path:
+    """Write a mock adapter_health_report.json and return the repo path."""
+    scripts_dir = tmp_path / "scripts"
+    scripts_dir.mkdir(parents=True, exist_ok=True)
+    report = {
+        "adapters": adapters,
+        "measured_at": "2026-04-27T00:00:00+00:00",
+        "dry_run": False,
+    }
+    path = scripts_dir / "adapter_health_report.json"
+    path.write_text(json.dumps(report), encoding="utf-8")
+    return tmp_path
+
+
+def test_check_adapter_health_ok_when_all_adapters_return_records(tmp_path: Path) -> None:
+    """check_adapter_health returns status='ok' when all adapters have count>0."""
+    repo = _make_adapter_report(tmp_path, [
+        {"adapter": "mojlaw", "status": "ok", "latency_ms": 100, "count": 3, "error": None},
+        {"adapter": "fda_api", "status": "ok", "latency_ms": 80, "count": 2, "error": None},
+    ])
+    result = _mod.check_adapter_health(repo)
+    assert result["status"] == "ok"
+
+
+def test_check_adapter_health_violation_when_adapter_count_zero(tmp_path: Path) -> None:
+    """check_adapter_health returns status='violation' when adapter count==0."""
+    repo = _make_adapter_report(tmp_path, [
+        {"adapter": "mojlaw", "status": "ok", "latency_ms": 100, "count": 3, "error": None},
+        {"adapter": "fda_api", "status": "zero_records", "latency_ms": 50, "count": 0, "error": None},
+    ])
+    result = _mod.check_adapter_health(repo)
+    assert result["status"] == "violation"
+    assert "fda_api" in result.get("detail", "")
+
+
+def test_check_adapter_health_violation_when_adapter_error(tmp_path: Path) -> None:
+    """check_adapter_health returns status='violation' when adapter status==error."""
+    repo = _make_adapter_report(tmp_path, [
+        {"adapter": "mohw_rss", "status": "error", "latency_ms": 10, "count": 0, "error": "timeout"},
+    ])
+    result = _mod.check_adapter_health(repo)
+    assert result["status"] == "violation"
+
+
+def test_check_adapter_health_skip_when_no_report(tmp_path: Path) -> None:
+    """check_adapter_health returns status='skip' when report file is absent."""
+    result = _mod.check_adapter_health(tmp_path)
+    assert result["status"] == "skip"
+
+
+def test_build_report_soft_violation_on_adapter_health_stall(tmp_path: Path) -> None:
+    """build_report fires soft violation when adapter_health status == 'violation'."""
+    repo = _make_repo(tmp_path)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    (repo / "engineer-log.md").write_text("x\n" * 50, encoding="utf-8")
+    (repo / "program.md").write_text("x\n" * 50, encoding="utf-8")
+    # Write a report with a zero-count adapter
+    scripts_dir = repo / "scripts"
+    scripts_dir.mkdir(parents=True, exist_ok=True)
+    report = {
+        "adapters": [
+            {"adapter": "mojlaw", "status": "zero_records", "latency_ms": 10, "count": 0, "error": None},
+        ],
+        "measured_at": "2026-04-27T00:00:00+00:00",
+        "dry_run": False,
+    }
+    (scripts_dir / "adapter_health_report.json").write_text(json.dumps(report), encoding="utf-8")
+    r = _mod.build_report(repo)
+    assert any("adapter-health-stall" in v for v in r.violations_soft), (
+        f"Expected adapter-health-stall soft violation; got soft={r.violations_soft}"
+    )
+
+
+def test_sensor_report_includes_adapter_health_field(tmp_path: Path) -> None:
+    """to_dict() includes adapter_health key with status field."""
+    repo = _make_repo(tmp_path)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    (repo / "engineer-log.md").write_text("x\n" * 50, encoding="utf-8")
+    (repo / "program.md").write_text("x\n" * 50, encoding="utf-8")
+    r = _mod.build_report(repo)
+    d = r.to_dict()
+    assert "adapter_health" in d
+    assert "status" in d["adapter_health"]

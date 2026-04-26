@@ -193,3 +193,48 @@ fires a `pytest-runtime-regression` soft violation.
 
 The `pytest_runtime` field appears in `python scripts/sensor_refresh.py --human`
 output showing `ceiling_s`, `last_s`, and `status` (ok / violation / skip).
+
+---
+
+## Adapter Health
+
+The adapter health probe (`scripts/adapter_health.py`) runs a quick dry-fetch
+(limit=3) for each live source adapter and records per-adapter latency, record
+count, and status.  This lets you detect silent stalls (adapters returning 0
+records) without running a full `kb rebuild`.
+
+**Quick start (dry-run — no live network calls)**:
+
+```bash
+python scripts/adapter_health.py --dry-run
+```
+
+**Human-readable summary**:
+
+```bash
+python scripts/adapter_health.py --human
+```
+
+Output format:
+
+```
+✅ mojlaw                    latency=  432ms  count=3
+⚠️  fda_api                   latency=   50ms  count=0
+❌ mohw_rss                  latency=   10ms  count=0 — connection timeout
+```
+
+**Icons:**
+
+| Icon | Meaning |
+|------|---------|
+| ✅ | Adapter returned ≥1 record (`status=ok`) |
+| ⚠️  | Adapter returned 0 records (`status=zero_records` or `dry_run`) |
+| ❌ | Adapter raised an exception (`status=error`) |
+
+The probe writes `scripts/adapter_health_report.json` which is loaded by
+`sensor_refresh.py`.  When any adapter has `count=0` or `status=error`, a
+**soft violation** (`adapter-health-stall`) is added to the sensor report.
+
+**Adding a new adapter**: register it in `_ADAPTER_REGISTRY` inside
+`scripts/adapter_health.py` — provide `(name, dotted_module_path, class_name)`.
+Add a corresponding test case in `tests/test_adapter_health.py`.

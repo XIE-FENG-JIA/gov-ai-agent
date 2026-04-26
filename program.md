@@ -5,6 +5,13 @@
 > 歷史 v8.6/v8.8 P0/P1/P2 已封存：[docs/archive/program-history-202604Q.md](docs/archive/program-history-202604Q.md)（T-PROGRAM-MD-ARCHIVE-202604Q；2026-04-27）
 > 歷史 v8.10–v8.14 P0/P1/P2 已封存：[docs/archive/program-history-202604S.md](docs/archive/program-history-202604S.md)（T-PROGRAM-MD-SOFT-CAP-V8.15；2026-04-27）
 
+> **v8.19 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
+> - ✅ **T22.1-ADAPTER-HEALTH-SCRIPT** `scripts/adapter_health.py` 建立（AdapterHealthProbe + --dry-run + --human）；AC-1/AC-2 通過；exit 0
+> - ✅ **T22.2-SENSOR-INTEGRATION** `check_adapter_health()` 加入 sensor_refresh.py；`adapter_health` 欄位在 sensor JSON；AC-3/AC-5 通過
+> - ✅ **T22.3-UNIT-TESTS** `tests/test_adapter_health.py` 7 unit tests（mock adapters；無 live calls）全綠；AC-4 通過
+> - ✅ **T22.4-SENSOR-VIOLATION-WIRING** `tests/test_sensor_refresh.py` 補 adapter_health soft violation 6 cases；50 targeted tests passed；AC-5 通過
+> - ✅ **T22.5-HUMAN-CONTRIBUTING** `CONTRIBUTING.md` 補 Adapter Health 節；AC-6 通過；4041 passed / 11 pre-existing fails（realtime_lookup encoding）
+
 > **v8.18 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
 > - ✅ **T-EPIC-21-ARCHIVE** epic 21 (cold-runtime-root-cause-fix) 封存至 openspec/changes/archive/2026-04-27-21-...；INDEX.md status=100% (5/5)；sensor active_epic=""
 > - ✅ **T-RESULTS-LOG-SOFT-CAP-V8.18** results.log 110→100 行；10 行封存 results-archive/202604U.log

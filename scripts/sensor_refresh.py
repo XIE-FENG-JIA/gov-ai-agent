@@ -85,6 +85,7 @@ class SensorReport:
     marked_done_uncommitted: dict = field(default_factory=lambda: {"count": 0, "slugs": []})
     recall_health: dict = field(default_factory=lambda: {"ok": True, "detail": "no baseline (skip)"})
     pytest_runtime: dict = field(default_factory=lambda: {"status": "skip", "ceiling_s": 0.0, "last_s": 0.0})
+    adapter_health: dict = field(default_factory=lambda: {"status": "skip", "adapters": []})
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -122,6 +123,7 @@ class SensorReport:
             "marked_done_uncommitted": self.marked_done_uncommitted,
             "recall_health": self.recall_health,
             "pytest_runtime": self.pytest_runtime,
+            "adapter_health": self.adapter_health,
         }
 
 
@@ -557,6 +559,46 @@ def check_pytest_runtime(repo: Path) -> dict:
     return {"status": "ok", "ceiling_s": ceiling_s, "last_s": last_s}
 
 
+def check_adapter_health(repo: Path) -> dict:
+    """Load adapter_health_report.json and summarise health status (T22.2).
+
+    Returns a dict with keys ``status`` ("ok" | "violation" | "skip") and
+    ``adapters`` (list of per-adapter result dicts).
+
+    Yields a soft violation when any adapter has ``count == 0`` or
+    ``status == "error"``.  Missing or unreadable report → status "skip".
+    """
+    report_path = repo / "scripts" / "adapter_health_report.json"
+    if not report_path.exists():
+        return {"status": "skip", "adapters": []}
+    try:
+        data = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"status": "skip", "adapters": []}
+
+    adapters = data.get("adapters", [])
+    if not adapters:
+        return {"status": "skip", "adapters": []}
+
+    unhealthy = [
+        a for a in adapters
+        if a.get("status") == "error" or a.get("count", 0) == 0
+    ]
+    # dry_run entries have count=0 but status="dry_run" — don't flag those
+    real_unhealthy = [
+        a for a in unhealthy
+        if a.get("status") not in ("dry_run",)
+    ]
+    if real_unhealthy:
+        names = [a.get("adapter", "?") for a in real_unhealthy]
+        return {
+            "status": "violation",
+            "adapters": adapters,
+            "detail": f"adapter-health-stall: {', '.join(names)} count=0 or error",
+        }
+    return {"status": "ok", "adapters": adapters}
+
+
 def build_report(repo: Path) -> SensorReport:
     r = SensorReport()
     r.bare_except_total, r.bare_except_files, r.bare_except_top = count_bare_except(repo)
@@ -578,6 +620,7 @@ def build_report(repo: Path) -> SensorReport:
     _recall_ok, _recall_detail = check_recall_health(repo)
     r.recall_health = {"ok": _recall_ok, "detail": _recall_detail}
     r.pytest_runtime = check_pytest_runtime(repo)
+    r.adapter_health = check_adapter_health(repo)
     _ceiling, _tolerance = read_ceiling_params(repo)
 
     # Hard violations
@@ -676,6 +719,10 @@ def build_report(repo: Path) -> SensorReport:
     if r.pytest_runtime.get("status") == "violation":
         r.violations_soft.append(r.pytest_runtime.get("detail", "pytest-runtime-regression"))
 
+    # Adapter health stall guard (T22.2)
+    if r.adapter_health.get("status") == "violation":
+        r.violations_soft.append(r.adapter_health.get("detail", "adapter-health-stall"))
+
     return r
 
 
@@ -733,6 +780,11 @@ def format_human(r: SensorReport) -> str:
         lines.append(f"- **recall health**: 🔴 {rh.get('detail', '')}")
     elif rh.get("detail") and "skip" not in str(rh.get("detail", "")):
         lines.append(f"- **recall health**: ✅ {rh.get('detail', '')}")
+
+    ah = r.adapter_health
+    ah_status = ah.get("status", "skip")
+    ah_icon = "[X]" if ah_status == "violation" else ("[OK]" if ah_status == "ok" else "[--]")
+    lines.append(f"- **adapter_health**: {ah_icon} status={ah_status}")
 
     if r.violations_hard:
         lines.append("")
