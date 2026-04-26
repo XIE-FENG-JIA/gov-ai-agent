@@ -10,7 +10,6 @@ from src.cli._config_io import (
     _PROVIDER_TEMPLATES,
     _mask_sensitive,
     _parse_value,
-    test_connectivity,
 )
 from src.cli.utils_io import atomic_yaml_write, safe_config_write
 from src.cli.config_tools_fetch_impl import fetch_models_impl
@@ -24,10 +23,36 @@ from src.cli.config_tools_mutations_impl import (
     validate_impl,
 )
 from src.core.config import ConfigManager
+from src.core.llm import LiteLLMProvider
 
 logger = logging.getLogger(__name__)
 console = Console()
 app = typer.Typer()
+
+
+def test_connectivity(model_id: str, api_key: str | None) -> bool:
+    """Test OpenRouter model connectivity.
+
+    Keep this wrapper in ``config_tools`` so legacy tests and callers can patch
+    ``src.cli.config_tools.LiteLLMProvider`` directly.
+    """
+    if not api_key:
+        return False
+
+    config = {
+        "provider": "openrouter",
+        "model": model_id,
+        "api_key": api_key,
+        "base_url": "https://openrouter.ai/api/v1",
+    }
+
+    try:
+        llm = LiteLLMProvider(config)
+        llm.generate("Hi", max_tokens=1)
+        return True
+    except _CONFIG_TOOL_EXCEPTIONS as exc:
+        logger.debug("模型連線測試失敗（%s）: %s", model_id, exc)
+        return False
 
 
 @app.command()
