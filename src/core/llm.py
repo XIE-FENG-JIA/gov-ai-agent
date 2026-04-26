@@ -174,15 +174,18 @@ class LiteLLMProvider(LLMProvider):
 
         try:
             # OpenRouter does not expose an embedding endpoint through litellm;
-            # delegate to _openrouter_embed_rest (in _openrouter_rest.py).
+            # delegate to the OpenRouterProvider via make_provider.
             if self.emb_provider == "openrouter":
-                return _openrouter_embed_rest(
-                    model=self.emb_model,
-                    text=text,
-                    api_key=self.emb_api_key,
-                    base_url=self.emb_base_url,
-                    timeout=LLM_CHECK_TIMEOUT,
-                )
+                from src.core.providers import make_provider
+                emb_config = {
+                    "provider": "openrouter",
+                    "model": self.model,
+                    "embedding_model": self.emb_model,
+                    "embedding_api_key": self.emb_api_key,
+                    "embedding_base_url": self.emb_base_url,
+                }
+                result = make_provider(emb_config).embed([text])
+                return result[0] if result else []
 
             # Construct embedding model name
             if self.emb_provider == "ollama":
