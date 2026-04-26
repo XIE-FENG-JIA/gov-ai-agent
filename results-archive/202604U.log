@@ -1,0 +1,10 @@
+PASS T-PYTEST-RUNTIME-REGRESSION-ITER8 | cold-start median 52s <= 220s target | 3970 passed 34 skipped
+PASS T-LLM-DUAL-PATH-EXTRACT | llm.py 377->279 lines; fat-gate red=0 yellow=0; test_llm.py 52 passed; full suite 3970 passed 34 skipped
+[2026-04-26 16:30 +0800] | P0 test regression check; P1 switch cloud provider no-key connectivity skip | PASS | Full non-integration pytest passed 3969; switch command now uses updated raw_config and skips connectivity when non-ollama api_key is missing. 
+[2026-04-26 16:36 +0800] | Commit blocked by .git orphan SID DENY ACL | FAIL-BLOCKED | Tests passed, but git add/commit cannot create .git/index.lock; icacls remove:d processed 0 files; stash also unsafe/impossible while .git denies writes. 
+PASS T-FAT-WATCH-CUT-V3  # fat-watch 12→9; app.py 348→300, gazette_fetcher.py 332→257, review_parser.py 327→245; 265 tests green
+[2026-04-26 17:38:40 +0800] | 決策：P0 修 doctor 套件檢查初始化崩潰 | PASS | doctor 必要套件檢查捕捉非 ImportError 初始化例外，避免 litellm 版本狀態 AttributeError 讓 CLI doctor 退出；驗證 TestDoctorCommand + test_llm.py = 60 passed / 55.35s。
+[2026-04-26 17:42:39 +0800] | 決策：P0 修 CLI doctor/config backup 交叉測試回歸 | PASS | doctor 捕捉套件初始化非 ImportError；config backup 遇 stale patched ConfigManager ValueError 時 fallback runtime ConfigManager，同時保留測試可 mock；驗證 tests/test_cli_commands.py + tests/test_llm.py = 810 passed / 25.40s。
+[2026-04-26 17:43:08 +0800] | 決策：提交 P0 doctor package probe regression 修復 | FAIL-BLOCKED | 程式修復與 tests/test_cli_commands.py + tests/test_llm.py = 810 passed / 25.40s；git add 失敗 .git/index.lock Permission denied；alternate GIT_INDEX_FILE 也 unable to write new index file；無法安全 stash。
+2026-04-26T17:44:07 PASS T-GITIGNORE-CODEX-ALT-INDEX: Added *alt-index*.lock + codex-*.lock to .gitignore; git check-ignore hits confirmed; files no longer listed in git status
+2026-04-26T17:47:26 PASS T-PROGRAM-MD-ARCHIVE-202604M: Archived v8.0~v8.3 batch headers to docs/archive/program-history-202604M.md; program.md reduced to 217 lines (<=220)

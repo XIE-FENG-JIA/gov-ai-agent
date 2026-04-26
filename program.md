@@ -5,6 +5,13 @@
 > 歷史 v8.6/v8.8 P0/P1/P2 已封存：[docs/archive/program-history-202604Q.md](docs/archive/program-history-202604Q.md)（T-PROGRAM-MD-ARCHIVE-202604Q；2026-04-27）
 > 歷史 v8.10–v8.14 P0/P1/P2 已封存：[docs/archive/program-history-202604S.md](docs/archive/program-history-202604S.md)（T-PROGRAM-MD-SOFT-CAP-V8.15；2026-04-27）
 
+> **v8.18 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
+> - ✅ **T-EPIC-21-ARCHIVE** epic 21 (cold-runtime-root-cause-fix) 封存至 openspec/changes/archive/2026-04-27-21-...；INDEX.md status=100% (5/5)；sensor active_epic=""
+> - ✅ **T-RESULTS-LOG-SOFT-CAP-V8.18** results.log 110→100 行；10 行封存 results-archive/202604U.log
+> - ✅ **T-SENSOR-JSON-REFRESH-V8.18** sensor.json 以 live 真值更新（results_log=100；active_epic=""；no violations）；37 sensor tests passed
+> - ✅ **T-OPENSPEC-EPIC-22-DISCOVERY** openspec/changes/22-source-adapter-health-metrics/ 建立（.openspec.yaml + proposal.md + tasks.md）；INDEX.md 補 epic 22；sensor active_epic=22 total=6
+> - ✅ **T-PROGRAM-MD-V8.18-HEADER** program.md v8.18 header + 5 任務 [x]；results.log 追加 5 行 PASS；一次 commit 落版
+
 > **v8.17 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
 > - ✅ **T21.1-BASELINE-VERIFY** pytest_runtime_baseline.json ceiling_s=76.05/last_s=50.7 已確認；tasks.md T21.1 全 [x]；sensor active_epic done=21/21
 > - ✅ **T21.2-PROFILE-DONE** docs/pytest-runtime-profile.md top-10 table + 分類已存在；tasks.md T21.2 全 [x]
