@@ -890,3 +890,8 @@ PASS T-FAT-WATCH-CUT-V5-CLI-MODULE 2026-04-26 22:20 batch_tools 314->252 config_
 [2026-04-26 22:22:17 +08:00] | 決策：提交 T19.1 scoped 變更 | FAIL-BLOCKED | git add/commit kb_data/eval_set/recall_eval.jsonl openspec/.../tasks.md results.log 失敗：.git/index.lock exists / unable to create index.lock；approval=never，不刪 ACL/lock；保留工作樹變更
 [2026-04-26 22:36:51 +08:00] | P0 test regression: config_tools LiteLLMProvider patch surface missing | PASS | restored src.cli.config_tools.test_connectivity wrapper and LiteLLMProvider import; pytest tests/test_cli_commands.py -q = 758 passed; pytest tests/ -q --ignore=tests/integration = 4001 passed
 [2026-04-26 22:37:35 +08:00] | Commit blocked | FAIL-BLOCKED | scoped git add/commit failed because .git/index.lock exists; no git process found; policy blocked lock removal; changes left in worktree
+PASS T-V8.9-WORKTREE-COMMIT 2026-04-26T22:51 4 semantic commits; middleware/config_tools/check_runtime/openspec
+PASS T-V8.9-PUSH-ORIGIN 2026-04-26T22:51 10 commits pushed; HEAD=0ca2431=origin/main
+PASS T-PROGRAM-MD-ARCHIVE-202604O 2026-04-26T22:51 285->234 lines; v8.1/v8.3/v8.4/v8.5/v8.6 batch headers archived
+PASS T-V8.9-SENSOR-VERIFY 2026-04-26T22:51 program_md_lines=234; bare_except=1; fat_files=0; no hard violations
+PASS T-V8.9-FINAL-COMMIT 2026-04-26T22:51 final commit+push of program.md+archive+sensor+results
