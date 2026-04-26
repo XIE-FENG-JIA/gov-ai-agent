@@ -55,3 +55,24 @@ def test_build_report_non_strict_allows_yellow_growth(tmp_path: Path) -> None:
     report = _mod.build_report(repo, {"yellow_count_max": 0, "yellow_max_lines": 0}, strict=False)
 
     assert report["violations"] == []
+
+
+def test_parse_watch_band_accepts_inclusive_range() -> None:
+    assert _mod.parse_watch_band("300-350") == (300, 350)
+
+
+def test_build_report_watch_band_lists_files_without_violations(tmp_path: Path) -> None:
+    repo = _make_repo(tmp_path)
+    (repo / "src" / "watched.py").write_text("x = 1\n" * 340, encoding="utf-8")
+    (repo / "src" / "small.py").write_text("x = 1\n" * 299, encoding="utf-8")
+
+    report = _mod.build_report(
+        repo,
+        {"yellow_count_max": 0, "yellow_max_lines": 0},
+        strict=False,
+        watch_band=(300, 350),
+    )
+
+    assert report["watch_band"] == {"low": 300, "high": 350}
+    assert report["watch"] == [{"path": "src/watched.py", "lines": 340}]
+    assert report["violations"] == []

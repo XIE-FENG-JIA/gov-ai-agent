@@ -9,6 +9,7 @@
   python scripts/check_fat_files.py                  # 只檢查 red (≥400)
   python scripts/check_fat_files.py --strict          # 檢查 red + yellow ratchet
   python scripts/check_fat_files.py --update-baseline # 更新 baseline 並 exit 0
+  python scripts/check_fat_files.py --watch-band 300-350 # 列出指定行數帶檔案，不阻斷
   python scripts/check_fat_files.py --json            # JSON 輸出到 stdout
 """
 from __future__ import annotations
@@ -23,6 +24,19 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 _BASELINE_PATH = _REPO_ROOT / "scripts" / "fat_baseline.json"
 _RED_LIMIT = 400
 _YELLOW_LOW = 350
+
+
+def parse_watch_band(value: str) -> tuple[int, int]:
+    """Parse LOW-HIGH watch band values for non-blocking line-count monitoring."""
+    try:
+        low_text, high_text = value.split("-", 1)
+        low = int(low_text)
+        high = int(high_text)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("watch band must use LOW-HIGH, e.g. 300-350") from exc
+    if low < 1 or high < 1 or low > high:
+        raise argparse.ArgumentTypeError("watch band must be positive and LOW <= HIGH")
+    return low, high
 
 
 def scan_fat_files(repo: Path) -> tuple[list[tuple[str, int]], list[tuple[str, int]]]:
@@ -45,6 +59,23 @@ def scan_fat_files(repo: Path) -> tuple[list[tuple[str, int]], list[tuple[str, i
     red.sort(key=lambda x: -x[1])
     yellow.sort(key=lambda x: -x[1])
     return red, yellow
+
+
+def scan_line_band(repo: Path, low: int, high: int) -> list[tuple[str, int]]:
+    """Return src/ Python files with line counts inside inclusive [low, high]."""
+    src = repo / "src"
+    if not src.exists():
+        return []
+    watched: list[tuple[str, int]] = []
+    for py in src.rglob("*.py"):
+        try:
+            lines = len(py.read_text(encoding="utf-8", errors="replace").splitlines())
+        except OSError:
+            continue
+        if low <= lines <= high:
+            watched.append((py.relative_to(repo).as_posix(), lines))
+    watched.sort(key=lambda x: (-x[1], x[0]))
+    return watched
 
 
 def load_baseline() -> dict:
@@ -77,6 +108,7 @@ def build_report(
     baseline: dict,
     *,
     strict: bool,
+    watch_band: tuple[int, int] | None = None,
 ) -> dict:
     red, yellow = scan_fat_files(repo)
     result: dict = {
@@ -86,6 +118,12 @@ def build_report(
         "baseline_yellow_max_lines": baseline.get("yellow_max_lines", 0),
         "violations": [],
     }
+
+    if watch_band is not None:
+        low, high = watch_band
+        watched = scan_line_band(repo, low, high)
+        result["watch_band"] = {"low": low, "high": high}
+        result["watch"] = [{"path": p, "lines": n} for p, n in watched]
 
     for path, lines in red:
         result["violations"].append(f"RED {path}: {lines} lines ≥ {_RED_LIMIT}")
@@ -116,6 +154,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Write current state as new baseline, then exit 0",
     )
     parser.add_argument("--json", dest="output_json", action="store_true", help="Output JSON report to stdout")
+    parser.add_argument(
+        "--watch-band",
+        type=parse_watch_band,
+        metavar="LOW-HIGH",
+        help="Print non-blocking src/ Python files within inclusive line-count band",
+    )
     args = parser.parse_args(argv)
 
     red, yellow = scan_fat_files(_REPO_ROOT)
@@ -123,12 +167,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.update_baseline:
         save_baseline(yellow)
-        result = build_report(_REPO_ROOT, baseline, strict=args.strict)
+        result = build_report(_REPO_ROOT, baseline, strict=args.strict, watch_band=args.watch_band)
         if args.output_json:
             print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0
 
-    result = build_report(_REPO_ROOT, baseline, strict=args.strict)
+    result = build_report(_REPO_ROOT, baseline, strict=args.strict, watch_band=args.watch_band)
 
     if args.output_json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -137,6 +181,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         for v in result["violations"]:
             print(f"[fat-gate] FAIL: {v}", file=sys.stderr)
         return 1
+
+    if args.watch_band:
+        low, high = args.watch_band
+        watch = result.get("watch", [])
+        print(f"[fat-gate] WATCH {low}-{high}: {len(watch)} files", file=sys.stderr)
+        for item in watch:
+            print(f"[fat-gate] WATCH: {item['path']} {item['lines']} lines", file=sys.stderr)
 
     print(
         f"[fat-gate] OK: red={len(red)} yellow={len(yellow)}"
