@@ -5,7 +5,7 @@ import warnings
 
 try:
     from pydantic.warnings import PydanticDeprecatedSince211
-except Exception:  # pragma: no cover - compatibility with older pydantic
+except (ImportError, AttributeError):  # pragma: no cover - compatibility with older pydantic
     PydanticDeprecatedSince211 = DeprecationWarning
 
 

@@ -16,7 +16,7 @@ def _package_available(pkg_name: str) -> bool:
         __import__(pkg_name)
     except ImportError:
         return False
-    except Exception:
+    except (AttributeError, RuntimeError, SystemError):
         return True
     return True
 

@@ -49,7 +49,7 @@ class RobotsCache:
         try:
             rp.read()
             return rp
-        except Exception as exc:  # noqa: BLE001
+        except (OSError, ValueError) as exc:
             _logger.warning(
                 "robots.txt fetch failed for %s: %s — defaulting to allow",
                 base_url,
