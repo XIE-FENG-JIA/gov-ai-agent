@@ -93,10 +93,15 @@ SAMPLE_GAZETTE_RECORDS = [
 
 
 @pytest.fixture(autouse=True)
-def _clear_caches():
-    """每個測試前後清除類別級快取。"""
+def _clear_caches(monkeypatch):
+    """每個測試前後清除類別級快取，並確保 realtime law lookup 未被 .env 停用。
+
+    .env 可能設有 GOVAI_DISABLE_REALTIME_LAW=1（避免 production timeout），
+    但測試需要透過 mock 走完真正的下載路徑，故每個測試暫時清除此環境變數。
+    """
     LawVerifier._cache = None
     RecentPolicyFetcher._cache = None
+    monkeypatch.delenv("GOVAI_DISABLE_REALTIME_LAW", raising=False)
     yield
     LawVerifier._cache = None
     RecentPolicyFetcher._cache = None

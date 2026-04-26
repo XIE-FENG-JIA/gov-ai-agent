@@ -6,14 +6,15 @@ knowledge_base:
   path: ./kb_data
   contextual_retrieval: false  # 啟用 Contextual Retrieval（匯入時為每個 chunk 加 LLM 生成的上下文摘要前綴）
 llm:
-  api_key: ${MINIMAX_API_KEY}
-  base_url: https://api.minimax.io/v1
+  # 2026-04-27 切 openrouter：MINIMAX_API_KEY 空，改走 OR routing
+  api_key: ${OPENROUTER_API_KEY}
+  base_url: https://openrouter.ai/api/v1
   embedding_model: nvidia/llama-nemotron-embed-vl-1b-v2:free
   embedding_base_url: https://openrouter.ai/api/v1
   embedding_provider: openrouter
   embedding_api_key: ${OPENROUTER_API_KEY}
-  model: openai/MiniMax-M2.7
-  provider: minimax
+  model: minimax/minimax-m2.7
+  provider: openrouter
 organizational_memory:
   default_agencies:
     市政府:

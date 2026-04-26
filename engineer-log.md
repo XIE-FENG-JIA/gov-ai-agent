@@ -170,6 +170,42 @@
 
 ---
 
+---
+
+## 深度回顧 2026-04-27 07:08 — 技術主管近 5 輪根因分析（v8.19-REVIEW；/pua 觸發）
+
+### 近 5 輪事件摘要（v8.15 → v8.19）
+
+| 輪次  | 核心事件                                                | 結果       |
+|-------|---------------------------------------------------------|------------|
+| v8.15 | epic 20 封存；program.md 237→160；3 delayed commits push | ✅ 維護批次 |
+| v8.16 | epic 21 開（runtime guard）；runtime 真量測 50.7s        | ✅ 全閉     |
+| v8.17 | epic 21 T21.1–T21.5 全閉；4039 passed / 141.82s          | ✅ 全閉     |
+| v8.18 | epic 21 封存；epic 22 開（adapter health）；sensor 刷新   | ✅ 全閉     |
+| v8.19 | epic 22 T22.1–T22.5 全閉；adapter_health field 落地      | ⚠️ push 遺漏 |
+
+### 反覆失敗根因
+
+1. **Push flush 被遺忘（結構性週期）**：v8.14 反思記錄 3 commit 未推；v8.15 補推後 v8.19 再現——HEAD=ce17cf4 ≠ origin/main=4c0ce06，1 commit 積壓。program.md header 每輪仍寫 `HEAD=TBD→push` = 佔位符未清 = 視覺遮蔽。根治：push 必為批次最後一 task，sensor 加 `rev_list_ahead` 欄位；非零立即報 soft violation。
+
+2. **Adapter health 全 dry_run 假 OK（第三型假哨兵）**：sensor 顯示 `adapter_health status=ok`，但 5 個 adapter 均 `dry_run/latency=0/count=0`。dry_run 路徑不探針 = 哨兵恆綠。同 baseline 50.0 寫死（第十一型）、openspec 半殭屍 active（第十二型）同型；治本：`--dry-run` 僅做 import smoke，至少一個 adapter 須跑真 probe（有 env key 時）或明確標 `status=dry_run_only`（非 ok）。
+
+3. **realtime_lookup 11 pre-existing encoding fails 累積不清**：v8.19 確認存在但仍標 pre-existing 擱置；當前 `src/knowledge/realtime_lookup.py` 在工作樹有未提交修改（`M`），可能已有部分嘗試修復但未 commit。若每輪測試通過靠 ignore = 真通過率虛報，下輪修改同模組即觸發 cascade。
+
+### 優先序需調整
+
+- **T-PUSH-FLUSH-V8.19（P0；5 min）**：`git push origin main`；補 sensor `rev_list_ahead` 欄位；不推 = CI gate 假驗收第 N 輪。
+- **T-ADAPTER-HEALTH-REAL-PROBE（P0→P1）**：dry_run 哨兵升真 probe 或改報 `status=dry_run_only`；避免第三型假哨兵長期掩蓋 adapter 失聯。
+- **CI integration secret gate（P0 強制，不再 P1）**：連 10+ 輪反思提 OPENROUTER_API_KEY 未設，應在 program.md 加硬政策：`integration skip ≠ pass，= P0 blocker`；不解不開 epic 23。
+- **T-OPENSPEC-EPIC-23-DISCOVERY（P1）**：epic 22 done=29/29，active_epic 空窗已開；選下一 epic 前先解 CI blocker 再開站。
+
+### 隱藏 Blocker
+
+- **工作樹第二型漂浮再生**：`config.yaml M` + `meeting-*.json / writer-*.json ??` 6+ 個未追蹤檔案；`req*.json` 上輪已補 `.gitignore`，但 meeting/writer output 系列未涵蓋；每次手動跑 API 即漂入。需 `.gitignore` 加 `meeting-*.json writer-*.json writer-out-pretty.txt req-out-pretty.txt`。
+- **recall_health skip（口徑放水型）**：sensor 回報 `recall@5 missing from report (skip)` = 哨兵靜默降級，與 epic6_progress done=0/total=0 同型。epic 19 架設 recall 管線後，若不跑真量測 recall_report.json 就永遠 skip = 第四型假綠預兆。
+
+> **底線邏輯**：v8.15–v8.19 整體節奏健康（每 epic 1–2 輪閉環），但「三型假哨兵」再次疊加——adapter_health dry_run 恆綠 ＋ recall_health skip ＋ CI integration 全 skip = sensor 全綠但覆蓋空洞；本輪唯一不可跳過：**T-PUSH-FLUSH-V8.19 + CI integration P0 強制化**，兩件不做 = 下輪回顧仍寫同一段。
+
 ## 下一輪反思（空指引）
 
 <!-- 每輪追加一個 ## 反思 段，保持主檔 ≤ 300 行；超出觸發 T9.6-REOPEN 封存。 -->

@@ -1,0 +1,1 @@
+{"user_input": "發一份函給各區公所，關於春節垃圾清運時間調整，連假期間從除夕到初三暫停清運，初四恢復", "max_rounds": 1, "skip_review": false, "ralph_loop": false, "output_docx": true, "output_filename": "春節清運調整-meeting-test.docx", "use_graph": true}

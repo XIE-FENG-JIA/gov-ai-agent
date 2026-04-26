@@ -71,6 +71,19 @@ class LawVerifier:
         ):
             return
 
+        # 2026-04-27：law.moj.gov.tw 對外 IP 限制造成連線必 timeout，
+        # 加 env disable + 可調 timeout，避免 meeting 卡 90s+ 法規查核
+        import os as _os
+        if _os.environ.get("GOVAI_DISABLE_REALTIME_LAW", "").lower() in ("1", "true", "yes"):
+            with LawVerifier._cache_lock:
+                if LawVerifier._cache is None:
+                    empty_cache = _LawCacheEntry(data={})
+                    LawVerifier._cache = empty_cache
+                    logger.info("realtime_lookup 已停用（GOVAI_DISABLE_REALTIME_LAW=1）")
+            return
+
+        timeout_s = int(_os.environ.get("GOVAI_LAW_TIMEOUT", "120"))
+
         with LawVerifier._cache_lock:
             # Double-check：進入鎖後再確認一次（避免多執行緒重複下載）
             now = time.time()
@@ -82,7 +95,7 @@ class LawVerifier:
 
             logger.info("正在下載全國法規資料庫（首次載入約需 3 秒）...")
             try:
-                resp = _request_with_retry(LAW_API_URL, timeout=120)
+                resp = _request_with_retry(LAW_API_URL, timeout=timeout_s)
 
                 laws = self._parse_laws(resp.content)
                 cache_data: dict[str, dict] = {}

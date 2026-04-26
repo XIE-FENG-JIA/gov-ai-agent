@@ -5,6 +5,13 @@
 > 歷史 v8.6/v8.8 P0/P1/P2 已封存：[docs/archive/program-history-202604Q.md](docs/archive/program-history-202604Q.md)（T-PROGRAM-MD-ARCHIVE-202604Q；2026-04-27）
 > 歷史 v8.10–v8.14 P0/P1/P2 已封存：[docs/archive/program-history-202604S.md](docs/archive/program-history-202604S.md)（T-PROGRAM-MD-SOFT-CAP-V8.15；2026-04-27）
 
+> **v8.20 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
+> - ✅ **T-EPIC-22-ARCHIVE** epic 22 (source-adapter-health-metrics) 封存至 openspec/changes/archive/2026-04-27-22-...；INDEX.md status=100% (6/6)；git rm active dir
+> - ✅ **T-RESULTS-LOG-SOFT-CAP-V8.20** results.log 110→100 行；10 行封存 results-archive/202604V.log
+> - ✅ **T-OPENSPEC-EPIC-23-DISCOVERY** `tests/test_realtime_lookup.py` 6 pre-existing failures 修復（`GOVAI_DISABLE_REALTIME_LAW` env bypass；`_clear_caches` fixture + monkeypatch.delenv）；48 passed；openspec/changes/23-... 建立
+> - ✅ **T-SENSOR-JSON-REFRESH-V8.20** sensor.json live 更新（results_log=100；active_epic=23 done=4/4；violations=[]）；sensor tests passed
+> - ✅ **T-PROGRAM-MD-V8.20-HEADER** program.md v8.20 header + 5 任務 [x]；results.log 追加 5 行 PASS；一次 commit 落版
+
 > **v8.19 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
 > - ✅ **T22.1-ADAPTER-HEALTH-SCRIPT** `scripts/adapter_health.py` 建立（AdapterHealthProbe + --dry-run + --human）；AC-1/AC-2 通過；exit 0
 > - ✅ **T22.2-SENSOR-INTEGRATION** `check_adapter_health()` 加入 sensor_refresh.py；`adapter_health` 欄位在 sensor JSON；AC-3/AC-5 通過

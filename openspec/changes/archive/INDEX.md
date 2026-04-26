@@ -26,7 +26,13 @@ This index records all completed and archived openspec change sets.
 | 20-pytest-runtime-regression-guard | 2026-04-27 | pytest runtime 回歸守衛（measure_pytest_runtime.py / ceiling ratchet-down / sensor check_pytest_runtime / 8 unit tests / CONTRIBUTING docs） | T20.1–T20.5 | 100% (5/5) |
 | 21-cold-runtime-root-cause-fix | 2026-04-27 | cold runtime 根因修復（real baseline measurement / --durations=10 profile / top-3 slow test fix / sensor ceiling activation） | T21.1–T21.5 | 100% (5/5) |
 
-| 22-source-adapter-health-metrics | 2026-04-27 | Source adapter health metrics（adapter_health.py probe / dry-fetch limit=3 / sensor adapter_health field / soft violation on zero-count / 6 unit tests / CONTRIBUTING docs） | T22.1–T22.6 | active |
+| 22-source-adapter-health-metrics | 2026-04-27 | Source adapter health metrics（adapter_health.py probe / dry-fetch limit=3 / sensor adapter_health field / soft violation on zero-count / 6 unit tests / CONTRIBUTING docs） | T22.1–T22.6 | 100% (6/6) |
+
+## Active Epics
+
+| ID | Created | Summary | Tasks | Status |
+|----|---------|---------|-------|--------|
+| 23-realtime-law-disable-test-fix | 2026-04-27 | Realtime law disable test fix（`GOVAI_DISABLE_REALTIME_LAW` bypass 診斷 + `_clear_caches` monkeypatch 修復 / 48 passed） | T23.1–T23.4 | active |
 
 ## Notes
 
