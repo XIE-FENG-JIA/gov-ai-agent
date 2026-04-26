@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>引擎切換器 · gov-ai</title>
+<style>
+  :root {
+    --primary: #0F4C75;
+    --accent: #E08E45;
+    --green: #10B981;
+    --amber: #F59E0B;
+    --red: #EF4444;
+    --bg: #F8FAFC;
+    --card: #FFFFFF;
+    --border: #E2E8F0;
+    --text: #1E293B;
+    --muted: #64748B;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Noto Sans TC", "Inter", -apple-system, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 32px 16px 64px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; color: var(--primary); }
+  .sub { color: var(--muted); margin: 0 0 24px; font-size: 13px; }
+  .quota-bar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .qcell { display: flex; flex-direction: column; gap: 2px; }
+  .qcell .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .qcell .val { font-size: 18px; font-weight: 600; font-family: "JetBrains Mono", monospace; }
+  .stale-banner {
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .stale-banner.stale {
+    display: block;
+    background: #FEF3C7;
+    color: #92400E;
+    border: 1px solid var(--amber);
+  }
+  .stale-banner.fresh {
+    display: block;
+    background: #D1FAE5;
+    color: #065F46;
+    border: 1px solid var(--green);
+  }
+  .ws-dot {
+    display: inline-block;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #94A3B8;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .ws-dot.live { background: var(--green); animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(15,76,117,0.08); }
+  .card.active {
+    border-color: var(--primary);
+    background: linear-gradient(180deg, rgba(15,76,117,0.04), transparent);
+    box-shadow: 0 0 0 2px rgba(15,76,117,0.15);
+  }
+  .card.disabled { opacity: 0.5; cursor: not-allowed; }
+  .row { display: flex; align-items: baseline; gap: 8px; }
+  .icon { font-size: 22px; }
+  .name { font-weight: 600; font-size: 15px; flex: 1; }
+  .id { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--muted); }
+  .tags { display: flex; gap: 4px; flex-wrap: wrap; margin: 8px 0; }
+  .tag {
+    font-size: 10px; padding: 2px 8px; border-radius: 999px;
+    background: #F1F5F9; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .tag.smart { background: #DBEAFE; color: #1E40AF; }
+  .tag.fast { background: #FEF3C7; color: #92400E; }
+  .tag.cheap { background: #DCFCE7; color: #166534; }
+  .tag.premium { background: #FCE7F3; color: #9F1239; }
+  .tag.default { background: var(--primary); color: white; }
+  .price-row {
+    display: flex; gap: 12px;
+    padding-top: 8px; margin-top: 8px;
+    border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--muted); font-family: "JetBrains Mono", monospace;
+  }
+  .price-row .pcell { display: flex; flex-direction: column; gap: 1px; }
+  .price-row .pval { font-weight: 600; color: var(--text); font-size: 13px; }
+  .note { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+  .selected-banner {
+    background: var(--primary); color: white;
+    padding: 14px 18px; border-radius: 12px;
+    margin: 20px 0 12px;
+    font-size: 14px; display: flex; align-items: center; gap: 10px;
+    display: none;
+  }
+  .selected-banner.show { display: flex; }
+  .footer { color: var(--muted); font-size: 11px; margin-top: 32px; text-align: center; }
+  .footer code { background: #F1F5F9; padding: 2px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🤖 引擎切換器</h1>
+  <p class="sub"><span class="ws-dot" id="ws-dot"></span><span id="ws-status">連線中…</span> · 拉通自 <code style="font-family:monospace">config/engines.yaml</code> + <code style="font-family:monospace">model-pricing.json</code></p>
+
+  <div id="stale-banner" class="stale-banner"></div>
+
+  <div class="quota-bar">
+    <div class="qcell"><span class="lbl">Premium 剩餘</span><span class="val" id="q-premium">—</span></div>
+    <div class="qcell"><span class="lbl">7d 累計 USD</span><span class="val" id="q-usd">—</span></div>
+    <div class="qcell"><span class="lbl">7d 累計 NTD</span><span class="val" id="q-twd">—</span></div>
+    <div class="qcell"><span class="lbl">Cache 命中率</span><span class="val" id="q-cache">—</span></div>
+    <div class="qcell"><span class="lbl">當前模型</span><span class="val" id="q-model">—</span></div>
+    <div class="qcell"><span class="lbl">第幾輪</span><span class="val" id="q-round">—</span></div>
+  </div>
+
+  <div id="selected" class="selected-banner">
+    <span>已選擇</span>
+    <strong id="selected-name"></strong>
+  </div>
+
+  <div class="grid" id="grid">載入中…</div>
+
+  <div class="footer">
+    動態源：<code>GET /api/v1/engines</code> + <code>WS /api/v1/engines/ws</code> · 更新 5s tick · 改 yaml 立即觸發 config_changed
+  </div>
+</div>
+
+<script>
+const grid = document.getElementById('grid');
+const selBan = document.getElementById('selected');
+const selName = document.getElementById('selected-name');
+const wsDot = document.getElementById('ws-dot');
+const wsStatus = document.getElementById('ws-status');
+const staleBanner = document.getElementById('stale-banner');
+let activeId = localStorage.getItem('gov-ai-engine') || 'sonnet';
+
+function fmtPrice(p) {
+  if (!p || p.input == null) return '—';
+  return `$${p.input}/$${p.output}`;
+}
+
+function renderQuota(q) {
+  if (!q) return;
+  document.getElementById('q-premium').textContent = q.premium_left ?? '—';
+  document.getElementById('q-usd').textContent = q.usd_rolling7d != null ? '$' + q.usd_rolling7d : '—';
+  document.getElementById('q-twd').textContent = q.twd_rolling7d != null ? 'NT$' + q.twd_rolling7d : '—';
+  document.getElementById('q-cache').textContent = q.cache_hit_pct != null ? q.cache_hit_pct + '%' : '—';
+  document.getElementById('q-model').textContent = q.current_engine_model ?? '—';
+  document.getElementById('q-round').textContent = q.current_round ? '第 ' + q.current_round + ' 輪' : '—';
+}
+
+function renderStale(meta) {
+  if (!meta) return;
+  if (meta.stale) {
+    staleBanner.className = 'stale-banner stale';
+    staleBanner.textContent = `⚠ 定價資料已 ${meta.days_since_update} 天未更新（上次 ${meta.updated}）— 請執行 refresh-pricing-sop`;
+  } else if (meta.updated) {
+    staleBanner.className = 'stale-banner fresh';
+    staleBanner.textContent = `✓ 定價已對齊（${meta.updated}）— 下次審查 ${meta.next_review || '—'}`;
+  } else {
+    staleBanner.className = 'stale-banner';
+  }
+}
+
+function pickEngine(eng) {
+  activeId = eng.id;
+  localStorage.setItem('gov-ai-engine', eng.id);
+  selBan.classList.add('show');
+  selName.textContent = `${eng.icon} ${eng.display_name} · ${eng.model_id}`;
+  document.querySelectorAll('.card').forEach(c => c.classList.toggle('active', c.dataset.id === eng.id));
+}
+
+function renderEngines(list) {
+  grid.innerHTML = '';
+  list.forEach(eng => {
+    const card = document.createElement('div');
+    card.className = 'card' + (eng.id === activeId ? ' active' : '') + (eng.status !== 'active' ? ' disabled' : '');
+    card.dataset.id = eng.id;
+    card.innerHTML = `
+      <div class="row">
+        <span class="icon">${eng.icon || '🔧'}</span>
+        <span class="name">${eng.display_name}</span>
+        <span class="id">${eng.id}</span>
+      </div>
+      <div class="tags">
+        ${(eng.tags || []).map(t => `<span class="tag ${t}">${t}</span>`).join('')}
+      </div>
+      ${eng.notes ? `<div class="note">${eng.notes}</div>` : ''}
+      ${eng.pricing ? `
+      <div class="price-row">
+        <div class="pcell"><span>輸入</span><span class="pval">$${eng.pricing.input}/M</span></div>
+        <div class="pcell"><span>cache</span><span class="pval">$${eng.pricing.cached_read}/M</span></div>
+        <div class="pcell"><span>輸出</span><span class="pval">$${eng.pricing.output}/M</span></div>
+      </div>` : `<div class="price-row"><div class="pcell"><span>計費</span><span class="pval">${eng.quota_source}</span></div></div>`}
+    `;
+    if (eng.status === 'active') card.addEventListener('click', () => pickEngine(eng));
+    grid.appendChild(card);
+  });
+  const cur = list.find(e => e.id === activeId);
+  if (cur) pickEngine(cur);
+}
+
+async function bootstrap() {
+  try {
+    const r = await fetch('/api/v1/engines');
+    const data = await r.json();
+    renderEngines(data.engines);
+    renderQuota(data.quota);
+    renderStale(data.pricing_meta);
+  } catch (e) {
+    grid.innerHTML = `<div style="color:var(--red)">REST 失敗：${e.message}</div>`;
+  }
+}
+
+function connectWs() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws = new WebSocket(`${proto}//${location.host}/api/v1/engines/ws`);
+  ws.onopen = () => { wsDot.classList.add('live'); wsStatus.textContent = 'WS live'; };
+  ws.onclose = () => { wsDot.classList.remove('live'); wsStatus.textContent = 'WS 斷線（5s 重連）'; setTimeout(connectWs, 5000); };
+  ws.onerror = () => { wsStatus.textContent = 'WS error'; };
+  ws.onmessage = (ev) => {
+    const msg = JSON.parse(ev.data);
+    if (msg.type === 'init' || msg.type === 'config_changed') {
+      renderEngines(msg.engines);
+      renderQuota(msg.quota);
+      renderStale(msg.pricing_meta);
+      if (msg.type === 'config_changed') {
+        wsStatus.textContent = 'WS live · yaml 已重載';
+        setTimeout(() => wsStatus.textContent = 'WS live', 3000);
+      }
+    } else if (msg.type === 'quota_tick') {
+      renderQuota(msg.quota);
+      renderStale(msg.pricing_meta);
+    }
+  };
+}
+
+bootstrap();
+connectWs();
+</script>
+</body>
+</html>

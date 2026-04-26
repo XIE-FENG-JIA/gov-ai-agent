@@ -1,0 +1,106 @@
+# gov-ai 引擎清單 — Single Source of Truth
+# 底層邏輯：UI、CLI、auto-engineer 全部從這裡讀。
+# 改一處全鏈路同步。
+#
+# 欄位對齊：
+# - id            : 程式內唯一 key（UI value、CLI flag、log key）
+# - display_name  : UI 顯示名（給承辦人看）
+# - icon          : emoji or short symbol
+# - family        : claude / openai / openrouter / google / mistral
+# - model_id      : 真實 model 字串（送 LLM API 用）
+# - endpoint      : API base URL（含 /v1 等）
+# - status        : active / disabled / deprecated
+# - quota_source  : 對應哪個成本/quota 計算源
+# - pricing_ref   : 對 D:/auto-dev/scripts/model-pricing.json 的 key（若 null 表示走 quota 不計 token）
+# - tags          : 給 UI 過濾用（fast / smart / cheap / premium）
+# - notes         : 自由註記
+
+_meta:
+  version: 1
+  updated: "2026-04-26"
+  pricing_source: "D:/auto-dev/scripts/model-pricing.json"
+  stale_warn_days: 14   # pricing.json 超過 N 天沒更新，前端顯示警告
+
+engines:
+  - id: sonnet
+    display_name: claude-sonnet-4.6
+    icon: 🤖
+    family: claude
+    model_id: claude-sonnet-4-6
+    endpoint: https://api.anthropic.com/v1
+    status: active
+    quota_source: copilot_premium
+    pricing_ref: claude-sonnet-4.6
+    tags: [smart, default]
+    notes: "現役預設引擎；copilot pro+ premium 不另計 token 成本"
+
+  - id: opus
+    display_name: claude-opus-4.7
+    icon: 🧠
+    family: claude
+    model_id: claude-opus-4-7
+    endpoint: https://api.anthropic.com/v1
+    status: active
+    quota_source: cc_token
+    pricing_ref: claude-opus-4.7
+    tags: [smart, premium]
+    notes: "推理最強；按 token 計費"
+
+  - id: haiku
+    display_name: claude-haiku-4.5
+    icon: ⚡
+    family: claude
+    model_id: claude-haiku-4-5-20251001
+    endpoint: https://api.anthropic.com/v1
+    status: active
+    quota_source: cc_token
+    pricing_ref: claude-haiku-4.5
+    tags: [fast, cheap]
+    notes: "輕量 fallback"
+
+  - id: gpt55
+    display_name: gpt-5.5
+    icon: 🟢
+    family: openai
+    model_id: gpt-5.5
+    endpoint: https://api.openai.com/v1
+    status: active
+    quota_source: codex_chatgpt
+    pricing_ref: gpt-5.5
+    tags: [smart, premium]
+    notes: "2026-04-23 release，比 5.4 雙倍漲價"
+
+  - id: gpt54
+    display_name: gpt-5.4
+    icon: 🟢
+    family: openai
+    model_id: gpt-5.4
+    endpoint: https://api.openai.com/v1
+    status: active
+    quota_source: codex_chatgpt
+    pricing_ref: gpt-5.4
+    tags: [smart, default]
+    notes: "context > 272K input 翻倍 $5/M"
+
+  - id: gpt54mini
+    display_name: gpt-5.4-mini
+    icon: 🟢
+    family: openai
+    model_id: gpt-5.4-mini
+    endpoint: https://api.openai.com/v1
+    status: active
+    quota_source: codex_chatgpt
+    pricing_ref: gpt-5.4-mini
+    tags: [fast, cheap]
+
+  - id: deepseek
+    display_name: openrouter / deepseek-v4
+    icon: 🟦
+    family: openrouter
+    model_id: deepseek/deepseek-v4
+    endpoint: https://openrouter.ai/api/v1
+    status: active
+    quota_source: openrouter_credits
+    pricing_ref: null
+    tags: [cheap]
+    notes: "OpenRouter 上 deepseek，計費走 OR credits"

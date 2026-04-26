@@ -17,7 +17,7 @@ import src.api.dependencies as _deps
 import src.api.middleware as _mw
 from src.api.dependencies import get_config, get_kb, get_llm
 from src.api.middleware import RequestBodyLimitMiddleware, security_middleware
-from src.api.routes import agents, health, knowledge, workflow
+from src.api.routes import agents, engines, health, knowledge, workflow
 from src.api._startup import _cleanup_old_outputs, _preflight_check, _warmup_law_cache
 from src.core.constants import API_VERSION
 from src.core.logging_config import setup_logging as _shared_setup_logging
@@ -162,6 +162,32 @@ def _mount_web_ui(app: FastAPI) -> None:
     except ImportError:
         logger.warning("Web UI 模組未安裝，跳過掛載。")
 
+    # gov-ai/static — 引擎切換器 + mockup（顶层設計：UI 與 backend 拉通）
+    from pathlib import Path
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse, RedirectResponse
+
+    static_dir = Path(__file__).resolve().parents[2] / "static"
+    if static_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+        logger.info("Static 目錄掛載於 /static (%s)", static_dir)
+
+        @app.get("/engine", include_in_schema=False)
+        async def _engine_switcher() -> FileResponse:
+            return FileResponse(str(static_dir / "engine-switcher.html"))
+
+        mockup = static_dir / "gov-ai-mockup-v1.html"
+        if not mockup.exists():
+            alt = Path(__file__).resolve().parents[2] / "gov-ai-mockup-v1.html"
+            if alt.exists():
+                mockup = alt
+
+        if mockup.exists():
+            @app.get("/mockup", include_in_schema=False)
+            async def _mockup() -> FileResponse:
+                return FileResponse(str(mockup))
+            logger.info("Mockup 掛載於 /mockup (%s)", mockup)
+
 
 def _configure_middleware(app: FastAPI) -> None:
     app.middleware("http")(security_middleware)
@@ -173,6 +199,7 @@ def _include_routers(app: FastAPI) -> None:
     app.include_router(agents.router)
     app.include_router(workflow.router)
     app.include_router(knowledge.router)
+    app.include_router(engines.router)
 
 
 def create_app() -> FastAPI:
