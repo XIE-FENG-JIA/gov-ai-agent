@@ -1,27 +1,7 @@
 {
-  "yellow_count_max": 6,
-  "yellow_max_lines": 375,
+  "yellow_count_max": 1,
+  "yellow_max_lines": 350,
   "yellow_files": [
-    {
-      "path": "src/knowledge/manager.py",
-      "lines": 375
-    },
-    {
-      "path": "src/cli/wizard_cmd.py",
-      "lines": 374
-    },
-    {
-      "path": "src/core/constants.py",
-      "lines": 374
-    },
-    {
-      "path": "src/web_preview/app.py",
-      "lines": 364
-    },
-    {
-      "path": "src/knowledge/_manager_hybrid.py",
-      "lines": 358
-    },
     {
       "path": "src/cli/template_cmd/catalog.py",
       "lines": 350

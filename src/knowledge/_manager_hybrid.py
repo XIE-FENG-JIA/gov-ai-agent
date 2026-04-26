@@ -265,41 +265,6 @@ class KnowledgeHybridSearchMixin:
 
         return results
 
-    @staticmethod
-    def _rrf_fuse(
-        vector_results: list[dict],
-        bm25_results: list[dict],
-        n_results: int,
-        k: int = 60,
-    ) -> list[dict]:
-        """用 Reciprocal Rank Fusion 融合向量搜尋和 BM25 搜尋的排名。"""
-        doc_map: dict[str, dict] = {}
-        rrf_scores: dict[str, float] = {}
-
-        vector_sorted = sorted(vector_results, key=lambda x: x.get("distance") or 1.0)
-        for rank, doc in enumerate(vector_sorted):
-            doc_id = doc["id"]
-            rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + 1.0 / (k + rank + 1)
-            if doc_id not in doc_map:
-                doc_map[doc_id] = doc
-
-        for rank, doc in enumerate(bm25_results):
-            doc_id = doc["id"]
-            rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + 1.0 / (k + rank + 1)
-            if doc_id not in doc_map:
-                doc_map[doc_id] = doc
-
-        sorted_ids = sorted(rrf_scores, key=lambda x: rrf_scores[x], reverse=True)
-
-        results: list[dict] = []
-        for doc_id in sorted_ids[:n_results]:
-            doc = doc_map[doc_id].copy()
-            doc["_rrf_score"] = rrf_scores[doc_id]
-            doc.pop("_bm25_score", None)
-            results.append(doc)
-
-        return results
-
     def _keyword_fallback_search(
         self,
         query: str,
