@@ -831,3 +831,4 @@ PASS T-FAT-WATCH-CUT-V3  # fat-watch 12→9; app.py 348→300, gazette_fetcher.p
 2026-04-26T17:52:10 PASS T-RUNTIME-RATCHET-SENSOR: Added pytest_cold_runtime_secs field to sensor_refresh.py (soft=200s/hard=300s); created check_runtime.py + runtime_baseline.json(50s seed); +3 tests in test_sensor_refresh.py = 20 passed
 [2026-04-26 18:00:00 +0800] | 決策：提交 T-RUNTIME-RATCHET-SENSOR runtime 哨兵 | FAIL-BLOCKED | 程式與測試 PASS（tests/test_sensor_refresh.py 20 passed / 11.43s；check_runtime --strict --no-measure PASS 50.0s），但 git add/commit 被既有 .git/index.lock 擋下；本輪產生的 sensor.json 也因 Windows PermissionError/command policy 無法刪除。
 2026-04-26T17:53:40 PASS T-OPENSPEC-EPIC-NEXT-DISCOVERY: Created openspec/changes/18-multi-llm-provider-abstraction/ with proposal.md + tasks.md (T18.1-T18.6); active=1
+2026-04-26T17:55:08 PASS T-COMMIT-PUSH-V8.4-WORKTREE-FLUSH: 4 commits pushed (d2e3986..2ec3caf); origin/main=HEAD; rev-list=0
