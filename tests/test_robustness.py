@@ -41,6 +41,7 @@ from src.agents.compliance_checker import ComplianceChecker
 from src.agents.org_memory import OrganizationalMemory
 from src.agents.review_parser import parse_review_response, _extract_json_object
 from src.document.exporter import DocxExporter
+import src.knowledge.manager as kb_manager_module
 from src.knowledge.manager import KnowledgeBaseManager
 
 
@@ -979,35 +980,55 @@ code block
 class TestGracefulDegradation:
     """測試各種服務不可用時系統仍能運作"""
 
-    def test_kb_init_failure_graceful(self, tmp_path, mock_llm):
+    @pytest.fixture(autouse=True)
+    def reset_kb_manager_chromadb(self, monkeypatch):
+        """每測試前 reset KnowledgeBaseManager 的 chromadb module-state。
+
+        使用 monkeypatch 確保 teardown 自動還原，避免不同 xdist worker 內的測試
+        在共用 module 屬性上發生 state leak。
+        """
+        real_chromadb = importlib.import_module("chromadb")
+        monkeypatch.setattr(kb_manager_module, "chromadb", real_chromadb)
+        monkeypatch.setattr(kb_manager_module, "_CHROMADB_IMPORT_FAILED", False)
+        yield
+        # monkeypatch 自動還原；yield 使 teardown 順序可預期
+
+    def test_kb_init_failure_graceful(self, tmp_path, mock_llm, monkeypatch):
         """測試 ChromaDB 初始化失敗時的優雅降級"""
-        # 使用一個無效路徑觸發失敗
-        with patch("src.knowledge.manager.chromadb.PersistentClient") as mock_client:
-            mock_client.side_effect = Exception("ChromaDB init failed")
-            kb = KnowledgeBaseManager("/invalid/path", mock_llm)
-            assert kb._available is False
-            assert kb.get_stats() == {
-                "examples_count": 0,
-                "regulations_count": 0,
-                "policies_count": 0,
-            }
+        # 替換整個 chromadb 參照而非修改真實 chromadb 模組屬性，
+        # 避免 xdist 同 worker 內其他測試的 attribute-level patch 互相干擾。
+        mock_chromadb = MagicMock()
+        mock_chromadb.PersistentClient.side_effect = Exception("ChromaDB init failed")
+        monkeypatch.setattr(kb_manager_module, "chromadb", mock_chromadb)
 
-    def test_kb_unavailable_search_returns_empty(self, tmp_path, mock_llm):
+        kb = KnowledgeBaseManager("/invalid/path", mock_llm)
+        assert kb._available is False
+        assert kb.get_stats() == {
+            "examples_count": 0,
+            "regulations_count": 0,
+            "policies_count": 0,
+        }
+
+    def test_kb_unavailable_search_returns_empty(self, tmp_path, mock_llm, monkeypatch):
         """測試知識庫不可用時搜尋回傳空列表"""
-        with patch("src.knowledge.manager.chromadb.PersistentClient") as mock_client:
-            mock_client.side_effect = Exception("DB error")
-            kb = KnowledgeBaseManager("/bad/path", mock_llm)
-            assert kb.search_examples("query") == []
-            assert kb.search_regulations("query") == []
-            assert kb.search_policies("query") == []
+        mock_chromadb = MagicMock()
+        mock_chromadb.PersistentClient.side_effect = Exception("DB error")
+        monkeypatch.setattr(kb_manager_module, "chromadb", mock_chromadb)
 
-    def test_kb_unavailable_add_returns_none(self, tmp_path, mock_llm):
+        kb = KnowledgeBaseManager("/bad/path", mock_llm)
+        assert kb.search_examples("query") == []
+        assert kb.search_regulations("query") == []
+        assert kb.search_policies("query") == []
+
+    def test_kb_unavailable_add_returns_none(self, tmp_path, mock_llm, monkeypatch):
         """測試知識庫不可用時新增回傳 None"""
-        with patch("src.knowledge.manager.chromadb.PersistentClient") as mock_client:
-            mock_client.side_effect = Exception("DB error")
-            kb = KnowledgeBaseManager("/bad/path", mock_llm)
-            result = kb.add_document("content", {"title": "test"})
-            assert result is None
+        mock_chromadb = MagicMock()
+        mock_chromadb.PersistentClient.side_effect = Exception("DB error")
+        monkeypatch.setattr(kb_manager_module, "chromadb", mock_chromadb)
+
+        kb = KnowledgeBaseManager("/bad/path", mock_llm)
+        result = kb.add_document("content", {"title": "test"})
+        assert result is None
 
     def test_kb_add_empty_content(self, tmp_path, mock_llm):
         """測試知識庫新增空白內容回傳 None"""
