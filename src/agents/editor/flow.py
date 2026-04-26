@@ -264,6 +264,15 @@ class EditorFlowMixin:
         phase: str,
     ) -> tuple[list[ReviewResult], list[str]]:
         """只重跑上一輪在指定 phase 有 issues 的 Agent，其餘沿用舊結果。"""
+        # Early return: avoid building factories (and accessing _executor) if no agents need rerunning.
+        affected_agents = {
+            result.agent_name
+            for result in prev_results
+            if any(issue.severity == phase for issue in result.issues)
+        }
+        if not affected_agents:
+            return prev_results, []
+
         agent_factories: dict = {
             "Format Auditor": lambda: format_audit_to_review_result(
                 self.format_auditor.audit(draft, doc_type)

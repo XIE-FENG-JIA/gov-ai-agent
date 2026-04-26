@@ -5,6 +5,13 @@
 > 歷史 v8.6/v8.8 P0/P1/P2 已封存：[docs/archive/program-history-202604Q.md](docs/archive/program-history-202604Q.md)（T-PROGRAM-MD-ARCHIVE-202604Q；2026-04-27）
 > 歷史 v8.10–v8.14 P0/P1/P2 已封存：[docs/archive/program-history-202604S.md](docs/archive/program-history-202604S.md)（T-PROGRAM-MD-SOFT-CAP-V8.15；2026-04-27）
 
+> **v8.16 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
+> - ✅ **T-RESULTS-LOG-SOFT-CAP-V8.16** results.log 120→100 行；20 行封存 results-archive/202604T.log
+> - ✅ **T-OPENSPEC-EPIC-21-DISCOVERY** openspec/changes/21-cold-runtime-root-cause-fix/ 建立（.openspec.yaml + proposal.md + tasks.md）；INDEX.md 補 epic 21 條目；sensor active_epic=21 total=21
+> - ✅ **T-RUNTIME-ROOT-CAUSE-DIAG** pytest --durations=10 profile；9 pre-existing test failures 發現並修復（utils_io.py missing import yaml + flow.py _executor early-exit）；4039 passed；docs/pytest-runtime-profile.md 建立
+> - ✅ **T-SENSOR-JSON-REFRESH-V8.16** sensor.json live 更新（pytest_runtime.status=ok；ceiling=76.05/last=50.7；active_epic=21；violations=[]）；45 sensor tests passed
+> - ✅ **T-PROGRAM-MD-V8.16-HEADER** program.md v8.16 header + 5 任務 [x]；results.log 追加 5 行 PASS；一次 commit 落版
+
 > **v8.15 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
 > - ✅ **T-EPIC-20-ARCHIVE** epic 20 (pytest-runtime-regression-guard) 封存至 openspec/changes/archive/2026-04-27-20-...；INDEX.md 補 epic 20 條目；sensor active_epic="" 驗收
 > - ✅ **T-SENSOR-JSON-REFRESH-V8.15** sensor.json 以 live 真值更新（program_md=160/engineer_log=176/results_log=115；無 violations）

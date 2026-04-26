@@ -12,6 +12,8 @@ import os
 import shutil
 from typing import Any
 
+import yaml
+
 from src.cli._atomic_writes import (  # noqa: F401 — re-exported for callers
     _ATOMIC_TMP_MAX_AGE_SECONDS,
     _ATOMIC_TMP_PREFIXES,
