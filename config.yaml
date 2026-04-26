@@ -11,6 +11,7 @@ llm:
   embedding_model: nvidia/llama-nemotron-embed-vl-1b-v2:free
   embedding_base_url: https://openrouter.ai/api/v1
   embedding_provider: openrouter
+  embedding_api_key: ${OPENROUTER_API_KEY}
   model: openai/MiniMax-M2.7
   provider: minimax
 organizational_memory:
