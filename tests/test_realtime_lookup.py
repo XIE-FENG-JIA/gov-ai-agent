@@ -614,41 +614,57 @@ class TestSSLVerificationEnabled:
 class TestXXEPrevention:
     """確認 XML 解析使用 defusedxml，可防禦 XXE 攻擊。"""
 
+    @staticmethod
+    def _assert_xxe_safe_module(module, *, parser_module=None):
+        """Assert XML parsing remains routed through defusedxml after module splits."""
+        import inspect
+
+        source = inspect.getsource(module)
+        assert "import xml.etree.ElementTree" not in source, (
+            f"{module.__name__} 不應使用標準 xml.etree.ElementTree"
+        )
+
+        if "defusedxml" in source:
+            return
+
+        assert parser_module is not None, (
+            f"{module.__name__} 未直接使用 defusedxml 時，測試必須指定抽出的 parser 模組"
+        )
+        parser_source = inspect.getsource(parser_module)
+        assert "_parser import" in source or " import _parser" in source, (
+            f"{module.__name__} 應明確匯入抽出的 parser 模組"
+        )
+        assert "defusedxml" in parser_source, (
+            f"{parser_module.__name__} 應使用 defusedxml.ElementTree"
+        )
+        assert "import xml.etree.ElementTree" not in parser_source, (
+            f"{parser_module.__name__} 不應使用標準 xml.etree.ElementTree"
+        )
+
     def test_realtime_lookup_uses_defusedxml(self):
         """realtime_lookup 模組應使用 defusedxml 而非標準 xml.etree.ElementTree。"""
         import src.knowledge.realtime_lookup as mod
-        import inspect
-        source = inspect.getsource(mod)
-        assert "defusedxml" in source, (
-            "realtime_lookup 應使用 defusedxml.ElementTree"
-        )
-        assert "import xml.etree.ElementTree" not in source, (
-            "realtime_lookup 不應使用標準 xml.etree.ElementTree"
-        )
+
+        self._assert_xxe_safe_module(mod)
 
     def test_gazette_fetcher_uses_defusedxml(self):
         """gazette_fetcher 模組應使用 defusedxml。"""
         import src.knowledge.fetchers.gazette_fetcher as mod
-        import inspect
-        source = inspect.getsource(mod)
-        assert "defusedxml" in source
-        assert "import xml.etree.ElementTree" not in source
+        import src.knowledge.fetchers._parser as parser_mod
+
+        self._assert_xxe_safe_module(mod, parser_module=parser_mod)
 
     def test_law_fetcher_uses_defusedxml(self):
         """law_fetcher 模組應使用 defusedxml。"""
         import src.knowledge.fetchers.law_fetcher as mod
-        import inspect
-        source = inspect.getsource(mod)
-        assert "defusedxml" in source
-        assert "import xml.etree.ElementTree" not in source
+
+        self._assert_xxe_safe_module(mod)
 
     def test_npa_fetcher_uses_defusedxml(self):
         """npa_fetcher 模組應使用 defusedxml。"""
         import src.knowledge.fetchers.npa_fetcher as mod
-        import inspect
-        source = inspect.getsource(mod)
-        assert "defusedxml" in source
-        assert "import xml.etree.ElementTree" not in source
+
+        self._assert_xxe_safe_module(mod)
 
     def test_xxe_payload_rejected_by_parse_xml(self):
         """RecentPolicyFetcher._parse_xml 應拒絕含 XXE 的 XML。"""
