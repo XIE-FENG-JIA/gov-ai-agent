@@ -5,6 +5,13 @@
 > 歷史 v8.6/v8.8 P0/P1/P2 已封存：[docs/archive/program-history-202604Q.md](docs/archive/program-history-202604Q.md)（T-PROGRAM-MD-ARCHIVE-202604Q；2026-04-27）
 > 歷史 v8.10–v8.14 P0/P1/P2 已封存：[docs/archive/program-history-202604S.md](docs/archive/program-history-202604S.md)（T-PROGRAM-MD-SOFT-CAP-V8.15；2026-04-27）
 
+> **v8.17 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
+> - ✅ **T21.1-BASELINE-VERIFY** pytest_runtime_baseline.json ceiling_s=76.05/last_s=50.7 已確認；tasks.md T21.1 全 [x]；sensor active_epic done=21/21
+> - ✅ **T21.2-PROFILE-DONE** docs/pytest-runtime-profile.md top-10 table + 分類已存在；tasks.md T21.2 全 [x]
+> - ✅ **T21.3-SLOW-TEST-FIX** _prewarm_jieba fixture 已在 conftest.py；top-3 CLI subprocess 文件標記 intentional；9 pre-existing failures 已在 v8.16 修復；tasks.md T21.3 全 [x]
+> - ✅ **T21.4-SENSOR-CEILING** sensor.json pytest_runtime.status=ok；active_epic done=21/21；tasks.md T21.4 全 [x]
+> - ✅ **T21.5-FULL-REGRESS-COMMIT** 4039 passed / 141.82s；45 runtime+sensor tests passed；epic-21 tasks.md 全 [x]；commit+push 落版
+
 > **v8.16 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
 > - ✅ **T-RESULTS-LOG-SOFT-CAP-V8.16** results.log 120→100 行；20 行封存 results-archive/202604T.log
 > - ✅ **T-OPENSPEC-EPIC-21-DISCOVERY** openspec/changes/21-cold-runtime-root-cause-fix/ 建立（.openspec.yaml + proposal.md + tasks.md）；INDEX.md 補 epic 21 條目；sensor active_epic=21 total=21

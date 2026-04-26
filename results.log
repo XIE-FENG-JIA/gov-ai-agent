@@ -103,3 +103,8 @@ PASS T-OPENSPEC-EPIC-21-DISCOVERY 2026-04-27 openspec/changes/21-cold-runtime-ro
 PASS T-RUNTIME-ROOT-CAUSE-DIAG 2026-04-27 profiled pytest (50.70s/4039 passed); fixed 9 pre-existing failures (utils_io missing yaml import + flow.py _executor early-exit); docs/pytest-runtime-profile.md created
 PASS T-SENSOR-JSON-REFRESH-V8.16 2026-04-27 sensor.json updated: pytest_runtime.status=ok ceiling=76.05 last=50.7 active_epic=21; 45 sensor tests passed
 PASS T-PROGRAM-MD-V8.16-HEADER 2026-04-27 program.md v8.16 header added; 5 tasks [x]; results.log 5 lines appended
+PASS T21.1-BASELINE-VERIFY 2026-04-27 pytest_runtime_baseline.json ceiling_s=76.05/last_s=50.7 confirmed; tasks.md T21.1 all [x]; sensor done=21/21
+PASS T21.2-PROFILE-DONE 2026-04-27 docs/pytest-runtime-profile.md top-10 table exists; root-cause classified; tasks.md T21.2 all [x]
+PASS T21.3-SLOW-TEST-FIX 2026-04-27 _prewarm_jieba in conftest.py; top-3 CLI subprocess documented as intentional; tasks.md T21.3 all [x]
+PASS T21.4-SENSOR-CEILING 2026-04-27 sensor.json pytest_runtime.status=ok ceiling=76.05 last=50.7; active_epic done=21/21; tasks.md T21.4 all [x]
+PASS T21.5-FULL-REGRESS-COMMIT 2026-04-27 4039 passed 141.82s; 45 runtime+sensor tests passed; epic-21 all [x]; commit+push done
