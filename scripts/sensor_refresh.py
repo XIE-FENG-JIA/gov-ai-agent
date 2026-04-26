@@ -83,6 +83,7 @@ class SensorReport:
     violations_soft: list[str] = field(default_factory=list)
     pytest_cold_runtime_secs: float = 0.0
     marked_done_uncommitted: dict = field(default_factory=lambda: {"count": 0, "slugs": []})
+    recall_health: dict = field(default_factory=lambda: {"ok": True, "detail": "no baseline (skip)"})
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -118,6 +119,7 @@ class SensorReport:
             },
             "pytest_cold_runtime_secs": self.pytest_cold_runtime_secs,
             "marked_done_uncommitted": self.marked_done_uncommitted,
+            "recall_health": self.recall_health,
         }
 
 
@@ -456,6 +458,58 @@ def check_fat_ratchet(repo: Path, red: list[tuple[str, int]], yellow: list[tuple
     return True, f"ok (count={cur_count}/{baseline_count}, max_lines={cur_max}/{baseline_max})"
 
 
+def check_recall_health(repo: Path) -> tuple[bool, str]:
+    """Check latest recall@5 against baseline floor (T19.4).
+
+    Reads ``recall_report.json`` (latest eval run) and compares recall@5
+    to the floor stored in ``scripts/recall_baseline.json``.
+
+    Returns:
+        (ok, detail_message).  ok=True means either no data to check or
+        recall is within tolerance.  ok=False triggers a soft violation.
+    """
+    report_path = repo / "recall_report.json"
+    if not report_path.exists():
+        return True, "no recall_report.json (skip)"
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return True, "recall_report.json unreadable (skip)"
+
+    current = report.get("recall@5")
+    if current is None:
+        return True, "recall@5 missing from report (skip)"
+
+    model = str(report.get("embedding_model", "unknown"))
+    baseline_path = repo / "scripts" / "recall_baseline.json"
+    if not baseline_path.exists():
+        return True, "no recall_baseline.json (skip)"
+    try:
+        baseline_data = json.loads(baseline_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return True, "recall_baseline.json unreadable (skip)"
+
+    entry = baseline_data.get(model, {})
+    if not entry:
+        return True, f"no baseline entry for model '{model}' (skip)"
+
+    floor = float(entry.get("floor", 0.0))
+    tolerance = float(entry.get("tolerance", 0.10))
+    if floor <= 0:
+        return True, "floor=0 in baseline (skip)"
+
+    threshold = floor * (1 - tolerance)
+    if float(current) < threshold:
+        return False, (
+            f"recall-degradation: recall@5={float(current):.3f}"
+            f" < floor={floor:.3f} * (1-{tolerance:.0%})={threshold:.3f}"
+        )
+    return True, (
+        f"recall@5={float(current):.3f} ok"
+        f" (floor={floor:.3f}, tol={tolerance:.0%}, threshold={threshold:.3f})"
+    )
+
+
 def build_report(repo: Path) -> SensorReport:
     r = SensorReport()
     r.bare_except_total, r.bare_except_files, r.bare_except_top = count_bare_except(repo)
@@ -474,6 +528,8 @@ def build_report(repo: Path) -> SensorReport:
     r.active_epic_progress = active_epic_progress(repo)
     r.pytest_cold_runtime_secs = read_runtime_baseline(repo)
     r.marked_done_uncommitted = count_marked_done_uncommitted(repo)
+    _recall_ok, _recall_detail = check_recall_health(repo)
+    r.recall_health = {"ok": _recall_ok, "detail": _recall_detail}
     _ceiling, _tolerance = read_ceiling_params(repo)
 
     # Hard violations
@@ -564,6 +620,10 @@ def build_report(repo: Path) -> SensorReport:
             f" slugs={r.marked_done_uncommitted.get('slugs', [])}"
         )
 
+    # Recall health check (T19.4)
+    if not r.recall_health.get("ok", True):
+        r.violations_soft.append(r.recall_health["detail"])
+
     return r
 
 
@@ -610,6 +670,11 @@ def format_human(r: SensorReport) -> str:
         lines.append(
             f"- **active epic**: {aep['epic_id']} {aep['done']}/{aep['total']}"
         )
+    rh = r.recall_health
+    if rh.get("ok") is False:
+        lines.append(f"- **recall health**: 🔴 {rh.get('detail', '')}")
+    elif rh.get("detail") and "skip" not in str(rh.get("detail", "")):
+        lines.append(f"- **recall health**: ✅ {rh.get('detail', '')}")
 
     if r.violations_hard:
         lines.append("")

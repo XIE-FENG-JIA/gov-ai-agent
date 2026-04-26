@@ -2,8 +2,27 @@
 
 > 歷史 v7.0–v8.3 batch header 已封存：[docs/archive/program-history-202604j.md](docs/archive/program-history-202604j.md)、[docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)、[docs/archive/program-history-202604L.md](docs/archive/program-history-202604L.md)、[docs/archive/program-history-202604M.md](docs/archive/program-history-202604M.md)
 > 歷史 v8.1/v8.3/v8.4/v8.5 完成任務已封存：[docs/archive/program-history-202604O.md](docs/archive/program-history-202604O.md)（T-PROGRAM-MD-ARCHIVE-202604O；2026-04-26 22:51）
+> 歷史 v8.6/v8.8 P0/P1/P2 已封存：[docs/archive/program-history-202604Q.md](docs/archive/program-history-202604Q.md)（T-PROGRAM-MD-ARCHIVE-202604Q；2026-04-27）
 
-> **v8.10 批次回合（2026-04-26 23:32 /pua 深度回顧；HEAD=6426ad7 ≡ origin/main）**：
+> **v8.11 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
+> - ✅ **T19.3 recall_baseline.py** ratchet-down semantics 落地；5 tests passed
+> - ✅ **T19.4 sensor recall_health** check_recall_health() + soft violation wired；37 sensor tests passed
+> - ✅ **T19.5 tests/test_recall_eval.py** 12 unit tests 全綠（mock KB，無 live 依賴）
+> - ✅ **T19.6 CI/CONTRIBUTING** 整合 + tasks.md 全 [x]；49 recall+sensor tests passed
+> - ✅ **T-PROGRAM-MD-ARCHIVE-202604Q** 261→<200 行（v8.8/v8.6 區塊封存）
+
+### P0（2026-04-27 Copilot agent v8.11 — epic 19 recall pipeline 閉環）
+
+- [x] **T-EPIC-19-T19.3-RECALL-BASELINE**（ACL-free；v8.11）— `scripts/recall_baseline.py` 建立：`save_recall_baseline(model, recall_at_5, *, path, tolerance)` ratchet-down floor（floor 只降不升）+ `read_recall_baseline(model)`；預設路徑 `scripts/recall_baseline.json`；5 ratchet-semantics tests passed。
+- [x] **T-EPIC-19-T19.4-SENSOR-INTEGRATION**（ACL-free；v8.11）— `scripts/sensor_refresh.py` 新增 `check_recall_health(repo)` + `recall_health` 欄位；讀 `recall_report.json` recall@5 對比 baseline floor；soft violation `"recall-degradation"` 當 recall@5 < floor*(1-tolerance)；37 sensor tests passed。
+- [x] **T-EPIC-19-T19.5-UNIT-TESTS**（ACL-free；v8.11）— `tests/test_recall_eval.py` 12 tests：ratchet semantics 5 / sensor health 4 / recall computation 3；全 mock，無 live KB；`pytest tests/test_recall_eval.py -q` = 12 passed。
+- [x] **T-EPIC-19-T19.6-CI-INTEGRATION**（ACL-free；v8.11）— `CONTRIBUTING.md` 補 live recall eval 說明；`openspec/changes/19-*/tasks.md` T19.4/T19.5/T19.6 全 [x]；`pytest tests/test_recall_eval.py tests/test_sensor_refresh.py -q` = 49 passed。
+
+### P2（2026-04-27 Copilot agent v8.11 新增；program.md soft cap 治本）
+
+- [x] **T-PROGRAM-MD-ARCHIVE-202604Q**（10 min；P2；ACL-free；v8.11 新增）— program.md 261 行 > soft 250；封存 v8.8/v8.6 P0/P1/P2 完成區塊（lines 48-135）到`docs/archive/program-history-202604Q.md`；主檔降至 < 200 行（< 250 ✅）；header pointer 補。
+
+
 > - ✅ **HEAD = origin/main = 6426ad7**（rev-list 0/0；v8.9 push flush 仍守）
 > - ✅ **pytest -x = 4001 passed / 158.43s**（vs v8.8 80.43s 漲 +97%；soft 200s 守住）
 > - ✅ **sensor 全綠真值**：bare=1 noqa / fat 0/0 / runtime cold 24.44s（v3 ceiling 100s+tolerance 0.2 真量測 ✓）
@@ -45,94 +64,7 @@
 > - ✅ **T-GITIGNORE-STACKDUMP**：*.stackdump 加 .gitignore，bash.exe.stackdump 刪除
 > - ✅ **pytest tests/test_engines_api.py tests/test_api_server.py tests/test_sensor_refresh.py = 293 passed**
 
-> **v8.8 批次回合（2026-04-26 21:35 /pua 深度回顧；HEAD=39d1232 ≡ origin/main）**：
-> - ✅ **HEAD = origin/main = 39d1232**（rev-list 0/0；工作樹 clean — 漂白第一型 4 輪後本輪終止 ✓）
-> - ✅ **pytest -x = 3999 passed / 80.43s**（+12 vs v8.6 3987；soft 200s 守住）
-> - ✅ **fat watch 收斂**：9 檔/max=323（v8.6）→ **6 檔/max=314**（v8.8）= T-FAT-WATCH-CUT-V4 收效
-> - ⚠️ **runtime baseline 仍寫死 50.0s 第 3 輪**：T-RUNTIME-RATCHET-LIVE-MEASURE-v2 標 [x]；今日 cold 80.43s（+62%）也未自動 ratchet up = **漂白第十一型第 3 輪治本未真閉**；治本 = baseline 改「ceiling + tolerance」雙語意防 up-creep
-> - ⚠️ **openspec 半殭屍 active dir**：active list 仍有 `18-multi-llm-provider-abstraction/`，archive + spec 已落 = active=1 假象；治本 = `git rm -rf` + commit
-> - ⚠️ **epic 管線真空預警 + 第 5 輪「無下個 epic」**：候選 corpus 500 / engines hot-switch / KB recall@k；不開 = treadmill 預兆
-> - ⚠️ **cli/ 三檔同模組 fat 邊緣 300-314**：`batch_tools 314 / config_tools 312 / lint_cmd 309` 同模組 ROI ×3 預抽
-
-### P0（2026-04-26 21:35 /pua v8.8 深度回顧新增；本輪必動 — 半殭屍 active + baseline 寫死第 3 輪）
-
-- [x] **T-OPENSPEC-18-ACTIVE-CLEANUP**（5 min；P0；ACL-free；最小修）— `git rm -rf openspec/changes/18-multi-llm-provider-abstraction/` + commit `chore(openspec): remove archived change-18 active dir`；archive 與 spec 已落保留；驗收：`spectra list` = `No active changes.` + `ls openspec/changes/` 僅剩 `archive/`。owner = auto-engineer。**不清 = `spectra list` 永遠騙人，active 名義 1 實際 0**。
-- [x] **T-RUNTIME-BASELINE-TRUE-MEASURE-v3**（30 min；P0；ACL-free；漂白第十一型第 3 輪治本）— `scripts/sensor_refresh.py` 主路徑必跑 `--measure-runtime`（非 opt-in）；`scripts/runtime_baseline.json` 加 `ceiling_secs` + `tolerance_pct`（不只 floor）；新值 > ceiling × (1+tolerance) 即 sensor soft；80.43s 寫入 sensor.json 取代 50.0；補 `tests/test_sensor_refresh.py` ceiling/up-creep 2 cases。驗收：`sensor.json.pytest_cold_runtime_secs` ≠ 50.0 寫死 + sensor `--human` 顯示真值 + ceiling 違例可觸發 soft。
-
-### P1（2026-04-26 21:35 /pua v8.8 新增；epic 管線突破 + cli fat 預治）
-
-- [x] **T-OPENSPEC-EPIC-19-DISCOVERY**（30 min；P1；ACL-free；velocity 突破 — 第 5 輪預警）— 評估 3 候選：(a) **corpus 500 真語料 + recall@k 量測**（補 v7.5 凍結的 T5.2/T5.3）、(b) **engines hot-switch runtime API**（延伸 v8.7 engines API + WebSocket push）、(c) **KB recall validation pipeline**（embed/cite/rewrite 三段量化）；選 1 開 `openspec/changes/19-*/` proposal + tasks 骨架（≥5 sub-tasks）；目標 `spectra list` 真值 active=1。
-- [x] **T-FAT-WATCH-CUT-V5-CLI-MODULE**（45 min；P1；ACL-free；3 檔同刀 ROI ×3）— `src/cli/batch_tools.py 314→260`（抽 `_batch_runner.py`）+ `src/cli/config_tools.py 312→260`（抽 `_config_io.py`）+ `src/cli/lint_cmd.py 309→260`（抽 `_lint_rules.py`）；驗收：`scripts/check_fat_files.py --watch-band 300-350` ≤ 3 檔 + 全量 pytest 不退。
-
-### P2（2026-04-26 21:35 /pua v8.8 新增；engineer-log 預治）
-
-- [x] **T-ENGINEER-LOG-ARCHIVE-202604N**（10 min；P2；ACL-free；soft 紅線預治）— engineer-log 目前 ≈ 297 行（本輪反思寫完）；下輪寫前必先把 v8.5/v8.6 兩段（line ~144-271）封存到 `docs/archive/engineer-log-202604N.md`；header pointer 補；主檔 ≤ 200 留下輪空間。
-
-### P2（2026-04-26 22:51 Copilot agent v8.9 新增；程式 soft 紅線收尾）
-
-- [x] **T-PROGRAM-MD-ARCHIVE-202604O**（10 min；P2；ACL-free；v8.9 新增）— program.md 285 行 > soft 250；封存 v8.1/v8.3/v8.4/v8.5 完成區塊（line 67-113）到 `docs/archive/program-history-202604O.md`；主檔降至 241 行（< 250 ✅）；header pointer 補。
-
-### P0（2026-04-26 20:30 /pua v8.6 深度回顧新增；本輪必動 — ACL 連 3 輪 + 散裝 13+5 + log hard cap）
-
-- [ ] **T-GIT-ACL-PERMA-FIX**（host Admin gate；連 3 輪 P0 open；structural blocker）— host 啟動腳本永久清 `.git` DENY ACL：(a) `icacls "%REPO%/.git" /remove:d <SID>` + `/inheritance:e`；(b) keeper / supervise wrapper 改用 `env -i YOLO_MODE=on` 顯式繼承（非 subshell reset）；(c) 5+ 輪 0-residual 監測（`git status` clean × 5 輪）方算真閉。驗收：本 session approval=never 下 `git add` 0 retry 通過；`icacls .git` 無 `(DENY)(...)` ACE。owner = host Admin。**不解 = v8.5/v8.6 全部工作量歸零**。
-- [x] **T-EPIC-18-COMMIT-FLUSH**（2026-04-26 閉；P0；ACL 自然解除）— 工作樹 13 mod + 5 untracked 拆語意 commit：(1) `feat(providers): T18.4-T18.6 factory + delegate + tests`；(2) `feat(sensor): runtime live-measure + bare_except typed-bucket sweep`；(3) `fix(ci): conditional integration secret gate`；(4) `docs(reflection): v8.5/v8.6 deep review + abstraction SOP + xxe import-graph fix`；(v8.7 追加) `chore(git): *.stackdump`、`docs(openspec): archive change-18 + spec promotion`、`feat(api): engines list endpoint + YAML SSOT`。驗收：`git status --short` = clean（扣 results.log 最後一行）；`git rev-list origin/main..HEAD` = 4；`pytest tests/test_engines_api.py = 2 passed`。
-- [x] **T-ENGINEER-LOG-ROTATE-v10**（2026-04-26 閉；P0；ACL-free；hard cap 治本）— 已將 v8.0-r5 深度回顧 + v8.1 反思 2 段（~75 行）封存到 `docs/archive/engineer-log-202604M.md`；header pointer 補 v10 條目；主檔降至 276 行（≤ 300 hard cap ✓ 留下輪空間）。
-
-### P1（2026-04-26 20:30 /pua v8.6 新增；漂白第十四型治本 + runtime 哨兵真量 + fat 預治）
-
-- [x] **T-MARKED-DONE-COMMIT-RATCHET**（2026-04-27 閉；P1；ACL-free）— `scripts/sensor_refresh.py` 新增 `marked_done_uncommitted` 欄位：解析 `program.md` 所有 `[x] **T-XXX**` slug，與最近 30 commit message body grep 比對；soft `count > 0` 報警、hard `count > 5` 阻 CI；8 unit tests；3998 passed ✓。
-- [x] **T-RUNTIME-RATCHET-LIVE-MEASURE-v2**（2026-04-27 閉；P1；ACL-free）— `scripts/sensor_refresh.py` 改為主路徑自動跑 `pytest --collect-only`；ratchet down（新值 ≤ baseline 才更新）；`--no-measure` opt-out flag；tests 33 passed ✓。
-- [x] **T-FAT-WATCH-CUT-V4**（2026-04-27 閉；P1；ACL-free）— `_manager_hybrid.py` 323→247、`api/app.py` 319→226、`document/exporter/__init__.py` 319→243；BM25/TF-IDF scoring 抽 `_bm25_scoring.py`；startup helpers 抽 `_startup.py`；text utils 抽 `_text_utils.py`；3998 passed ✓。
-
-
-
-
-### P0（2026-04-26 09:42 /pua 深度回顧新增；本輪必動 — 漂白第十型 + push 漏 + nemotron 半閉）
-
-- [x] **T-LLM-EMBED-TEST-FIX**（2026-04-26 閉；P0；ACL-free；漂白第十型對策）— 兩個 OpenRouter embedding stale tests 已改 patch `src.core.llm._requests.post`，斷言 URL=`https://openrouter.ai/api/v1/embeddings` / Bearer header / JSON body；刪 `src/core/llm.py` unreachable openrouter litellm branch（早 return 覆蓋）。驗證 `python -m pytest tests/test_llm.py -q` = 52 passed；`python -m pytest tests/ -q --ignore=tests/integration` = 3958 passed / 0 failed / 227.43s。
-- [x] **T-PUSH-ORIGIN-V8.0**（2026-04-26 閉；P0；ACL-free；雲端工作量落地）— `git push origin main` 把 9 commits 推上去（含 T-LLM-EMBED-TEST-FIX / T-FAT-WATCH-300-350-MONITOR / T-COMMIT-LINT-FEAT-LLM-PYTEST-GATE + wizard_cmd fix + 本輪 docs）；驗收：`git rev-list origin/main..HEAD` = 0 ✅。
-- [x] **T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE**（45 min；P0；ACL-free；4+ 輪 SLA 觸頂）— cf26345 已通 REST 路徑（解 litellm 不支援 openrouter embedding 的 blocker）；剩 (a) 跑 `gov-ai kb rebuild --only-real`（OPENROUTER_API_KEY 已驗付費帳號 unblocked）+ recall@k 量測前後對照；(b) 寫 `docs/embedding-validation.md` 對照向量化前後 search recall@k；(c) 補 openspec change-17 mini-proposal `embedding-provider-rest-fallback` 補規格軌跡（避規格漂白第四型）。owner = auto-engineer。
-
-### P1（2026-04-26 09:42 /pua 深度回顧新增；fat watch + commit-lint feat(llm) gate）
-
-- [x] **T-FAT-WATCH-300-350-MONITOR**（10 min；P1；ACL-free；防下輪 yellow 翻紅）— `scripts/check_fat_files.py` 補 `--watch-band 300-350` flag 列印 12 檔現值（catalog.py 350 / web_preview/app.py 347 / core/llm.py 340 / gazette_fetcher 331 / review_parser 326 / _manager_hybrid 323 / exporter 319 / api/app.py 319 / batch_tools 314 / lint_cmd 309 / config_tools 308 / utils_io 306）；不阻 CI；供下輪 ROI 判斷三檔同刀。
-- [x] **T-COMMIT-LINT-FEAT-LLM-PYTEST-GATE**（2026-04-26 閉；P1；ACL-free；漂白第十型治本）— `scripts/commit_msg_lint.py` 對 `feat(llm)|feat(core)|feat(api)` 等高風險 scope 強制 commit msg body 引用同 scope `pytest tests/test_<scope>.py = N passed`；缺、錯檔、無 count、0 passed、failed 皆 reject；新增正反向測試。驗證 `python -m pytest tests/test_commit_msg_lint.py -q` = 32 passed。
-
-### P1（2026-04-26 07:50 /pua 深度回顧新增；wrapper noise 第二刀 + owner 認領）
-
-- [x] **T-COPILOT-LOOP-STATE-GITIGNORE**（2026-04-26 12:30 閉；P1）— `.gitignore` line 78 早已含 `.copilot-loop.state.json`；`git rm --cached .copilot-loop.state.json` 一次過，索引顯示 `D .copilot-loop.state.json` 待 commit；隨本輪治理 commit 入版。
-- [x] **T-GIT-ACL-DENY-UNBLOCK**（2026-04-26 12:30 閉；P0；ACL 已自然消失）— 4-20 `gov-ai-git-migration` 遷 separate-git-dir 後 orphan SID DENY ACE 已不存在，`git rm --cached` 與 `Remove-Item` 全可直接執行；P0 task 正式收口；不再需 admin elevation。
-- [→併入 P0 T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE] **T-NEMOTRON-EMBEDDING-VALIDATE**（45 min；P1→P0；ACL-free；OPENROUTER_API_KEY unblocked）— cf26345 已部分解（REST 直連），但驗收文件未補；併入本輪新 P0 `T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE` 收尾。3.25 累計第 5 次（連 5 輪未認領 + 部分解但未閉）。
-
-### P0（v7.8c 20:08 /pua 深度回顧新增；治理優先；已全閉，保留追溯）
-
-- [x] **T-OPENSPEC-PROMOTE-AUDIT**（2026-04-25 閉；P0；ACL-free）— 驗證 specs 已 promote（14 spec files in openspec/specs/）；移除 11 個重複 active change folders（archive 早已有 date-prefixed copy）；建立 `openspec/changes/archive/INDEX.md`（11 條目全齊）；寫 `docs/openspec-promotion-audit-202604.md` 收尾報告。驗收：`ls openspec/changes/` 僅剩 `12-commit-msg-noise-floor` ✅；`openspec/specs/` 14 spec files（≥10）✅；INDEX.md 建立 ✅。
-- [x] **T-LITELLM-MOCK-CONTRACT-FIX**（2026-04-25 20:36 閉；P0；ACL-free）— 實測 litellm mock contract 已對齊目前依賴；`python -m pytest tests/test_robustness.py -W error::UserWarning -q` = 299 passed / 0 warning，未重現 `ModelResponse / Choices / Message` pydantic schema warning；全量非 integration `python -m pytest -q --ignore=tests/integration --tb=line` = 3949 passed。
-- [x] **P0-WRITER-FALLBACK-REGRESSION**（2026-04-25 21:34 閉；P0；已入版 commit 5d6cfea）— 修復 writer fallback regression：KB `Exception` 降級為無範例 legacy draft；open-notebook runtime fallback 補 `_last_open_notebook_diagnostics`（service/mode/used_fallback/fallback_stage/fallback_reason）。驗證 targeted 10 passed；全量非 integration 3949 passed；commit 5d6cfea ✅。
-
-### P0（v7.8b 18:35 反思新增；本輪必動 45 min）
-
-- [x] **T-WORKTREE-COMMIT-LINT**（5 min；P0；2026-04-25 18:35）— `scripts/commit_msg_lint.py` + `tests/test_commit_msg_lint.py` + `program.md` 改動仍在工作樹未入版；以單一 `feat(scripts): commit_msg_lint reject pseudo-semantic checkpoint` 落版；驗證 `git status` clean（扣除 copilot session 檔）+ `python -m pytest tests/test_commit_msg_lint.py -q` ≥ 既有 case 全綠。**不入版 = 規則沒生效**。
-- [x] **T-BARE-EXCEPT-AUDIT 刀 10**（30 min；P0；2026-04-25 18:35）— sensor top-5 共 9 處：`graph/aggregator(2) / graph/refiner(2) / knowledge/realtime_lookup(2) / knowledge/fetchers/law_fetcher(2) / agents/consistency_checker(1)` → typed bucket（`LLMError|RuntimeError|OSError` 視 callsite）；目標 39 → 30；**全量 `pytest -x` 收尾**防刀 8 回歸再現。
-- [x] **T-BARE-EXCEPT-KNIFE-11**（2026-04-25 閉；P1；ACL-free）— 刀11：30→20（10 檔 typed bucket fix）：validators/fact_checker/dependencies/config/style_checker/rewrite/strategy/knowledge_routes/editor_flow/ask_service；strategy.py 補 `from src.core.llm import LLMError` import + rewrite.py 同步加入 LLMError bucket 防 test_writer_exception 回歸；全量非 integration 3949 passed ✅。
-- [x] **T-BARE-EXCEPT-KNIFE-12**（2026-04-25 閉；P2；ACL-free）— `src/cli/checklist_cmd.py` docx 讀取失敗從裸 `Exception` 改為 `OSError|ValueError|PackageNotFoundError|BadZipFile` typed bucket；bare-except 20→19；驗證 `python -m pytest tests/test_cli_commands.py -q -k checklist` = 10 passed、`python scripts/sensor_refresh.py --human` hard/soft violations=[] ✅。
-- [x] **T-BARE-EXCEPT-KNIFE-13**（本輪閉；P1；ACL-free）— 刀13：19→13（6 檔 typed bucket fix）：`cli/convert_cmd.py` / `cli/validate_cmd.py` / `knowledge/fetchers/base.py` / `cli/generate/cli.py` / `document/exporter/__init__.py` / `cli/config_tools_fetch_impl.py`；全量非 integration 3949 passed ✅。
-- [x] **T-BARE-EXCEPT-KNIFE-14**（本輪閉；P1；ACL-free）— 刀14：13→3（10 檔 typed bucket fix + RuntimeError bucket 補入 memory.py fetch_org_memory）：`graph/nodes/{writer,memory,formatter,requirement,exporter,reporter}.py` / `agents/fact_checker/checks.py` / `cli/generate/pipeline/render.py` / `cli/generate/pipeline/persist/{batch_runner,item_processor}.py`；bare_except 最終僅剩 3 個 noqa/compat 有意保留；全量非 integration 3949 passed ✅。
-- [x] **T-AUTO-COMMIT-RATE-RECOMPUTE**（10 min；P0；2026-04-25 18:35）— `scripts/sensor_refresh.py` auto-commit 公式把 `chore(auto-engineer): checkpoint snapshot` 視為合規是樂觀偏差；改成只認 `feat|fix|refactor|docs|test|chore(scope!=auto-engineer)` 真語意；實際率回到 13–15%；驗證 `python scripts/sensor_refresh.py --human` 顯示真實率 + `tests/test_sensor_refresh.py` 加 1 條防回歸。**統計口徑放水 = 漂白第二型**。
-
-### P1（v7.9-final 後段 /pua 新增 — fat-rotate 真閉環 + openspec promote）
-
-- [→P0] **T-OPENSPEC-PROMOTE-13-14**（2026-04-26 05:55 升級為 P0 並併入 T-WORKTREE-FLUSH-LOOP5 (a)；本條保留作回溯）— ACL 已解；不再 host-blocked；本輪需直接 `git rm -r openspec/changes/13-cli-fat-rotate-v3 openspec/changes/14-13-acceptance-audit` + add archive copies + commit。
-- [x] **T-REGULATION-MAPPING-SPEC**（2026-04-26 閉；P2；ACL-free）— `kb_data/regulation_doc_type_mapping.yaml` 補 openspec change 16 + spec `openspec/specs/regulation-doc-type-mapping/spec.md`（schema 合約：required pcode/applicable_doc_types + valid doc-type universe）+ `tests/test_regulation_doc_type_mapping.py`（7 tests：schema validation + roundtrip）；驗收 `python -m pytest tests/test_regulation_doc_type_mapping.py -v` = 7 passed ✅。
-
-### P1（v7.9-final 02:32 /pua 新增 — fat-rotate 治本推進）
-
-- [x] **T-CLI-FAT-ROTATE-V3-T13.2-T13.3**（2026-04-26 閉；P1；ACL-free）— `generate/export.py` 已改走 `src/cli/_shared/citation_format.py` 與 `src/cli/_shared/lint_invocation.py` 公共介面，移除對 `cite_cmd` / `lint_cmd` 私有實作的高風險耦合；同步勾選 openspec T13.2/T13.3。驗收：`python scripts/cli_ast_audit.py` exit 0、`python scripts/check_fat_files.py --strict` = red 0 / yellow 6、`python -m pytest tests/test_cite_cmd.py tests/test_lint_cmd.py -q` = 89 passed、`python -m pytest tests/test_cli_commands.py -q -k "cite or lint or generate"` = 47 passed。
-
-### P2（v7.9-final 02:32 /pua 新增 — 治理基礎建設 + 儀式前置）
-
-- [x] **T-INTEGRATION-RUNTIME-CUT**（2026-04-26 閉；P2；ACL-free）— `GOV_AI_RUN_INTEGRATION=1 pytest tests/integration -q --tb=line` = **18.71s / 17 passed / 18 skipped**（wall 25.5s）；目標 ≤90s **已達**；根因：`pyproject.toml addopts = "-v -n auto"` xdist 14 workers 已啟用，server-startup 頂峰 2.42s setup 分散並行；無需再 mock/split。驗收：≤90s ✅，通過數不變（17 passed）✅。
-- [x] **T-ENGINEER-LOG-PRE-ROTATE**（2026-04-26 閉；P2；ACL-free）— v7.9 共 7 段（22:35/22:54/00:15/01:05/02:29/02:32/02:40）封存至 `docs/archive/engineer-log-202604L.md`（218 行）；主檔從 339 行降至 102 行（well under 300 hard cap）；archive pointer 追加至 header；空指引 placeholder 置末。
+*（v8.8/v8.6 P0/P1/P2 已封存 → [docs/archive/program-history-202604Q.md](docs/archive/program-history-202604Q.md)）*
 
 ### P1（連 2 輪延宕 = 3.25）
 

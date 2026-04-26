@@ -34,10 +34,10 @@ derived from public government documents already in the KB corpus.
 
 **Goal:** Store per-model recall baselines and ratchet the floor.
 
-- [ ] Create `scripts/recall_baseline.json` with initial baselines from first run
-- [ ] Add `save_recall_baseline(model, recall_at_5)` that ratchets floor down
-- [ ] Add `read_recall_baseline(model)` → returns floor + `last_measured`
-- [ ] Acceptance: unit test verifies ratchet semantics (baseline never increases)
+- [x] Create `scripts/recall_baseline.json` with initial baselines from first run
+- [x] Add `save_recall_baseline(model, recall_at_5)` that ratchets floor down
+- [x] Add `read_recall_baseline(model)` → returns floor + `last_measured`
+- [x] Acceptance: unit test verifies ratchet semantics (baseline never increases)
 
 ---
 
@@ -45,11 +45,11 @@ derived from public government documents already in the KB corpus.
 
 **Goal:** Wire recall@5 into the sensor system so degradation triggers a soft violation.
 
-- [ ] In `scripts/sensor_refresh.py`, add `check_recall_health(repo)` function
-- [ ] Call `read_recall_baseline()` and compare to `recall_report.json` latest run
-- [ ] Emit `"recall-degradation"` soft violation when `recall@5 < baseline * (1 - tolerance)`
-- [ ] `tolerance` loaded from `recall_baseline.json` (default 0.10 = 10%)
-- [ ] Acceptance: unit test with mocked baseline triggers soft violation at -11%
+- [x] In `scripts/sensor_refresh.py`, add `check_recall_health(repo)` function
+- [x] Call `read_recall_baseline()` and compare to `recall_report.json` latest run
+- [x] Emit `"recall-degradation"` soft violation when `recall@5 < baseline * (1 - tolerance)`
+- [x] `tolerance` loaded from `recall_baseline.json` (default 0.10 = 10%)
+- [x] Acceptance: unit test with mocked baseline triggers soft violation at -11%
 
 ---
 
@@ -57,13 +57,13 @@ derived from public government documents already in the KB corpus.
 
 **Goal:** Full unit coverage without live KB.
 
-- [ ] Mock `knowledge_manager.search` to return controlled results
-- [ ] Test: perfect recall (all top-1 hits) → `recall@1 = 1.0`
-- [ ] Test: miss at k=1, hit at k=3 → `recall@1 = 0.0, recall@3 > 0.0`
-- [ ] Test: baseline ratchet (T19.3 logic)
-- [ ] Test: soft violation trigger (T19.4 logic)
-- [ ] Test: JSONL loader handles malformed lines without crash
-- [ ] Acceptance: `pytest tests/test_recall_eval.py -q` = all passed, no live KB needed
+- [x] Mock `knowledge_manager.search` to return controlled results
+- [x] Test: perfect recall (all top-1 hits) → `recall@1 = 1.0`
+- [x] Test: miss at k=1, hit at k=3 → `recall@1 = 0.0, recall@3 > 0.0`
+- [x] Test: baseline ratchet (T19.3 logic)
+- [x] Test: soft violation trigger (T19.4 logic)
+- [x] Test: JSONL loader handles malformed lines without crash
+- [x] Acceptance: `pytest tests/test_recall_eval.py -q` = all passed, no live KB needed
 
 ---
 
@@ -71,8 +71,8 @@ derived from public government documents already in the KB corpus.
 
 **Goal:** Make `test_recall_eval.py` part of default `pytest` run.
 
-- [ ] Ensure `tests/test_recall_eval.py` uses mock KB; no `GOV_AI_RUN_INTEGRATION` guard needed for unit tests
-- [ ] Add integration marker `@pytest.mark.integration` to any live-KB tests
-- [ ] Verify `pytest tests --ignore=tests/integration -q` is still green
-- [ ] Update `CONTRIBUTING.md` with note about `GOV_AI_RUN_INTEGRATION=1` for live recall eval
-- [ ] Acceptance: CI baseline run (no env vars) passes all tests
+- [x] Ensure `tests/test_recall_eval.py` uses mock KB; no `GOV_AI_RUN_INTEGRATION` guard needed for unit tests
+- [x] Add integration marker `@pytest.mark.integration` to any live-KB tests
+- [x] Verify `pytest tests --ignore=tests/integration -q` is still green
+- [x] Update `CONTRIBUTING.md` with note about `GOV_AI_RUN_INTEGRATION=1` for live recall eval
+- [x] Acceptance: CI baseline run (no env vars) passes all tests

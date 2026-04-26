@@ -310,3 +310,8 @@ PASS T-EPIC-19-T19.2-EVAL-RECALL-IMPL 2026-04-26 — scripts/eval_recall.py --dr
 [2026-04-26 23:59 Asia/Taipei] | Stash rollback blocked by git index ACL | FAIL | git stash push -u failed: could not write index.
 PASS T-SENSOR-ACTIVE-EPIC-PROGRESS 2026-04-26 — active_epic_progress field added; sensor.json epic_id=19-kb-recall-validation-pipeline done=10/31; 37 tests passed
 PASS T-FAT-WATCH-CUT-V6 2026-04-26T23:58 utils_io 306->211 flow 304->277 app 300->274 fat-gate=0
+PASS T-EPIC-19-T19.3-RECALL-BASELINE | recall_baseline.py ratchet-down semantics; 5 tests passed | 2026-04-27 00:47
+PASS T-EPIC-19-T19.4-SENSOR-INTEGRATION | check_recall_health() wired to SensorReport; 37 sensor tests passed | 2026-04-27 00:47
+PASS T-EPIC-19-T19.5-UNIT-TESTS | tests/test_recall_eval.py 12 passed (mock KB, no live) | 2026-04-27 00:47
+PASS T-EPIC-19-T19.6-CI-INTEGRATION | tasks.md all [x]; CONTRIBUTING.md updated; 49 recall+sensor tests | 2026-04-27 00:47
+PASS T-PROGRAM-MD-ARCHIVE-202604Q | program.md 261->192 lines; v8.8/v8.6 archived to docs/archive/program-history-202604Q.md | 2026-04-27 00:47

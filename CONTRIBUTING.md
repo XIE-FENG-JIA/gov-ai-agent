@@ -144,3 +144,16 @@ Run the full suite before submitting:
 ```bash
 python -m pytest tests/ -q --ignore=tests/integration
 ```
+
+### Live Recall Evaluation
+
+The KB recall evaluator (`scripts/eval_recall.py`) requires a live KB to run
+actual queries.  Unit tests in `tests/test_recall_eval.py` and
+`tests/test_eval_recall.py` use mocks or `--dry-run` and run without any env
+flag.
+
+To run a full live recall evaluation (requires a populated KB):
+
+```bash
+GOV_AI_RUN_INTEGRATION=1 python scripts/eval_recall.py
+```
