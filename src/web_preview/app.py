@@ -34,6 +34,7 @@ from src.web_preview._handlers import (
     _check_session_id,
     _prepare_generate_input,
 )
+from src.web_preview._health_routes import create_router as _create_health_router
 from src.web_preview._history import load_recent_history
 
 logger = logging.getLogger(__name__)
@@ -242,35 +243,8 @@ async def config_page(request: Request):
     )
 
 
-# ── 效能監控 ──────────────────────────────────────────
-@web_app.get("/metrics", response_class=HTMLResponse)
-async def metrics_page(request: Request):
-    """效能監控頁面"""
-    return templates.TemplateResponse(request, "metrics.html")
-
-
-@web_app.get("/metrics/data", response_class=HTMLResponse)
-async def metrics_data(request: Request):
-    """效能監控 HTMX 局部回應"""
-    metrics = None
-    error = None
-
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(f"{_API_BASE}/api/v1/metrics", headers=_api_headers())
-            if resp.status_code == 200:
-                metrics = resp.json()
-            else:
-                error = f"API 回傳 HTTP {resp.status_code}"
-    except _WEB_UI_EXCEPTIONS as e:
-        _log_web_warning("取得效能指標", e)
-        error = _sanitize_web_error(e)
-
-    return templates.TemplateResponse(
-        request,
-        "metrics_partial.html",
-        {"metrics": metrics, "error": error},
-    )
+# ── 效能監控 (routes extracted to _health_routes.py) ─────────────────────────
+web_app.include_router(_create_health_router(templates, _API_BASE))
 
 
 # ── 詳細審查報告 API ──────────────────────────────────

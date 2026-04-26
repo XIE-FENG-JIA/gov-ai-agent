@@ -2,6 +2,7 @@ import logging
 
 from rich.console import Console
 
+from src.agents.editor._safe_low_path import execute_targeted_review as _execute_targeted_review_fn
 from src.agents.review_parser import format_audit_to_review_result
 from src.core.constants import (
     CONVERGENCE_SAFETY_LIMIT,
@@ -263,15 +264,7 @@ class EditorFlowMixin:
         phase: str,
     ) -> tuple[list[ReviewResult], list[str]]:
         """只重跑上一輪在指定 phase 有 issues 的 Agent，其餘沿用舊結果。"""
-        affected_agents = {
-            result.agent_name
-            for result in prev_results
-            if any(issue.severity == phase for issue in result.issues)
-        }
-        if not affected_agents:
-            return prev_results, []
-
-        targeted_tasks = {
+        agent_factories: dict = {
             "Format Auditor": lambda: format_audit_to_review_result(
                 self.format_auditor.audit(draft, doc_type)
             ),
@@ -281,24 +274,4 @@ class EditorFlowMixin:
             "Consistency Checker": lambda: self.consistency_checker.check(draft),
             "Compliance Checker": lambda: self.compliance_checker.check(draft),
         }
-        rerun_agents = {name: targeted_tasks[name] for name in affected_agents if name in targeted_tasks}
-        preserved = [result for result in prev_results if result.agent_name not in rerun_agents]
-        if not rerun_agents:
-            return prev_results, []
-
-        results: list[ReviewResult] = []
-        future_to_agent = {self._executor.submit(task): name for name, task in rerun_agents.items()}
-        for future, agent_name in future_to_agent.items():
-            try:
-                results.append(future.result())
-            except (RuntimeError, OSError, ValueError) as exc:
-                results.append(
-                    ReviewResult(
-                        agent_name=agent_name,
-                        issues=[],
-                        score=DEFAULT_FAILED_SCORE,
-                        confidence=DEFAULT_FAILED_CONFIDENCE,
-                    )
-                )
-        results.extend(preserved)
-        return results, []
+        return _execute_targeted_review_fn(self._executor, agent_factories, prev_results, phase)
