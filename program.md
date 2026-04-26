@@ -4,6 +4,13 @@
 > 歷史 v8.1/v8.3/v8.4/v8.5 完成任務已封存：[docs/archive/program-history-202604O.md](docs/archive/program-history-202604O.md)（T-PROGRAM-MD-ARCHIVE-202604O；2026-04-26 22:51）
 > 歷史 v8.6/v8.8 P0/P1/P2 已封存：[docs/archive/program-history-202604Q.md](docs/archive/program-history-202604Q.md)（T-PROGRAM-MD-ARCHIVE-202604Q；2026-04-27）
 
+> **v8.13 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
+> - ✅ **T-EPIC-19-ARCHIVE** epic 19 (KB recall pipeline) 封存至 openspec/changes/archive/2026-04-27-19-...；INDEX.md 補 epic 17 + epic 19；sensor active_epic=""；37 tests passed
+> - ✅ **T-ENGINEER-LOG-ROTATE-v11** engineer-log 262→138 行；v8.3/v8.3-REVIEW/v8.4 封存 docs/archive/engineer-log-202604O.md；header 指標補
+> - ✅ **T-OPENSPEC-EPIC-20-DISCOVERY** openspec/changes/20-pytest-runtime-regression-guard/ 建立（.openspec.yaml + proposal.md + tasks.md）；sensor active_epic=20 total=25
+> - ✅ **T-SENSOR-ZERO-ACTIVE** sensor 空 active_epic 優雅處理已驗（epic_id=""，done=0，total=0）；37 tests passed
+> - ✅ **T-PROGRAM-MD-V8.13-HEADER** program.md v8.13 header + 5 任務 [x]；results.log 追加 5 行
+
 > **v8.12 批次回合（2026-04-28 Copilot agent；HEAD=TBD→push）**：
 > - ✅ **T-SENSOR-MDU-WINDOW-FIX** sensor marked_done_uncommitted 誤報 30 → 1；收窄掃描至帶日期的 P0/P1 header；37 tests passed
 > - ✅ **T-RECALL-DRY-RUN-SMOKE** `eval_recall.py --dry-run` 驗證 recall_report.json 正確建立（recall@1/3/5 欄位）
@@ -17,6 +24,14 @@
 > - ✅ **T19.5 tests/test_recall_eval.py** 12 unit tests 全綠（mock KB，無 live 依賴）
 > - ✅ **T19.6 CI/CONTRIBUTING** 整合 + tasks.md 全 [x]；49 recall+sensor tests passed
 > - ✅ **T-PROGRAM-MD-ARCHIVE-202604Q** 261→<200 行（v8.8/v8.6 區塊封存）
+
+### P0（2026-04-27 Copilot agent v8.13 — 維護批次：epic 19 封存 + log rotation + epic 20 開站）
+
+- [x] **T-EPIC-19-ARCHIVE**（ACL-free；v8.13）— epic 19 (19-kb-recall-validation-pipeline/) `git rm` 後複製到 archive/2026-04-27-19-...；INDEX.md 補 epic 17 + 19 條目；sensor active_epic="" 驗收；37 sensor tests passed。
+- [x] **T-ENGINEER-LOG-ROTATE-v11**（ACL-free；v8.13）— engineer-log.md 262→138 行；v8.3/v8.3-REVIEW/v8.4 反思 3 段（~124 行）封存 docs/archive/engineer-log-202604O.md；header 指標 202604O 補；sensor log_lines=138 驗收。
+- [x] **T-OPENSPEC-EPIC-20-DISCOVERY**（ACL-free；v8.13）— openspec/changes/20-pytest-runtime-regression-guard/ 建立（.openspec.yaml + proposal.md + tasks.md）；sensor active_epic=20-pytest-runtime-regression-guard total=25；epic 20 任務：T20.1-T20.5 pytest 冷啟動回歸守衛。
+- [x] **T-SENSOR-ZERO-ACTIVE**（ACL-free；v8.13）— sensor active_epic 空值優雅處理（epic_id=""，done=0，total=0）已由 T-EPIC-19-ARCHIVE 驗收；37 sensor tests passed。
+- [x] **T-PROGRAM-MD-V8.13-HEADER**（ACL-free；v8.13）— program.md 加 v8.13 batch header；5 任務全 [x]；results.log 追加 5 行 PASS。
 
 ### P0（2026-04-27 Copilot agent v8.11 — epic 19 recall pipeline 閉環）
 

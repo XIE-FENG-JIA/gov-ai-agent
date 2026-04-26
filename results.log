@@ -103,3 +103,8 @@ PASS T-RECALL-DRY-RUN-SMOKE 2026-04-27 01:32 eval_recall --dry-run created recal
 PASS T-RESULTS-LOG-SOFT-CAP 2026-04-27 01:32 archived 217 lines to results-archive/202604R.log; results.log trimmed to 100 lines
 PASS T-SENSOR-JSON-COMMIT 2026-04-27 01:33 sensor.json + all v8.12 changes committed
 PASS T-PROGRAM-MD-V8.12-HEADER 2026-04-27 01:33 program.md v8.12 header added; 5 tasks [x]
+PASS T-EPIC-19-ARCHIVE 2026-04-27 epic 19 archived openspec/changes/archive/2026-04-27-19-kb-recall-validation-pipeline; INDEX.md updated; sensor active_epic=''; 37 sensor tests passed
+PASS T-ENGINEER-LOG-ROTATE-v11 2026-04-27 engineer-log 262->138 lines; v8.3/v8.3-REVIEW/v8.4 archived to docs/archive/engineer-log-202604O.md; header pointer added
+PASS T-OPENSPEC-EPIC-20-DISCOVERY 2026-04-27 openspec/changes/20-pytest-runtime-regression-guard/ created (.openspec.yaml + proposal.md + tasks.md); sensor active_epic=20 total=25
+PASS T-SENSOR-ZERO-ACTIVE 2026-04-27 sensor empty active_epic handled gracefully (epic_id='', done=0, total=0); 37 tests passed
+PASS T-PROGRAM-MD-V8.13-HEADER 2026-04-27 program.md v8.13 header added; 5 tasks [x]; results.log 5 lines appended
