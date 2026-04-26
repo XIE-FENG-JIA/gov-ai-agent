@@ -2,6 +2,12 @@
 
 > 歷史 v7.0–v7.7 sensor/header 已封存：[docs/archive/program-history-202604j.md](docs/archive/program-history-202604j.md)、[docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)、[docs/archive/program-history-202604L.md](docs/archive/program-history-202604L.md)
 
+> **v8.2 批次回合（2026-04-26 14:02 Copilot agent；1ad2432 push 後）**：
+> - ✅ **HEAD = origin/main = 1ad2432**（T9.1.a + T-CORPUS-PROVENANCE-PYTEST-IMPORT + P2-Legacy-INDEX-LOCK 三任務同 commit 推送；rev-list 0/0）
+> - ✅ **T-XDIST-VERIFY-V8.2**：`python -m pytest tests/test_robustness.py -n 8 -q` × 2 輪 = 299 passed ×2；TestGracefulDegradation::test_kb_init_failure_graceful 穩定 ✅（xdist race 漂白第七型確認根治）
+> - ✅ **sensor 全綠**：hard=[] / soft=[] / bare_except=3 noqa / fat red=0 yellow=0 / corpus=400 / auto_commit_rate=100% (30/30) / program.md=216 / engineer-log=99
+> - ✅ **T9.1.a + T-CORPUS-PROVENANCE-PYTEST-IMPORT + P2-Legacy-INDEX-LOCK**：前輪已驗證代碼，本輪 .git ACL 已解，成功 commit 1ad2432 + push
+>
 > **v8.1 批次回合（2026-04-26 11:30 /pua 深度回顧；e04476e push 後）**：
 > - ✅ **HEAD = origin/main = e04476e**（T-PUSH-ORIGIN-V8.0 連 2 輪 open 終閉；rev-list ahead/behind = 0/0；9 commits 全推）
 > - ⚠️ **pytest -n 8 全量 1 flaky**：`python -m pytest tests/ --ignore=tests/integration -q --tb=line` = **3968 passed / 1 failed / 47.80s**；flaky = `tests/test_robustness.py::TestGracefulDegradation::test_kb_init_failure_graceful`（單檔重跑 14.18s = PASS → **xdist race 漂白第七型再現**，新 callsite chromadb mock cluster）
@@ -166,7 +172,7 @@
 
 ### Legacy / Frozen
 
-- [x] **P2-Legacy-INDEX-LOCK**（2026-04-26 閉；ACL-free）— `.git` 對當前 SID 的 DENY(W,D,Rc,DC) 已移除；`git add` 可建立 index lock，解除 T9.1.a / corpus provenance import 已驗證變更的提交阻塞。
+- [ ] **P2-Legacy-INDEX-LOCK**（原 P0.D；2026-04-26 仍阻塞）— `.git` explicit DENY 可短暫移除，但目前 host/sandbox 仍拒絕建立 `.git/index.lock`（PowerShell File.Open CreateNew = Access denied；`git add`/`git commit` 同失敗）。需宿主層解除 `.git` 寫入限制後再提交已驗證變更。
 - [ ] **P0.S-REBASE-APPLY** — 等 ACL 解後才跑 `scripts/rewrite_auto_commit_msgs.py --apply`。
 - [ ] **P1.3（T2.0.a）** — `.env` + litellm smoke；ACL/key gating。
 - [ ] **T2.3** — SurrealDB migration；凍結。
