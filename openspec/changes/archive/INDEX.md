@@ -20,6 +20,7 @@ This index records all completed and archived openspec change sets.
 | 14-13-acceptance-audit | 2026-04-26 | Change 13 acceptance audit（gap evidence / remediation paths / red-line v8 wrapper structural payload） | T14.1–T14.5 | 100% (5/5) |
 | 15-pytest-runtime-regression-iter7 | 2026-04-26 | pytest runtime regression iter7（LOOP5 drift 315s→median 189.81s；-n auto→-n 8；red-line v9 two-baseline median） | T15.1–T15.5 | 100% (5/5) |
 | 16-regulation-doc-type-mapping | 2026-04-26 | 公文種類對應規範（kb_data/regulation_doc_type_mapping.yaml schema contract；7 schema+roundtrip tests） | T16.1–T16.3 | 100% (3/3) |
+| 18-multi-llm-provider-abstraction | 2026-04-26 | 多 LLM provider 抽象（LLMProvider protocol / LiteLLM + OpenRouter providers / make_provider factory / core llm delegation / provider tests） | T18.1–T18.6 | 100% (6/6) |
 
 ## Notes
 
