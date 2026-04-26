@@ -1,6 +1,6 @@
 # Tasks: 18-multi-llm-provider-abstraction
 
-- [ ] **T18.1** Define `LLMProvider` protocol in `src/core/providers/_protocol.py`.
+- [x] **T18.1** Define `LLMProvider` protocol in `src/core/providers/_protocol.py`.
   Requirements:
   - `LLMProvider(Protocol)` with three methods: `complete(prompt, **kwargs) -> str`,
     `embed(texts: list[str]) -> list[list[float]]`, `stream(prompt, **kwargs) -> Iterator[str]`.
@@ -8,7 +8,7 @@
   Validation: `python -c "from src.core.providers import LLMProvider; print(LLMProvider)"` exits 0.
   Commit: this epic's first commit.
 
-- [ ] **T18.2** Create `LiteLLMProvider` implementing `LLMProvider`.
+- [x] **T18.2** Create `LiteLLMProvider` implementing `LLMProvider`.
   Requirements:
   - `complete()` delegates to existing `litellm.completion()` path.
   - `embed()` delegates to existing `litellm.embedding()` path.
@@ -17,7 +17,7 @@
   Validation: `python -m pytest tests/test_llm.py -q` = 52 passed.
   Commit: migration commit.
 
-- [ ] **T18.3** Migrate `OpenRouterProvider` embedding REST shim.
+- [x] **T18.3** Migrate `OpenRouterProvider` embedding REST shim.
   Requirements:
   - `OpenRouterProvider.embed()` encapsulates the existing direct REST call from
     `src/core/llm.py` (`POST /api/v1/embeddings`, Bearer auth, 8000-char cap).
@@ -26,7 +26,7 @@
   Validation: `python -m pytest tests/test_llm.py -q` = 52 passed (no regression).
   Commit: migration commit.
 
-- [ ] **T18.4** Implement `make_provider(config) -> LLMProvider` factory.
+- [x] **T18.4** Implement `make_provider(config) -> LLMProvider` factory.
   Requirements:
   - Reads `config["llm_provider"]` (default: `"litellm"`).
   - Returns `LiteLLMProvider` for `"litellm"`, `OpenRouterProvider` for `"openrouter"`.
@@ -34,7 +34,7 @@
   Validation: `python -m pytest tests/test_llm_provider.py::test_factory_dispatch -q` = 3 passed.
   Commit: factory commit.
 
-- [ ] **T18.5** Refactor `src/core/llm.py` to delegate through `make_provider()`.
+- [x] **T18.5** Refactor `src/core/llm.py` to delegate through `make_provider()`.
   Requirements:
   - Remove inline `if embedding_provider == "openrouter":` branch.
   - Call `make_provider(config).embed(texts)` and `make_provider(config).complete(prompt)`.
@@ -42,7 +42,7 @@
   Validation: `python -m pytest tests/ -q --ignore=tests/test_e2e.py` = all passed.
   Commit: refactor commit.
 
-- [ ] **T18.6** Add `tests/test_llm_provider.py` covering factory and both providers.
+- [x] **T18.6** Add `tests/test_llm_provider.py` covering factory and both providers.
   Requirements:
   - `test_factory_dispatch`: 3 cases (litellm, openrouter, unknown → ValueError).
   - `test_litellm_complete`: mock `litellm.completion`, assert return.
