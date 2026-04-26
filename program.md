@@ -12,8 +12,30 @@
 > - ✅ **targeted `pytest tests/test_llm.py` = 52 passed / 7.32s**（providers 抽象 T18.1-T18.3 行為等價）
 > - ⚠️ **CI integration job：`GOV_AI_RUN_INTEGRATION: "1"` 寫死 ci.yml:68 但無 secret gate**：`secrets.OPENROUTER_API_KEY` 為空時會在 live test 跑 401 而非 skip = CI 假紅；連 4 輪漏網
 
+> **v8.6 批次回合（2026-04-26 20:30 /pua 深度回顧；HEAD=1366586 ≡ origin/main）**：
+> - ✅ **pytest -x = 3987 passed / 49.21s**（cold ≤60s；soft 200s 大幅守住；+15 vs v8.5）
+> - ✅ **bare_except 真值 1**（v8.5 5→1 治本生效，僅剩 cite_cmd noqa）
+> - ⚠️ **工作樹散裝 13 modified + 5 untracked**（providers/ + tests/test_llm_provider + sensor + ci.yml + docs + 5 typed-bucket fix）= **漂白第一型第 4 輪 + 第十四型新生（marked done ≠ committed）**
+> - ⚠️ **engineer-log 307 > soft 300（hard cap 邊緣）**：本輪反思寫完 + v8.0-r5/v8.1 已封存 → 主檔約 276 行
+> - ⚠️ **runtime baseline 仍寫死 50.0s**：T-RUNTIME-RATCHET-LIVE-MEASURE 標 [x] 但 sensor.json 未自動下調 = 假哨兵半閉
+> - ⚠️ **CI secret gate 設好但未真跑驗收**：Admin 未設 secret 連 5 輪漏網
+> - ⚠️ **fat watch 9 檔 max=323**：`_manager_hybrid 323 / api/app 319 / exporter __init__ 319` 同模組 320+ 邊緣
+
+### P0（2026-04-26 20:30 /pua v8.6 深度回顧新增；本輪必動 — ACL 連 3 輪 + 散裝 13+5 + log hard cap）
+
+- [ ] **T-GIT-ACL-PERMA-FIX**（host Admin gate；連 3 輪 P0 open；structural blocker）— host 啟動腳本永久清 `.git` DENY ACL：(a) `icacls "%REPO%/.git" /remove:d <SID>` + `/inheritance:e`；(b) keeper / supervise wrapper 改用 `env -i YOLO_MODE=on` 顯式繼承（非 subshell reset）；(c) 5+ 輪 0-residual 監測（`git status` clean × 5 輪）方算真閉。驗收：本 session approval=never 下 `git add` 0 retry 通過；`icacls .git` 無 `(DENY)(...)` ACE。owner = host Admin。**不解 = v8.5/v8.6 全部工作量歸零**。
+- [ ] **T-EPIC-18-COMMIT-FLUSH**（ACL-gated；散裝拆 4 commit）— 工作樹 13 mod + 5 untracked 拆語意 commit：(1) `feat(providers): T18.4-T18.6 factory + delegate + tests`（src/core/providers/* + src/core/llm.py + tests/test_llm_provider.py + tasks.md T18.4-T18.6）；(2) `feat(sensor): runtime live-measure + bare_except typed-bucket sweep`（scripts/sensor_refresh.py + tests/test_sensor_refresh.py + sensor.json + src/cli/doctor.py + src/core/warnings_compat.py + src/sources/_common.py）；(3) `fix(ci): conditional integration secret gate`（.github/workflows/ci.yml + docs/ci-secrets-setup.md）；(4) `docs(reflection): v8.5/v8.6 deep review + abstraction SOP + xxe import-graph fix`（program.md + engineer-log.md + results.log + docs/abstraction-cut-sop.md + tests/test_realtime_lookup.py）。驗收：`git status --short` clean + `git rev-list origin/main..HEAD` ≤ 4 + 4 commit 通過 commit-lint。**前提：T-GIT-ACL-PERMA-FIX**。
+- [x] **T-ENGINEER-LOG-ROTATE-v10**（2026-04-26 閉；P0；ACL-free；hard cap 治本）— 已將 v8.0-r5 深度回顧 + v8.1 反思 2 段（~75 行）封存到 `docs/archive/engineer-log-202604M.md`；header pointer 補 v10 條目；主檔降至 276 行（≤ 300 hard cap ✓ 留下輪空間）。
+
+### P1（2026-04-26 20:30 /pua v8.6 新增；漂白第十四型治本 + runtime 哨兵真量 + fat 預治）
+
+- [x] **T-MARKED-DONE-COMMIT-RATCHET**（2026-04-27 閉；P1；ACL-free）— `scripts/sensor_refresh.py` 新增 `marked_done_uncommitted` 欄位：解析 `program.md` 所有 `[x] **T-XXX**` slug，與最近 30 commit message body grep 比對；soft `count > 0` 報警、hard `count > 5` 阻 CI；8 unit tests；3998 passed ✓。
+- [x] **T-RUNTIME-RATCHET-LIVE-MEASURE-v2**（2026-04-27 閉；P1；ACL-free）— `scripts/sensor_refresh.py` 改為主路徑自動跑 `pytest --collect-only`；ratchet down（新值 ≤ baseline 才更新）；`--no-measure` opt-out flag；tests 33 passed ✓。
+- [x] **T-FAT-WATCH-CUT-V4**（2026-04-27 閉；P1；ACL-free）— `_manager_hybrid.py` 323→247、`api/app.py` 319→226、`document/exporter/__init__.py` 319→243；BM25/TF-IDF scoring 抽 `_bm25_scoring.py`；startup helpers 抽 `_startup.py`；text utils 抽 `_text_utils.py`；3998 passed ✓。
+
 ### P0（2026-04-26 18:20 /pua v8.5 深度回顧新增；本輪必動 — 全量 -x 1 failed + bare 統計挪用 + epic 18 散裝）
 
+- [x] **T-OPENSPEC-18-PROMOTE**（2026-04-26 閉；P1；ACL-free 部分受限）— 已補 `openspec/specs/multi-llm-provider/spec.md`，並複製封存 `openspec/changes/archive/2026-04-26-18-multi-llm-provider-abstraction/`、更新 archive index；active change 目錄刪除被 sandbox policy 擋，保留為外部清理項；驗證 `python -m pytest tests/test_llm_provider.py tests/test_llm.py tests/test_sensor_refresh.py -q` = 87 passed。
 - [x] **T-BARE-EXCEPT-SENSOR-TRUTH**（30 min；P0；ACL-free；漂白第二型治本）— (a) `src/core/providers/_openrouter.py:66` 改 typed bucket（`requests.RequestException | json.JSONDecodeError | ValueError | KeyError`）；(b) `src/cli/cite_cmd.py` / `src/cli/doctor.py` / `src/core/warnings_compat.py` / `src/sources/_common.py` 4 處 bare-except audit；目標 `bare_except.total` 5→1（保留 N816 一條）；(c) sensor JSON 真值口徑：反思敘事禁挪用「nx noqa」摺疊，必引 sensor JSON `bare_except.total`；補測試。驗收：`python scripts/sensor_refresh.py --human` `bare_except` ≤ 1 + `python -m pytest tests/test_sensor_refresh.py -q` 全綠。owner = auto-engineer。
 - [x] **T-EPIC-18-COMMIT-FLUSH**（2026-04-26 閉；P0；ACL-free）— 工作樹散裝 5 項拆 3 commit：(1) `feat(providers): T18.1 LLMProvider protocol`（_protocol.py + __init__.py 部分）；(2) `feat(providers): T18.2 LiteLLMProvider + T18.3 OpenRouterProvider`（_litellm.py + _openrouter.py + __init__.py 完整 + tasks.md T18.1-T18.3 [x]）；(3) `docs(program): v8.5 reflection + sensor refresh`（program.md + engineer-log.md + results.log + sensor.json）；驗收：`git status --short` clean + `git rev-list origin/main..HEAD` ≤ 3 + 3 commit 通過 commit-lint。**前提：T-GIT-ACL-DENY-COMMIT-BLOCK 解 `.git` ACL DENY**（v8.4 P0 第 2 輪 open）。owner = auto-engineer / Admin。
 

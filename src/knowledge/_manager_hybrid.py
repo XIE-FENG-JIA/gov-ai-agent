@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from typing import Any
 
 import src.core.warnings_compat as warnings_compat
+from src.knowledge._bm25_scoring import bm25_search_docs, tfidf_search_docs
 
 
 @contextmanager
@@ -204,7 +205,7 @@ class KnowledgeHybridSearchMixin:
         截短不改變 BM25 語意：前 500 字已含足夠 token 做相關性排序。
         """
         try:
-            import jieba
+            import jieba  # noqa: F401
         except ImportError:
             logger.debug("jieba 未安裝，跳過 BM25 搜尋")
             return []
@@ -215,55 +216,7 @@ class KnowledgeHybridSearchMixin:
         if not all_docs:
             return []
 
-        # Query length cap: 防 jieba O(n) 分詞對 30k+ 字 query 爆炸
-        _MAX_QUERY_CHARS = 500
-        if len(query) > _MAX_QUERY_CHARS:
-            logger.debug(
-                "BM25 query 截短 %d → %d 字元（jieba 效能保護）",
-                len(query), _MAX_QUERY_CHARS,
-            )
-            query = query[:_MAX_QUERY_CHARS]
-
-        query_tokens = list(jieba.cut(query))
-        query_tokens = [t for t in query_tokens if len(t.strip()) > 1]
-        if not query_tokens:
-            return []
-
-        doc_count = len(all_docs)
-        token_doc_freq: Counter = Counter()
-        doc_token_freqs: list[Counter] = []
-        doc_lengths: list[int] = []
-
-        for doc in all_docs:
-            tokens = list(jieba.cut(doc["content"]))
-            freq = Counter(tokens)
-            doc_token_freqs.append(freq)
-            doc_lengths.append(len(tokens))
-            for unique_token in freq:
-                token_doc_freq[unique_token] += 1
-
-        scored: list[tuple[float, dict]] = []
-        for idx, doc in enumerate(all_docs):
-            freq = doc_token_freqs[idx]
-            doc_len = doc_lengths[idx] if doc_lengths[idx] > 0 else 1
-            score = 0.0
-            for qt in query_tokens:
-                if qt in freq:
-                    tf = freq[qt] / doc_len
-                    df = token_doc_freq.get(qt, 0)
-                    idf = math.log(doc_count / (1 + df))
-                    score += tf * idf
-            scored.append((score, doc))
-
-        scored.sort(key=lambda x: x[0], reverse=True)
-        results: list[dict] = []
-        for score, doc in scored[:n_results]:
-            if score > 0:
-                doc["distance"] = 1.0 / (1.0 + score)
-                doc["_bm25_score"] = score
-                results.append(doc)
-
-        return results
+        return bm25_search_docs(query, all_docs, n_results)
 
     def _keyword_fallback_search(
         self,
@@ -275,13 +228,9 @@ class KnowledgeHybridSearchMixin:
     ) -> list[dict]:
         """當 embedding 失敗時，使用 jieba 分詞 + TF-IDF 進行關鍵字搜尋。"""
         try:
-            import jieba
+            import jieba  # noqa: F401
         except ImportError:
             logger.warning("jieba 未安裝，無法執行關鍵字降級搜尋")
-            return []
-
-        query_tokens = set(jieba.cut(query))
-        if not query_tokens:
             return []
 
         collections = [
@@ -293,31 +242,6 @@ class KnowledgeHybridSearchMixin:
         if not all_docs:
             return []
 
-        doc_count = len(all_docs)
-        token_doc_freq: Counter = Counter()
-        doc_tokens_list: list[set[str]] = []
-        for doc in all_docs:
-            tokens = set(jieba.cut(doc["content"]))
-            doc_tokens_list.append(tokens)
-            for token in tokens:
-                token_doc_freq[token] += 1
-
-        scored: list[tuple[float, dict]] = []
-        for idx, doc in enumerate(all_docs):
-            doc_tokens = doc_tokens_list[idx]
-            score = 0.0
-            for qt in query_tokens:
-                if qt in doc_tokens:
-                    df = token_doc_freq.get(qt, 1)
-                    score += math.log((doc_count + 1) / (df + 1))
-            scored.append((score, doc))
-
-        scored.sort(key=lambda x: x[0], reverse=True)
-        results = []
-        for score, doc in scored[:n_results]:
-            if score > 0:
-                doc["distance"] = 1.0 / (1.0 + score)
-                results.append(doc)
-
+        results = tfidf_search_docs(query, all_docs, n_results)
         logger.info("關鍵字降級搜尋完成: 查詢=%s, 結果=%d 筆", query[:30], len(results))
         return results

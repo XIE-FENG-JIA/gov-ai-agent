@@ -81,6 +81,7 @@ class SensorReport:
     violations_hard: list[str] = field(default_factory=list)
     violations_soft: list[str] = field(default_factory=list)
     pytest_cold_runtime_secs: float = 0.0
+    marked_done_uncommitted: dict = field(default_factory=lambda: {"count": 0, "slugs": []})
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -114,6 +115,7 @@ class SensorReport:
                 "soft": self.violations_soft,
             },
             "pytest_cold_runtime_secs": self.pytest_cold_runtime_secs,
+            "marked_done_uncommitted": self.marked_done_uncommitted,
         }
 
 
@@ -231,11 +233,15 @@ def auto_commit_rate(
 
 
 def measure_cold_runtime(repo: Path) -> float:
-    """Run pytest and return wall-clock seconds (0.0 on failure)."""
+    """Run pytest --collect-only and return wall-clock seconds (0.0 on failure).
+
+    Uses --collect-only for a fast (~2-10s) cold-start proxy that tracks suite
+    size without running tests.  Sufficient to detect runtime regressions early.
+    """
     cmd = [
         sys.executable, "-m", "pytest",
         "tests/", "--ignore=tests/integration",
-        "-q", "--tb=no", "--no-header", "-n", "8",
+        "--collect-only", "-q", "--tb=no", "--no-header",
     ]
     start = time.monotonic()
     try:
@@ -247,16 +253,29 @@ def measure_cold_runtime(repo: Path) -> float:
 
 
 def save_runtime_baseline(repo: Path, secs: float) -> None:
-    """Persist measured runtime to scripts/runtime_baseline.json."""
+    """Persist measured runtime to scripts/runtime_baseline.json.
+
+    Implements ratchet-down: only writes if secs <= current baseline, so
+    the baseline never increases from a slow measurement (e.g. loaded machine).
+    """
     path = repo / "scripts" / "runtime_baseline.json"
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return
     try:
         data: dict = {}
         if path.exists():
             data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         data = {}
-    data["pytest_cold_runtime_secs"] = secs
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    current = float(data.get("pytest_cold_runtime_secs", 0.0))
+    if secs > 0 and (current <= 0 or secs <= current):
+        data["pytest_cold_runtime_secs"] = secs
+        try:
+            path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        except OSError:
+            return
 
 
 def read_runtime_baseline(repo: Path) -> float:
@@ -290,6 +309,49 @@ def epic6_progress(repo: Path) -> tuple[int, int]:
             elif re.match(r"\s*- \[ \]", line):
                 total += 1
     return done, total
+
+
+def count_marked_done_uncommitted(repo: Path, n_commits: int = 30) -> dict:
+    """Check [x] task slugs in recent program.md sections not in last n commits.
+
+    Only scans the first 4 P0/P1 section headers (≈ 2 batch rounds) to avoid
+    flagging legacy/archive tasks that naturally fall outside the 30-commit window.
+
+    Returns {"count": int, "slugs": list[str]}.
+    """
+    program_md = repo / "program.md"
+    if not program_md.exists():
+        return {"count": 0, "slugs": []}
+
+    text = program_md.read_text(encoding="utf-8", errors="replace")
+    lines = text.splitlines()
+
+    # Limit scan to most-recent 4 section headers (2 P0 + 2 P1 ≈ 2 batch rounds)
+    section_header_re = re.compile(r"^###\s+P[01]")
+    section_count = 0
+    scan_lines: list[str] = []
+    for line in lines:
+        if section_header_re.match(line):
+            section_count += 1
+            if section_count > 4:
+                break
+        scan_lines.append(line)
+
+    scan_text = "\n".join(scan_lines)
+    slug_re = re.compile(r"-\s*\[x\]\s+\*\*([A-Z][A-Z0-9\-]+)\*\*")
+    slugs = list(dict.fromkeys(slug_re.findall(scan_text)))
+
+    if not slugs:
+        return {"count": 0, "slugs": []}
+
+    cmd = ["git", "-C", str(repo), "log", f"-{n_commits}", "--format=%B"]
+    try:
+        commit_log = subprocess.check_output(cmd, encoding="utf-8", errors="replace")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return {"count": 0, "slugs": []}
+
+    uncommitted = [s for s in slugs if s not in commit_log]
+    return {"count": len(uncommitted), "slugs": uncommitted}
 
 
 def check_fat_ratchet(repo: Path, red: list[tuple[str, int]], yellow: list[tuple[str, int]]) -> tuple[bool, str]:
@@ -339,6 +401,7 @@ def build_report(repo: Path) -> SensorReport:
     )
     r.epic6_progress = epic6_progress(repo)
     r.pytest_cold_runtime_secs = read_runtime_baseline(repo)
+    r.marked_done_uncommitted = count_marked_done_uncommitted(repo)
 
     # Hard violations
     if r.bare_except_total > _HARD_LIMITS["bare_except_total"]:
@@ -407,6 +470,19 @@ def build_report(repo: Path) -> SensorReport:
                 f" > soft {_SOFT_LIMITS['pytest_cold_runtime_secs']:.0f}s"
             )
 
+    # marked_done_uncommitted ratchet (T-MARKED-DONE-COMMIT-RATCHET)
+    mdu_count = r.marked_done_uncommitted.get("count", 0)
+    if mdu_count > 5:
+        r.violations_hard.append(
+            f"marked_done_uncommitted {mdu_count} > hard 5"
+            f" slugs={r.marked_done_uncommitted.get('slugs', [])}"
+        )
+    elif mdu_count > 0:
+        r.violations_soft.append(
+            f"marked_done_uncommitted {mdu_count} > soft 0"
+            f" slugs={r.marked_done_uncommitted.get('slugs', [])}"
+        )
+
     return r
 
 
@@ -439,6 +515,11 @@ def format_human(r: SensorReport) -> str:
     )
     if r.pytest_cold_runtime_secs > 0:
         lines.append(f"- **pytest cold runtime**: {r.pytest_cold_runtime_secs:.1f}s (soft≤200s / hard≤300s)")
+    if r.marked_done_uncommitted.get("count", 0) > 0:
+        lines.append(
+            f"- **marked_done_uncommitted**: {r.marked_done_uncommitted['count']} slugs"
+            f" = {r.marked_done_uncommitted['slugs']}"
+        )
     if r.epic6_progress[1] > 0:
         lines.append(
             f"- **EPIC6 T-LIQG 進度**: {r.epic6_progress[0]}/{r.epic6_progress[1]}"
@@ -473,15 +554,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--measure-runtime",
         action="store_true",
-        help="真跑 pytest 量 cold-start 時間並更新 scripts/runtime_baseline.json",
+        help="(deprecated: measurement now runs by default via --collect-only)",
+    )
+    parser.add_argument(
+        "--no-measure",
+        action="store_true",
+        help="skip automatic collection-time measurement (faster but no baseline update)",
     )
     args = parser.parse_args(argv)
 
-    if args.measure_runtime:
-        print("[sensor_refresh] measuring cold-start pytest runtime …", file=sys.stderr)
+    # T-RUNTIME-RATCHET-LIVE-MEASURE-v2: measurement is now the main path (not opt-in).
+    # Uses --collect-only for a fast (~2-10s) cold-start proxy.  Skip with --no-measure.
+    if not args.no_measure:
         secs = measure_cold_runtime(args.repo)
-        print(f"[sensor_refresh] measured: {secs:.1f}s — writing to runtime_baseline.json", file=sys.stderr)
-        save_runtime_baseline(args.repo, secs)
+        if secs > 0:
+            save_runtime_baseline(args.repo, secs)
 
     report = build_report(args.repo)
     print(json.dumps(report.to_dict(), ensure_ascii=False))

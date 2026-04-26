@@ -32,6 +32,8 @@ from src.core.constants import (
     get_platform_fonts,
 )
 from src.document.citation_metadata import build_citation_export_metadata
+from src.document.exporter._text_utils import auto_number as _auto_number_fn
+from src.document.exporter._text_utils import sanitize_text as _sanitize_text_fn
 from src.document.exporter._custom_properties import (
     CONTENT_TYPES_NS,
     CONTENT_TYPES_XML_PATH,
@@ -79,9 +81,6 @@ class DocxExporter:
     將 Markdown 草稿匯出為符合政府標準格式的 Microsoft Word 文件。
     """
 
-    _RE_CN_NUM = re.compile(r"^[一二三四五六七八九十]{1,3}、")
-    _RE_CN_SUB = re.compile(r"^[（(][一二三四五六七八九十]{1,3}[）)]")
-    _RE_ARABIC = re.compile(r"^\d+[.、]")
     KNOWN_DOC_TYPES = KNOWN_DOC_TYPES
 
     def __init__(self, strict_format: bool = True) -> None:
@@ -104,40 +103,7 @@ class DocxExporter:
     @staticmethod
     def _sanitize_text(text: str) -> str:
         """清理文字中可能導致 Word 文件損壞的特殊字元。"""
-        if not text:
-            return ""
-        text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", text)
-        text = re.sub(r"[\ud800-\udfff]", "", text)
-        for ch in [
-            "\u00a0",
-            "\u2000",
-            "\u2001",
-            "\u2002",
-            "\u2003",
-            "\u2004",
-            "\u2005",
-            "\u2006",
-            "\u2007",
-            "\u2008",
-            "\u2009",
-            "\u200a",
-            "\u202f",
-            "\u205f",
-            "\u3000",
-        ]:
-            text = text.replace(ch, " ")
-        for ch in [
-            "\ufeff",
-            "\u200b",
-            "\u200c",
-            "\u200d",
-            "\u200e",
-            "\u200f",
-            "\u00ad",
-            "\u2060",
-        ]:
-            text = text.replace(ch, "")
-        return text
+        return _sanitize_text_fn(text)
 
     def _set_paragraph_spacing(self, paragraph) -> None:
         """設定段落的行距與段前/段後間距（嚴格模式）。"""
@@ -257,49 +223,7 @@ class DocxExporter:
 
     def _auto_number(self, lines: list[str]) -> list[str]:
         """將多項說明轉換為多層級編號。"""
-        cleaned = [line.rstrip() for line in lines if line.rstrip()]
-        if len(cleaned) < 2:
-            return lines
-
-        has_existing_numbering = any(
-            self._RE_CN_NUM.match(self._clean_line(line))
-            or self._RE_CN_SUB.match(self._clean_line(line))
-            or self._RE_ARABIC.match(self._clean_line(line))
-            for line in cleaned
-        )
-        if has_existing_numbering:
-            return lines
-
-        result: list[str] = []
-        level1_idx = 0
-        level2_idx = 0
-        level3_idx = 0
-
-        for line in lines:
-            stripped = line.rstrip()
-            if not stripped:
-                result.append(line)
-                continue
-
-            leading = len(line) - len(line.lstrip())
-            effective_indent = leading + line[:leading].count("\t") * 3
-
-            if effective_indent >= 8:
-                level3_idx += 1
-                result.append(f"{level3_idx}. {stripped.lstrip()}")
-            elif effective_indent >= 2:
-                prefix = f"（{CHINESE_NUMBERS[level2_idx]}）" if level2_idx < len(CHINESE_NUMBERS) else f"（{level2_idx + 1}）"
-                level2_idx += 1
-                level3_idx = 0
-                result.append(f"{prefix}{stripped.lstrip()}")
-            else:
-                prefix = f"{CHINESE_NUMBERS[level1_idx]}、" if level1_idx < len(CHINESE_NUMBERS) else f"{level1_idx + 1}、"
-                level1_idx += 1
-                level2_idx = 0
-                level3_idx = 0
-                result.append(f"{prefix}{stripped}")
-
-        return result
+        return _auto_number_fn(lines, self._clean_line)
 
 
 __all__ = [

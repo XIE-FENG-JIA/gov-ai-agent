@@ -365,21 +365,36 @@ def test_save_runtime_baseline_writes_json(tmp_path: Path) -> None:
 
 
 def test_save_runtime_baseline_updates_existing(tmp_path: Path) -> None:
-    """save_runtime_baseline updates an existing file, preserving other keys."""
+    """save_runtime_baseline updates an existing file when new value is smaller (ratchet-down)."""
     repo = tmp_path
     scripts_dir = repo / "scripts"
     scripts_dir.mkdir()
     (scripts_dir / "runtime_baseline.json").write_text(
         '{"pytest_cold_runtime_secs": 50.0, "_note": "original"}', encoding="utf-8"
     )
-    _mod.save_runtime_baseline(repo, 87.6)
+    _mod.save_runtime_baseline(repo, 38.5)
     data = json.loads((scripts_dir / "runtime_baseline.json").read_text(encoding="utf-8"))
-    assert data["pytest_cold_runtime_secs"] == pytest.approx(87.6)
+    assert data["pytest_cold_runtime_secs"] == pytest.approx(38.5)
     assert data.get("_note") == "original"
 
 
+def test_save_runtime_baseline_ratchet_down_no_update(tmp_path: Path) -> None:
+    """save_runtime_baseline must NOT update when new value exceeds current baseline."""
+    repo = tmp_path
+    scripts_dir = repo / "scripts"
+    scripts_dir.mkdir()
+    (scripts_dir / "runtime_baseline.json").write_text(
+        '{"pytest_cold_runtime_secs": 38.5}', encoding="utf-8"
+    )
+    _mod.save_runtime_baseline(repo, 87.6)
+    data = json.loads((scripts_dir / "runtime_baseline.json").read_text(encoding="utf-8"))
+    assert data["pytest_cold_runtime_secs"] == pytest.approx(38.5), (
+        "ratchet-down: larger measured value must not replace smaller baseline"
+    )
+
+
 def test_measure_runtime_flag_updates_baseline(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    """--measure-runtime flag runs measure_cold_runtime, writes baseline, and returns non-50.0."""
+    """Measurement runs by default (main path), writes baseline, and returns non-50.0."""
     repo = _make_repo(tmp_path)
     subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
     (repo / "engineer-log.md").write_text("x\n" * 50, encoding="utf-8")
@@ -397,14 +412,171 @@ def test_measure_runtime_flag_updates_baseline(tmp_path: Path, capsys: pytest.Ca
     original = _mod.measure_cold_runtime
     try:
         _mod.measure_cold_runtime = lambda repo: 38.5
-        rc = _mod.main(["--repo", str(repo), "--measure-runtime"])
+        # No --measure-runtime flag needed — measurement is now the main path
+        rc = _mod.main(["--repo", str(repo)])
     finally:
         _mod.measure_cold_runtime = original
 
     assert rc == 0
     data = json.loads((scripts_dir / "runtime_baseline.json").read_text(encoding="utf-8"))
     assert data["pytest_cold_runtime_secs"] == pytest.approx(38.5), (
-        "runtime_baseline.json should be updated with measured value, not hardcoded 50.0"
+        "runtime_baseline.json should be updated with measured value (main path, not opt-in)"
     )
     payload = json.loads(capsys.readouterr().out)
     assert payload["pytest_cold_runtime_secs"] == pytest.approx(38.5)
+
+
+def test_no_measure_flag_skips_measurement(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """--no-measure skips measurement and preserves existing baseline."""
+    repo = _make_repo(tmp_path)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    (repo / "engineer-log.md").write_text("x\n" * 50, encoding="utf-8")
+    (repo / "program.md").write_text("x\n" * 50, encoding="utf-8")
+    scripts_dir = repo / "scripts"
+    scripts_dir.mkdir()
+    (scripts_dir / "runtime_baseline.json").write_text(
+        '{"pytest_cold_runtime_secs": 42.0}', encoding="utf-8"
+    )
+    (scripts_dir / "fat_baseline.json").write_text(
+        '{"yellow_count_max": 0, "yellow_max_lines": 0}', encoding="utf-8"
+    )
+
+    original = _mod.measure_cold_runtime
+    called = []
+    try:
+        _mod.measure_cold_runtime = lambda repo: called.append(1) or 10.0
+        rc = _mod.main(["--repo", str(repo), "--no-measure"])
+    finally:
+        _mod.measure_cold_runtime = original
+
+    assert called == [], "--no-measure must skip measurement"
+    data = json.loads((scripts_dir / "runtime_baseline.json").read_text(encoding="utf-8"))
+    assert data["pytest_cold_runtime_secs"] == pytest.approx(42.0)
+
+
+# ── T-MARKED-DONE-COMMIT-RATCHET tests ──────────────────────────────────────
+
+
+def _git_commit(repo: Path, filename: str, content: str, message: str) -> None:
+    (repo / filename).write_text(content, encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", filename], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-m", message, "-q"], check=True)
+
+
+def test_marked_done_uncommitted_no_program_md(tmp_path: Path) -> None:
+    """Returns zero violations when program.md does not exist."""
+    result = _mod.count_marked_done_uncommitted(tmp_path)
+    assert result == {"count": 0, "slugs": []}
+
+
+def test_marked_done_uncommitted_slug_in_commits(tmp_path: Path) -> None:
+    """[x] slug that appears in last-30 commits is NOT a violation."""
+    repo = tmp_path
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@x"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
+    program_text = "### P0\n- [x] **T-FOO-BAR**\n"
+    _git_commit(repo, "program.md", program_text, "docs(program): T-FOO-BAR done")
+    result = _mod.count_marked_done_uncommitted(repo)
+    assert result["count"] == 0
+
+
+def test_marked_done_uncommitted_slug_not_in_commits(tmp_path: Path) -> None:
+    """[x] slug NOT in any last-30 commit is a violation."""
+    repo = tmp_path
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@x"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
+    program_text = "### P0\n- [x] **T-NEVER-COMMITTED**\n"
+    _git_commit(repo, "program.md", program_text, "chore: unrelated work only")
+    result = _mod.count_marked_done_uncommitted(repo)
+    assert result["count"] == 1
+    assert "T-NEVER-COMMITTED" in result["slugs"]
+
+
+def test_marked_done_uncommitted_mixed(tmp_path: Path) -> None:
+    """Correctly counts only slugs missing from commits when some are present."""
+    repo = tmp_path
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@x"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
+    program_text = (
+        "### P0\n"
+        "- [x] **T-COMMITTED-ONE**\n"
+        "- [x] **T-MISSING-TWO**\n"
+        "- [ ] **T-OPEN-THREE**\n"
+    )
+    _git_commit(repo, "program.md", program_text, "feat: T-COMMITTED-ONE landed")
+    result = _mod.count_marked_done_uncommitted(repo)
+    assert result["count"] == 1
+    assert "T-MISSING-TWO" in result["slugs"]
+    assert "T-COMMITTED-ONE" not in result["slugs"]
+    assert "T-OPEN-THREE" not in result["slugs"]
+
+
+def test_marked_done_uncommitted_sections_beyond_4_excluded(tmp_path: Path) -> None:
+    """Slugs from the 5th+ section header are excluded (archive/legacy)."""
+    repo = tmp_path
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@x"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
+    program_text = (
+        "### P0（batch 5）\n"
+        "- [x] **T-SLUG-IN-BATCH5**\n"
+        "### P1（batch 5）\n"
+        "- [x] **T-SLUG-IN-P1-BATCH5**\n"
+        "### P0（batch 4）\n"
+        "- [x] **T-SLUG-IN-BATCH4**\n"
+        "### P1（batch 4）\n"
+        "- [x] **T-SLUG-IN-P1-BATCH4**\n"
+        "### P0（batch 3 archive）\n"
+        "- [x] **T-ARCHIVE-SLUG**\n"
+    )
+    _git_commit(repo, "program.md", program_text, "chore: none of the slugs committed here")
+    result = _mod.count_marked_done_uncommitted(repo)
+    slugs = result["slugs"]
+    assert "T-ARCHIVE-SLUG" not in slugs, "archive slug (5th section) must be excluded"
+    assert "T-SLUG-IN-BATCH5" in slugs
+    assert "T-SLUG-IN-BATCH4" in slugs
+
+
+def test_build_report_marked_done_uncommitted_in_dict(tmp_path: Path) -> None:
+    """build_report includes marked_done_uncommitted in to_dict() output."""
+    repo = _make_repo(tmp_path)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    (repo / "engineer-log.md").write_text("x\n" * 50, encoding="utf-8")
+    program_text = "### P0\n- [x] **T-UNMARKED-TEST**\n"
+    _git_commit(repo, "program.md", program_text, "chore: unrelated commit only")
+    r = _mod.build_report(repo)
+    d = r.to_dict()
+    assert "marked_done_uncommitted" in d
+    assert isinstance(d["marked_done_uncommitted"]["count"], int)
+    assert isinstance(d["marked_done_uncommitted"]["slugs"], list)
+
+
+def test_build_report_soft_violation_marked_done_gt_0(tmp_path: Path) -> None:
+    """Soft violation triggered when marked_done_uncommitted count > 0."""
+    repo = _make_repo(tmp_path)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    (repo / "engineer-log.md").write_text("x\n" * 50, encoding="utf-8")
+    program_text = "### P0\n- [x] **T-SOFT-VIOL-SLUG**\n"
+    _git_commit(repo, "program.md", program_text, "chore: unrelated")
+    r = _mod.build_report(repo)
+    assert any("marked_done_uncommitted" in v for v in r.violations_soft), (
+        f"Expected soft violation; got soft={r.violations_soft}"
+    )
+    assert not any("marked_done_uncommitted" in v for v in r.violations_hard)
+
+
+def test_build_report_hard_violation_marked_done_gt_5(tmp_path: Path) -> None:
+    """Hard violation triggered when marked_done_uncommitted count > 5."""
+    repo = _make_repo(tmp_path)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    (repo / "engineer-log.md").write_text("x\n" * 50, encoding="utf-8")
+    sluglines = "".join(f"- [x] **T-HARD-SLUG-{i}**\n" for i in range(6))
+    program_text = f"### P0\n{sluglines}"
+    _git_commit(repo, "program.md", program_text, "chore: unrelated only")
+    r = _mod.build_report(repo)
+    assert any("marked_done_uncommitted" in v for v in r.violations_hard), (
+        f"Expected hard violation for 6 slugs; got hard={r.violations_hard}"
+    )
