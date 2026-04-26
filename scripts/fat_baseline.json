@@ -1,10 +1,5 @@
 {
-  "yellow_count_max": 1,
-  "yellow_max_lines": 350,
-  "yellow_files": [
-    {
-      "path": "src/cli/template_cmd/catalog.py",
-      "lines": 350
-    }
-  ]
+  "yellow_count_max": 0,
+  "yellow_max_lines": 300,
+  "yellow_files": []
 }
