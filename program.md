@@ -2,6 +2,13 @@
 
 > 歷史 v7.0–v7.7 sensor/header 已封存：[docs/archive/program-history-202604j.md](docs/archive/program-history-202604j.md)、[docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)、[docs/archive/program-history-202604L.md](docs/archive/program-history-202604L.md)
 
+> **v8.3 批次回合（2026-04-26 14:30 /pua 深度回顧；ea22663 push 後）**：
+> - ✅ **HEAD = origin/main = ea22663**（afcc254 + ea22663 + 1ad2432 三連推；rev-list 0/0）
+> - ⚠️ **pytest -n 8 cold runtime 暴增**：`python -m pytest tests/ --ignore=tests/integration -q --tb=line -x` = **3969 passed / 0 failed / 436.19s**；vs v8.0 cold 167s = **2.6x 暴增**，**soft 200s 紅線 2.18x 破**；T-PYTEST-RUNTIME-REGRESSION-ITER8 升 P0
+> - ✅ **sensor hard=[] / soft=[]**：bare_except=3 noqa / fat red=0 yellow=0 / corpus=400 / auto_commit=100% (30/30) / program.md=222 / engineer-log=99
+> - ✅ **openspec 0 active / 14 specs / 17 archive INDEX 齊**
+> - ⚠️ **watch 300-400 = 12 檔**：top 4 全 320+（web_preview 347 / llm 343 / gazette_fetcher 331 / review_parser 326）；fat 邊緣值 — 預抽 ROI ×3
+>
 > **v8.2 批次回合（2026-04-26 14:02 Copilot agent；1ad2432 push 後）**：
 > - ✅ **HEAD = origin/main = 1ad2432**（T9.1.a + T-CORPUS-PROVENANCE-PYTEST-IMPORT + P2-Legacy-INDEX-LOCK 三任務同 commit 推送；rev-list 0/0）
 > - ✅ **T-XDIST-VERIFY-V8.2**：`python -m pytest tests/test_robustness.py -n 8 -q` × 2 輪 = 299 passed ×2；TestGracefulDegradation::test_kb_init_failure_graceful 穩定 ✅（xdist race 漂白第七型確認根治）
@@ -39,7 +46,16 @@
 >
 > **v7.9-final/v7.9-sensor/v7.8 批次頭 + 歷史 P0 段已封存**：詳見 [docs/archive/program-history-202604L.md](docs/archive/program-history-202604L.md)。
 
-### P0（2026-04-26 11:30 /pua v8.1 深度回顧新增；本輪必動 — 漂白第七型再現 + tmp 漏網）
+### P0（2026-04-26 14:30 /pua v8.3 深度回顧新增；本輪必動 — runtime 紅線 2.18x 破）
+
+- [x] **T-PYTEST-RUNTIME-REGRESSION-ITER8**（2026-04-26 閉；P0；ACL-free）— LiteLLM 改 lazy import，避免 api/test collection 冷啟載入重依賴；`switch` 改用剛寫入的 raw config，缺 API key 時略過雲端 connectivity。驗證：`python -m pytest tests/test_llm.py tests/test_cli_commands.py -q` = 810 passed / 30.94s；`python -m pytest tests --ignore=tests/integration --collect-only -q` = 3969 collected / 7.57s；`python -m pytest tests --ignore=tests/integration -q --tb=line --durations=20 -x` = 3969 passed / 42.12s。
+
+### P1（2026-04-26 14:30 /pua v8.3 新增；llm.py dual path + fat watch 預抽）
+
+- [x] **T-LLM-DUAL-PATH-EXTRACT**（2026-04-26 閉；P1；ACL-free）— `src/core/llm.py` 377→279 行；抽出 `src/core/_openrouter_rest.py`（exceptions、_LazyLiteLLM、_LocalEmbedder、_openrouter_embed_rest）；fat-gate ratchet OK (red=0 yellow=0)；`pytest tests/test_llm.py -q` = 52 passed；全量 3970 passed 34 skipped / 40.17s。
+- [ ] **T-FAT-WATCH-CUT-V3**（45 min；P2；ACL-free；3 檔同刀 ROI ×3）— 預先抽 `web_preview/app.py` 347→285（拆 `_handlers.py`）+ `gazette_fetcher.py` 331→260（拆 `_parser.py`）+ `review_parser.py` 326→260（拆 `_scoring.py`）；驗收 fat watch 300-400 ≤ 9 檔、targeted pytest 全綠。
+
+
 
 - [x] **T-GITIGNORE-TMP-OUT**（5 min；P0；ACL-free；治理 noise 漏網 v3）— `.gitignore` 已加 `*.tmp` + `out*` patterns；`out.tmp` 目前 `!!` ignored，但刪除被 Windows `PermissionError [WinError 5]` 與 command policy 擋下。驗收剩：解除檔案 ACL/鎖後刪 `out.tmp`，`git status --short --ignored out.tmp` 不再列檔。
 - [x] **T-XDIST-RACE-AUDIT-V2-CHROMADB**（2026-04-26 閉；P0；ACL-free）— `tests/test_robustness.py::TestGracefulDegradation` 加 autouse fixture 重置 `src.knowledge.manager` chromadb module-state，3 個 failure-path 測試改用 `monkeypatch` 綁定當前 module `PersistentClient`，避免 xdist/patch 全域交錯。驗證：`python -m pytest tests/test_robustness.py -n 8 -q` 連跑 4 輪 = 299 passed ×4。
@@ -172,7 +188,7 @@
 
 ### Legacy / Frozen
 
-- [ ] **P2-Legacy-INDEX-LOCK**（原 P0.D；2026-04-26 仍阻塞）— `.git` explicit DENY 可短暫移除，但目前 host/sandbox 仍拒絕建立 `.git/index.lock`（PowerShell File.Open CreateNew = Access denied；`git add`/`git commit` 同失敗）。需宿主層解除 `.git` 寫入限制後再提交已驗證變更。
+- [ ] **P2-Legacy-INDEX-LOCK**（原 P0.D；2026-04-26 仍阻塞）— `.git` explicit DENY 可短暫移除，但目前 host/sandbox 仍拒絕建立 `.git/index.lock`（PowerShell File.Open CreateNew = Access denied；`git add`/`git commit` 同失敗），alternate index 與 `git hash-object -w` 也無法寫 index/object DB；另有本輪殘留 `codex-alt-index-*.lock` 因 Access denied 無法刪。需宿主層解除 `.git`/工作樹 lock 寫入限制後再清理殘留並提交已驗證變更。
 - [ ] **P0.S-REBASE-APPLY** — 等 ACL 解後才跑 `scripts/rewrite_auto_commit_msgs.py --apply`。
 - [ ] **P1.3（T2.0.a）** — `.env` + litellm smoke；ACL/key gating。
 - [ ] **T2.3** — SurrealDB migration；凍結。

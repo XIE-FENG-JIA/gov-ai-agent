@@ -2,56 +2,25 @@ import os
 import random
 import logging
 import threading
-import requests as _requests
 from src.core.warnings_compat import suppress_known_third_party_deprecations
 
 suppress_known_third_party_deprecations()
 
-import litellm  # noqa: E402
 from src.core.config import LLMProvider  # noqa: E402
 from src.core.constants import LLM_GENERATION_TIMEOUT, LLM_CHECK_TIMEOUT  # noqa: E402
+from src.core._openrouter_rest import (  # noqa: E402
+    _requests,  # re-exported for patch("src.core.llm._requests.post") compatibility
+    LLMError, LLMConnectionError, LLMAuthError, LLMTimeoutError,
+    _LLM_PROVIDER_EXCEPTIONS,
+    _LazyLiteLLM, _LocalEmbedder,
+    _openrouter_embed_rest,
+)
 
 logger = logging.getLogger(__name__)
 
-# LiteLLM 與 provider adapters 常將底層錯誤包成通用 Exception；
-# 集中 bucket，避免散落裸 except。
-_LLM_PROVIDER_EXCEPTIONS = (
-    ConnectionError,
-    OSError,
-    RuntimeError,
-    TimeoutError,
-    ValueError,
-    Exception,
-)
+# Module-level lazy litellm instance; tests patch via src.core.llm.litellm
+litellm = _LazyLiteLLM()  # noqa: N816
 
-
-# ============================================================
-# LLM 自訂例外類別
-# ============================================================
-
-class LLMError(Exception):
-    """LLM 服務錯誤基礎類別。"""
-    pass
-
-
-class LLMConnectionError(LLMError):
-    """無法連線到 LLM 服務。"""
-    pass
-
-
-class LLMAuthError(LLMError):
-    """API Key 無效或認證失敗。"""
-    pass
-
-
-class LLMTimeoutError(LLMError):
-    """LLM 生成超時。"""
-    pass
-
-# 抑制 LiteLLM 的冗長錯誤訊息，只在真正需要除錯時開啟
-litellm.suppress_debug_info = True
-litellm.set_verbose = False
-logging.getLogger("LiteLLM").setLevel(logging.ERROR)
 
 class MockLLMProvider(LLMProvider):
     """模擬 LLM 提供者，用於不需要真實後端的測試。"""
@@ -73,28 +42,6 @@ class MockLLMProvider(LLMProvider):
             return []
         rng = random.Random(len(text))
         return [rng.random() for _ in range(384)]
-
-class _LocalEmbedder:
-    """使用 sentence-transformers 的本地 embedding 單例。"""
-    _instance = None
-    _lock = threading.Lock()
-
-    @classmethod
-    def get(cls, model_name: str = "all-MiniLM-L6-v2") -> "_LocalEmbedder":
-        with cls._lock:
-            if cls._instance is None or cls._instance._model_name != model_name:
-                cls._instance = cls(model_name)
-        return cls._instance
-
-    def __init__(self, model_name: str) -> None:
-        from sentence_transformers import SentenceTransformer
-        self._model_name = model_name
-        self._model = SentenceTransformer(model_name)
-        logger.info("本地 embedding 模型已載入: %s", model_name)
-
-    def embed(self, text: str) -> list[float]:
-        return self._model.encode(text, normalize_embeddings=True).tolist()
-
 
 class LiteLLMProvider(LLMProvider):
     """使用 LiteLLM 的 LLM 提供者實作。"""
@@ -227,26 +174,15 @@ class LiteLLMProvider(LLMProvider):
 
         try:
             # OpenRouter does not expose an embedding endpoint through litellm;
-            # call the OpenAI-compatible REST API directly instead.
+            # delegate to _openrouter_embed_rest (in _openrouter_rest.py).
             if self.emb_provider == "openrouter":
-                _api_key = self.emb_api_key or os.environ.get("OPENROUTER_API_KEY", "")
-                _base = (self.emb_base_url or "https://openrouter.ai/api/v1").rstrip("/")
-                # Truncate to ~8 000 chars to stay within free model's context window
-                _text = text[:8000] if len(text) > 8000 else text
-                resp = _requests.post(
-                    f"{_base}/embeddings",
-                    headers={
-                        "Authorization": f"Bearer {_api_key}",
-                        "Content-Type": "application/json",
-                    },
-                    json={"model": self.emb_model, "input": [_text]},
+                return _openrouter_embed_rest(
+                    model=self.emb_model,
+                    text=text,
+                    api_key=self.emb_api_key,
+                    base_url=self.emb_base_url,
                     timeout=LLM_CHECK_TIMEOUT,
                 )
-                resp.raise_for_status()
-                body = resp.json()
-                if "error" in body:
-                    raise RuntimeError(body["error"].get("message", "OpenRouter embedding error"))
-                return body["data"][0]["embedding"]
 
             # Construct embedding model name
             if self.emb_provider == "ollama":
