@@ -23,6 +23,7 @@ This index records all completed and archived openspec change sets.
 | 17-embedding-provider-rest-fallback | 2026-04-26 | Embedding provider REST fallback（OpenRouter REST shim / embedding_provider config / EmbeddingError typed / REST+litellm dual path） | T17.1–T17.3 | 100% (3/3) |
 | 18-multi-llm-provider-abstraction | 2026-04-26 | 多 LLM provider 抽象（LLMProvider protocol / LiteLLM + OpenRouter providers / make_provider factory / core llm delegation / provider tests） | T18.1–T18.6 | 100% (6/6) |
 | 19-kb-recall-validation-pipeline | 2026-04-27 | KB recall 驗證管線（eval set 35 筆 / eval_recall.py recall@1/3/5 / recall_baseline ratchet / sensor soft violation / unit tests 12 cases / CI integration） | T19.1–T19.6 | 100% (6/6) |
+| 20-pytest-runtime-regression-guard | 2026-04-27 | pytest runtime 回歸守衛（measure_pytest_runtime.py / ceiling ratchet-down / sensor check_pytest_runtime / 8 unit tests / CONTRIBUTING docs） | T20.1–T20.5 | 100% (5/5) |
 
 ## Notes
 

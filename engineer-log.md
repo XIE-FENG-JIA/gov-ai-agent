@@ -132,6 +132,44 @@
 
 ---
 
+## 深度回顧 2026-04-27 03:30 — 技術主管近 5 輪根因分析（v8.14-REVIEW；/pua 觸發）
+
+### 近 5 輪事件摘要（v8.10 → v8.14）
+
+| 輪次  | 核心事件                                              | 結果        |
+|-------|-------------------------------------------------------|-------------|
+| v8.10 | 漂白第一型 1 輪再生；epic 19 stall 1/6；sensor 死碼欄位 | ⚠️ 三新債   |
+| v8.11 | epic 19 T19.3–T19.6 四任務同批閉環；recall ratchet 落地 | ✅ 全閉     |
+| v8.12 | sensor MDU 誤報 30→1；recall smoke；results.log 封存   | ✅ 維護批次 |
+| v8.13 | epic 19 archive；epic 20 開站（pytest runtime guard）   | ✅ 全閉     |
+| v8.14 | epic 20 T20.1–T20.5 全閉；sensor runtime 欄位落地      | ✅ 全閉     |
+
+### 反覆失敗根因
+
+1. **ACL commit block 結構解除，但宿主層脆弱依舊**：v8.6–v8.9 連 15+ FAIL-BLOCKED 根因是 Windows `.git` DENY ACL，依賴「自然解除」而非主動治本。v8.10 後無新 FAIL-BLOCKED = 環境暫穩，但每次 agent 換 SID 仍有復發風險；宿主層修 ACL SOP 從未落 program.md P0 強制收口。
+
+2. **Epic treadmill 週期縮短但未根治**：v8.10 stall 1/6（一輪凍結），v8.11 強行推 4 任務同批；epic 20 開→閉僅 2 輪（v8.13+v8.14）= 好轉但仍「攢任務 → 一次沖」而非持續流動。根因：任務粒度粗（每 epic T1–T6 各一刀），缺 daily velocity 節奏。
+
+3. **Cold runtime 根因未追**：v8.8→v8.10 從 80s 漲至 158s（+97%）；epic 20 加了 ceiling guard 但未診斷上漲原因（chromadb cold-cache? pytest 收集樹增長? fixture 累積?）；guard 只告警不修根，下一輪若繼續漲將觸發 soft violation 但仍無解。
+
+### 優先序需調整
+
+- **CI integration 假綠（OPENROUTER_API_KEY 未設）連 8+ 輪漏網**：每輪反思提一次，每輪 program.md 無 P0 強制。應本輪立刻開 `T-CI-SECRET-GATE-ENFORCE`，在 program.md 加「CI integration skip = P0 blocker，不解除不開 epic」硬政策。
+- **Epic 21 尚未開站**：epic 20 已閉，active_epic="" = 空窗期已開啟；不開 epic 21 = 下輪回顧仍寫「工作管線空」，treadmill 第 8 輪預兆。
+
+### 隱藏 Blocker
+
+- **3 個本地 commit 未推送**（09d559c / b51abce / acea1e9）：origin/main 仍停在 3da85f3（v8.11 末）；v8.12/v8.13/v8.14 三輪成果未入遠端，PR gate、CI 驗收、遠端搜尋均落空；需立即 push flush。
+- **Cold runtime 上漲根因盲點**：epic 20 ceiling 設 `last_s × 1.5`，但若 last_s 本身基於舊量測（`--dry-run` 跳過），ceiling 計算失效；T20.1 dry-run 首次建立 baseline → ceiling=0，後續 measure 才能得到真 ceiling；需確認 `scripts/pytest_runtime_baseline.json` 已有真 last_s。
+- **Engineer-log 本段追加後 ~173 行**（< 300 硬上限 ✓）；但 v8.10 深度回顧（47 行）+ v8.8 反思（72 行）下輪可封存以釋空間。
+
+### 下一步行動（最重要 3 件）
+1. **T-PUSH-FLUSH-V8.14**（5 min）— `git push origin main`；驗 rev-list 0/0；CI green；最小但影響最大。
+2. **T-RUNTIME-ROOT-CAUSE-DIAG**（30 min）— `python scripts/measure_pytest_runtime.py --dry-run=false`；確認 last_s 真值寫入 baseline；追 top-5 慢 test（`pytest --durations=5`）是否同 v8.10 相同 fixture 或新增 chromadb overhead；視結果開 epic 21 或直接 hotfix。
+3. **T-OPENSPEC-EPIC-21-DISCOVERY**（20 min）— 候選：(a) CI secret gate enforce + live integration 真跑、(b) cold runtime root-cause fix（若 diag 確認根因）、(c) KB corpus 500 真語料；選 1 開 `openspec/changes/21-*/`；維持 active=1 真值不空窗。
+
+---
+
 ## 下一輪反思（空指引）
 
 <!-- 每輪追加一個 ## 反思 段，保持主檔 ≤ 300 行；超出觸發 T9.6-REOPEN 封存。 -->

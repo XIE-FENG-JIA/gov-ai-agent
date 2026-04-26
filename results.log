@@ -113,3 +113,8 @@ PASS T20.2-SENSOR-INTEGRATION 2026-04-27 02:55 check_pytest_runtime() + sensor[p
 PASS T20.3-UNIT-TESTS 2026-04-27 02:55 tests/test_pytest_runtime_guard.py 8 tests all passed (dry-run/ratchet-down/no-ratchet-up/violation/ok/skip/wired)
 PASS T20.4-HUMAN-OUTPUT 2026-04-27 02:55 sensor_refresh.py --human includes pytest_runtime line with ceiling_s/last_s/status
 PASS T20.5-DOCS 2026-04-27 02:55 CONTRIBUTING.md Pytest Runtime Baseline section added; grep pytest_runtime CONTRIBUTING.md hits line 194
+PASS T-EPIC-20-ARCHIVE 2026-04-27 epic 20 archived to openspec/changes/archive/2026-04-27-20-...; INDEX.md updated; sensor active_epic='' verified
+PASS T-SENSOR-JSON-REFRESH-V8.15 2026-04-27 sensor.json refreshed with live values (program_md=167/engineer_log=176/results_log=115; no violations)
+PASS T-PROGRAM-MD-SOFT-CAP-V8.15 2026-04-27 program.md 237->160 lines; v8.10-v8.14 P0/P1/P2 archived to docs/archive/program-history-202604S.md
+PASS T-GIT-COMMIT-V8.15 2026-04-27 all v8.15 changes committed (epic-20-archive + sensor-refresh + program-md-trim + header)
+PASS T-PROGRAM-MD-V8.15-HEADER 2026-04-27 program.md v8.15 header added; 5 tasks [x]; results.log 5 lines appended
