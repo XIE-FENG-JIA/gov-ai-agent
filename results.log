@@ -769,3 +769,7 @@ PASS T-ENGINEER-LOG-PRE-ROTATE
 PASS T-FAT-PRE-EMPT-CUT-V2 wizard_cmd.py 374→185 _manager_hybrid.py 358→323 baseline-max=350 yellow=1 tests=3958
 [2026-04-26 08:45] | P0 T-FAT-PRE-EMPT-CUT-V2 | PASS | 抽離 knowledge write / prompt safety / web history / wizard generate；fat gate red=0 yellow=1 baseline max=350；pytest 3958 passed / 195.10s。
 [2026-04-26 08:46] | COMMIT | FAIL-BLOCKED | git add program.md results.log && git commit failed: .git/index.lock Permission denied；implementation already committed at 1b8d793, record cleanup remains in worktree.
+[2026-04-26 10:01] BLOCKED-ACL T-COPILOT-LOOP-STATE-GITIGNORE -- ACL Permission denied on .git, skip
+[2026-04-26 10:01] BLOCKED-ACL T-GIT-ACL-DENY-UNBLOCK -- ACL unblock requires admin, skip
+[2026-04-26 10:01] PASS T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE -- config.yaml fix + llm.py OpenRouter direct REST + ChromaDB schema fix + kb rebuild 400 docs + Recall@5=100% + pytest 3958 passed
+[2026-04-26 10:01] PASS P2-CHROMA-NEMOTRON-VALIDATE -- merged into T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE; same verification

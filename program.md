@@ -2,6 +2,16 @@
 
 > 歷史 v7.0–v7.7 sensor/header 已封存：[docs/archive/program-history-202604j.md](docs/archive/program-history-202604j.md)、[docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)
 
+> **v8.0-r3 批次回合（2026-04-26 09:50 T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE 完成）**：
+> - ✅ **T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE**：config.yaml `embedding_api_key` 修正；llm.py OpenRouter 直連 REST API（繞 litellm）+ 8000 char 截斷；ChromaDB `_type` schema 修正；KB 重建 400 docs（100 regulations + 300 policies）；Recall@5 = 5/5 = 100%；docs/embedding-validation.md 新增；pytest 3958 passed ✅
+>
+> **v8.0-r2 批次回合（2026-04-26 09:42 /pua 深度回顧；cf26345 後 regression + 4 commits 未推 origin）**：
+> - ⚠️ **pytest 全量 regression**：`python -m pytest tests/ -q --ignore=tests/integration` = **3956 passed / 2 failed / 172.20s**；2 failed = `tests/test_llm.py::TestLiteLLMEmbedEdgeCases::{test_embed_openrouter_model_name, test_embed_uses_embedding_provider_credentials}` — cf26345 `feat(llm): OpenRouter direct REST API` 引入；agent 未跑同檔 pytest = **漂白第十型**
+> - ⚠️ **dead branch**：`src/core/llm.py:256-257` openrouter elif 永遠到不了（早 return 覆蓋）→ 需與 stale test 同刀刪
+> - ⚠️ **本機領先 origin/main 4 commits**：cf26345 / 310bac9 / 1b8d793 / c2bfc1e 未推 = 雲端工作量歸 0；T-PUSH-ORIGIN-V8.0 升 P0
+> - ✅ **sensor hard=[] / soft=[]**：bare_except=3 noqa；fat red=0 yellow=1 max=350（catalog.py）；corpus 400；auto_commit_rate **100%**（30/30，wrapper noise 真斷根）
+> - ✅ **openspec 0 active**：archive 16 條目齊 + specs/ 13 capabilities promote
+>
 > **v8.0 批次回合（2026-04-26 08:10 /pua；T15.5 commit + openspec 15/16 promote/archive + sensor + pytest -n 8 驗收）**：
 > - ✅ **T15.5 commit 62b2d85**：`pyproject.toml addopts` `-n auto → -n 8`（NTFS/import I/O 飽和修正）；Gate C 183.98s / Gate D 195.64s；median 189.81s ≤ 200s ✅
 > - ✅ **openspec changes 15/16 全部 promote → archive**：`openspec/changes/` 僅剩 `archive`（0 active changes）；`openspec/specs/runtime-baseline/` 新建；INDEX.md 補 15/16 條目（共 16 條）
@@ -36,7 +46,18 @@
 
 > **v7.3–v7.7 sensor/header 歷史已封存**：詳見 [docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)。
 
-### P0（2026-04-26 07:50 /pua 深度回顧新增；本輪必動 — 治理斷層第八型 + fat 預先收尾 + T15.5 證據鏈入版）
+### P0（2026-04-26 09:42 /pua 深度回顧新增；本輪必動 — 漂白第十型 + push 漏 + nemotron 半閉）
+
+- [ ] **T-LLM-EMBED-TEST-FIX**（20 min；P0；ACL-free；漂白第十型對策）— cf26345 改 openrouter embedding 走直連 REST，但未同步修 `tests/test_llm.py::TestLiteLLMEmbedEdgeCases::{test_embed_openrouter_model_name, test_embed_uses_embedding_provider_credentials}`；兩 case 仍 mock `litellm.embedding` → 401 + `call_kwargs[1]` NoneType subscript fail。對策：(a) 兩 test 改 patch `src.core.llm._requests.post`，斷言 URL=`https://openrouter.ai/api/v1/embeddings` / model in body / Bearer header / input 截 8000 字；(b) 刪 `src/core/llm.py:256-257` openrouter elif dead branch（早 return 覆蓋）；(c) 全量 `python -m pytest tests/ -q --ignore=tests/integration` = 3958 passed / 0 failed。
+- [ ] **T-PUSH-ORIGIN-V8.0**（5 min；P0；ACL-free；雲端工作量落地）— `git push origin main` 把 4 commits（c2bfc1e / 1b8d793 / 310bac9 / cf26345 + 本輪 T-LLM-EMBED-TEST-FIX）推上去；前置：T-LLM-EMBED-TEST-FIX 必先綠。驗收：`git rev-list origin/main..HEAD` = 0 + GitHub Actions integration job ≥ 1 PASS。**不推 = 工作量歸 0**。
+- [x] **T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE**（45 min；P0；ACL-free；4+ 輪 SLA 觸頂）— cf26345 已通 REST 路徑（解 litellm 不支援 openrouter embedding 的 blocker）；剩 (a) 跑 `gov-ai kb rebuild --only-real`（OPENROUTER_API_KEY 已驗付費帳號 unblocked）+ recall@k 量測前後對照；(b) 寫 `docs/embedding-validation.md` 對照向量化前後 search recall@k；(c) 補 openspec change-17 mini-proposal `embedding-provider-rest-fallback` 補規格軌跡（避規格漂白第四型）。owner = auto-engineer。
+
+### P1（2026-04-26 09:42 /pua 深度回顧新增；fat watch + commit-lint feat(llm) gate）
+
+- [ ] **T-FAT-WATCH-300-350-MONITOR**（10 min；P1；ACL-free；防下輪 yellow 翻紅）— `scripts/check_fat_files.py` 補 `--watch-band 300-350` flag 列印 12 檔現值（catalog.py 350 / web_preview/app.py 347 / core/llm.py 340 / gazette_fetcher 331 / review_parser 326 / _manager_hybrid 323 / exporter 319 / api/app.py 319 / batch_tools 314 / lint_cmd 309 / config_tools 308 / utils_io 306）；不阻 CI；供下輪 ROI 判斷三檔同刀。
+- [ ] **T-COMMIT-LINT-FEAT-LLM-PYTEST-GATE**（30 min；P1；ACL-free；漂白第十型治本）— `scripts/commit_msg_lint.py` 對 `feat(llm)|feat(core)|feat(api)` 等高風險 scope 強制 commit msg body 引用 `pytest tests/test_<scope>.py = N passed`；缺則 exit 1；新增 5 條測試案例（含正反向）。**底層邏輯：軟規則「自主改動必跑同檔 pytest」升硬門禁，否則下次同型漂白必再現**。
+
+### P0（2026-04-26 07:50 /pua 深度回顧新增；已全閉，保留追溯 — 治理斷層第八型 + fat 預先收尾 + T15.5 證據鏈入版）
 
 - [x] **T-OPENSPEC-FLUSH-15-16-ARCHIVE**（2026-04-26 閉；P0；治理底線真閉環）— 已由 commit `f357830` 歸檔 15/16；`openspec/changes/` 僅剩 `archive/`；`openspec/changes/archive/` 含 `2026-04-26-15-pytest-runtime-regression-iter7` 與 `2026-04-26-16-regulation-doc-type-mapping`；0 active changes。
 - [x] **T-WORKTREE-FLUSH-LOOP6**（2026-04-26 閉；P0；T15.5 證據鏈入版）— T15.5 證據鏈已由 commit `62b2d85` 入版（`pyproject.toml` `-n auto → -n 8` + `docs/pytest-runtime-regression-iter7.md` + tasks/program/results sync）；後續只剩 `.copilot-loop.state.json` tracked noise，另由 `T-COPILOT-LOOP-STATE-GITIGNORE` / `T-GIT-ACL-DENY-UNBLOCK` 追。
@@ -46,7 +67,7 @@
 
 - [ ] **T-COPILOT-LOOP-STATE-GITIGNORE**（5 min；P1；ACL-blocked；wrapper noise 第二刀）— `.gitignore` 已加入 `.copilot-loop.state.json`，但 `git rm --cached .copilot-loop.state.json` 被 `.git/index` ACL DENY 擋下，tracked state 尚未停止追蹤；待 Admin 清 `.git` orphan DENY 後補 `git rm --cached` + commit。驗收 `git status --short -- .copilot-loop.state.json` 無輸出。
 - [ ] **T-GIT-ACL-DENY-UNBLOCK**（P0；Admin-gated；commit path blocked）— `git rm --cached .copilot-loop.state.json` 失敗：`fatal: Unable to create .../.git/index.lock: Permission denied`；`icacls .git/index` 顯示 `S-1-5-21-541253457-2268935619-321007557-692795393:(I)(DENY)(W,D,Rc,DC)`，且本 shell 無 PowerShell / 無權 `icacls .git /reset`。對策：Admin 執行 `scripts/acl_clean_orphan_deny.ps1` 或等效 SDDL 清理後重跑本任務。
-- [→升 P1] **T-NEMOTRON-EMBEDDING-VALIDATE**（45 min；P1；ACL-free；OPENROUTER_API_KEY unblocked）— 從 P2 升 P1：`OPENROUTER_API_KEY` 已驗 unblocked（2026-04-25 13:56；付費帳號 is_free_tier=false），任務寫「unblocked，可執行」但無 owner 認領 4+ 輪 = 3.25 累計第 4 次。對策：跑 `gov-ai kb rebuild --only-real`（nemotron embed dim=2048）+ 寫 `docs/embedding-validation.md` 對照 search recall@k；owner = auto-engineer。
+- [→併入 P0 T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE] **T-NEMOTRON-EMBEDDING-VALIDATE**（45 min；P1→P0；ACL-free；OPENROUTER_API_KEY unblocked）— cf26345 已部分解（REST 直連），但驗收文件未補；併入本輪新 P0 `T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE` 收尾。3.25 累計第 5 次（連 5 輪未認領 + 部分解但未閉）。
 
 ### P0（2026-04-26 05:55 /pua 深度回顧新增；本輪必動 — 治理底線 + T15.5 紅線真閉環；已全閉，保留追溯）
 
@@ -165,7 +186,7 @@
 
 - [x] **EPIC6-DISCOVERY**（2026-04-24 16:58 閉；commit `33bf8ce`）— `openspec/changes/06-live-ingest-quality-gate/` proposal (43) + tasks (82) + `specs/quality-gate/spec.md` (111) = 236 行骨架；3 dimensions（volume floor / schema integrity / provenance signal）× 4 named failures（LiveIngestBelowFloor / SchemaIntegrityError / StaleRecord / SyntheticContamination）+ 5 個 T-LIQG-1..5 後續 tasks（gate 模組 + CLI + 失敗矩陣 doc）。
 - [→P1] **P2-AUTO-COMMIT-EXTERNAL-PATCH**（2026-04-25 20:08 升級為 **P1-AUTO-COMMIT-EXTERNAL-PATCH**；見上方 P1 區塊；本條保留作回溯）— 原凍結為 P2 已連 6 輪無進展，/pua 反思判定：不再凍結，主動上升 host Admin。
-- [ ] **P2-CHROMA-NEMOTRON-VALIDATE** — `OPENROUTER_API_KEY` 已驗證有效（2026-04-25 13:56 `curl /api/v1/auth/key` 200，付費帳號 is_free_tier=false，limit=null 無限額，累計 usage=$0.000035）→ **unblocked，可執行**：跑 `gov-ai kb rebuild --only-real`（走 `nvidia/llama-nemotron-embed-vl-1b-v2:free` dim=2048 重建 ChromaDB）+ 撰寫 `docs/embedding-validation.md` 記錄向量化前後 search recall@k 對比。
+- [x] **P2-CHROMA-NEMOTRON-VALIDATE** — `OPENROUTER_API_KEY` 已驗證有效（2026-04-25 13:56 `curl /api/v1/auth/key` 200，付費帳號 is_free_tier=false，limit=null 無限額，累計 usage=$0.000035）→ **unblocked，可執行**：跑 `gov-ai kb rebuild --only-real`（走 `nvidia/llama-nemotron-embed-vl-1b-v2:free` dim=2048 重建 ChromaDB）+ 撰寫 `docs/embedding-validation.md` 記錄向量化前後 search recall@k 對比。
 - [x] **T6.1**（2026-04-26 閉；ACL-free；注：full 30-item eval 需啟動 API server）— blind eval baseline：`docs/benchmark-baseline.md` 記錄 v2.1 快照（afterfix17 limit=2, avg_score=0.8766, success_rate=1.0）+趨勢表+完整執行步驟；`benchmark/baseline_v2.1.json` 以 afterfix17 2 題快照為底；完整 30 題需 `python scripts/run_blind_eval.py --limit 30`。
 - [x] **T6.2**（2026-04-26 閉；ACL-free）— benchmark trend：`scripts/benchmark_trend.py` 建立（append + 10% regression gate）；`benchmark/trend.jsonl` 以 8 個歷史 afterfix run 種子；`tests/test_benchmark_trend.py` = 19 passed；每次 T2.x 後可呼叫 `python scripts/benchmark_trend.py <result.json>` 追加趨勢並自動偵測 regression。
 

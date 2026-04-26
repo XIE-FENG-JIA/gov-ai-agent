@@ -231,25 +231,28 @@ class LiteLLMProvider(LLMProvider):
             if self.emb_provider == "openrouter":
                 _api_key = self.emb_api_key or os.environ.get("OPENROUTER_API_KEY", "")
                 _base = (self.emb_base_url or "https://openrouter.ai/api/v1").rstrip("/")
+                # Truncate to ~8 000 chars to stay within free model's context window
+                _text = text[:8000] if len(text) > 8000 else text
                 resp = _requests.post(
                     f"{_base}/embeddings",
                     headers={
                         "Authorization": f"Bearer {_api_key}",
                         "Content-Type": "application/json",
                     },
-                    json={"model": self.emb_model, "input": [text]},
+                    json={"model": self.emb_model, "input": [_text]},
                     timeout=LLM_CHECK_TIMEOUT,
                 )
                 resp.raise_for_status()
-                return resp.json()["data"][0]["embedding"]
+                body = resp.json()
+                if "error" in body:
+                    raise RuntimeError(body["error"].get("message", "OpenRouter embedding error"))
+                return body["data"][0]["embedding"]
 
             # Construct embedding model name
             if self.emb_provider == "ollama":
                 emb_model_name = f"ollama/{self.emb_model}"
             elif self.emb_provider == "gemini":
                 emb_model_name = "gemini/text-embedding-004"
-            elif self.emb_provider == "openrouter":
-                emb_model_name = f"openrouter/{self.emb_model}"
             else:
                 emb_model_name = self.emb_model
 
