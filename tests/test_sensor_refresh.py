@@ -182,6 +182,36 @@ def test_epic6_progress_counts_done_vs_total(tmp_path: Path) -> None:
     assert total == 5
 
 
+def test_active_epic_progress_no_active_epic(tmp_path: Path) -> None:
+    """active_epic_progress returns fallback when no non-archive epic exists."""
+    # Use tmp_path directly (not _make_repo) to control exactly what's in openspec/changes/
+    archive = tmp_path / "openspec" / "changes" / "archive"
+    archive.mkdir(parents=True, exist_ok=True)
+    result = _mod.active_epic_progress(tmp_path)
+    assert result == {"epic_id": "", "done": 0, "total": 0}
+
+
+def test_active_epic_progress_active_epic_statistics(tmp_path: Path) -> None:
+    """active_epic_progress picks first non-archive dir and computes done/total."""
+    # Use tmp_path directly to control exactly what's in openspec/changes/
+    changes = tmp_path / "openspec" / "changes"
+    (changes / "archive").mkdir(parents=True, exist_ok=True)
+    epic_dir = changes / "19-kb-recall-validation-pipeline"
+    epic_dir.mkdir(parents=True, exist_ok=True)
+    (epic_dir / "tasks.md").write_text(
+        "# Tasks\n"
+        "- [x] T19.1 eval set\n"
+        "- [x] T19.2 eval_recall.py\n"
+        "- [ ] T19.3 CI gate\n"
+        "- [ ] T19.4 docs\n",
+        encoding="utf-8",
+    )
+    result = _mod.active_epic_progress(tmp_path)
+    assert result["epic_id"] == "19-kb-recall-validation-pipeline"
+    assert result["done"] == 2
+    assert result["total"] == 4
+
+
 def test_build_report_hard_violation_engineer_log(tmp_path: Path) -> None:
     repo = _make_repo(tmp_path)
     subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)

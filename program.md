@@ -20,7 +20,7 @@
 
 ### P1（2026-04-26 23:32 /pua v8.10 新增；sensor 字段失準 + fat 3 檔邊緣同刀）
 
-- [ ] **T-SENSOR-ACTIVE-EPIC-PROGRESS**（20 min；P1；ACL-free；漂白第二型治本 — 口徑放水第二例）— `scripts/sensor_refresh.py` 把 `epic6_progress` 字段改名 `active_epic_progress`；解析 `openspec/changes/` 第一個非 `archive/` 目錄的 `tasks.md` 計 `[x]` / 總 `[ ]+[x]+[~]` 比例；多個 active 取首個並列名；補 `tests/test_sensor_refresh.py` 2 cases（active=0 fallback / active=1 統計）；驗收：sensor.json `active_epic_progress.epic_id == "19-kb-recall-validation-pipeline"` + `done/total` 動態真值。
+- [x] **T-SENSOR-ACTIVE-EPIC-PROGRESS**（20 min；P1；ACL-free；漂白第二型治本 — 口徑放水第二例）— `scripts/sensor_refresh.py` 把 `epic6_progress` 字段改名 `active_epic_progress`；解析 `openspec/changes/` 第一個非 `archive/` 目錄的 `tasks.md` 計 `[x]` / 總 `[ ]+[x]+[~]` 比例；多個 active 取首個並列名；補 `tests/test_sensor_refresh.py` 2 cases（active=0 fallback / active=1 統計）；驗收：sensor.json `active_epic_progress.epic_id == "19-kb-recall-validation-pipeline"` + `done/total` 動態真值。
 - [ ] **T-FAT-WATCH-CUT-V6**（30 min；P1；ACL-free；3 檔同模組同刀 ROI ×3）— `src/cli/utils_io.py 306→260`（抽 `_atomic_writes.py` ≥40 行 atomic_text/json/yaml_write 三家）+ `src/agents/editor/flow.py 304→260`（抽 `_safe_low_path.py` ≥40 行 score/refine 邏輯）+ `src/web_preview/app.py 300→255`（抽 `_health_routes.py` ≥40 行 health/static 路由）；驗收 `python scripts/check_fat_files.py --watch-band 300-350` ≤ 1 檔 + 全量 pytest 不退。
 
 ### P2（2026-04-26 23:32 /pua v8.10 新增；results.log 預治）

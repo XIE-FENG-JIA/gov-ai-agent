@@ -308,3 +308,4 @@ PASS T-RESULTS-LOG-ARCHIVE-202604P 2026-04-26 — archived 597 lines to results-
 PASS T-WORKTREE-FLUSH-V9.0 2026-04-26 — req*.json + scripts/runtime_baseline.json added to .gitignore; git rm --cached done
 PASS T-EPIC-19-T19.2-EVAL-RECALL-IMPL 2026-04-26 — scripts/eval_recall.py --dry-run exits 0; tests/test_eval_recall.py 16 passed; T19.2 sub-tasks [x]
 [2026-04-26 23:59 Asia/Taipei] | Stash rollback blocked by git index ACL | FAIL | git stash push -u failed: could not write index.
+PASS T-SENSOR-ACTIVE-EPIC-PROGRESS 2026-04-26 — active_epic_progress field added; sensor.json epic_id=19-kb-recall-validation-pipeline done=10/31; 37 tests passed

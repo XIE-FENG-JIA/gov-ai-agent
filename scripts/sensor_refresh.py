@@ -77,7 +77,8 @@ class SensorReport:
     results_log_lines: int = 0
     auto_commit_rate: float = 0.0
     auto_commit_recent_30_semantic: int = 0
-    epic6_progress: tuple[int, int] = (0, 0)  # (done, total)
+    epic6_progress: tuple[int, int] = (0, 0)  # kept for backwards-compat; replaced by active_epic_progress
+    active_epic_progress: dict = field(default_factory=lambda: {"epic_id": "", "done": 0, "total": 0})
     violations_hard: list[str] = field(default_factory=list)
     violations_soft: list[str] = field(default_factory=list)
     pytest_cold_runtime_secs: float = 0.0
@@ -110,6 +111,7 @@ class SensorReport:
                 "done": self.epic6_progress[0],
                 "total": self.epic6_progress[1],
             },
+            "active_epic_progress": self.active_epic_progress,
             "violations": {
                 "hard": self.violations_hard,
                 "soft": self.violations_soft,
@@ -344,6 +346,42 @@ def epic6_progress(repo: Path) -> tuple[int, int]:
     return done, total
 
 
+def active_epic_progress(repo: Path) -> dict[str, Any]:
+    """Find the first non-archive epic in openspec/changes/ and report [x]/total.
+
+    Returns {"epic_id": str, "done": int, "total": int}.
+    Fallback (no active epic): epic_id="" done=0 total=0.
+    """
+    changes_dir = repo / "openspec" / "changes"
+    if not changes_dir.is_dir():
+        return {"epic_id": "", "done": 0, "total": 0}
+    # Sort for determinism; skip archive/ directory
+    candidates = sorted(
+        d for d in changes_dir.iterdir()
+        if d.is_dir() and d.name != "archive"
+    )
+    if not candidates:
+        return {"epic_id": "", "done": 0, "total": 0}
+    epic_dir = candidates[0]
+    tasks_file = epic_dir / "tasks.md"
+    if not tasks_file.exists():
+        return {"epic_id": epic_dir.name, "done": 0, "total": 0}
+    try:
+        text = tasks_file.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return {"epic_id": epic_dir.name, "done": 0, "total": 0}
+    done = 0
+    total = 0
+    for line in text.splitlines():
+        if re.match(r"\s*- \[[xX~]\]", line):
+            if re.match(r"\s*- \[[xX]\]", line):
+                done += 1
+            total += 1
+        elif re.match(r"\s*- \[ \]", line):
+            total += 1
+    return {"epic_id": epic_dir.name, "done": done, "total": total}
+
+
 def count_marked_done_uncommitted(repo: Path, n_commits: int = 30) -> dict:
     """Check [x] task slugs in recent program.md sections not in last n commits.
 
@@ -433,6 +471,7 @@ def build_report(repo: Path) -> SensorReport:
         repo, author=_AUTO_ENGINEER_AUTHOR_PATTERN
     )
     r.epic6_progress = epic6_progress(repo)
+    r.active_epic_progress = active_epic_progress(repo)
     r.pytest_cold_runtime_secs = read_runtime_baseline(repo)
     r.marked_done_uncommitted = count_marked_done_uncommitted(repo)
     _ceiling, _tolerance = read_ceiling_params(repo)
@@ -565,6 +604,11 @@ def format_human(r: SensorReport) -> str:
     if r.epic6_progress[1] > 0:
         lines.append(
             f"- **EPIC6 T-LIQG 進度**: {r.epic6_progress[0]}/{r.epic6_progress[1]}"
+        )
+    aep = r.active_epic_progress
+    if aep.get("epic_id"):
+        lines.append(
+            f"- **active epic**: {aep['epic_id']} {aep['done']}/{aep['total']}"
         )
 
     if r.violations_hard:
