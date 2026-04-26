@@ -1,0 +1,711 @@
+{
+  "name": "mvp-benchmark-30",
+  "doc_types": [
+    "函",
+    "公告",
+    "簽"
+  ],
+  "per_type": 10,
+  "total_items": 30,
+  "strict_mode_defaults": {
+    "skip_review": false,
+    "ralph_loop": true,
+    "ralph_max_cycles": 2,
+    "ralph_target_score": 1.0,
+    "use_graph": false,
+    "max_rounds": 2,
+    "output_docx": false
+  },
+  "items": [
+    {
+      "id": "han-001",
+      "doc_type": "函",
+      "title": "轉知行政院核定淨零排放路徑推動方案",
+      "source_file": "kb_data/examples/han_01_policy_relay.md",
+      "user_input": "請撰寫一份函。 發文機關：經濟部。 受文者：各直轄市政府、各縣（市）政府。 主旨：轉知行政院核定「淨零排放路徑推動方案（114至117年）」，請查照並配合辦理。。",
+      "reference": {
+        "sender": "經濟部",
+        "receiver": "各直轄市政府、各縣（市）政府",
+        "subject": "轉知行政院核定「淨零排放路徑推動方案（114至117年）」，請查照並配合辦理。",
+        "basis": "",
+        "source_level": ""
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "han-002",
+      "doc_type": "函",
+      "title": "召開數位政府推動委員會第5次會議",
+      "source_file": "kb_data/examples/han_02_meeting_invite.md",
+      "user_input": "請撰寫一份函。 發文機關：數位發展部。 受文者：數位政府推動委員會各委員。 主旨：訂於114年3月5日（星期三）召開本部數位政府推動委員會第5次會議，請出席。。",
+      "reference": {
+        "sender": "數位發展部",
+        "receiver": "數位政府推動委員會各委員",
+        "subject": "訂於114年3月5日（星期三）召開本部數位政府推動委員會第5次會議，請出席。",
+        "basis": "",
+        "source_level": ""
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "han-003",
+      "doc_type": "函",
+      "title": "申請補助辦理智慧城市創新應用計畫經費",
+      "source_file": "kb_data/examples/han_03_budget_request.md",
+      "user_input": "請撰寫一份函。 發文機關：臺北市政府資訊局。 受文者：數位發展部。 主旨：檢陳本府「114年度智慧城市創新應用計畫」，申請補助經費新臺幣1,200萬元整，請鑒核。。",
+      "reference": {
+        "sender": "臺北市政府資訊局",
+        "receiver": "數位發展部",
+        "subject": "檢陳本府「114年度智慧城市創新應用計畫」，申請補助經費新臺幣1,200萬元整，請鑒核。",
+        "basis": "",
+        "source_level": ""
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "han-004",
+      "doc_type": "函",
+      "title": "函知修正個人資料保護法施行細則部分條文",
+      "source_file": "kb_data/examples/han_04_regulation_amendment.md",
+      "user_input": "請撰寫一份函。 發文機關：國家發展委員會。 受文者：各中央二級機關、各直轄市政府、各縣（市）政府。 主旨：修正「個人資料保護法施行細則」部分條文，自114年7月1日施行，請查照。。",
+      "reference": {
+        "sender": "國家發展委員會",
+        "receiver": "各中央二級機關、各直轄市政府、各縣（市）政府",
+        "subject": "修正「個人資料保護法施行細則」部分條文，自114年7月1日施行，請查照。",
+        "basis": "",
+        "source_level": ""
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "han-005",
+      "doc_type": "函",
+      "title": "復貴府有關公務人員訓練進修補助疑義",
+      "source_file": "kb_data/examples/han_05_inquiry_reply.md",
+      "user_input": "請撰寫一份函。 發文機關：行政院人事行政總處。 受文者：新北市政府。 主旨：有關貴府函詢公務人員訓練進修補助費支給疑義一案，復如說明，請查照。。",
+      "reference": {
+        "sender": "行政院人事行政總處",
+        "receiver": "新北市政府",
+        "subject": "有關貴府函詢公務人員訓練進修補助費支給疑義一案，復如說明，請查照。",
+        "basis": "",
+        "source_level": ""
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "han-006",
+      "doc_type": "函",
+      "title": "函復駁回建築許可申請",
+      "source_file": "kb_data/examples/han_06_rejection_application.md",
+      "user_input": "請撰寫一份函。 發文機關：內政部國土管理署。 受文者：○○營造有限公司。 主旨：有關貴公司申請○○市○○段○○地號建築許可一案，經審查不予核准，復如說明，請查照。。",
+      "reference": {
+        "sender": "內政部國土管理署",
+        "receiver": "○○營造有限公司",
+        "subject": "有關貴公司申請○○市○○段○○地號建築許可一案，經審查不予核准，復如說明，請查照。",
+        "basis": "",
+        "source_level": "A"
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "han-007",
+      "doc_type": "函",
+      "title": "函復不予核准補助經費申請",
+      "source_file": "kb_data/examples/han_07_deny_subsidy.md",
+      "user_input": "請撰寫一份函。 發文機關：文化部。 受文者：○○文化藝術協會。 主旨：有關貴會申請本部「115年度藝文活動補助」一案，經審查不予核准，復如說明，請查照。。",
+      "reference": {
+        "sender": "文化部",
+        "receiver": "○○文化藝術協會",
+        "subject": "有關貴會申請本部「115年度藝文活動補助」一案，經審查不予核准，復如說明，請查照。",
+        "basis": "",
+        "source_level": "A"
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "han-008",
+      "doc_type": "函",
+      "title": "函復否准政府資訊公開申請",
+      "source_file": "kb_data/examples/han_08_deny_information_request.md",
+      "user_input": "請撰寫一份函。 發文機關：國防部。 受文者：○○○先生。 主旨：有關臺端申請閱覽「○○軍事計畫」相關文件一案，礙難提供，復如說明，請查照。。",
+      "reference": {
+        "sender": "國防部",
+        "receiver": "○○○先生",
+        "subject": "有關臺端申請閱覽「○○軍事計畫」相關文件一案，礙難提供，復如說明，請查照。",
+        "basis": "",
+        "source_level": "A"
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "han-009",
+      "doc_type": "函",
+      "title": "函復不予換發營業許可證",
+      "source_file": "kb_data/examples/han_09_deny_permit_renewal.md",
+      "user_input": "請撰寫一份函。 發文機關：經濟部商業發展署。 受文者：○○企業有限公司。 主旨：有關貴公司申請換發營業許可證一案，不予換發，復如說明，請查照。。",
+      "reference": {
+        "sender": "經濟部商業發展署",
+        "receiver": "○○企業有限公司",
+        "subject": "有關貴公司申請換發營業許可證一案，不予換發，復如說明，請查照。",
+        "basis": "",
+        "source_level": "A"
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "han-010",
+      "doc_type": "函",
+      "title": "函復陳情案件不予受理",
+      "source_file": "kb_data/examples/han_10_reject_petition.md",
+      "user_input": "請撰寫一份函。 發文機關：臺北市政府。 受文者：○○○先生。 主旨：有關臺端陳情○○路段噪音污染一案，因非屬本府權責，不予受理，復如說明，請查照。。",
+      "reference": {
+        "sender": "臺北市政府",
+        "receiver": "○○○先生",
+        "subject": "有關臺端陳情○○路段噪音污染一案，因非屬本府權責，不予受理，復如說明，請查照。",
+        "basis": "",
+        "source_level": "A"
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "announcement-001",
+      "doc_type": "公告",
+      "title": "公告本部人事異動",
+      "source_file": "kb_data/examples/announcement_01_personnel.md",
+      "user_input": "請撰寫一份公告。 發文機關：教育部。 受文者：未指定受文者。 主旨：公告本部人事異動。。 請依據：《公務人員任用法》第18條及《各機關職稱及官等職等員額配置準則》第5條。。",
+      "reference": {
+        "sender": "教育部",
+        "receiver": "",
+        "subject": "公告本部人事異動。",
+        "basis": "《公務人員任用法》第18條及《各機關職稱及官等職等員額配置準則》第5條。",
+        "source_level": ""
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "announcement-002",
+      "doc_type": "公告",
+      "title": "公告辦理114年度資訊設備採購案",
+      "source_file": "kb_data/examples/announcement_02_procurement.md",
+      "user_input": "請撰寫一份公告。 發文機關：衛生福利部。 受文者：未指定受文者。 主旨：公告辦理「114年度衛生福利資訊系統維運暨設備擴充案」公開招標。。 請依據：《政府採購法》第19條及第27條。。",
+      "reference": {
+        "sender": "衛生福利部",
+        "receiver": "",
+        "subject": "公告辦理「114年度衛生福利資訊系統維運暨設備擴充案」公開招標。",
+        "basis": "《政府採購法》第19條及第27條。",
+        "source_level": ""
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "announcement-003",
+      "doc_type": "公告",
+      "title": "公告實施公共場所室內空氣品質管理新制",
+      "source_file": "kb_data/examples/announcement_03_policy.md",
+      "user_input": "請撰寫一份公告。 發文機關：環境部。 受文者：未指定受文者。 主旨：公告自114年7月1日起實施「公共場所室內空氣品質管理新制」。。 請依據：《室內空氣品質管理法》第6條及第7條。。",
+      "reference": {
+        "sender": "環境部",
+        "receiver": "",
+        "subject": "公告自114年7月1日起實施「公共場所室內空氣品質管理新制」。",
+        "basis": "《室內空氣品質管理法》第6條及第7條。",
+        "source_level": ""
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "announcement-004",
+      "doc_type": "公告",
+      "title": "公告撤銷食品業者登錄許可",
+      "source_file": "kb_data/examples/announcement_04_revoke.md",
+      "user_input": "請撰寫一份公告。 發文機關：衛生福利部食品藥物管理署。 受文者：未指定受文者。 主旨：公告撤銷○○食品股份有限公司之食品業者登錄許可。。 請依據：《食品安全衛生管理法》第8條第1項及第49條第1項。。",
+      "reference": {
+        "sender": "衛生福利部食品藥物管理署",
+        "receiver": "",
+        "subject": "公告撤銷○○食品股份有限公司之食品業者登錄許可。",
+        "basis": "《食品安全衛生管理法》第8條第1項及第49條第1項。",
+        "source_level": "A"
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "announcement-005",
+      "doc_type": "公告",
+      "title": "公告辦理機關內部陞遷甄選",
+      "source_file": "kb_data/examples/announcement_05_personnel_exam.md",
+      "user_input": "請撰寫一份公告。 發文機關：經濟部。 受文者：未指定受文者。 主旨：公告本部辦理115年度薦任第九職等科長職缺內部陞遷甄選。。 請依據：《公務人員陞遷法》第5條及本部公務人員陞遷序列表。。",
+      "reference": {
+        "sender": "經濟部",
+        "receiver": "",
+        "subject": "公告本部辦理115年度薦任第九職等科長職缺內部陞遷甄選。",
+        "basis": "《公務人員陞遷法》第5條及本部公務人員陞遷序列表。",
+        "source_level": "A"
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "announcement-006",
+      "doc_type": "公告",
+      "title": "公告辦理選擇性招標",
+      "source_file": "kb_data/examples/announcement_06_tender.md",
+      "user_input": "請撰寫一份公告。 發文機關：臺北市政府捷運工程局。 受文者：未指定受文者。 主旨：公告辦理「捷運環狀線北環段○○站機電系統工程」選擇性招標。。 請依據：《政府採購法》第20條第1項第1款及第21條。。",
+      "reference": {
+        "sender": "臺北市政府捷運工程局",
+        "receiver": "",
+        "subject": "公告辦理「捷運環狀線北環段○○站機電系統工程」選擇性招標。",
+        "basis": "《政府採購法》第20條第1項第1款及第21條。",
+        "source_level": "A"
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "announcement-007",
+      "doc_type": "公告",
+      "title": "公告決標結果",
+      "source_file": "kb_data/examples/announcement_07_award.md",
+      "user_input": "請撰寫一份公告。 發文機關：國防部軍備局。 受文者：未指定受文者。 主旨：公告「115年度軍用通信裝備採購案」決標結果。。 請依據：《政府採購法》第61條。。",
+      "reference": {
+        "sender": "國防部軍備局",
+        "receiver": "",
+        "subject": "公告「115年度軍用通信裝備採購案」決標結果。",
+        "basis": "《政府採購法》第61條。",
+        "source_level": "A"
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "announcement-008",
+      "doc_type": "公告",
+      "title": "公告預告訂定法規命令草案",
+      "source_file": "kb_data/examples/announcement_08_regulation_preview.md",
+      "user_input": "請撰寫一份公告。 發文機關：數位發展部。 受文者：未指定受文者。 主旨：預告訂定「數位服務個人資料檔案安全維護管理辦法」草案。。 請依據：《行政程序法》第151條第2項準用第154條第1項及《中央法規標準法》第7條。。",
+      "reference": {
+        "sender": "數位發展部",
+        "receiver": "",
+        "subject": "預告訂定「數位服務個人資料檔案安全維護管理辦法」草案。",
+        "basis": "《行政程序法》第151條第2項準用第154條第1項及《中央法規標準法》第7條。",
+        "source_level": "A"
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "announcement-009",
+      "doc_type": "公告",
+      "title": "公告更正啟事",
+      "source_file": "kb_data/examples/announcement_09_correction.md",
+      "user_input": "請撰寫一份公告。 發文機關：教育部。 受文者：未指定受文者。 主旨：更正本部115年2月10日臺教高（一）字第11500010560號公告有關「115年度大學多元入學簡章」部分內容。。 請依據：《行政程序法》第101條。。",
+      "reference": {
+        "sender": "教育部",
+        "receiver": "",
+        "subject": "更正本部115年2月10日臺教高（一）字第11500010560號公告有關「115年度大學多元入學簡章」部分內容。",
+        "basis": "《行政程序法》第101條。",
+        "source_level": "A"
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "announcement-010",
+      "doc_type": "公告",
+      "title": "緊急公告颱風應變措施",
+      "source_file": "kb_data/examples/announcement_10_emergency.md",
+      "user_input": "請撰寫一份公告。 發文機關：行政院。 受文者：未指定受文者。 主旨：因應○○颱風來襲，公告中央災害應變中心提升為一級開設，各機關應即啟動應變措施，請查照。。 請依據：《災害防救法》第13條及第14條。。",
+      "reference": {
+        "sender": "行政院",
+        "receiver": "",
+        "subject": "因應○○颱風來襲，公告中央災害應變中心提升為一級開設，各機關應即啟動應變措施，請查照。",
+        "basis": "《災害防救法》第13條及第14條。",
+        "source_level": "A"
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "sign-001",
+      "doc_type": "簽",
+      "title": "簽-辦理本局辦公室電腦汰換採購案",
+      "source_file": "kb_data/examples/internal_sign.md",
+      "user_input": "請撰寫一份簽。 發文機關：臺北市政府民政局。 受文者：未指定受文者。 主旨：未指定主旨。",
+      "reference": {
+        "sender": "臺北市政府民政局",
+        "receiver": "",
+        "subject": "",
+        "basis": "",
+        "source_level": ""
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "sign-002",
+      "doc_type": "簽",
+      "title": "簽請核准辦理出國考察經費",
+      "source_file": "kb_data/examples/sign_01_budget_approval.md",
+      "user_input": "請撰寫一份簽。 發文機關：交通部觀光署。 受文者：未指定受文者。 主旨：擬派員赴日本考察觀光推廣策略，所需經費新臺幣45萬元整，簽請核准。。",
+      "reference": {
+        "sender": "交通部觀光署",
+        "receiver": "",
+        "subject": "擬派員赴日本考察觀光推廣策略，所需經費新臺幣45萬元整，簽請核准。",
+        "basis": "",
+        "source_level": ""
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "sign-003",
+      "doc_type": "簽",
+      "title": "簽請核准辦理公務車輛汰換採購案",
+      "source_file": "kb_data/examples/sign_02_procurement_plan.md",
+      "user_input": "請撰寫一份簽。 發文機關：內政部。 受文者：未指定受文者。 主旨：擬辦理本部公務車輛汰換採購案，採購電動公務車5輛，預估經費新臺幣750萬元整，簽請核准。。",
+      "reference": {
+        "sender": "內政部",
+        "receiver": "",
+        "subject": "擬辦理本部公務車輛汰換採購案，採購電動公務車5輛，預估經費新臺幣750萬元整，簽請核准。",
+        "basis": "",
+        "source_level": ""
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "sign-004",
+      "doc_type": "簽",
+      "title": "簽請核准辦理全國資訊安全宣導週活動",
+      "source_file": "kb_data/examples/sign_03_event_proposal.md",
+      "user_input": "請撰寫一份簽。 發文機關：數位發展部資通安全署。 受文者：未指定受文者。 主旨：擬於114年6月辦理「114年全國資訊安全宣導週」活動，簽請核准。。",
+      "reference": {
+        "sender": "數位發展部資通安全署",
+        "receiver": "",
+        "subject": "擬於114年6月辦理「114年全國資訊安全宣導週」活動，簽請核准。",
+        "basis": "",
+        "source_level": ""
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "sign-005",
+      "doc_type": "簽",
+      "title": "會銜簽辦跨部會資安聯防機制",
+      "source_file": "kb_data/examples/sign_04_joint_countersign.md",
+      "user_input": "請撰寫一份簽。 發文機關：數位發展部。 受文者：未指定受文者。 主旨：為強化國家關鍵基礎設施資安防護，擬訂「跨部會資安聯防合作機制實施計畫」，會銜簽請核示。。",
+      "reference": {
+        "sender": "數位發展部",
+        "receiver": "",
+        "subject": "為強化國家關鍵基礎設施資安防護，擬訂「跨部會資安聯防合作機制實施計畫」，會銜簽請核示。",
+        "basis": "",
+        "source_level": "A"
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "sign-006",
+      "doc_type": "簽",
+      "title": "內簽辦理機關搬遷事宜",
+      "source_file": "kb_data/examples/sign_05_internal_proposal.md",
+      "user_input": "請撰寫一份簽。 發文機關：財政部國庫署。 受文者：未指定受文者。 主旨：有關本署遷移至新辦公廳舍事宜，簽請核示。。",
+      "reference": {
+        "sender": "財政部國庫署",
+        "receiver": "",
+        "subject": "有關本署遷移至新辦公廳舍事宜，簽請核示。",
+        "basis": "",
+        "source_level": "A"
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "sign-007",
+      "doc_type": "簽",
+      "title": "簽辦回應上級機關交辦事項",
+      "source_file": "kb_data/examples/sign_06_reply_to_superior.md",
+      "user_input": "請撰寫一份簽。 發文機關：勞動部勞動力發展署。 受文者：未指定受文者。 主旨：奉部長批示研議「強化失業勞工職業訓練方案」一案，擬具辦理意見，簽請核示。。",
+      "reference": {
+        "sender": "勞動部勞動力發展署",
+        "receiver": "",
+        "subject": "奉部長批示研議「強化失業勞工職業訓練方案」一案，擬具辦理意見，簽請核示。",
+        "basis": "",
+        "source_level": "A"
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "sign-008",
+      "doc_type": "簽",
+      "title": "簽請核准公差假",
+      "source_file": "kb_data/examples/sign_07_leave_travel.md",
+      "user_input": "請撰寫一份簽。 發文機關：環境部。 受文者：未指定受文者。 主旨：擬派員參加「2025年亞太地區溫室氣體盤查研討會」，簽請核准公差假。。",
+      "reference": {
+        "sender": "環境部",
+        "receiver": "",
+        "subject": "擬派員參加「2025年亞太地區溫室氣體盤查研討會」，簽請核准公差假。",
+        "basis": "",
+        "source_level": "A"
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "sign-009",
+      "doc_type": "簽",
+      "title": "簽請核准加班費支給",
+      "source_file": "kb_data/examples/sign_08_overtime_approval.md",
+      "user_input": "請撰寫一份簽。 發文機關：法務部。 受文者：未指定受文者。 主旨：為因應「115年度國家法規資料庫改版上線」專案趕工需求，擬請核准資訊處同仁加班費支給，簽請核示。。",
+      "reference": {
+        "sender": "法務部",
+        "receiver": "",
+        "subject": "為因應「115年度國家法規資料庫改版上線」專案趕工需求，擬請核准資訊處同仁加班費支給，簽請核示。",
+        "basis": "",
+        "source_level": "A"
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    },
+    {
+      "id": "sign-010",
+      "doc_type": "簽",
+      "title": "簽請核准辦理委託研究案採購",
+      "source_file": "kb_data/examples/sign_09_procurement_plan.md",
+      "user_input": "請撰寫一份簽。 發文機關：國家發展委員會。 受文者：未指定受文者。 主旨：擬辦理「115年度人口政策影響評估委託研究案」公開招標採購，簽請核示。。",
+      "reference": {
+        "sender": "國家發展委員會",
+        "receiver": "",
+        "subject": "擬辦理「115年度人口政策影響評估委託研究案」公開招標採購，簽請核示。",
+        "basis": "",
+        "source_level": "A"
+      },
+      "strict_request": {
+        "skip_review": false,
+        "ralph_loop": true,
+        "ralph_max_cycles": 2,
+        "ralph_target_score": 1.0,
+        "use_graph": false,
+        "max_rounds": 2,
+        "output_docx": false
+      }
+    }
+  ]
+}
