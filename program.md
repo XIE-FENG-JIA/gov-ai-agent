@@ -2,6 +2,12 @@
 
 > 歷史 v7.0–v7.7 sensor/header 已封存：[docs/archive/program-history-202604j.md](docs/archive/program-history-202604j.md)、[docs/archive/program-history-202604k.md](docs/archive/program-history-202604k.md)
 
+> **v8.0-r5 批次回合（2026-04-26 T-COMMIT-LINT-FEAT-LLM-PYTEST-GATE 完成）**：
+> - ✅ **T-COMMIT-LINT-FEAT-LLM-PYTEST-GATE**：`scripts/commit_msg_lint.py` 對 `feat(llm|core|api)` 強制 commit body 含同 scope pytest 證據（如 `pytest tests/test_llm.py = N passed`）；新增正反向測試 8 條；驗證 `python -m pytest tests/test_commit_msg_lint.py -q` = 32 passed。
+>
+> **v8.0-r4 批次回合（2026-04-26 T-LLM-EMBED-TEST-FIX 完成）**：
+> - ✅ **T-LLM-EMBED-TEST-FIX**：`tests/test_llm.py` OpenRouter embedding 測試改 mock `src.core.llm._requests.post`，斷言 REST URL / Bearer header / JSON body；刪 `src/core/llm.py` unreachable openrouter litellm branch；驗證 `python -m pytest tests/test_llm.py -q` = 52 passed，`python -m pytest tests/ -q --ignore=tests/integration` = 3958 passed。
+>
 > **v8.0-r3 批次回合（2026-04-26 09:50 T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE 完成）**：
 > - ✅ **T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE**：config.yaml `embedding_api_key` 修正；llm.py OpenRouter 直連 REST API（繞 litellm）+ 8000 char 截斷；ChromaDB `_type` schema 修正；KB 重建 400 docs（100 regulations + 300 policies）；Recall@5 = 5/5 = 100%；docs/embedding-validation.md 新增；pytest 3958 passed ✅
 >
@@ -48,14 +54,14 @@
 
 ### P0（2026-04-26 09:42 /pua 深度回顧新增；本輪必動 — 漂白第十型 + push 漏 + nemotron 半閉）
 
-- [ ] **T-LLM-EMBED-TEST-FIX**（20 min；P0；ACL-free；漂白第十型對策）— cf26345 改 openrouter embedding 走直連 REST，但未同步修 `tests/test_llm.py::TestLiteLLMEmbedEdgeCases::{test_embed_openrouter_model_name, test_embed_uses_embedding_provider_credentials}`；兩 case 仍 mock `litellm.embedding` → 401 + `call_kwargs[1]` NoneType subscript fail。對策：(a) 兩 test 改 patch `src.core.llm._requests.post`，斷言 URL=`https://openrouter.ai/api/v1/embeddings` / model in body / Bearer header / input 截 8000 字；(b) 刪 `src/core/llm.py:256-257` openrouter elif dead branch（早 return 覆蓋）；(c) 全量 `python -m pytest tests/ -q --ignore=tests/integration` = 3958 passed / 0 failed。
-- [ ] **T-PUSH-ORIGIN-V8.0**（5 min；P0；ACL-free；雲端工作量落地）— `git push origin main` 把 4 commits（c2bfc1e / 1b8d793 / 310bac9 / cf26345 + 本輪 T-LLM-EMBED-TEST-FIX）推上去；前置：T-LLM-EMBED-TEST-FIX 必先綠。驗收：`git rev-list origin/main..HEAD` = 0 + GitHub Actions integration job ≥ 1 PASS。**不推 = 工作量歸 0**。
+- [x] **T-LLM-EMBED-TEST-FIX**（2026-04-26 閉；P0；ACL-free；漂白第十型對策）— 兩個 OpenRouter embedding stale tests 已改 patch `src.core.llm._requests.post`，斷言 URL=`https://openrouter.ai/api/v1/embeddings` / Bearer header / JSON body；刪 `src/core/llm.py` unreachable openrouter litellm branch（早 return 覆蓋）。驗證 `python -m pytest tests/test_llm.py -q` = 52 passed；`python -m pytest tests/ -q --ignore=tests/integration` = 3958 passed / 0 failed / 227.43s。
+- [x] **T-PUSH-ORIGIN-V8.0**（2026-04-26 閉；P0；ACL-free；雲端工作量落地）— `git push origin main` 把 9 commits 推上去（含 T-LLM-EMBED-TEST-FIX / T-FAT-WATCH-300-350-MONITOR / T-COMMIT-LINT-FEAT-LLM-PYTEST-GATE + wizard_cmd fix + 本輪 docs）；驗收：`git rev-list origin/main..HEAD` = 0 ✅。
 - [x] **T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE**（45 min；P0；ACL-free；4+ 輪 SLA 觸頂）— cf26345 已通 REST 路徑（解 litellm 不支援 openrouter embedding 的 blocker）；剩 (a) 跑 `gov-ai kb rebuild --only-real`（OPENROUTER_API_KEY 已驗付費帳號 unblocked）+ recall@k 量測前後對照；(b) 寫 `docs/embedding-validation.md` 對照向量化前後 search recall@k；(c) 補 openspec change-17 mini-proposal `embedding-provider-rest-fallback` 補規格軌跡（避規格漂白第四型）。owner = auto-engineer。
 
 ### P1（2026-04-26 09:42 /pua 深度回顧新增；fat watch + commit-lint feat(llm) gate）
 
-- [ ] **T-FAT-WATCH-300-350-MONITOR**（10 min；P1；ACL-free；防下輪 yellow 翻紅）— `scripts/check_fat_files.py` 補 `--watch-band 300-350` flag 列印 12 檔現值（catalog.py 350 / web_preview/app.py 347 / core/llm.py 340 / gazette_fetcher 331 / review_parser 326 / _manager_hybrid 323 / exporter 319 / api/app.py 319 / batch_tools 314 / lint_cmd 309 / config_tools 308 / utils_io 306）；不阻 CI；供下輪 ROI 判斷三檔同刀。
-- [ ] **T-COMMIT-LINT-FEAT-LLM-PYTEST-GATE**（30 min；P1；ACL-free；漂白第十型治本）— `scripts/commit_msg_lint.py` 對 `feat(llm)|feat(core)|feat(api)` 等高風險 scope 強制 commit msg body 引用 `pytest tests/test_<scope>.py = N passed`；缺則 exit 1；新增 5 條測試案例（含正反向）。**底層邏輯：軟規則「自主改動必跑同檔 pytest」升硬門禁，否則下次同型漂白必再現**。
+- [x] **T-FAT-WATCH-300-350-MONITOR**（10 min；P1；ACL-free；防下輪 yellow 翻紅）— `scripts/check_fat_files.py` 補 `--watch-band 300-350` flag 列印 12 檔現值（catalog.py 350 / web_preview/app.py 347 / core/llm.py 340 / gazette_fetcher 331 / review_parser 326 / _manager_hybrid 323 / exporter 319 / api/app.py 319 / batch_tools 314 / lint_cmd 309 / config_tools 308 / utils_io 306）；不阻 CI；供下輪 ROI 判斷三檔同刀。
+- [x] **T-COMMIT-LINT-FEAT-LLM-PYTEST-GATE**（2026-04-26 閉；P1；ACL-free；漂白第十型治本）— `scripts/commit_msg_lint.py` 對 `feat(llm)|feat(core)|feat(api)` 等高風險 scope 強制 commit msg body 引用同 scope `pytest tests/test_<scope>.py = N passed`；缺、錯檔、無 count、0 passed、failed 皆 reject；新增正反向測試。驗證 `python -m pytest tests/test_commit_msg_lint.py -q` = 32 passed。
 
 ### P0（2026-04-26 07:50 /pua 深度回顧新增；已全閉，保留追溯 — 治理斷層第八型 + fat 預先收尾 + T15.5 證據鏈入版）
 

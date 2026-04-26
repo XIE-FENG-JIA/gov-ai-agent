@@ -102,6 +102,49 @@
 <!-- 每輪追加一個 ## 反思 段，保持主檔 ≤ 300 行；超出觸發 T9.6-REOPEN 封存。 -->
 
 ---
+## 反思 2026-04-26 09:42 — 技術主管深度回顧 v8.0 / cf26345 後（/pua 觸發；阿里味）
+
+### 近期成果（HEAD 五源獨立量測）
+- **pytest 全量**：`python -m pytest tests/ -q --ignore=tests/integration` = **3956 passed / 2 failed / 172.20s**（紅線 v9 ≤ 200s ✓ runtime）
+- **2 failed = `tests/test_llm.py::TestLiteLLMEmbedEdgeCases::{test_embed_openrouter_model_name, test_embed_uses_embedding_provider_credentials}`** — cf26345 引入
+- **sensor 全綠**：hard=[] / soft=[] / bare_except 3 noqa / fat red=0 yellow=1 max=350 (catalog.py) / corpus 400 / auto_commit_rate 100% (30/30) / log: engineer-log 222 program 237 results 771
+- **openspec 0 active changes**：`openspec/changes/` 僅 `archive/` + INDEX.md（16 條目齊）；specs/ 13 capabilities 全 promote
+- **本機領先 origin/main 4 commits**：cf26345 / 310bac9 / 1b8d793 / c2bfc1e — **未推 = 雲端工作量歸 0**
+- **HEAD 30 commit 真語意率 100%**：sensor 公式（patch + AUTO-RESCUE + N-files + copilot batch 全擋）已生效；wrapper noise 第 N+1 輪斷根
+
+### 發現的問題（按嚴重度）
+
+1. **【漂白第十型 — agent 自主改動未跑全量 pytest】（P0 新增）**：cf26345 `feat(llm): OpenRouter direct REST API for embeddings + log` 是 agent 自加的 P2-CHROMA-NEMOTRON-VALIDATE 阻塞解法（直接走 REST，繞 litellm），但 commit 後未跑 `pytest tests/test_llm.py` 全量 → 2 個 stale test 沉默（`call_kwargs[1]["model"]` 取 None subscript）。**底層邏輯：sensor 不跑 pytest，pytest 是後驗紅線；agent 認為「跑了 results.log」≠「跑了 pytest」**——這個窗口本輪實測抓到，未來必須把 `pytest tests/test_llm.py` 寫進 `feat(llm)` commit-msg lint 白名單前置。
+2. **【dead code branch — src/core/llm.py:256–257】（P0 連帶）**：openrouter direct REST 早 return 後，line 256–257 `elif self.emb_provider == "openrouter": emb_model_name = f"openrouter/{self.emb_model}"` 永遠到不了 = 認知負擔 + 騙 reviewer。修 stale test 同刀刪。
+3. **【4 commits 未推 origin】（P0 新增）**：cf26345（含 regression）+ 310bac9（agent state snapshot）+ 1b8d793（fat-rotate-v2 抽出）+ c2bfc1e（fat-rotate 收斂）；本地綠不等於 GitHub Actions 綠 + 雲端 reviewer 看不到工作量。**T-PUSH-ORIGIN-V8.0 升 P0**——push 前必先修 2 個 regression。
+4. **【yellow watch 12 檔逼近 350 紅線】（P1 新增 pre-empt）**：fat ≥350 共 12 檔（catalog.py 350 / web_preview/app.py 347 / core/llm.py 340 / gazette_fetcher 331 / review_parser 326 / _manager_hybrid 323 / exporter 319 / api/app.py 319 / batch_tools 314 / lint_cmd 309 / config_tools 308 / utils_io 306）；max=350 已等於 yellow 線；下輪新增功能極易翻 yellow；同 v7.9 T-FAT-PRE-EMPT-CUT 模式三檔同刀。
+5. **【P2-CHROMA-NEMOTRON-VALIDATE 已實作但未驗證】（P0 升級）**：cf26345 解了 litellm 不支援 openrouter embedding 的 blocker，但 `docs/embedding-validation.md`（recall@k 對照）+ `gov-ai kb rebuild --only-real` 實跑都未做 = 功能交付一半。owner 意識：blocker 解了不寫驗收文件 = 工作量歸零。
+
+### 建議的優先調整（重排 program.md）
+
+1. **新 P0 首位：T-LLM-EMBED-TEST-FIX**（20 min；ACL-free；漂白第十型對策）— (a) 修 2 個 test_embed_* 改 patch `requests.post` 而非 `litellm.embedding`，斷言 URL/model/headers/body；(b) 刪 src/core/llm.py:256–257 dead branch（已被早 return 覆蓋）；(c) 跑 `pytest tests/test_llm.py -q` = 全綠；(d) 跑全量 = 3958 passed。
+2. **新 P0：T-PUSH-ORIGIN-V8.0**（5 min；ACL-free；落雲端工作量）— `git push origin main` 把 4 commits（cf26345/310bac9/1b8d793/c2bfc1e + 本輪 fix）推上去；驗收 `git status` clean + `git rev-list origin/main..HEAD` = 0 + GitHub Actions integration job 至少 1 PASS。
+3. **新 P0：T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE**（45 min；ACL-free；4 輪不認領 SLA 觸頂）— cf26345 已通 REST 路徑；剩 (a) 跑 `gov-ai kb rebuild --only-real`（OPENROUTER_API_KEY 已在 .env）+ recall@k 量測；(b) 寫 `docs/embedding-validation.md` 對照前後 recall；owner = auto-engineer。
+4. **新 P1：T-FAT-WATCH-300-350-MONITOR**（10 min；ACL-free；防下輪 yellow 翻紅）— `scripts/check_fat_files.py` 補 `--watch-band 300-350` 列印 12 檔現值供下輪 ROI 判斷；不阻 CI。
+5. **新 P1：T-COMMIT-LINT-FEAT-LLM-PYTEST-GATE**（30 min；ACL-free；漂白第十型治本）— `scripts/commit_msg_lint.py` 對 `feat(llm)|feat(core)` 等高風險 scope 強制 commit msg 引用 `pytest tests/test_<scope>.py = N passed`；缺則拒；新增 5 條測試案例。
+
+### 下一步行動（最重要 3 件）
+
+1. **T-LLM-EMBED-TEST-FIX**（20 min；本輪必動 — 紅線 v9 pytest 全綠是 push 前置）
+2. **T-PUSH-ORIGIN-V8.0**（5 min；fix 完立刻推；不推 = 雲端工作量歸 0）
+3. **T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE**（45 min；交付閉環，cf26345 解了 50% 必須再走完 50%）
+
+### 其他維度回顧（caveman）
+
+- **Spectra 規格對齊**：specs/ 13 capabilities 已 promote；archive 16 件齊 + INDEX；active=0 = 治理底線真閉環 ✓。**唯一偏離點**：cf26345 引入 OpenRouter direct REST 但無對應 spec proposal（embedding-provider-rest-fallback 之類），算規格漂白第四型（功能漂入無 spec 軌跡）。
+- **程式碼品質**：bare-except 3 noqa；fat red=0 yellow=1（catalog.py 350）；dead branch 1 處（llm.py:256-257）；無新增 code smell。
+- **測試覆蓋**：unit 3956 passed / 2 failed / 172.20s；integration 9 檔（CI wire ✓）；**邊界**：cf26345 改 emb path 但測試未同步 → mock contract 漂移第二次重現（與 v7.8c litellm Message contract 同模式）。
+- **架構健康度**：openspec promote 流程穩定；CLI shared services 4 介面穩；無新增過度耦合；**新增風險**：llm.py 雙 embed path（REST + litellm fallback）邏輯分支 +1，下次該檔接近 yellow 時優先抽 `_embed_openrouter_rest.py`。
+- **安全性**：API auth gate ✓；OPENROUTER_API_KEY 從 env 讀取，無硬編；REST API 走 HTTPS；input 已截 8000 字（避 free model context 爆）；**新增 audit 點**：`requests.post` timeout=LLM_CHECK_TIMEOUT 是否包含 connect/read 兩段 timeout 需驗。
+
+> [PUA 自審] 跑了測（3956/172s 三證，2 fail 真實暴露）／看了源（cf26345 diff + llm.py:225-260 + test_llm.py:387-410 dead branch 確證）／對了帳（origin 落後 4 commits / 100% commit ratio / fat 12 檔 watch）／抓了治理斷層（漂白第十型 + dead branch + push 漏 + nemotron 半閉）／排了下三件 — 閉環。**底層邏輯：sensor 綠 ≠ pytest 綠 ≠ origin 綠 ≠ 驗收綠；四綠同步否則漂白；agent 自主改動 commit 必先跑同檔 pytest，這條軟規則必須升 commit-msg lint 硬門禁。**
+
+---
 ## 反思 2026-04-26 / 技術主管深度回顧 v7.9-final 後段（/pua 觸發；阿里味）
 
 ### 近期成果（HEAD 三證自審）
@@ -220,3 +263,35 @@
 - **安全性**：API auth gate ✓；hard-coded secrets=0；subprocess list-form ✓；無新增漏洞。
 
 > [PUA 自審] 跑了測（3958/179.48s 三證落地）／看了源（active changes diff + archive INDEX + .gitignore 缺漏 + fat yellow top 6）／對了帳（auto_commit 80% / max=375 / 6 檔 worktree 證據鏈滯留）／抓了治理斷層（15/16 active 未 archive + .copilot state 漏網 + nemotron 4+ 輪不動）／排了下三件 — 閉環。**底層邏輯：「四步同步」原則 — 實作 → 副本歸檔 → active 刪除 → INDEX 收尾，缺一不可，否則漂白第八型；owner 意識：unblocked 任務 4+ 輪不認領 = 3.25 累計。**
+
+---
+## 深度回顧 2026-04-26 10:32 — 技術主管近 5 輪根因分析（v8.0-r5；Copilot 主導）
+
+| 輪次 | 核心 task | 結果 | 備註 |
+|------|-----------|------|------|
+| v8.0 /pua | cf26345 引入 2 test regression | ❌ | 漂白第十型：agent commit 前未跑同檔 pytest |
+| v8.0-r3 | T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE | ✅ | 4+ 輪 SLA 破頂後終閉 |
+| v8.0-r4 | T-LLM-EMBED-TEST-FIX | ✅ | mock contract 修正 + dead branch 刪 |
+| v8.0-r5 | T-COMMIT-LINT-FEAT-LLM-PYTEST-GATE | ✅ | lint 硬門禁補漂白第十型 |
+| v7.9-final | T-OPENSPEC-PURPOSE-BACKFILL commit | ❌ | ACL blocked；AUTO-RESCUE 代提 |
+
+### 反覆失敗根因
+
+1. **git commit 殘噪（結構性 + 修法後遺）**：codex ACL 修法（keeper.sh + lib/common.sh:803 yolo_mode=on hardcode）已部署，v8.0 4 commits 正常落版；但 v7.9-final 後段仍見 8 條 AUTO-RESCUE = 修法未完整驗收。根因 = keeper 5 min cycle + subshell YOLO_MODE reset；需 5+ 輪 0-residual 監測方算真閉環。
+
+2. **漂白第十型（mock contract drift）**：cf26345 引入 OpenRouter REST embedding，commit 前未跑 `pytest tests/test_llm.py`，2 個 stale test 沉默到 /pua 才抓到。**根因 = agent 自主改動 ≠ 跑同檔 test**；T-COMMIT-LINT-FEAT-LLM-PYTEST-GATE 已補 feat(llm|core|api) 強制 pytest body 門禁，屬治本。
+
+3. **T-NEMOTRON-EMBEDDING-VALIDATE 4 輪不動**：任務標 "unblocked" 但無 assignee；連 4 輪 P0 掛空 = SLA 破頂。根因 = 任務列表無 owner 欄，靠自律不靠機制。v8.0-r3 強制閉環；治本 = 凡新增 P0 必標 owner + 本輪 SLA。
+
+### 優先序需調整
+
+1. **T-PUSH-ORIGIN-V8.0（P0 最緊急、連 2 輪 open）**：本地 5+ commits 未推，GitHub Actions 未驗、cloud reviewer 看不到；功能再多，不推 = ROI 存本地磁碟。
+2. **T-FAT-PRE-EMPT-CUT-V2（P1 維持 pre-empt）**：fat yellow max=375，6 檔距 400 紅線 25 行；應在同檔新增功能前先刀，同 v7.9 模式。
+3. **T-INTEGRATION-CI-SECRETS（P1 新增）**：GOV_AI_RUN_INTEGRATION gate 未接 CI secrets，integration job 目前 skip 全部 live test = CI gate 假綠。
+
+### 隱藏 blocker
+
+- **spec漂白第四型**：cf26345 上線 direct REST embedding，但 `openspec/changes/17-embedding-provider-rest-fallback/` proposal 尚未建立；功能無規格軌跡，rollback/onboarding 無佐證。
+- **auto_commit_rate < 90% 軟紅線尚未穩定**：近 30 commit 殘 6 條 AUTO-RESCUE 舊噪；sensor formula 已修，但 keeper.sh interval 5 min = 根噪未截；T-COPILOT-WRAPPER-HOST-PATCH 連 8 輪 P1 host SLA 未動。
+
+> **底線邏輯**：近 5 輪揭示兩個配對陷阱——「commit 落版 ≠ 功能閉環」（T-PUSH-ORIGIN 連 2 輪 open）與「測試全綠 ≠ commit 前驗同檔」（漂白第十型）；兩條硬規則已補 lint 門禁，但下輪必須先推 origin，否則 v8.0-r* 系列工作量仍是本地黑洞，雲端 CI 驗收 = 0。
