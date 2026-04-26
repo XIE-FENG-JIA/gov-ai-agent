@@ -275,6 +275,10 @@ def config_backup(
     """備份目前的設定檔。"""
     try:
         backup_impl(output=output, console=console, config_manager_cls=ConfigManager)
+    except ValueError:
+        from src.core.config import ConfigManager as RuntimeConfigManager
+
+        backup_impl(output=output, console=console, config_manager_cls=RuntimeConfigManager)
     except FileNotFoundError:
         raise typer.Exit(1)
 

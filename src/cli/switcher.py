@@ -91,10 +91,12 @@ def switch(
 
     # 自動連線測試
     try:
-        cm_new = ConfigManager()
-        llm_config = cm_new.config.get("llm", {})
-        llm = get_llm_factory(llm_config, full_config=cm_new.config)
+        llm_config = raw_config.get("llm", {})
+        llm = get_llm_factory(llm_config, full_config=raw_config)
         if isinstance(llm, LiteLLMProvider):
+            if llm.provider != "ollama" and not llm.api_key:
+                console.print("[yellow]未設定 API Key，略過 LLM 連線測試。[/yellow]")
+                return
             console.print("[dim]正在測試 LLM 連線...[/dim]")
             ok, err = llm.check_connectivity(timeout=CONNECTIVITY_CHECK_TIMEOUT)
             if ok:

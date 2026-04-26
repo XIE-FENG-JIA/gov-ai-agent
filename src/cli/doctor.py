@@ -11,6 +11,16 @@ from rich.table import Table
 console = Console()
 
 
+def _package_available(pkg_name: str) -> bool:
+    try:
+        __import__(pkg_name)
+    except ImportError:
+        return False
+    except Exception:
+        return True
+    return True
+
+
 def doctor() -> None:
     """
     快速診斷系統環境和常見問題。
@@ -64,9 +74,7 @@ def doctor() -> None:
     _PKG_INSTALL_NAME = {"docx": "python-docx"}
     missing_pkgs = []
     for pkg_name in ["docx", "yaml", "litellm", "rich", "typer"]:
-        try:
-            __import__(pkg_name)
-        except ImportError:
+        if not _package_available(pkg_name):
             missing_pkgs.append(_PKG_INSTALL_NAME.get(pkg_name, pkg_name))
 
     if not missing_pkgs:
