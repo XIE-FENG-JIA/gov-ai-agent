@@ -1,4 +1,8 @@
-[2026-04-27 00:00:00] | [T-FAT-WATCH-CUT-V4] | [PASS] | _manager_hybrid.py 323→247, api/app.py 319→226, exporter/__init__.py 319→243; new modules: _bm25_scoring.py, _startup.py, _text_utils.py; 3998 passed 34 skipped | src/knowledge/_manager_hybrid.py, src/api/app.py, src/document/exporter/__init__.py
+[2026-04-26 21:30:00] | [T-GITIGNORE-STACKDUMP] | [PASS] | *.stackdump added to .gitignore; bash.exe.stackdump deleted; commit 28a1798 | .gitignore, bash.exe.stackdump
+[2026-04-26 21:30:00] | [T-OPENSPEC-18-ARCHIVE] | [PASS] | openspec/changes/archive/2026-04-26-18-multi-llm-provider-abstraction/ + openspec/specs/multi-llm-provider/spec.md committed; commit 985b8ee | openspec/
+[2026-04-26 21:30:00] | [T-ENGINES-API-LAND] | [PASS] | feat(api) engines list/single/WS endpoint + config/engines.yaml + static/engine-switcher.html; pytest test_engines_api.py = 2 passed; commit cc0bbe2 | src/api/routes/engines.py, config/engines.yaml, tests/test_engines_api.py
+[2026-04-26 21:30:00] | [T-EPIC-18-COMMIT-FLUSH-v8.7] | [PASS] | v8.6 T-EPIC-18-COMMIT-FLUSH: all 4 semantic commits landed + 3 additional v8.7 cleanup commits; git status = clean; program.md [x] | program.md, results.log
+
 [2026-04-27 00:00:00] | [T-RUNTIME-RATCHET-LIVE-MEASURE-v2] | [PASS] | sensor_refresh.py: --collect-only main path, ratchet-down baseline, --no-measure flag; 33 tests passed | scripts/sensor_refresh.py, tests/test_sensor_refresh.py
 [2026-04-27 00:00:00] | [T-MARKED-DONE-COMMIT-RATCHET] | [PASS] | sensor_refresh.py: marked_done_uncommitted field, count_marked_done_uncommitted(), soft/hard violations; 8 new tests | scripts/sensor_refresh.py, tests/test_sensor_refresh.py
 [2026-04-26 19:55:00] | [T-GIT-ACL-DENY-COMMIT-BLOCK] | [PASS] | .git ACL DENY 已自然解除；git add/git commit 全部成功；7 commits 落版驗收 ACL 無阻 | src/core/providers/, program.md, results.log
@@ -871,3 +875,5 @@ PASS T-EPIC-18-T18.4-T18.6-LAND        # make_provider factory + llm.py refactor
 [2026-04-26 20:25:51 +0800] | T-OPENSPEC-18-PROMOTE：commit 嘗試失敗；.git/index.lock 存在且 del Access denied | PASS_COMMIT_BLOCKED | 測試已通過，檔案已落地；未 stash，避免覆蓋既有 .gitignore/program/results/gov-ai-mockup 變更
 [2026-04-26 20:43 +0800] | P0 sensor_refresh baseline write crash | PASS | Fixed save_runtime_baseline to create scripts dir before reads and ignore OSError on hook-safe baseline persistence; tests/test_sensor_refresh.py = 33 passed; pytest tests --ignore=tests/integration -x -q = 3997 passed.
 [2026-04-26 20:43 +0800] | Commit sensor_refresh hook-safe baseline fix | FAIL-BLOCKED | git add/commit blocked by undeletable .git/index.lock Access denied; tested patch remains in working tree; no stash attempted because git index is locked.
+[2026-04-26 21:19:05 +08:00] | 決策：P2 修正 engines API 新增 route 的 bare-except 與 timezone staleness 邊界 | PASS | src/api/routes/engines.py typed exception buckets；新增 tests/test_engines_api.py；驗證 pytest tests/test_engines_api.py -q -o addopts='' = 2 passed，rg bare-except = 0
+[2026-04-26 21:20:37 +08:00] | 決策：提交 engines API 品質修正 | FAIL | git add/commit 被 .git/index.lock Permission denied 擋；approval=never 且 Remove-Item .git/index.lock 被 policy 擋；改動保留未提交

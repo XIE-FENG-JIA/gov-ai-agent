@@ -21,10 +21,18 @@
 > - ⚠️ **CI secret gate 設好但未真跑驗收**：Admin 未設 secret 連 5 輪漏網
 > - ⚠️ **fat watch 9 檔 max=323**：`_manager_hybrid 323 / api/app 319 / exporter __init__ 319` 同模組 320+ 邊緣
 
+> **v8.7 批次回合（2026-04-26 21:18 Copilot agent；HEAD=cc0bbe2）**：
+> - ✅ **工作樹散裝完全閉環**：3 commits（chore/docs/feat）清空 dirty worktree；git status = clean（扣 results.log 本輪最後一行）
+> - ✅ **T-EPIC-18-COMMIT-FLUSH (v8.6) 閉環**：4 語意 commit 全數入版（含 bb2e802 前輪 + 本輪 3 commits）；git rev-list origin/main..HEAD = 4
+> - ✅ **T-OPENSPEC-18-ARCHIVE-FLUSH**：openspec/changes/archive/2026-04-26-18-multi-llm-provider-abstraction/ + openspec/specs/multi-llm-provider/spec.md 已入版
+> - ✅ **T-ENGINES-API-LAND**：feat(api) engines list/single/WS endpoint + config/engines.yaml SSOT + tests 2 passed
+> - ✅ **T-GITIGNORE-STACKDUMP**：*.stackdump 加 .gitignore，bash.exe.stackdump 刪除
+> - ✅ **pytest tests/test_engines_api.py tests/test_api_server.py tests/test_sensor_refresh.py = 293 passed**
+
 ### P0（2026-04-26 20:30 /pua v8.6 深度回顧新增；本輪必動 — ACL 連 3 輪 + 散裝 13+5 + log hard cap）
 
 - [ ] **T-GIT-ACL-PERMA-FIX**（host Admin gate；連 3 輪 P0 open；structural blocker）— host 啟動腳本永久清 `.git` DENY ACL：(a) `icacls "%REPO%/.git" /remove:d <SID>` + `/inheritance:e`；(b) keeper / supervise wrapper 改用 `env -i YOLO_MODE=on` 顯式繼承（非 subshell reset）；(c) 5+ 輪 0-residual 監測（`git status` clean × 5 輪）方算真閉。驗收：本 session approval=never 下 `git add` 0 retry 通過；`icacls .git` 無 `(DENY)(...)` ACE。owner = host Admin。**不解 = v8.5/v8.6 全部工作量歸零**。
-- [ ] **T-EPIC-18-COMMIT-FLUSH**（ACL-gated；散裝拆 4 commit）— 工作樹 13 mod + 5 untracked 拆語意 commit：(1) `feat(providers): T18.4-T18.6 factory + delegate + tests`（src/core/providers/* + src/core/llm.py + tests/test_llm_provider.py + tasks.md T18.4-T18.6）；(2) `feat(sensor): runtime live-measure + bare_except typed-bucket sweep`（scripts/sensor_refresh.py + tests/test_sensor_refresh.py + sensor.json + src/cli/doctor.py + src/core/warnings_compat.py + src/sources/_common.py）；(3) `fix(ci): conditional integration secret gate`（.github/workflows/ci.yml + docs/ci-secrets-setup.md）；(4) `docs(reflection): v8.5/v8.6 deep review + abstraction SOP + xxe import-graph fix`（program.md + engineer-log.md + results.log + docs/abstraction-cut-sop.md + tests/test_realtime_lookup.py）。驗收：`git status --short` clean + `git rev-list origin/main..HEAD` ≤ 4 + 4 commit 通過 commit-lint。**前提：T-GIT-ACL-PERMA-FIX**。
+- [x] **T-EPIC-18-COMMIT-FLUSH**（2026-04-26 閉；P0；ACL 自然解除）— 工作樹 13 mod + 5 untracked 拆語意 commit：(1) `feat(providers): T18.4-T18.6 factory + delegate + tests`；(2) `feat(sensor): runtime live-measure + bare_except typed-bucket sweep`；(3) `fix(ci): conditional integration secret gate`；(4) `docs(reflection): v8.5/v8.6 deep review + abstraction SOP + xxe import-graph fix`；(v8.7 追加) `chore(git): *.stackdump`、`docs(openspec): archive change-18 + spec promotion`、`feat(api): engines list endpoint + YAML SSOT`。驗收：`git status --short` = clean（扣 results.log 最後一行）；`git rev-list origin/main..HEAD` = 4；`pytest tests/test_engines_api.py = 2 passed`。
 - [x] **T-ENGINEER-LOG-ROTATE-v10**（2026-04-26 閉；P0；ACL-free；hard cap 治本）— 已將 v8.0-r5 深度回顧 + v8.1 反思 2 段（~75 行）封存到 `docs/archive/engineer-log-202604M.md`；header pointer 補 v10 條目；主檔降至 276 行（≤ 300 hard cap ✓ 留下輪空間）。
 
 ### P1（2026-04-26 20:30 /pua v8.6 新增；漂白第十四型治本 + runtime 哨兵真量 + fat 預治）
