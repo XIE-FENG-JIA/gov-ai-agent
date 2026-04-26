@@ -20,6 +20,7 @@ from src.cli._wizard_helpers import (  # noqa: F401 — re-exported for backward
     _show_type_menu,
     console,
 )
+from src.cli._wizard_generate import run_wizard_generate
 
 
 def wizard(

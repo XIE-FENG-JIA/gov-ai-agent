@@ -159,6 +159,18 @@ class TestWizardCLI:
         assert result.exit_code == 0
         assert "my_doc.docx" in result.output
 
+    def test_confirmed_wizard_calls_generate_wrapper(self):
+        """非 dry-run 確認後應呼叫 wizard generate wrapper。"""
+        inputs = "1\n台北市環保局\n各里辦公處\n請辦理環保業務\n普通\n\n\ny\n"
+        with patch("src.cli.wizard_cmd.run_wizard_generate") as run_wizard_generate:
+            result = runner.invoke(app, ["wizard", "--output", "my_doc.docx", "--skip-review", "--preview"], input=inputs)
+
+        assert result.exit_code == 0
+        run_wizard_generate.assert_called_once()
+        assert run_wizard_generate.call_args.kwargs["output"] == "my_doc.docx"
+        assert run_wizard_generate.call_args.kwargs["skip_review"] is True
+        assert run_wizard_generate.call_args.kwargs["preview"] is True
+
     def test_abort_on_keyboard_interrupt(self):
         """Ctrl+C（KeyboardInterrupt）應優雅中止。"""
         with patch("src.cli.wizard_cmd.Prompt.ask", side_effect=KeyboardInterrupt):
