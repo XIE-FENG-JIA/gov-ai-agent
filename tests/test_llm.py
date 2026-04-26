@@ -368,12 +368,12 @@ class TestGetLLMFactory:
 class TestLiteLLMEmbedEdgeCases:
     """LiteLLMProvider.embed 的邊界路徑測試"""
 
-    @patch("src.core.llm.litellm")
-    def test_embed_openrouter_model_name(self, mock_litellm):
-        """測試 OpenRouter embedding 模型名稱格式"""
+    @patch("src.core.llm._requests.post")
+    def test_embed_openrouter_model_name(self, mock_post):
+        """測試 OpenRouter embedding REST API payload"""
         mock_response = MagicMock()
-        mock_response.data = [{"embedding": [0.5]}]
-        mock_litellm.embedding.return_value = mock_response
+        mock_response.json.return_value = {"data": [{"embedding": [0.5]}]}
+        mock_post.return_value = mock_response
 
         provider = LiteLLMProvider({
             "provider": "openrouter",
@@ -383,17 +383,18 @@ class TestLiteLLMEmbedEdgeCases:
         })
         result = provider.embed("test")
 
-        call_kwargs = mock_litellm.embedding.call_args
-        assert call_kwargs[1]["model"] == "openrouter/text-embed-v1"
-        assert call_kwargs[1]["api_key"] == "test-key"
+        call_kwargs = mock_post.call_args
+        assert call_kwargs[0][0] == "https://openrouter.ai/api/v1/embeddings"
+        assert call_kwargs[1]["headers"]["Authorization"] == "Bearer test-key"
+        assert call_kwargs[1]["json"] == {"model": "text-embed-v1", "input": ["test"]}
         assert result == [0.5]
 
-    @patch("src.core.llm.litellm")
-    def test_embed_uses_embedding_provider_credentials(self, mock_litellm):
+    @patch("src.core.llm._requests.post")
+    def test_embed_uses_embedding_provider_credentials(self, mock_post):
         """不同 provider 混搭時，embedding 應使用自己的 key/base_url。"""
         mock_response = MagicMock()
-        mock_response.data = [{"embedding": [0.9]}]
-        mock_litellm.embedding.return_value = mock_response
+        mock_response.json.return_value = {"data": [{"embedding": [0.9]}]}
+        mock_post.return_value = mock_response
 
         provider = LiteLLMProvider({
             "provider": "minimax",
@@ -406,10 +407,13 @@ class TestLiteLLMEmbedEdgeCases:
         })
         result = provider.embed("test")
 
-        call_kwargs = mock_litellm.embedding.call_args
-        assert call_kwargs[1]["model"] == "openrouter/nvidia/llama-nemotron-embed-vl-1b-v2:free"
-        assert call_kwargs[1]["api_key"] == "openrouter-key"
-        assert call_kwargs[1]["base_url"] == "https://openrouter.ai/api/v1"
+        call_kwargs = mock_post.call_args
+        assert call_kwargs[0][0] == "https://openrouter.ai/api/v1/embeddings"
+        assert call_kwargs[1]["headers"]["Authorization"] == "Bearer openrouter-key"
+        assert call_kwargs[1]["json"] == {
+            "model": "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+            "input": ["test"],
+        }
         assert result == [0.9]
 
     @patch("src.core.llm.litellm")
