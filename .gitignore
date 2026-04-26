@@ -72,6 +72,7 @@ scripts/autoresearch_eval.py
 .txt_*.tmp
 .yaml_*.tmp
 *.tmp
+*.stackdump
 out*
 .auto-engineer.pid
 .auto-engineer.state.json
