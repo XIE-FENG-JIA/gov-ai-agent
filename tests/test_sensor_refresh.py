@@ -562,7 +562,7 @@ def test_marked_done_uncommitted_slug_in_commits(tmp_path: Path) -> None:
     subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
     subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@x"], check=True)
     subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
-    program_text = "### P0\n- [x] **T-FOO-BAR**\n"
+    program_text = "### P0（2026-04-26 test batch）\n- [x] **T-FOO-BAR**\n"
     _git_commit(repo, "program.md", program_text, "docs(program): T-FOO-BAR done")
     result = _mod.count_marked_done_uncommitted(repo)
     assert result["count"] == 0
@@ -574,7 +574,7 @@ def test_marked_done_uncommitted_slug_not_in_commits(tmp_path: Path) -> None:
     subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
     subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@x"], check=True)
     subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
-    program_text = "### P0\n- [x] **T-NEVER-COMMITTED**\n"
+    program_text = "### P0（2026-04-26 test batch）\n- [x] **T-NEVER-COMMITTED**\n"
     _git_commit(repo, "program.md", program_text, "chore: unrelated work only")
     result = _mod.count_marked_done_uncommitted(repo)
     assert result["count"] == 1
@@ -588,7 +588,7 @@ def test_marked_done_uncommitted_mixed(tmp_path: Path) -> None:
     subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@x"], check=True)
     subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
     program_text = (
-        "### P0\n"
+        "### P0（2026-04-26 test batch）\n"
         "- [x] **T-COMMITTED-ONE**\n"
         "- [x] **T-MISSING-TWO**\n"
         "- [ ] **T-OPEN-THREE**\n"
@@ -602,19 +602,19 @@ def test_marked_done_uncommitted_mixed(tmp_path: Path) -> None:
 
 
 def test_marked_done_uncommitted_sections_beyond_4_excluded(tmp_path: Path) -> None:
-    """Slugs from the 5th+ section header are excluded (archive/legacy)."""
+    """Slugs from undated (archive/legacy) P0/P1 sections are excluded."""
     repo = tmp_path
     subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
     subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@x"], check=True)
     subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
     program_text = (
-        "### P0（batch 5）\n"
+        "### P0（2026-04-27 batch 5）\n"
         "- [x] **T-SLUG-IN-BATCH5**\n"
-        "### P1（batch 5）\n"
+        "### P1（2026-04-27 batch 5）\n"
         "- [x] **T-SLUG-IN-P1-BATCH5**\n"
-        "### P0（batch 4）\n"
+        "### P0（2026-04-26 batch 4）\n"
         "- [x] **T-SLUG-IN-BATCH4**\n"
-        "### P1（batch 4）\n"
+        "### P1（2026-04-26 batch 4）\n"
         "- [x] **T-SLUG-IN-P1-BATCH4**\n"
         "### P0（batch 3 archive）\n"
         "- [x] **T-ARCHIVE-SLUG**\n"
@@ -622,7 +622,7 @@ def test_marked_done_uncommitted_sections_beyond_4_excluded(tmp_path: Path) -> N
     _git_commit(repo, "program.md", program_text, "chore: none of the slugs committed here")
     result = _mod.count_marked_done_uncommitted(repo)
     slugs = result["slugs"]
-    assert "T-ARCHIVE-SLUG" not in slugs, "archive slug (5th section) must be excluded"
+    assert "T-ARCHIVE-SLUG" not in slugs, "undated archive section slug must be excluded"
     assert "T-SLUG-IN-BATCH5" in slugs
     assert "T-SLUG-IN-BATCH4" in slugs
 
@@ -632,7 +632,7 @@ def test_build_report_marked_done_uncommitted_in_dict(tmp_path: Path) -> None:
     repo = _make_repo(tmp_path)
     subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
     (repo / "engineer-log.md").write_text("x\n" * 50, encoding="utf-8")
-    program_text = "### P0\n- [x] **T-UNMARKED-TEST**\n"
+    program_text = "### P0（2026-04-26 test）\n- [x] **T-UNMARKED-TEST**\n"
     _git_commit(repo, "program.md", program_text, "chore: unrelated commit only")
     r = _mod.build_report(repo)
     d = r.to_dict()
@@ -646,7 +646,7 @@ def test_build_report_soft_violation_marked_done_gt_0(tmp_path: Path) -> None:
     repo = _make_repo(tmp_path)
     subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
     (repo / "engineer-log.md").write_text("x\n" * 50, encoding="utf-8")
-    program_text = "### P0\n- [x] **T-SOFT-VIOL-SLUG**\n"
+    program_text = "### P0（2026-04-26 test）\n- [x] **T-SOFT-VIOL-SLUG**\n"
     _git_commit(repo, "program.md", program_text, "chore: unrelated")
     r = _mod.build_report(repo)
     assert any("marked_done_uncommitted" in v for v in r.violations_soft), (
@@ -661,7 +661,7 @@ def test_build_report_hard_violation_marked_done_gt_5(tmp_path: Path) -> None:
     subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
     (repo / "engineer-log.md").write_text("x\n" * 50, encoding="utf-8")
     sluglines = "".join(f"- [x] **T-HARD-SLUG-{i}**\n" for i in range(6))
-    program_text = f"### P0\n{sluglines}"
+    program_text = f"### P0（2026-04-26 test）\n{sluglines}"
     _git_commit(repo, "program.md", program_text, "chore: unrelated only")
     r = _mod.build_report(repo)
     assert any("marked_done_uncommitted" in v for v in r.violations_hard), (

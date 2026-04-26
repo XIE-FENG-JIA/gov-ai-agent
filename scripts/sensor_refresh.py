@@ -387,8 +387,9 @@ def active_epic_progress(repo: Path) -> dict[str, Any]:
 def count_marked_done_uncommitted(repo: Path, n_commits: int = 30) -> dict:
     """Check [x] task slugs in recent program.md sections not in last n commits.
 
-    Only scans the first 4 P0/P1 section headers (≈ 2 batch rounds) to avoid
-    flagging legacy/archive tasks that naturally fall outside the 30-commit window.
+    Scans only sections with a recent ISO date (YYYY-MM-DD) in their header,
+    stopping at any undated P0/P1 section (= archive/legacy), a horizontal-rule
+    separator (---), or after 4 dated P0/P1 section headers (≈ 2 batch rounds).
 
     Returns {"count": int, "slugs": list[str]}.
     """
@@ -399,15 +400,21 @@ def count_marked_done_uncommitted(repo: Path, n_commits: int = 30) -> dict:
     text = program_md.read_text(encoding="utf-8", errors="replace")
     lines = text.splitlines()
 
-    # Limit scan to most-recent 4 section headers (2 P0 + 2 P1 ≈ 2 batch rounds)
     section_header_re = re.compile(r"^###\s+P[01]")
+    has_date_re = re.compile(r"\d{4}-\d{2}-\d{2}")  # ISO date in section header
+    stop_re = re.compile(r"^---\s*$")  # Horizontal-rule before ## 已完成
+
     section_count = 0
     scan_lines: list[str] = []
     for line in lines:
+        if stop_re.match(line):
+            break  # Hard boundary before archived sections
         if section_header_re.match(line):
+            if not has_date_re.search(line):
+                break  # Undated section = legacy, stop scanning
             section_count += 1
             if section_count > 4:
-                break
+                break  # Fallback: max 4 dated P0/P1 sections ≈ 2 batch rounds
         scan_lines.append(line)
 
     scan_text = "\n".join(scan_lines)

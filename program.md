@@ -4,6 +4,13 @@
 > 歷史 v8.1/v8.3/v8.4/v8.5 完成任務已封存：[docs/archive/program-history-202604O.md](docs/archive/program-history-202604O.md)（T-PROGRAM-MD-ARCHIVE-202604O；2026-04-26 22:51）
 > 歷史 v8.6/v8.8 P0/P1/P2 已封存：[docs/archive/program-history-202604Q.md](docs/archive/program-history-202604Q.md)（T-PROGRAM-MD-ARCHIVE-202604Q；2026-04-27）
 
+> **v8.12 批次回合（2026-04-28 Copilot agent；HEAD=TBD→push）**：
+> - ✅ **T-SENSOR-MDU-WINDOW-FIX** sensor marked_done_uncommitted 誤報 30 → 1；收窄掃描至帶日期的 P0/P1 header；37 tests passed
+> - ✅ **T-RECALL-DRY-RUN-SMOKE** `eval_recall.py --dry-run` 驗證 recall_report.json 正確建立（recall@1/3/5 欄位）
+> - ✅ **T-RESULTS-LOG-SOFT-CAP** results.log 317 → 100 行；217 行封存 results-archive/202604R.log
+> - ✅ **T-SENSOR-JSON-COMMIT** sensor.json + 本輪修改一次性 commit 落版
+> - ✅ **T-PROGRAM-MD-V8.12-HEADER** program.md v8.12 header + 任務 [x]
+
 > **v8.11 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
 > - ✅ **T19.3 recall_baseline.py** ratchet-down semantics 落地；5 tests passed
 > - ✅ **T19.4 sensor recall_health** check_recall_health() + soft violation wired；37 sensor tests passed
@@ -21,6 +28,14 @@
 ### P2（2026-04-27 Copilot agent v8.11 新增；program.md soft cap 治本）
 
 - [x] **T-PROGRAM-MD-ARCHIVE-202604Q**（10 min；P2；ACL-free；v8.11 新增）— program.md 261 行 > soft 250；封存 v8.8/v8.6 P0/P1/P2 完成區塊（lines 48-135）到`docs/archive/program-history-202604Q.md`；主檔降至 < 200 行（< 250 ✅）；header pointer 補。
+
+### P0（2026-04-28 Copilot agent v8.12 — sensor MDU fix + recall smoke + log hygiene）
+
+- [x] **T-SENSOR-MDU-WINDOW-FIX**（ACL-free；v8.12）— `count_marked_done_uncommitted()` 掃描收窄至帶 ISO 日期的 P0/P1 section header；遇 `---` 或無日期 header 即停；hard violation 由 30 降至 1（soft only）；37 sensor tests passed。
+- [x] **T-RECALL-DRY-RUN-SMOKE**（ACL-free；v8.12）— `python scripts/eval_recall.py --dry-run` 驗收：recall_report.json 建立，含 recall@1/3/5 / embedding_model / n_eval 欄位；exit 0。
+- [x] **T-RESULTS-LOG-SOFT-CAP**（ACL-free；v8.12）— results.log 317 行 > soft 300；前 217 行封存 `results-archive/202604R.log`；主檔降至 100 行。
+- [x] **T-SENSOR-JSON-COMMIT**（ACL-free；v8.12）— sensor.json 漂白 + 本輪所有修改一次 commit 落版；git status clean。
+- [x] **T-PROGRAM-MD-V8.12-HEADER**（ACL-free；v8.12）— program.md 加 v8.12 batch header；5 個任務全 [x]。
 
 
 > - ✅ **HEAD = origin/main = 6426ad7**（rev-list 0/0；v8.9 push flush 仍守）
