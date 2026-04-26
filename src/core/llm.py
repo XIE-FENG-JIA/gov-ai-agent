@@ -1,6 +1,8 @@
+import os
 import random
 import logging
 import threading
+import requests as _requests
 from src.core.warnings_compat import suppress_known_third_party_deprecations
 
 suppress_known_third_party_deprecations()
@@ -224,6 +226,23 @@ class LiteLLMProvider(LLMProvider):
                 return []
 
         try:
+            # OpenRouter does not expose an embedding endpoint through litellm;
+            # call the OpenAI-compatible REST API directly instead.
+            if self.emb_provider == "openrouter":
+                _api_key = self.emb_api_key or os.environ.get("OPENROUTER_API_KEY", "")
+                _base = (self.emb_base_url or "https://openrouter.ai/api/v1").rstrip("/")
+                resp = _requests.post(
+                    f"{_base}/embeddings",
+                    headers={
+                        "Authorization": f"Bearer {_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={"model": self.emb_model, "input": [text]},
+                    timeout=LLM_CHECK_TIMEOUT,
+                )
+                resp.raise_for_status()
+                return resp.json()["data"][0]["embedding"]
+
             # Construct embedding model name
             if self.emb_provider == "ollama":
                 emb_model_name = f"ollama/{self.emb_model}"
