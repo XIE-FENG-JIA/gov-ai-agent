@@ -35,7 +35,15 @@ _PUBLIC_PATHS: frozenset[str] = frozenset({
     "/docs",
     "/redoc",
     "/openapi.json",
+    "/api/v1/engines",
+    "/engine",
+    "/mockup",
 })
+
+_PUBLIC_PREFIXES: tuple[str, ...] = (
+    "/api/v1/engines/",
+    "/static/",
+)
 
 
 _auto_key_lock = threading.Lock()
@@ -93,7 +101,12 @@ def _check_api_key(request: Request) -> bool | None:
         return None
 
     # 公開路徑免認證（含 Web UI）
-    if request.url.path in _PUBLIC_PATHS or request.url.path.startswith("/ui/") or request.url.path == "/ui":
+    if (
+        request.url.path in _PUBLIC_PATHS
+        or request.url.path.startswith("/ui/")
+        or request.url.path == "/ui"
+        or any(request.url.path.startswith(p) for p in _PUBLIC_PREFIXES)
+    ):
         return None
 
     api_keys: list[str] = api_config.get("api_keys", [])
