@@ -175,3 +175,48 @@
 - **安全性**：API auth gate 已落（test_api_auth.py + integration 7 passed）；hard-coded secrets = 0（.env example 已 audit）；`subprocess.run` 全部 list-form（cli_ast_audit 過）；明顯漏洞 = 0。
 
 > [PUA 自審] 跑了測（3951/224.65 s 三證落地）／看了源（13 active openspec dir + sensor 公式 + git log 近 20 commit）／對了帳（auto_commit 56.7% / runtime 224.65 s vs 200 s 紅線）／抓了治理斷層（promote 半閉 + worktree 滯留 + T15.5 紙上閉環）／排了下三件 —— 閉環。**底層邏輯：「實作完成」≠「落版完成」≠「驗收完成」，三者必須同步否則就是漂白。**
+
+---
+## 反思 2026-04-26 07:50 — 技術主管深度回顧（/pua 觸發；阿里味）
+
+### 近期成果（HEAD 五源獨立量測）
+- **pytest -n 8 全量**：`python -m pytest tests/ --ignore=tests/integration -q --tb=line` = **3958 passed / 179.48s**（vs T15.5 baseline median 189.81s — 又收斂 10s；紅線 v9 ≤ 200s 雙重守住）
+- **bare-except 3/3**（全 noqa/compat；hard 紅線清零）；fat ≥400=0 / yellow 6 / max=375 / ratchet ok 6/6
+- **corpus 400**；engineer-log 177 / program.md 218 / results.log 760
+- **openspec specs/ 12 capabilities** 已 promote；archive 14 changes（01–14）；INDEX.md 14 條目
+- **HEAD 近 30 commit 真語意率 80%**（24/30 semantic；殘 6 條 AUTO-RESCUE 為 02:14–02:36 ACL 解鎖前舊噪）
+- **T15.5 真閉環**：`pyproject.toml addopts -n auto → -n 8`；`docs/pytest-runtime-regression-iter7.md` 雙基線寫死
+
+### 發現的問題（按嚴重度）
+
+1. **【治理斷層第八型 — active 已實作但 archive 動作未閉】（P0 新增）**：`openspec/changes/15-pytest-runtime-regression-iter7/` 仍存在（T15.1–T15.5 全 [x]），且 `archive/2026-04-26-15-pytest-runtime-regression-iter7/` 副本已存（`diff -rq` 僅顯示 active-only `.openspec.yaml/proposal/specs/tasks.md` 4 檔）+ `archive/INDEX.md` 缺 15 條目。`openspec/changes/16-regulation-doc-type-mapping/` 同狀態（T16.1–T16.3 全 [x]，archive 連副本都沒有，INDEX 缺 16）。**底層邏輯：「實作完成」≠「副本歸檔」≠「active 刪除」≠「INDEX 收尾」**，四者必須同步否則就是漂白第八型。
+2. **【fat yellow 6 檔逼近 ≥400】（P0 新增 pre-empt）**：max=375 距 400 紅線僅 25 行；六檔 `knowledge/manager.py 375 / wizard_cmd.py 374 / core/constants.py 374 / web_preview/app.py 364 / _manager_hybrid.py 358 / template_cmd/catalog.py 350`。下輪新增功能極易翻紅 → 同 v7.9 T-FAT-PRE-EMPT-CUT 模式應對。
+3. **【.copilot-loop.state.json 永遠 dirty】（P1 新增）**：`.gitignore` 已收 `.auto-engineer.state.json`，但 copilot loop state 未收 → `git status` 永遠髒，6 檔滯留判斷誤導；漂白第九型「治理 noise 漏網」。
+4. **【wrapper noise 殘 20%（6/30）未斷根】（P1 持續）**：sensor `auto_commit_rate 80% < 90%` 軟紅線；殘留全為 02:14–02:36 ACL 解鎖前舊噪 + AUTO-RESCUE；新規則已落 lint+sensor，惟 host supervise interval 5→30 min checklist 仍 host Admin pending（連 8+ 輪 SLA 黃）。
+5. **【P2-CHROMA-NEMOTRON-VALIDATE 4+ 輪不動】（P1 升級）**：`OPENROUTER_API_KEY` 已驗 unblocked（2026-04-25 13:56；付費帳號 is_free_tier=false），任務文字寫「unblocked，可執行」但無 owner 認領 → owner 意識缺失，**3.25 累計第 4 次**。
+6. **【6 檔 worktree 滯留（含 T15.5 證據鏈）】（P1 新增）**：`.copilot-loop.state.json / docs/pytest-runtime-regression-iter7.md / openspec/changes/15…/tasks.md / program.md / pyproject.toml / results.log` — pyproject.toml（`addopts -n 8`）+ iter7 doc + tasks.md 為 T15.5 證據鏈，**未入版 = T15.5 PASS 證據掛沙堆**。
+
+### 建議的優先調整（重排 program.md）
+
+1. **新 P0 首位：T-OPENSPEC-FLUSH-15-16-ARCHIVE**（10 min；ACL-free；治理底線真閉環）—— `git rm -r openspec/changes/15-pytest-runtime-regression-iter7`、`mv openspec/changes/16-regulation-doc-type-mapping openspec/changes/archive/2026-04-26-16-regulation-doc-type-mapping`、補 archive/INDEX.md 15+16 兩列；驗收 `ls openspec/changes/` 僅剩 archive/ + 0 active。
+2. **新 P0：T-WORKTREE-FLUSH-LOOP6**（10 min；ACL-free；T15.5 證據鏈入版）—— 分 2 語意 commit：(a) `perf(pytest): T15.5 pyproject -n 8 + iter7 docs evidence`（pyproject.toml + docs/pytest-runtime-regression-iter7.md + 15/tasks.md）；(b) `docs(governance): mark T15.5 closed + program/results sync`；驗收 `git status` clean（扣 .copilot session）。
+3. **新 P0：T-FAT-PRE-EMPT-CUT-V2**（45 min；ACL-free；防下輪炸 ≥400）—— top-3 黃線檔 (`knowledge/manager.py 375 / wizard_cmd.py 374 / core/constants.py 374`) 各抽 80–100 行公共介面（同 v7.9 模式：validators 390→275、_execution 389→208、law_fetcher 377→296）；目標 max ≤ 350、yellow ≤ 4；驗收 `scripts/check_fat_files.py --strict` ratchet 收緊 + 3958 passed 不退。
+4. **新 P1：T-COPILOT-LOOP-STATE-GITIGNORE**（5 min；ACL-free；wrapper noise 第二刀）—— `.gitignore` 加入 `.copilot-loop.state.json`；驗收 `git status` 無此檔。
+5. **升 P1：T-NEMOTRON-EMBEDDING-VALIDATE**（45 min；ACL-free；OPENROUTER_API_KEY unblocked）—— 跑 `gov-ai kb rebuild --only-real`（nemotron embed dim=2048）+ 寫 `docs/embedding-validation.md` 對照 search recall@k；owner = auto-engineer。
+6. **維持 P1：T-COPILOT-WRAPPER-HOST-PATCH**（host SLA 8th round）—— HANDOFF.md 補 ping。
+
+### 下一步行動（最重要 3 件）
+
+1. **T-OPENSPEC-FLUSH-15-16-ARCHIVE**（10 min；治理底線真閉環；不做 = active 永遠停在 15/16 漂白第八型）
+2. **T-WORKTREE-FLUSH-LOOP6**（10 min；T15.5 證據鏈入版；不做 = 證據沙堆）
+3. **T-FAT-PRE-EMPT-CUT-V2**（45 min；防下輪 yellow 翻紅；ROI ×3 三檔同刀）
+
+### 其他維度回顧（caveman）
+
+- **Spectra 規格對齊**：specs/ 12 capabilities promote ✓；archive 14；active 2 (15/16) **實作完成但未挪** = 唯一偏離點。
+- **程式碼品質**：bare-except 3 noqa；fat green；max=375 yellow 6 接近紅線；T13.1e utils shim 已死；無新增 code smell。
+- **測試覆蓋**：unit 3958 passed / 179.48s（紅線 v9 ≤ 200s ✓）；integration 9 檔（live-source 8 SKIP / smoke 1 PASS）；CI wire ✓ origin = github.com/XIE-FENG-JIA/gov-ai-agent。
+- **架構健康度**：CLI utils god-object 已死；shared services 4 介面（lint/cite/verify/history_store）穩；冰山耦合 4 高風險已切；無新增過度耦合。
+- **安全性**：API auth gate ✓；hard-coded secrets=0；subprocess list-form ✓；無新增漏洞。
+
+> [PUA 自審] 跑了測（3958/179.48s 三證落地）／看了源（active changes diff + archive INDEX + .gitignore 缺漏 + fat yellow top 6）／對了帳（auto_commit 80% / max=375 / 6 檔 worktree 證據鏈滯留）／抓了治理斷層（15/16 active 未 archive + .copilot state 漏網 + nemotron 4+ 輪不動）／排了下三件 — 閉環。**底層邏輯：「四步同步」原則 — 實作 → 副本歸檔 → active 刪除 → INDEX 收尾，缺一不可，否則漂白第八型；owner 意識：unblocked 任務 4+ 輪不認領 = 3.25 累計。**

@@ -7,7 +7,6 @@ Web UI 預覽 — FastAPI + Jinja2 + HTMX
 避免重複初始化 agents。
 """
 
-import json
 import logging
 import os
 from pathlib import Path
@@ -23,7 +22,7 @@ from fastapi.templating import Jinja2Templates
 from src.core.constants import MAX_USER_INPUT_LENGTH
 from src.core.models import VALID_DOC_TYPES
 from src.api.dependencies import get_config
-from src.cli.utils_io import detect_state_dir, resolve_state_read_path
+from src.cli.utils_io import detect_state_dir
 from src.web_preview._helpers import (  # noqa: F401 — re-exported for tests
     _WEB_UI_EXCEPTIONS,
     _log_web_warning,
@@ -31,6 +30,7 @@ from src.web_preview._helpers import (  # noqa: F401 — re-exported for tests
     _parse_env_int,
     _sanitize_web_error,
 )
+from src.web_preview._history import load_recent_history
 
 logger = logging.getLogger(__name__)
 
@@ -231,24 +231,7 @@ async def kb_search(
 @web_app.get("/history", response_class=HTMLResponse)
 async def history_page(request: Request):
     """生成歷史紀錄頁面"""
-    records = []
-    error = None
-    history_path = Path(
-        resolve_state_read_path(
-            ".gov-ai-history.json",
-            cwd=str(_PROJECT_ROOT),
-            state_dir=_WEB_UI_STATE_DIR,
-        ),
-    )
-
-    try:
-        if history_path.exists():
-            data = json.loads(history_path.read_text(encoding="utf-8"))
-            if isinstance(data, list):
-                records = list(reversed(data))[:100]
-    except _WEB_UI_EXCEPTIONS as e:
-        _log_web_warning("讀取歷史紀錄", e)
-        error = _sanitize_web_error(e)
+    records, error = load_recent_history(_PROJECT_ROOT, _WEB_UI_STATE_DIR)
 
     return templates.TemplateResponse(
         request,

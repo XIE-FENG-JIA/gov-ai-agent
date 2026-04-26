@@ -1,10 +1,8 @@
-import hashlib
 import importlib
 import logging
 import threading
 from contextlib import contextmanager
 from typing import Any
-import uuid
 
 from cachetools import TTLCache
 
@@ -12,6 +10,7 @@ from src.core.llm import LLMProvider
 import src.core.warnings_compat as warnings_compat
 from src.knowledge._manager_hybrid import KnowledgeHybridSearchMixin
 from src.knowledge._manager_search import KnowledgeSearchMixin
+from src.knowledge._manager_write import KnowledgeWriteMixin
 
 
 @contextmanager
@@ -93,7 +92,7 @@ def _resolve_chromadb() -> Any:
     return chromadb
 
 
-class KnowledgeBaseManager(KnowledgeHybridSearchMixin, KnowledgeSearchMixin):
+class KnowledgeBaseManager(KnowledgeWriteMixin, KnowledgeHybridSearchMixin, KnowledgeSearchMixin):
     """管理本地 ChromaDB 知識庫。"""
 
     def __init__(
@@ -172,153 +171,6 @@ class KnowledgeBaseManager(KnowledgeHybridSearchMixin, KnowledgeSearchMixin):
             with self._embed_cache_lock:
                 self._embed_cache[query] = embedding
         return embedding
-
-    def add_document(
-        self,
-        content: str,
-        metadata: dict[str, Any],
-        collection_name: str = "examples",
-        full_document: str | None = None,
-        chunk_index: int | None = None,
-        total_chunks: int | None = None,
-    ) -> str | None:
-        """將文件新增至指定的集合。
-
-        Args:
-            content: 要匯入的文字內容（單一 chunk）。
-            metadata: ChromaDB 相容的 metadata 字典。
-            collection_name: 目標集合名稱。
-            full_document: 完整原始文件內容（供 Contextual Retrieval 使用）。
-            chunk_index: 此 chunk 在原始文件中的索引（從 0 開始）。
-            total_chunks: 原始文件的 chunk 總數。
-        """
-        if not self._available:
-            logger.warning("知識庫不可用，無法新增文件。")
-            return None
-
-        # 防護空值內容
-        if not content or not content.strip():
-            logger.warning("無法新增空白內容的文件")
-            return None
-
-        # Contextual Retrieval：為 chunk 加入上下文摘要前綴
-        if self.contextual_retrieval and full_document:
-            idx = chunk_index if chunk_index is not None else 0
-            total = total_chunks if total_chunks is not None else 1
-            content = self._enrich_with_context(content, full_document, idx, total)
-
-        doc_id = str(uuid.uuid4())
-
-        # Generate embedding using our LLM provider
-        embedding = self.llm_provider.embed(content)
-
-        if not embedding:
-            logger.warning("無法產生文件的嵌入向量: %s", metadata.get('title', '未知'))
-            return None
-
-        if collection_name == "regulations":
-            target_collection = self.regulations_collection
-        elif collection_name == "policies":
-            target_collection = self.policies_collection
-        else:
-            target_collection = self.examples_collection
-
-        try:
-            with suppress_known_third_party_deprecations_temporarily():
-                target_collection.add(
-                    documents=[content],
-                    embeddings=[embedding],
-                    metadatas=[metadata],
-                    ids=[doc_id]
-                )
-        except _KB_MANAGER_VENDOR_EXCEPTIONS as e:
-            logger.error("文件寫入知識庫失敗: %s", e)
-            return None
-        # 新增文件後清除快取，確保後續搜尋能看到新資料
-        self.invalidate_cache()
-        return doc_id
-
-    @staticmethod
-    def make_deterministic_id(file_stem: str, collection_name: str = "examples") -> str:
-        """依據檔名 stem + 集合名稱產生穩定的 doc ID（24 hex chars）。
-
-        同一檔案不論執行幾次 sync/ingest，都會得到相同 ID，
-        使 ChromaDB upsert 能正確覆寫而不新增重複文件。
-        """
-        raw = f"{collection_name}::{file_stem}"
-        return hashlib.sha256(raw.encode()).hexdigest()[:24]
-
-    def document_exists(self, doc_id: str, collection_name: str = "examples") -> bool:
-        """檢查指定 ID 的文件是否已存在於集合中。"""
-        if not self._available:
-            return False
-        if collection_name == "regulations":
-            target_collection = self.regulations_collection
-        elif collection_name == "policies":
-            target_collection = self.policies_collection
-        else:
-            target_collection = self.examples_collection
-        try:
-            with suppress_known_third_party_deprecations_temporarily():
-                result = target_collection.get(ids=[doc_id], include=[])
-            return len(result.get("ids", [])) > 0
-        except _KB_MANAGER_VENDOR_EXCEPTIONS as exc:
-            _log_kb_warning(f"查詢文件是否存在 collection={collection_name} doc_id={doc_id}", exc)
-            return False
-
-    def upsert_document(
-        self,
-        doc_id: str,
-        content: str,
-        metadata: dict[str, Any],
-        collection_name: str = "examples",
-        full_document: str | None = None,
-        chunk_index: int | None = None,
-        total_chunks: int | None = None,
-    ) -> str | None:
-        """以確定性 ID upsert 文件——冪等操作，可安全重複呼叫。
-
-        與 add_document 的差異：
-        - 使用呼叫方提供的 doc_id（應為 make_deterministic_id() 的輸出）
-        - 呼叫 ChromaDB upsert() 而非 add()，相同 ID 時更新而不重複寫入
-        """
-        if not self._available:
-            logger.warning("知識庫不可用，無法 upsert 文件。")
-            return None
-        if not content or not content.strip():
-            logger.warning("無法 upsert 空白內容的文件")
-            return None
-
-        if self.contextual_retrieval and full_document:
-            idx = chunk_index if chunk_index is not None else 0
-            total = total_chunks if total_chunks is not None else 1
-            content = self._enrich_with_context(content, full_document, idx, total)
-
-        embedding = self.llm_provider.embed(content)
-        if not embedding:
-            logger.warning("無法產生文件的嵌入向量: %s", metadata.get("title", "未知"))
-            return None
-
-        if collection_name == "regulations":
-            target_collection = self.regulations_collection
-        elif collection_name == "policies":
-            target_collection = self.policies_collection
-        else:
-            target_collection = self.examples_collection
-
-        try:
-            with suppress_known_third_party_deprecations_temporarily():
-                target_collection.upsert(
-                    documents=[content],
-                    embeddings=[embedding],
-                    metadatas=[metadata],
-                    ids=[doc_id],
-                )
-        except _KB_MANAGER_VENDOR_EXCEPTIONS as e:
-            logger.error("文件 upsert 知識庫失敗: %s", e)
-            return None
-        self.invalidate_cache()
-        return doc_id
 
     # ------------------------------------------------------------------
     # Contextual Retrieval — 為每個 chunk 加入上下文摘要前綴

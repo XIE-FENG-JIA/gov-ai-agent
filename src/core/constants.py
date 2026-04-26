@@ -7,9 +7,10 @@
 import logging
 import os
 import platform
-import re
 from pathlib import Path
 from typing import Literal
+
+from src.core.prompt_safety import escape_prompt_tag, is_llm_error_response
 
 logger = logging.getLogger(__name__)
 
@@ -265,83 +266,6 @@ API_VERSION = "2.0.0"                 # API 版本號
 # 專案根目錄與輸出目錄（基於 __file__ 解析，不依賴 CWD）
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 OUTPUT_DIR = PROJECT_ROOT / "output"
-
-
-# ---------------------------------------------------------------------------
-# LLM 錯誤回應偵測
-# ---------------------------------------------------------------------------
-
-# 編譯一次，多處複用
-_LLM_ERROR_PATTERN = re.compile(
-    r"^("
-    r"[Ee]rror\s*:"                    # English: "Error: ..."
-    r"|錯誤\s*[：:]"                   # 繁中: "錯誤：..."
-    r"|错误\s*[：:]"                   # 簡中: "错误：..."
-    r"|I'?m sorry"                     # English refusal
-    r"|I apologize"                    # English refusal
-    r"|很抱歉"                         # 中文拒絕
-    r"|抱歉[，,]?\s*我"                # "抱歉，我無法..."
-    r"|對不起"                         # 繁中拒絕
-    r"|对不起"                         # 簡中拒絕
-    r"|無法[生完]成"                   # "無法生成" / "無法完成"
-    r"|无法[生完]成"                   # 簡中版
-    r"|我無法"                         # "我無法處理..."
-    r"|我无法"                         # 簡中版
-    r")",
-    re.IGNORECASE,
-)
-
-
-def is_llm_error_response(text: str | None) -> bool:
-    """判斷 LLM 回應是否為錯誤訊息或拒絕回覆，而非有效內容。
-
-    涵蓋英文 ``Error:`` 前綴、中文錯誤/拒絕回覆常見模式。
-    用於替換散落在各 agent 的 ``startswith("Error")`` 檢查，
-    統一偵測邏輯並支援中文 LLM。
-
-    Args:
-        text: LLM 回傳的文字（可為 None 或空字串）
-
-    Returns:
-        True 表示偵測到錯誤/拒絕模式，應使用 fallback。
-    """
-    if not text or not text.strip():
-        return True
-    return bool(_LLM_ERROR_PATTERN.search(text.strip()))
-
-
-def escape_prompt_tag(content: str, tag_name: str) -> str:
-    """
-    中和內容中的 XML 開頭與結束標籤，防止 prompt injection 突破標籤邊界。
-
-    當使用者輸入或外部資料嵌入 ``<tag_name>...</tag_name>`` 格式的 prompt 區段時，
-    若內容包含 ``</tag_name>`` 或 ``<tag_name>``，可能導致 LLM 誤判標籤結構。
-    此函式將兩者替換為安全的方括號形式。
-
-    Args:
-        content: 要嵌入 prompt 的內容
-        tag_name: 包圍該內容的 XML 標籤名稱
-
-    Returns:
-        已中和標籤的安全內容
-    """
-    if not content:
-        return ""
-    # 使用正則替換：處理大小寫不敏感及帶屬性的標籤形式，
-    # 防止 </tag>、</TAG>、<tag attr="val"> 等變體繞過
-    result = re.sub(
-        rf"</{re.escape(tag_name)}\s*>",
-        f"[/{tag_name}]",
-        content,
-        flags=re.IGNORECASE,
-    )
-    result = re.sub(
-        rf"<{re.escape(tag_name)}(\s[^>]*)?>",
-        f"[{tag_name}]",
-        result,
-        flags=re.IGNORECASE,
-    )
-    return result
 
 
 def assess_risk_level(
