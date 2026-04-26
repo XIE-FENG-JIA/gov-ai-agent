@@ -236,4 +236,55 @@
 
 ---
 
-> 封存結束。下一段反思（v8.1 /pua 2026-04-26）寫於主檔。
+## 深度回顧 2026-04-26 10:32 — 技術主管近 5 輪根因分析（v8.0-r5；Copilot 主導）
+
+| 輪次 | 核心 task | 結果 | 備註 |
+|------|-----------|------|------|
+| v8.0 /pua | cf26345 引入 2 test regression | ❌ | 漂白第十型：agent commit 前未跑同檔 pytest |
+| v8.0-r3 | T-NEMOTRON-EMBEDDING-VALIDATE-CLOSE | ✅ | 4+ 輪 SLA 破頂後終閉 |
+| v8.0-r4 | T-LLM-EMBED-TEST-FIX | ✅ | mock contract 修正 + dead branch 刪 |
+| v8.0-r5 | T-COMMIT-LINT-FEAT-LLM-PYTEST-GATE | ✅ | lint 硬門禁補漂白第十型 |
+| v7.9-final | T-OPENSPEC-PURPOSE-BACKFILL commit | ❌ | ACL blocked；AUTO-RESCUE 代提 |
+
+### 反覆失敗根因
+
+1. **git commit 殘噪**：v8.0 4 commits 正常落版；但 v7.9-final 後段仍見 8 條 AUTO-RESCUE = 修法未完整驗收。根因 = keeper 5 min cycle + subshell YOLO_MODE reset；需 5+ 輪 0-residual 監測方算真閉環。
+2. **漂白第十型（mock contract drift）**：cf26345 引入 OpenRouter REST embedding，commit 前未跑 `pytest tests/test_llm.py`，2 個 stale test 沉默到 /pua 才抓到。T-COMMIT-LINT-FEAT-LLM-PYTEST-GATE 已補 feat(llm|core|api) 強制 pytest body 門禁，屬治本。
+3. **T-NEMOTRON-EMBEDDING-VALIDATE 4 輪不動**：任務標 "unblocked" 但無 assignee；連 4 輪 P0 掛空 = SLA 破頂。治本 = 凡新增 P0 必標 owner + 本輪 SLA。
+
+> **底線邏輯**：近 5 輪揭示「commit 落版 ≠ 功能閉環」與「測試全綠 ≠ commit 前驗同檔」兩條漏網；兩條硬規則已補 lint 門禁，但下輪必須先推 origin。
+
+---
+
+## 反思 2026-04-26 11:30 — 技術主管深度回顧 v8.1 / e04476e push 後（/pua 觸發；阿里味）
+
+### 近期成果（HEAD 五源獨立量測）
+
+- HEAD = origin/main = e04476e（T-PUSH-ORIGIN-V8.0 ✅；rev-list 0/0；連 2 輪 open 終閉）
+- pytest -n 8 全量 = 3968 passed / 1 failed / 47.80s（紅線 v9 ≤ 200s ✓ 雙重守住）
+- 1 failed = test_kb_init_failure_graceful；單檔重跑 14.18s = PASS → xdist race 漂白第七型再現
+- sensor 全綠：hard=[]；soft=program_md_lines 264>250；bare_except=3 noqa；fat red=0 yellow=1 max=350；corpus=400；auto_commit_rate=100%
+- openspec 0 active；近 9 commit 連續語意化
+
+### 發現的問題
+
+1. **xdist race flake (P0)**：test_kb_init_failure_graceful 在 -n 8 失敗，單檔 PASS；底層邏輯：sensor 不抓 transient flaky；T-XDIST-RACE-AUDIT-V2 升 P0。
+2. **out.tmp 0-byte 漂入 (P1)**：?? out.tmp 0 行未追蹤；治理 noise；修法 .gitignore 加 *.tmp + out*。
+3. **program.md 264 > soft 250 (P1)**：把 v7.x verbose batch 封存到 archive。
+4. **spec 漂白第四型未補 (P1)**：cf26345/00330c0 已落 OpenRouter REST embedding 但 openspec proposal 缺。
+5. **fat yellow 1 檔 max=350 邊緣 (P2)**：catalog.py 350；可預先抽。
+6. **TestGracefulDegradation 同類風險未盡掃 (P1)**：5+ chromadb mock test 同型風險。
+
+### 建議優先序
+
+1. T-XDIST-RACE-AUDIT-V2-CHROMADB（P0；30 min）— autouse fixture per-worker isolation；pytest --count=10 連跑 10 次 0 fail。
+2. T-GITIGNORE-TMP-OUT（P0；5 min）— .gitignore 加 *.tmp + out*。
+3. T-PROGRAM-MD-ARCHIVE-202604L（P1；15 min）— 主檔降 ≤ 250。
+4. T-OPENSPEC-CHANGE-17-EMBED-REST（P1；30 min）— 建 17-embedding-provider-rest-fallback proposal/tasks/spec deltas。
+5. T-FAT-CATALOG-PRE-CUT（P2；30 min）— catalog.py 350→270。
+
+> **底層邏輯**：「sensor 綠 ≠ pytest -n 8 綠 ≠ pytest -n 8 連跑 10 次綠」；漂白第七型 flaky 是 xdist 並發下 mock contract 永遠重新打的暗債，每打一次治一個 callsite 不夠，要系統化 fixture-scope 隔離 + count=10 連跑驗收。
+
+---
+
+> 封存結束。下一段反思（v8.3 /pua 2026-04-26）寫於主檔。
