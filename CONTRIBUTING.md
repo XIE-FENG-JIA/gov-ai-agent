@@ -238,3 +238,49 @@ The probe writes `scripts/adapter_health_report.json` which is loaded by
 **Adding a new adapter**: register it in `_ADAPTER_REGISTRY` inside
 `scripts/adapter_health.py` — provide `(name, dotted_module_path, class_name)`.
 Add a corresponding test case in `tests/test_adapter_health.py`.
+
+---
+
+## CLI Output Format
+
+All primary commands support `--format {text,json}` (default: `text`).  JSON
+mode emits a single-line JSON object to stdout — suitable for pipe / CI.
+
+### `gov-ai stats --format json`
+
+```json
+{
+  "total": 5,
+  "success": 4,
+  "failed": 1,
+  "type_counts": {"函": 3, "公告": 2},
+  "avg_score": 0.87
+}
+```
+
+`avg_score` is `null` when no history records have a `score` field.
+
+### `gov-ai status --format json`
+
+```json
+{
+  "config": {"llm": {"provider": "openai", "model": "gpt-4"}},
+  "history_count": 10,
+  "feedback_count": 3,
+  "kb_status": "ok"
+}
+```
+
+`kb_status` is one of `ok | missing | error | unknown`.
+`config` is `{}` when `config.yaml` is absent or unreadable.
+
+### Common rules
+
+| Rule | Detail |
+|------|--------|
+| Default | `text` (Rich terminal output) |
+| JSON | `--format json`, plain stdout — pipe-friendly |
+| Invalid format | exit 1 + 錯誤訊息 |
+| Backward compat | `--format text` behaviour unchanged |
+
+See `docs/cli-output-audit.md` for full field reference and output path details.

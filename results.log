@@ -103,3 +103,8 @@ PASS T-RESULTS-LOG-SOFT-CAP-V8.23 2026-04-27 results.log trimmed 110->100; 10 li
 PASS T-OPENSPEC-EPIC-25-DISCOVERY 2026-04-27 openspec/changes/25-cli-stats-status-json/ created (.openspec.yaml+proposal+tasks); INDEX.md updated; sensor active_epic=25 total=5
 PASS T-SENSOR-JSON-REFRESH-V8.23 2026-04-27 sensor.json live values: results_log=100 active_epic=25 done=0/5 violations=[]; 43 sensor tests passed
 PASS T-PROGRAM-MD-V8.23-HEADER 2026-04-27 v8.23 header added to program.md; 5 tasks [x]; results.log +5 PASS lines
+PASS T25.1-CLI-OUTPUT-AUDIT 2026-04-27 docs/cli-output-audit.md updated with stats/status field tables and output paths (Epic 25 T25.1)
+PASS T25.2-STATS-JSON-FORMAT 2026-04-27 stats_cmd.py --format json added; JSON schema total/success/failed/type_counts/avg_score; text backward compat
+PASS T25.3-STATUS-JSON-FORMAT 2026-04-27 status_cmd.py --format json added; JSON schema config/history_count/feedback_count/kb_status; text backward compat
+PASS T25.4-STATS-STATUS-JSON-TESTS 2026-04-27 tests/test_cli_stats_status_json.py 12 tests all passed; 770 targeted tests passed
+PASS T25.5-CONTRIBUTING-DOCS 2026-04-27 CONTRIBUTING.md CLI Output Format section added; stats/status JSON examples and common rules documented

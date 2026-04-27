@@ -166,3 +166,64 @@
 | `cite` | ✅ | ✅ | ✅ |
 | `verify` | ✅ | ✅ | ✅ |
 | `kb search` | ✅ | ✅ | ✅ |
+| `stats` | ✅ (T25.1) | ✅ (T25.2) | ✅ (T25.4) |
+| `status` | ✅ (T25.1) | ✅ (T25.3) | ✅ (T25.4) |
+
+---
+
+## 5. `gov-ai stats`
+
+> 新增於 Epic 25（T25.1/T25.2）
+
+### 現有輸出（`--format text`，預設）
+
+| 情境 | 輸出格式 | 回傳欄位 |
+|------|---------|---------|
+| 無歷史 | Rich Panel + 提示文字 | 「尚無記錄」提示 |
+| 有歷史 | Rich Panel + 統計文字 | 總計/成功/失敗/平均分數/類型分佈 |
+
+**資料來源**：`.gov-ai-history.json`（JSONStore），每筆 record 欄位：`{status, doc_type, score, ...}`
+
+### JSON 輸出（`--format json`）
+
+```json
+{
+  "total": 5,
+  "success": 4,
+  "failed": 1,
+  "type_counts": {"函": 3, "公告": 2},
+  "avg_score": 0.87
+}
+```
+
+- `avg_score`：`null` 當無任何 `score` 欄位
+- `type_counts`：`{}` 當無歷史
+
+---
+
+## 6. `gov-ai status`
+
+> 新增於 Epic 25（T25.1/T25.3）
+
+### 現有輸出（`--format text`，預設）
+
+| 情境 | 輸出格式 | 回傳欄位 |
+|------|---------|---------|
+| 無設定 | Rich Table（Panel）| 各項目顯示「✗ 未設定」 |
+| 有設定 | Rich Table（Panel）| LLM 設定/生成記錄/回饋/使用者設定/別名數量 |
+
+**資料來源**：`config.yaml`、`.gov-ai-history.json`、`.gov-ai-feedback.json`、`.gov-ai-profile.json`、`.gov-ai-aliases.json`
+
+### JSON 輸出（`--format json`）
+
+```json
+{
+  "config": {"llm": {"provider": "openai", "model": "gpt-4"}},
+  "history_count": 10,
+  "feedback_count": 3,
+  "kb_status": "ok"
+}
+```
+
+- `config`：`config.yaml` 原始內容（`{}`當檔案不存在或 YAML 解析失敗）
+- `kb_status`：`"ok"` | `"missing"` | `"error"` | `"unknown"`
