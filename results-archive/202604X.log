@@ -1,0 +1,10 @@
+PASS T-RUNTIME-RATCHET-LIVE-MEASURE    # --measure-runtime flag added; 23 sensor_refresh tests passed
+PASS T-EPIC-18-T18.4-T18.6-LAND        # make_provider factory + llm.py refactor + 12 test_llm_provider tests; 3987 total passed
+[2026-04-26 18:39 +0800] | P1 active spec: close epic 18 provider abstraction | PASS | Marked T18.4-T18.6 complete after provider factory/refactor/tests verified; targeted provider tests 12 passed and full non-integration tests 3975 passed. 
+[2026-04-26 18:40 +0800] | Commit gate blocked by .git ACL | FAIL | Implementation and tests pass, but git add/commit failed: unable to create .git/index.lock Permission denied; no stash possible without git write access.
+[2026-04-26 18:45 +0800] | 決策：P0 T-EPIC-18-COMMIT-FLUSH，因 active spec 已完成但工作樹未提交 | FAIL-BLOCKED | 驗證 tests/test_llm_provider.py = 12 passed；git add src/core/providers tests/test_llm_provider.py src/core/llm.py openspec/changes/18-multi-llm-provider-abstraction/tasks.md 失敗：Unable to create .git/index.lock Permission denied；icacls .git 確認 caller SID DENY(W,D,Rc,DC)，approval=never 下不可調 ACL，未 stash 以免丟失已驗證改動。
+[2026-04-26 18:52 Asia/Taipei] | 決策：P0 T-EPIC-18-COMMIT-FLUSH，收斂已完成 provider abstraction 工作樹 | PASS | 全量非 integration 驗證 3987 passed / 39.43s；準備拆分提交 provider/sensor/docs。
+[2026-04-26 18:53 Asia/Taipei] | 決策：提交 T-EPIC-18-COMMIT-FLUSH | FAIL-BLOCKED | git add provider abstraction files failed: .git/index.lock Permission denied；保留工作樹，未 stash 以免覆蓋既有未提交成果。
+2026-04-26T19:09 PASS T-EPIC-18-T18.4-T18.6-LAND: make_provider factory verified; tests/test_llm_provider.py = 12 passed (factory_dispatch/litellm_complete/litellm_embed/openrouter_embed_success/openrouter_embed_failure + 7 more)
+2026-04-26T19:09 PASS T-CI-INTEGRATION-SECRET-GATE: ci.yml line 51 `if: ${{ secrets.OPENROUTER_API_KEY != '' }}` confirmed; GOV_AI_RUN_INTEGRATION conditionally set; sensor tests = 23 passed
+2026-04-26T19:09 PASS T-INTEGRATION-CI-SECRETS-PROMOTE: docs/ci-secrets-setup.md created with secrets SOP, expected-behaviour table, troubleshooting; ci.yml gate already present; live verification pending Admin secret setup

@@ -5,6 +5,13 @@
 > 歷史 v8.6/v8.8 P0/P1/P2 已封存：[docs/archive/program-history-202604Q.md](docs/archive/program-history-202604Q.md)（T-PROGRAM-MD-ARCHIVE-202604Q；2026-04-27）
 > 歷史 v8.10–v8.14 P0/P1/P2 已封存：[docs/archive/program-history-202604S.md](docs/archive/program-history-202604S.md)（T-PROGRAM-MD-SOFT-CAP-V8.15；2026-04-27）
 
+> **v8.23 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
+> - ✅ **T-EPIC-24-ARCHIVE** epic 24 (cli-output-json-mode) 封存至 openspec/changes/archive/2026-04-27-24-...；INDEX.md status=100% (5/5)；git rm active dir
+> - ✅ **T-RESULTS-LOG-SOFT-CAP-V8.23** results.log 110→100 行；10 行封存 results-archive/202604X.log
+> - ✅ **T-OPENSPEC-EPIC-25-DISCOVERY** openspec/changes/25-cli-stats-status-json/ 建立（.openspec.yaml + proposal.md + tasks.md）；INDEX.md 補 epic 25；sensor active_epic=25 total=5
+> - ✅ **T-SENSOR-JSON-REFRESH-V8.23** sensor.json live 更新（results_log=100；active_epic=25 done=0/5；violations=[]）；43 sensor tests passed
+> - ✅ **T-PROGRAM-MD-V8.23-HEADER** program.md v8.23 header + 5 任務 [x]；results.log 追加 5 行 PASS；一次 commit 落版
+
 > **v8.22 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
 > - ✅ **T24.1-CLI-OUTPUT-AUDIT** `docs/cli-output-audit.md` 建立；稽核 lint/cite/verify/kb-search 四指令輸出欄位與回傳路徑
 > - ✅ **T24.2-LINT-JSON-FORMAT** `lint_cmd.py` 加 `--format {text,json}`；JSON 含 `issues/score/pass`；`text` 向後相容

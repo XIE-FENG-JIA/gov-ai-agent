@@ -1,13 +1,3 @@
-PASS T-RUNTIME-RATCHET-LIVE-MEASURE    # --measure-runtime flag added; 23 sensor_refresh tests passed
-PASS T-EPIC-18-T18.4-T18.6-LAND        # make_provider factory + llm.py refactor + 12 test_llm_provider tests; 3987 total passed
-[2026-04-26 18:39 +0800] | P1 active spec: close epic 18 provider abstraction | PASS | Marked T18.4-T18.6 complete after provider factory/refactor/tests verified; targeted provider tests 12 passed and full non-integration tests 3975 passed. 
-[2026-04-26 18:40 +0800] | Commit gate blocked by .git ACL | FAIL | Implementation and tests pass, but git add/commit failed: unable to create .git/index.lock Permission denied; no stash possible without git write access.
-[2026-04-26 18:45 +0800] | 決策：P0 T-EPIC-18-COMMIT-FLUSH，因 active spec 已完成但工作樹未提交 | FAIL-BLOCKED | 驗證 tests/test_llm_provider.py = 12 passed；git add src/core/providers tests/test_llm_provider.py src/core/llm.py openspec/changes/18-multi-llm-provider-abstraction/tasks.md 失敗：Unable to create .git/index.lock Permission denied；icacls .git 確認 caller SID DENY(W,D,Rc,DC)，approval=never 下不可調 ACL，未 stash 以免丟失已驗證改動。
-[2026-04-26 18:52 Asia/Taipei] | 決策：P0 T-EPIC-18-COMMIT-FLUSH，收斂已完成 provider abstraction 工作樹 | PASS | 全量非 integration 驗證 3987 passed / 39.43s；準備拆分提交 provider/sensor/docs。
-[2026-04-26 18:53 Asia/Taipei] | 決策：提交 T-EPIC-18-COMMIT-FLUSH | FAIL-BLOCKED | git add provider abstraction files failed: .git/index.lock Permission denied；保留工作樹，未 stash 以免覆蓋既有未提交成果。
-2026-04-26T19:09 PASS T-EPIC-18-T18.4-T18.6-LAND: make_provider factory verified; tests/test_llm_provider.py = 12 passed (factory_dispatch/litellm_complete/litellm_embed/openrouter_embed_success/openrouter_embed_failure + 7 more)
-2026-04-26T19:09 PASS T-CI-INTEGRATION-SECRET-GATE: ci.yml line 51 `if: ${{ secrets.OPENROUTER_API_KEY != '' }}` confirmed; GOV_AI_RUN_INTEGRATION conditionally set; sensor tests = 23 passed
-2026-04-26T19:09 PASS T-INTEGRATION-CI-SECRETS-PROMOTE: docs/ci-secrets-setup.md created with secrets SOP, expected-behaviour table, troubleshooting; ci.yml gate already present; live verification pending Admin secret setup
 2026-04-26T19:09 BLOCKED-ACL T-EPIC-18-COMMIT-FLUSH: .git/index.lock Permission denied; working tree has providers/ + modified files; cannot commit without ACL fix
 2026-04-26T19:09 BLOCKED-ACL T-GIT-ACL-DENY-COMMIT-BLOCK: caller SID DENY(W,D,Rc,DC) on .git; cannot resolve without Admin elevation; not attempting icacls per policy
 [2026-04-26 20:30 +0800] | T-PUA-DEEP-REVIEW-v8.6 | PASS | pytest --ignore=tests/integration -x = 3987 passed / 49.21s; sensor bare=1 fat=0/0 runtime=50 (baseline written); engineer-log 307→276 (v8.0-r5+v8.1 archived to 202604M); program.md +v8.6 batch + 3 P0 + 3 P1; HEAD=1366586≡origin (rev 0/0).
@@ -108,3 +98,8 @@ PASS T24.2-LINT-JSON-FORMAT 2026-04-27 lint_cmd.py --format json added; issues/s
 PASS T24.3-CITE-VERIFY-JSON-FORMAT 2026-04-27 cite_cmd.py citations/count/doc_type JSON; verify_cmd.py facts/verdict JSON
 PASS T24.4-KB-SEARCH-JSON-FORMAT 2026-04-27 kb corpus.py search --format json; results[doc_id/score/snippet]/count schema
 PASS T24.5-CLI-JSON-TESTS 2026-04-27 tests/test_cli_json_output.py 15 passed; test_cite_cmd.py updated; 4061 passed total
+PASS T-EPIC-24-ARCHIVE 2026-04-27 epic 24 archived to openspec/changes/archive/2026-04-27-24-cli-output-json-mode; INDEX.md updated status=100%(5/5); git rm active dir
+PASS T-RESULTS-LOG-SOFT-CAP-V8.23 2026-04-27 results.log trimmed 110->100; 10 lines archived to results-archive/202604X.log
+PASS T-OPENSPEC-EPIC-25-DISCOVERY 2026-04-27 openspec/changes/25-cli-stats-status-json/ created (.openspec.yaml+proposal+tasks); INDEX.md updated; sensor active_epic=25 total=5
+PASS T-SENSOR-JSON-REFRESH-V8.23 2026-04-27 sensor.json live values: results_log=100 active_epic=25 done=0/5 violations=[]; 43 sensor tests passed
+PASS T-PROGRAM-MD-V8.23-HEADER 2026-04-27 v8.23 header added to program.md; 5 tasks [x]; results.log +5 PASS lines
