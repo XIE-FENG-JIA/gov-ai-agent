@@ -2,40 +2,40 @@
   "adapters": [
     {
       "adapter": "mojlaw",
-      "status": "dry_run",
+      "status": "dry_run_only",
       "latency_ms": 0,
       "count": 0,
       "error": null
     },
     {
       "adapter": "executive_yuan_rss",
-      "status": "dry_run",
+      "status": "dry_run_only",
       "latency_ms": 0,
       "count": 0,
       "error": null
     },
     {
       "adapter": "mohw_rss",
-      "status": "dry_run",
+      "status": "dry_run_only",
       "latency_ms": 0,
       "count": 0,
       "error": null
     },
     {
       "adapter": "fda_api",
-      "status": "dry_run",
+      "status": "dry_run_only",
       "latency_ms": 0,
       "count": 0,
       "error": null
     },
     {
       "adapter": "datagovtw",
-      "status": "dry_run",
+      "status": "dry_run_only",
       "latency_ms": 0,
       "count": 0,
       "error": null
     }
   ],
-  "measured_at": "2026-04-26T22:26:50.862166+00:00",
+  "measured_at": "2026-04-27T04:26:35.434335+00:00",
   "dry_run": true
 }

@@ -6,6 +6,13 @@
 > 歷史 v8.10–v8.14 P0/P1/P2 已封存：[docs/archive/program-history-202604S.md](docs/archive/program-history-202604S.md)（T-PROGRAM-MD-SOFT-CAP-V8.15；2026-04-27）
 > 歷史 v8.11–v8.18 batch header 已封存：[docs/archive/program-history-202604T.md](docs/archive/program-history-202604T.md)（T-PROGRAM-MD-SOFT-CAP-V8.25；2026-04-27）
 
+> **v8.30 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
+> - ✅ **T-EPIC-28-ARCHIVE-V8.30** `openspec/changes/28-discord-push-integration/` git mv → archive；sensor active_epic=''；spectra list=0 active
+> - ✅ **T-ADAPTER-HEALTH-DRY-RUN-PATCH** `_dry_run_report()` status=`dry_run_only`；sensor 5/5 全 dry_run = soft violation；1 unit test 補
+> - ✅ **T-SENSOR-EPIC6-DEPRECATE** `epic6_progress()` 函數移除；`to_dict()` 移除欄位；1 test 驗不存在；323 tests PASS
+> - ✅ **T-WORKFLOW-ENDPOINTS-BARE-VERIFY** `_endpoints.py:127` `# noqa: BLE001` + 降級理由補全；test_api_server.py 323 PASS
+> - ✅ **T-RECALL-HEALTH-AGE-GUARD** `recall_report_age_secs` 欄位 + `>86400s soft violation`；`get_recall_report_age_secs()` 函數；format_human 補顯
+
 > **v8.29 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
 > - ✅ **T28.1** `tests/test_discord_push_async.py` 5 async tests PASS（_post_discord success/4xx/timeout/http-error/no-token）
 > - ✅ **T28.2** `TestDiscordPushIntegration` 2 tests PASS（meeting success calls schedule_push；exception 仍回 success）
@@ -80,8 +87,8 @@
 
 ### P0（v8.30 /pua 深度回顧新增 — 半殭屍 active + 第三型假哨兵第 8 輪 + 漂白第二型死碼）
 
-- [ ] **T-ADAPTER-HEALTH-DRY-RUN-PATCH**（5 min；P0；ACL-free；連 8 輪治本）— `scripts/adapter_health.py` dry_run 路徑改回報 `status=dry_run_only`（≠ ok）；sensor 規則：5/5 全 dry_run = soft violation；`tests/test_adapter_health.py` 補 1 unit test 驗欄位。**v8.19-REVIEW 識別至 v8.26 連 8 輪未動 = 信任損耗量化指標**。
-- [ ] **T-SENSOR-EPIC6-DEPRECATE**（10 min；P0；ACL-free；漂白第二型治本）— 移除 sensor.json 死碼欄位 `epic6_progress`（epic 6 早封存仍寫 done=0/total=0）；`scripts/sensor_refresh.py` 同步刪 `compute_epic6_progress()`；只保 `active_epic_progress`；補測 1 case 驗欄位不存在。**口徑放水第二例連 6 輪**。
+- [x] **T-ADAPTER-HEALTH-DRY-RUN-PATCH**（5 min；P0；ACL-free；連 8 輪治本）— `scripts/adapter_health.py` dry_run 路徑改回報 `status=dry_run_only`（≠ ok）；sensor 規則：5/5 全 dry_run = soft violation；`tests/test_adapter_health.py` 補 1 unit test 驗欄位。**v8.19-REVIEW 識別至 v8.26 連 8 輪未動 = 信任損耗量化指標**。
+- [x] **T-SENSOR-EPIC6-DEPRECATE**（10 min；P0；ACL-free；漂白第二型治本）— 移除 sensor.json 死碼欄位 `epic6_progress`（epic 6 早封存仍寫 done=0/total=0）；`scripts/sensor_refresh.py` 同步刪 `compute_epic6_progress()`；只保 `active_epic_progress`；補測 1 case 驗欄位不存在。**口徑放水第二例連 6 輪**。
 
 ### P1（連 2 輪延宕 = 3.25）
 
@@ -89,8 +96,8 @@
 
 - [ ] **T-CI-INTEGRATION-P0-ENFORCE**（30 min；P1；ACL-free；連 13+ 輪政策化）— `scripts/sensor_refresh.py` 加 `ci_integration_skip_count` 欄位（解析 GitHub Actions integration job skip 數，無 origin 時讀 `tests/integration/test_sources_smoke.py` skip reason）；> 0 = soft violation；OPENROUTER_API_KEY 未設 → hard hint；`CONTRIBUTING.md` 加硬政策段「epic 29+ 開站前必解 CI integration secret gate」。**規則無執行機制 = 無牙；本輪轉成 sensor 欄位**。
 - [ ] **T-OPENSPEC-EPIC-29-DISCOVERY**（30 min；P1；ACL-free；JSON treadmill 防 ROI 歸零）— 候選 3 選 1：(a) **JSON output 消費端契約**（n8n workflow / benchmark script / API endpoint 至少接 1 端，覆蓋 epic 24-27 共 12 個 CLI 的 `--format json`）— **首選**；(b) recall@5 真量測 + sensor 嵌入；(c) corpus 500 真語料。建 `openspec/changes/29-*/` proposal + tasks。**前 4 epic 同構複製不接消費端 = 6 個月後死碼**。
-- [ ] **T-WORKFLOW-ENDPOINTS-BARE-VERIFY**（5 min；P1→P2；ACL-free）— sensor top10 顯示 `src/api/routes/workflow/_endpoints.py:1` 為新 bare except 熱點；確認是否 `# noqa: BLE001` + 降級理由註明；非則改 typed bucket（如 `(LLMError, OSError)`）；驗 `python -m pytest tests/test_api_server.py -q` 不退。
-- [ ] **T-RECALL-HEALTH-AGE-GUARD**（20 min；P1；ACL-free；第四型靜默治本）— `recall_report.json` 不跑真量測 = sensor 永遠 `skip`；補 `recall_report_age_secs` 欄位 + `> 86400s = soft violation`；epic 19 recall 管線無真值 = 哨兵盲。
+- [x] **T-WORKFLOW-ENDPOINTS-BARE-VERIFY**（5 min；P1→P2；ACL-free）— sensor top10 顯示 `src/api/routes/workflow/_endpoints.py:1` 為新 bare except 熱點；確認是否 `# noqa: BLE001` + 降級理由註明；非則改 typed bucket（如 `(LLMError, OSError)`）；驗 `python -m pytest tests/test_api_server.py -q` 不退。
+- [x] **T-RECALL-HEALTH-AGE-GUARD**（20 min；P1；ACL-free；第四型靜默治本）— `recall_report.json` 不跑真量測 = sensor 永遠 `skip`；補 `recall_report_age_secs` 欄位 + `> 86400s = soft violation`；epic 19 recall 管線無真值 = 哨兵盲。
 
 #### v7.9-sensor 終段 01:05 /pua 深度回顧新增 — CLI 神物件 / wrapper 治本 / CI 遠端驗
 

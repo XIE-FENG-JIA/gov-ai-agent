@@ -164,22 +164,13 @@ def test_soft_limit_auto_commit_rate_tightened_to_0_9() -> None:
     assert _mod._SOFT_LIMITS["auto_commit_rate_min"] == pytest.approx(0.9)
 
 
-def test_epic6_progress_counts_done_vs_total(tmp_path: Path) -> None:
-    repo = _make_repo(tmp_path)
-    tasks = repo / "openspec" / "changes" / "06-live-ingest-quality-gate" / "tasks.md"
-    tasks.write_text(
-        "# Tasks\n"
-        "- [x] T-LIQG-1 quality gate contract\n"
-        "- [x] T-LIQG-2 config\n"
-        "- [ ] T-LIQG-3 CLI\n"
-        "- [ ] T-LIQG-4 flag\n"
-        "- [ ] T-LIQG-5 docs\n"
-        "some unrelated text\n",
-        encoding="utf-8",
+def test_epic6_progress_field_removed_from_sensor_output(tmp_path: Path) -> None:
+    """T-SENSOR-EPIC6-DEPRECATE: 'epic6_progress' must NOT appear in to_dict() output."""
+    r = _mod.SensorReport()
+    d = r.to_dict()
+    assert "epic6_progress" not in d, (
+        "epic6_progress is dead code (epic 6 archived) and must be removed from sensor JSON output"
     )
-    done, total = _mod.epic6_progress(repo)
-    assert done == 2
-    assert total == 5
 
 
 def test_active_epic_progress_no_active_epic(tmp_path: Path) -> None:

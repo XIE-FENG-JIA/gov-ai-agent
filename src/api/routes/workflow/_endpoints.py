@@ -124,7 +124,7 @@ async def run_meeting(request: MeetingRequest) -> MeetingResponse:
                 output_path=output_filename,
                 qa_report=qa_report_dict,
             )
-        except Exception as _push_err:  # noqa: BLE001
+        except Exception as _push_err:  # noqa: BLE001 -- fire-and-forget; Discord push must never fail meeting response
             logger.debug("discord push skipped: %s", _push_err)
 
         return workflow.MeetingResponse(

@@ -69,11 +69,15 @@ def _probe_adapter(name: str, module_path: str, class_name: str, limit: int = 3)
 
 
 def _dry_run_report() -> list[dict[str, Any]]:
-    """Return a mock-zero report (no live calls) for --dry-run mode."""
+    """Return a mock-zero report (no live calls) for --dry-run mode.
+
+    Status is ``dry_run_only`` (≠ ``ok``) so sensor can detect all-dry-run runs
+    as a soft violation (T-ADAPTER-HEALTH-DRY-RUN-PATCH).
+    """
     return [
         {
             "adapter": name,
-            "status": "dry_run",
+            "status": "dry_run_only",
             "latency_ms": 0,
             "count": 0,
             "error": None,
@@ -136,7 +140,7 @@ def format_human(report: dict[str, Any]) -> str:
         status = entry.get("status", "unknown")
         if status == "ok":
             icon = "[OK]"
-        elif status in ("zero_records", "dry_run"):
+        elif status in ("zero_records", "dry_run_only"):
             icon = "[!] "
         else:
             icon = "[X] "

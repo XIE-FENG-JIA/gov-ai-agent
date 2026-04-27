@@ -99,3 +99,7 @@ PASS T28.5-FULL-REGRESSION 2026-04-27 4127 tests PASS
 2026-04-27 11:48 | T28.4 sensor_refresh check_discord_push() + discord_push field | PASS | sensor has discord_push:{token_set,channel_set}; 47 sensor tests pass
 2026-04-27 11:48 | T28.5 full regression 4127 tests; sensor done=5/5; commit+push | PASS | epic28 complete
 2026-04-27 12:17 | T-EPIC-28-ARCHIVE-V8.30 | PASS | moved openspec/changes/28-discord-push-integration to archive/2026-04-27-28-discord-push-integration; spectra list=0 active; sensor active_epic=''
+PASS T-ADAPTER-HEALTH-DRY-RUN-PATCH 2026-04-27 dry_run->dry_run_only; 5/5 all-dry-run=soft-violation; 1 test added; 323 tests PASS
+PASS T-SENSOR-EPIC6-DEPRECATE 2026-04-27 epic6_progress() removed; to_dict() field removed; test_epic6_field_absent added; 323 tests PASS
+PASS T-WORKFLOW-ENDPOINTS-BARE-VERIFY 2026-04-27 _endpoints.py bare except has noqa:BLE001 + downgrade reason; test_api_server.py 323 PASS
+PASS T-RECALL-HEALTH-AGE-GUARD 2026-04-27 recall_report_age_secs field added; >86400s soft violation; get_recall_report_age_secs() added; 323 tests PASS

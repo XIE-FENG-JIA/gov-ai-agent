@@ -124,7 +124,6 @@ class TestCheckPytestRuntime:
              patch("sensor_refresh.count_corpus", return_value=300), \
              patch("sensor_refresh.count_lines", return_value=100), \
              patch("sensor_refresh.auto_commit_rate", return_value=(25, 1.0)), \
-             patch("sensor_refresh.epic6_progress", return_value=(0, 0)), \
              patch("sensor_refresh.active_epic_progress", return_value={"epic_id": "", "done": 0, "total": 0}), \
              patch("sensor_refresh.read_runtime_baseline", return_value=0.0), \
              patch("sensor_refresh.count_marked_done_uncommitted", return_value={"count": 0, "slugs": []}), \

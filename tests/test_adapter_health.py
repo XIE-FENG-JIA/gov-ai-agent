@@ -160,3 +160,13 @@ def test_dry_run_exits_0(tmp_path: Path) -> None:
     data = json.loads(report_path.read_text(encoding="utf-8"))
     assert "adapters" in data
     assert data["dry_run"] is True
+
+
+def test_dry_run_status_is_dry_run_only(tmp_path: Path) -> None:
+    """dry-run mode reports status='dry_run_only' (≠ 'ok') for all adapters (T-ADAPTER-HEALTH-DRY-RUN-PATCH)."""
+    probe = _make_probe(tmp_path)
+    report = probe.run(dry_run=True)
+    for entry in report["adapters"]:
+        assert entry["status"] == "dry_run_only", (
+            f"Expected 'dry_run_only' but got {entry['status']!r} for adapter {entry['adapter']!r}"
+        )

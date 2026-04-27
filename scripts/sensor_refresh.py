@@ -77,13 +77,14 @@ class SensorReport:
     results_log_lines: int = 0
     auto_commit_rate: float = 0.0
     auto_commit_recent_30_semantic: int = 0
-    epic6_progress: tuple[int, int] = (0, 0)  # kept for backwards-compat; replaced by active_epic_progress
+    epic6_progress: tuple[int, int] = (0, 0)  # deprecated; field removed from to_dict() output (T-SENSOR-EPIC6-DEPRECATE)
     active_epic_progress: dict = field(default_factory=lambda: {"epic_id": "", "done": 0, "total": 0})
     violations_hard: list[str] = field(default_factory=list)
     violations_soft: list[str] = field(default_factory=list)
     pytest_cold_runtime_secs: float = 0.0
     marked_done_uncommitted: dict = field(default_factory=lambda: {"count": 0, "slugs": []})
     recall_health: dict = field(default_factory=lambda: {"ok": True, "detail": "no baseline (skip)"})
+    recall_report_age_secs: float = -1.0  # -1 = unknown/missing; ≥ 0 = measured age
     pytest_runtime: dict = field(default_factory=lambda: {"status": "skip", "ceiling_s": 0.0, "last_s": 0.0})
     adapter_health: dict = field(default_factory=lambda: {"status": "skip", "adapters": []})
     discord_push: dict = field(default_factory=lambda: {"token_set": False, "channel_set": False})
@@ -111,10 +112,6 @@ class SensorReport:
                 "rate_recent_30": self.auto_commit_rate,
                 "semantic_count": self.auto_commit_recent_30_semantic,
             },
-            "epic6_progress": {
-                "done": self.epic6_progress[0],
-                "total": self.epic6_progress[1],
-            },
             "active_epic_progress": self.active_epic_progress,
             "violations": {
                 "hard": self.violations_hard,
@@ -123,6 +120,7 @@ class SensorReport:
             "pytest_cold_runtime_secs": self.pytest_cold_runtime_secs,
             "marked_done_uncommitted": self.marked_done_uncommitted,
             "recall_health": self.recall_health,
+            "recall_report_age_secs": self.recall_report_age_secs,
             "pytest_runtime": self.pytest_runtime,
             "adapter_health": self.adapter_health,
             "discord_push": self.discord_push,
@@ -333,27 +331,6 @@ def read_ceiling_params(repo: Path) -> tuple[float, float]:
         return 0.0, 0.0
 
 
-def epic6_progress(repo: Path) -> tuple[int, int]:
-    """從 openspec/changes/06-*/tasks.md 數 [x] / 總 task."""
-    tasks_files = list(repo.glob("openspec/changes/06-*/tasks.md"))
-    if not tasks_files:
-        return 0, 0
-    done = 0
-    total = 0
-    for tf in tasks_files:
-        try:
-            text = tf.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        for line in text.splitlines():
-            if re.match(r"\s*- \[[xX]\]", line):
-                done += 1
-                total += 1
-            elif re.match(r"\s*- \[ \]", line):
-                total += 1
-    return done, total
-
-
 def active_epic_progress(repo: Path) -> dict[str, Any]:
     """Find the first non-archive epic in openspec/changes/ and report [x]/total.
 
@@ -469,6 +446,24 @@ def check_fat_ratchet(repo: Path, red: list[tuple[str, int]], yellow: list[tuple
     if violations:
         return False, "; ".join(violations)
     return True, f"ok (count={cur_count}/{baseline_count}, max_lines={cur_max}/{baseline_max})"
+
+
+def get_recall_report_age_secs(repo: Path) -> float:
+    """Return the age in seconds of ``recall_report.json`` relative to now.
+
+    Returns -1.0 if the file does not exist or its mtime cannot be read.
+    A return value ≥ 86400 (> 24 h) triggers a soft violation in build_report
+    (T-RECALL-HEALTH-AGE-GUARD).
+    """
+    import time as _time
+    report_path = repo / "recall_report.json"
+    if not report_path.exists():
+        return -1.0
+    try:
+        mtime = report_path.stat().st_mtime
+        return round(_time.time() - mtime, 1)
+    except OSError:
+        return -1.0
 
 
 def check_recall_health(repo: Path) -> tuple[bool, str]:
@@ -598,11 +593,20 @@ def check_adapter_health(repo: Path) -> dict:
         a for a in adapters
         if a.get("status") == "error" or a.get("count", 0) == 0
     ]
-    # dry_run entries have count=0 but status="dry_run" — don't flag those
+    # dry_run_only entries have count=0 but are explicitly non-live — don't flag as error.
+    # However, if ALL adapters are dry_run_only it means no live health check was ever run
+    # (T-ADAPTER-HEALTH-DRY-RUN-PATCH soft violation).
     real_unhealthy = [
         a for a in unhealthy
-        if a.get("status") not in ("dry_run",)
+        if a.get("status") not in ("dry_run_only",)
     ]
+    all_dry_run = adapters and all(a.get("status") == "dry_run_only" for a in adapters)
+    if all_dry_run:
+        return {
+            "status": "violation",
+            "adapters": adapters,
+            "detail": "adapter-health-all-dry-run: no live fetch ever run; status=dry_run_only",
+        }
     if real_unhealthy:
         names = [a.get("adapter", "?") for a in real_unhealthy]
         return {
@@ -627,12 +631,12 @@ def build_report(repo: Path) -> SensorReport:
     r.auto_commit_recent_30_semantic, r.auto_commit_rate = auto_commit_rate(
         repo, author=_AUTO_ENGINEER_AUTHOR_PATTERN
     )
-    r.epic6_progress = epic6_progress(repo)
     r.active_epic_progress = active_epic_progress(repo)
     r.pytest_cold_runtime_secs = read_runtime_baseline(repo)
     r.marked_done_uncommitted = count_marked_done_uncommitted(repo)
     _recall_ok, _recall_detail = check_recall_health(repo)
     r.recall_health = {"ok": _recall_ok, "detail": _recall_detail}
+    r.recall_report_age_secs = get_recall_report_age_secs(repo)
     r.pytest_runtime = check_pytest_runtime(repo)
     r.adapter_health = check_adapter_health(repo)
     r.discord_push = check_discord_push()
@@ -730,6 +734,13 @@ def build_report(repo: Path) -> SensorReport:
     if not r.recall_health.get("ok", True):
         r.violations_soft.append(r.recall_health["detail"])
 
+    # Recall report age guard (T-RECALL-HEALTH-AGE-GUARD)
+    _RECALL_AGE_SOFT_LIMIT = 86400  # 24 h
+    if r.recall_report_age_secs >= 0 and r.recall_report_age_secs > _RECALL_AGE_SOFT_LIMIT:
+        r.violations_soft.append(
+            f"recall-report-stale: age={r.recall_report_age_secs:.0f}s > {_RECALL_AGE_SOFT_LIMIT}s (24h)"
+        )
+
     # Pytest runtime regression guard (T20.2)
     if r.pytest_runtime.get("status") == "violation":
         r.violations_soft.append(r.pytest_runtime.get("detail", "pytest-runtime-regression"))
@@ -781,10 +792,6 @@ def format_human(r: SensorReport) -> str:
             f"- **marked_done_uncommitted**: {r.marked_done_uncommitted['count']} slugs"
             f" = {r.marked_done_uncommitted['slugs']}"
         )
-    if r.epic6_progress[1] > 0:
-        lines.append(
-            f"- **EPIC6 T-LIQG 進度**: {r.epic6_progress[0]}/{r.epic6_progress[1]}"
-        )
     aep = r.active_epic_progress
     if aep.get("epic_id"):
         lines.append(
@@ -795,6 +802,10 @@ def format_human(r: SensorReport) -> str:
         lines.append(f"- **recall health**: 🔴 {rh.get('detail', '')}")
     elif rh.get("detail") and "skip" not in str(rh.get("detail", "")):
         lines.append(f"- **recall health**: ✅ {rh.get('detail', '')}")
+    if r.recall_report_age_secs >= 0:
+        age_h = r.recall_report_age_secs / 3600
+        age_icon = "🔴" if r.recall_report_age_secs > 86400 else "✅"
+        lines.append(f"- **recall_report_age**: {age_icon} {age_h:.1f}h ({r.recall_report_age_secs:.0f}s)")
 
     ah = r.adapter_health
     ah_status = ah.get("status", "skip")

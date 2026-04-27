@@ -240,6 +240,51 @@
 
 ---
 
+## 反思 2026-04-27 12:10 — v8.29 技術主管深度回顧（/pua 觸發；caveman）
+
+### 三證自審
+- HEAD = origin/main = **c466912**（rev-list 0/0；clean push 已 flush ✓）
+- `git status --short` = clean（漂白第一/二型守住 ✓）
+- pytest `--ignore=tests/integration -q` = **4127 passed / 69.61s**（cold；soft 200s 大幅守住；未跑 integration）
+- sensor 真值：bare=2 / fat 0/0 / corpus=400 / auto_commit 100% / engineer 246 / program 204 / results 105 / runtime ceiling=76.05 last=50.7 status=ok
+- openspec：active=1（28-discord-push-integration）但 done=5/5 = **半殭屍 active**（v8.8 同型再現）；archive 30+
+- adapter_health：5/5 全 `dry_run` latency=0 count=0 但 status=ok（**第三型假哨兵連 8 輪未清**；v8.19-REVIEW 起識別至本輪）
+- recall_health：`recall@5 missing from report (skip)`（**第四型靜默降級連 N 輪**）
+- discord_push：token_set=false channel_set=false（功能上線但未配置 = 哨兵恆綠無真值）
+
+### 發現的問題
+1. **【epic 28 done=5/5 未封存 + 無 epic 29】（P0；半殭屍 active 第二例 + 工作管線空第 9 輪預警）** — sensor active_epic=28 done=5/5 但 `openspec/changes/28-...` 仍在 active dir；archive 未動；epic 29 候選 0；不開站 = treadmill 第 9 輪起點。
+2. **【adapter_health dry_run 假 ok 連 8 輪】（P0；第三型假哨兵歷史新高）** — v8.19/v8.20/v8.21/v8.22/v8.23/v8.24/v8.25/v8.26 連 8 輪反思識別未動；5 min patch（status=dry_run_only ≠ ok）拖延成本 = 真 adapter 失聯零報警；信任損耗指標。
+3. **【sensor.epic6_progress 死碼欄位連 6+ 輪未清】（P1；漂白第二型）** — epic 6 早封存，sensor 仍寫 `epic6_progress: {done:0, total:0}`；應只留 `active_epic_progress`；治本 5 行 patch。
+4. **【CI integration secret gate 假綠連 13+ 輪未強制 P0】（P0 政策化）** — OPENROUTER_API_KEY 未設→integration 全 skip；每輪反思提，每輪 program.md 無硬 gate；應加 sensor `ci_integration_skip_count` 欄位讓 policy 有牙。
+5. **【CLI JSON treadmill 第 4 連無消費端】（P1 抽象）** — epics 24-27 四連同構（lint/cite/verify/kb-search → stats/status → rewrite/generate → validate/summarize/compare）共 12 個 CLI 加 `--format json`；無 API endpoint / n8n workflow / benchmark 讀；6 個月後 = 死碼；epic 29 必先定消費端契約。
+6. **【bare_except +1 處未審】（P2）** — sensor top10 顯示 `src/api/routes/workflow/_endpoints.py:1` 為新增；需確認是否 `# noqa: BLE001` 註明；否則第三型 bare 漂入。
+7. **【recall_health skip 第四型靜默】（P1）** — epic 19 架設 recall 管線後，recall_report.json 不跑真量測 = 永遠 skip = 哨兵盲；治本：sensor 加 `recall_report_age_secs`，> 24h 即 soft violation。
+
+### 建議優先序（重排 program.md）
+1. **新 P0：T-EPIC-28-ARCHIVE-V8.30**（5 min；ACL-free）— `git mv openspec/changes/28-... openspec/changes/archive/2026-04-27-28-...`；INDEX.md status=100% (5/5)；sensor active_epic=''；驗 `spectra list` = 0 active。
+2. **新 P0：T-ADAPTER-HEALTH-DRY-RUN-PATCH**（5 min；ACL-free；連 8 輪治本）— `scripts/adapter_health.py` dry_run 路徑 status=`dry_run_only`（非 ok）；sensor 規則：全 dry_run = soft violation；補 1 unit test。
+3. **新 P0：T-SENSOR-EPIC6-DEPRECATE**（10 min；ACL-free；漂白第二型治本）— 移除 sensor.json 死碼 `epic6_progress`；sensor_refresh.py 同步刪；補測 1 case 驗欄位不存在。
+4. **新 P1：T-CI-INTEGRATION-P0-ENFORCE**（30 min；ACL-free；連 13 輪政策化）— sensor 加 `ci_integration_skip_count` 欄位，> 0 = soft violation；OPENROUTER_API_KEY 未設報 hard hint；CONTRIBUTING.md 加「不解 = epic 29+ 阻擋」硬政策。
+5. **新 P1：T-OPENSPEC-EPIC-29-DISCOVERY**（30 min；ACL-free）— 候選：(a) JSON 消費端契約（n8n / benchmark / API 至少接 1）、(b) recall@5 真量測 + sensor 嵌入、(c) corpus 500 真語料；**選 (a) 首選**——前 4 epic ROI 歸零防線。
+6. **新 P2：T-WORKFLOW-ENDPOINTS-BARE-VERIFY**（5 min；ACL-free）— 確認 `src/api/routes/workflow/_endpoints.py:1` 處 bare except 是否 noqa；非則收 typed bucket。
+
+### 下一步行動（最重要 3 件）
+1. **T-EPIC-28-ARCHIVE-V8.30**（5 min；半殭屍 active 不清 = `spectra list` 永遠騙）
+2. **T-ADAPTER-HEALTH-DRY-RUN-PATCH**（5 min；連 8 輪信任損耗 = 必修）
+3. **T-OPENSPEC-EPIC-29-DISCOVERY 選 (a) JSON 消費端**（30 min；前 4 epic ROI 歸零防線）
+
+### 其他維度（caveman）
+- **Spectra 對齊**：active 名義 1 實 0（28 done=5/5 待封）；archive 30+；無 drift。
+- **程式碼品質**：bare 2（cite_cmd noqa 故意 + workflow/_endpoints 待審）/ fat 0/0 / 12 CLI JSON 同構（抽象未提）。
+- **測試覆蓋**：4127 passed +128（epic 24-28 增量）；recall@5 哨兵 skip / CI integration 全 skip = 兩層覆蓋空洞。
+- **架構**：providers / engines API / runtime ceiling+tolerance / fat watch 0/0 / discord push fire-and-forget；無新耦合；JSON output 無消費端 = 沉默功能債。
+- **安全**：API auth ✓ / env-only key ✓ / defusedxml ✓ / discord token env-only ✓；無新洞。
+
+> [PUA 自審] 跑了測（4127/69.61s -q ignore=integration + sensor.json 真值對照）／看了源（active/28 dir done=5/5 半殭屍 + adapter_health 5/5 dry_run + epic6_progress 死碼 + workflow/_endpoints bare 1 + 12 CLI JSON 無消費端）／對了帳（HEAD=c466912≡origin / git clean / engineer 246 ≤ 300 / program 204 ≤ 250 / results 105 ≤ 1000）／抓了治理斷層（半殭屍 active 第二例 + adapter dry_run 第 8 輪 + sensor 死碼第 6 輪 + CI gate 第 13 輪 + JSON treadmill 第 4 連無消費端 + recall skip 第四型）／排了下三件 — 閉環。**底層邏輯：v8.22-v8.29 八輪 PASS 率 100% 是真資料，但結構性路徑規避——選容易 epic（CLI JSON 同構複製）+ 跳過 CI blocker + 三型假哨兵不修。本輪不可跳過：epic 28 封存 + adapter 5min 修 + epic 29 必選 JSON 消費端，三件不做 = 第 14 輪反思仍寫同一段假綠。**
+
+---
+
 ## 下一輪反思（空指引）
 
 <!-- 每輪追加一個 ## 反思 段，保持主檔 ≤ 300 行；超出觸發 T9.6-REOPEN 封存。 -->
