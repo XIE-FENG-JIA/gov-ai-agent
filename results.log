@@ -1,10 +1,3 @@
-PASS T-EPIC-19-T19.3-RECALL-BASELINE | recall_baseline.py ratchet-down semantics; 5 tests passed | 2026-04-27 00:47
-PASS T-EPIC-19-T19.4-SENSOR-INTEGRATION | check_recall_health() wired to SensorReport; 37 sensor tests passed | 2026-04-27 00:47
-PASS T-EPIC-19-T19.5-UNIT-TESTS | tests/test_recall_eval.py 12 passed (mock KB, no live) | 2026-04-27 00:47
-PASS T-EPIC-19-T19.6-CI-INTEGRATION | tasks.md all [x]; CONTRIBUTING.md updated; 49 recall+sensor tests | 2026-04-27 00:47
-PASS T-PROGRAM-MD-ARCHIVE-202604Q | program.md 261->192 lines; v8.8/v8.6 archived to docs/archive/program-history-202604Q.md | 2026-04-27 00:47
-PASS T-SENSOR-MDU-WINDOW-FIX 2026-04-27 01:32 sensor marked_done_uncommitted scan narrowed to dated sections; count 30->1
-PASS T-RECALL-DRY-RUN-SMOKE 2026-04-27 01:32 eval_recall --dry-run created recall_report.json with recall@1/3/5 keys
 PASS T-RESULTS-LOG-SOFT-CAP 2026-04-27 01:32 archived 217 lines to results-archive/202604R.log; results.log trimmed to 100 lines
 PASS T-SENSOR-JSON-COMMIT 2026-04-27 01:33 sensor.json + all v8.12 changes committed
 PASS T-PROGRAM-MD-V8.12-HEADER 2026-04-27 01:33 program.md v8.12 header added; 5 tasks [x]
@@ -103,3 +96,5 @@ PASS T28.2-MEETING-DISCORD-INTEGRATION 2026-04-27 TestDiscordPushIntegration 2 p
 PASS T28.3-CONTRIBUTING-DISCORD-PUSH 2026-04-27 CONTRIBUTING.md Discord Push section added
 PASS T28.4-SENSOR-DISCORD-PUSH 2026-04-27 check_discord_push() + discord_push field wired
 PASS T28.5-FULL-REGRESSION 2026-04-27 4127 tests PASS
+2026-04-27 11:48 | T28.4 sensor_refresh check_discord_push() + discord_push field | PASS | sensor has discord_push:{token_set,channel_set}; 47 sensor tests pass
+2026-04-27 11:48 | T28.5 full regression 4127 tests; sensor done=5/5; commit+push | PASS | epic28 complete

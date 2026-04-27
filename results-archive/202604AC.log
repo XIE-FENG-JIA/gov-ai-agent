@@ -1,0 +1,7 @@
+PASS T-EPIC-19-T19.3-RECALL-BASELINE | recall_baseline.py ratchet-down semantics; 5 tests passed | 2026-04-27 00:47
+PASS T-EPIC-19-T19.4-SENSOR-INTEGRATION | check_recall_health() wired to SensorReport; 37 sensor tests passed | 2026-04-27 00:47
+PASS T-EPIC-19-T19.5-UNIT-TESTS | tests/test_recall_eval.py 12 passed (mock KB, no live) | 2026-04-27 00:47
+PASS T-EPIC-19-T19.6-CI-INTEGRATION | tasks.md all [x]; CONTRIBUTING.md updated; 49 recall+sensor tests | 2026-04-27 00:47
+PASS T-PROGRAM-MD-ARCHIVE-202604Q | program.md 261->192 lines; v8.8/v8.6 archived to docs/archive/program-history-202604Q.md | 2026-04-27 00:47
+PASS T-SENSOR-MDU-WINDOW-FIX 2026-04-27 01:32 sensor marked_done_uncommitted scan narrowed to dated sections; count 30->1
+PASS T-RECALL-DRY-RUN-SMOKE 2026-04-27 01:32 eval_recall --dry-run created recall_report.json with recall@1/3/5 keys
