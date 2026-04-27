@@ -71,6 +71,7 @@ def generate(
     disclaimer: str = typer.Option("", "--disclaimer", help="免責聲明文字"),
     cite: bool = typer.Option(True, "--cite/--no-cite", help="生成後自動顯示適用法規引用建議（預設開啟）"),
     lint: bool = typer.Option(True, "--lint/--no-lint", help="生成後自動執行輕量格式與用語 lint 檢查（預設開啟）"),
+    output_format: str = typer.Option("text", "--format", help="輸出格式：text（預設）或 json"),
 ):
     """
     根據自然語言輸入產生完整的政府公文。
@@ -78,6 +79,13 @@ def generate(
     支援 12 種公文類型：函、公告、簽、書函、令、開會通知單、
     呈、咨、會勘通知單、公務電話紀錄、手令、箋函。
     """
+    import json as _json
+    from rich.console import Console as _Console
+    _console = _Console()
+    if output_format not in {"text", "json"}:
+        _console.print(f"[red]錯誤：不支援的輸出格式 '{output_format}'，請使用 text 或 json。[/red]")
+        raise typer.Exit(1)
+
     runtime = _runtime()
 
     if batch:
@@ -206,6 +214,15 @@ def generate(
 
     gen_elapsed = runtime.time.monotonic() - gen_start
     runtime._display_summary(requirement, qa_report, gen_elapsed, full_output_path, summary_flag=summary)
+
+    if output_format == "json":
+        print(_json.dumps({
+            "output": full_output_path,
+            "doc_type": requirement.doc_type if requirement else None,
+            "score": float(qa_report.overall_score) if qa_report and qa_report.overall_score is not None else None,
+            "elapsed_sec": round(gen_elapsed, 3),
+        }, ensure_ascii=False))
+        return
 
     if cite and not batch and not quiet:
         runtime._show_cite_suggestions(requirement.doc_type)

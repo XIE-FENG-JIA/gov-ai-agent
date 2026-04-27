@@ -1,0 +1,7 @@
+id: 26-cli-rewrite-generate-json
+title: CLI rewrite & generate JSON 輸出
+status: active
+created: "2026-04-27"
+epic: 26
+tasks_file: tasks.md
+proposal_file: proposal.md

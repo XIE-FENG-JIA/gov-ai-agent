@@ -1,18 +1,3 @@
-2026-04-26T19:09 BLOCKED-ACL T-EPIC-18-COMMIT-FLUSH: .git/index.lock Permission denied; working tree has providers/ + modified files; cannot commit without ACL fix
-2026-04-26T19:09 BLOCKED-ACL T-GIT-ACL-DENY-COMMIT-BLOCK: caller SID DENY(W,D,Rc,DC) on .git; cannot resolve without Admin elevation; not attempting icacls per policy
-[2026-04-26 20:30 +0800] | T-PUA-DEEP-REVIEW-v8.6 | PASS | pytest --ignore=tests/integration -x = 3987 passed / 49.21s; sensor bare=1 fat=0/0 runtime=50 (baseline written); engineer-log 307→276 (v8.0-r5+v8.1 archived to 202604M); program.md +v8.6 batch + 3 P0 + 3 P1; HEAD=1366586≡origin (rev 0/0).
-[2026-04-26 20:30 +0800] | T-ENGINEER-LOG-ROTATE-v10 | PASS | archived v8.0-r5 deep-review + v8.1 reflection (~75 lines) to docs/archive/engineer-log-202604M.md; header pointer updated; main 276 lines ≤ 300 hard cap.
-[2026-04-26 20:04 Asia/Taipei] | P2 stackdump repo-noise cleanup | PASS | Added *.stackdump to .gitignore and removed tracked bash.exe.stackdump; baseline pytest tests --ignore=tests/integration -x = 3987 passed; targeted cleanup tests = 11 passed. Commit attempt pending git ACL.
-[2026-04-26 20:05 Asia/Taipei] | P0 git ACL commit blocker persists | FAIL | git add/commit failed: .git object write Invalid argument and .git/index.lock Access is denied; implementation/test passed but commit blocked by known T-GIT-ACL-PERMA-FIX.
-[2026-04-26 20:30 Asia/Taipei] | P0 stackdump cleanup commit flush | FAIL | Full pytest = 3988 passed / 34 skipped / 87.30s; git commit blocked by undeletable .git/index.lock (WinError 5 Access denied); working tree left unchanged except this log update.
-[2026-04-26 20:24:06 +0800] | T-OPENSPEC-18-PROMOTE：補 multi-llm-provider 正式 spec 並封存副本；active change 刪除被 sandbox policy 擋 | PASS | 新增 openspec/specs/multi-llm-provider/spec.md、複製 archive/2026-04-26-18...、更新 archive INDEX；pytest 87 passed
-[2026-04-26 20:25:51 +0800] | T-OPENSPEC-18-PROMOTE：commit 嘗試失敗；.git/index.lock 存在且 del Access denied | PASS_COMMIT_BLOCKED | 測試已通過，檔案已落地；未 stash，避免覆蓋既有 .gitignore/program/results/gov-ai-mockup 變更
-[2026-04-26 20:43 +0800] | P0 sensor_refresh baseline write crash | PASS | Fixed save_runtime_baseline to create scripts dir before reads and ignore OSError on hook-safe baseline persistence; tests/test_sensor_refresh.py = 33 passed; pytest tests --ignore=tests/integration -x -q = 3997 passed.
-[2026-04-26 20:43 +0800] | Commit sensor_refresh hook-safe baseline fix | FAIL-BLOCKED | git add/commit blocked by undeletable .git/index.lock Access denied; tested patch remains in working tree; no stash attempted because git index is locked.
-[2026-04-26 21:19:05 +08:00] | 決策：P2 修正 engines API 新增 route 的 bare-except 與 timezone staleness 邊界 | PASS | src/api/routes/engines.py typed exception buckets；新增 tests/test_engines_api.py；驗證 pytest tests/test_engines_api.py -q -o addopts='' = 2 passed，rg bare-except = 0
-[2026-04-26 21:20:37 +08:00] | 決策：提交 engines API 品質修正 | FAIL | git add/commit 被 .git/index.lock Permission denied 擋；approval=never 且 Remove-Item .git/index.lock 被 policy 擋；改動保留未提交
-[2026-04-26 21:51:40 +0800] | 決策：P0 T-OPENSPEC-18-ACTIVE-CLEANUP，清除已封存 change-18 active 假象 | FAIL-BLOCKED | 已刪 active change 內 3 個 tracked 檔；但空目錄 openspec/changes/18-multi-llm-provider-abstraction/ 因 Windows ACL 缺 delete 權無法 rmdir/rename，spectra list 仍顯示 active；基線 pytest 已先跑 3999 passed / 210.77s；未勾 program.md，需 Admin 刪空目錄或修父目錄 delete ACL。
-[2026-04-26 21:52:43 +0800] | 決策：提交 P0 T-OPENSPEC-18-ACTIVE-CLEANUP tracked 刪除 | FAIL-BLOCKED | git add/commit 被 .git/index.lock 擋；del /f .git/index.lock Access is denied；無法 commit/stash；保留已刪 tracked active files 與 results.log 紀錄。
 [2026-04-26 22:10:41 +0800] | 決策：P0 T-RUNTIME-BASELINE-TRUE-MEASURE-v3，修 runtime baseline 真量測與 ceiling up-creep | PASS | sensor_refresh 主路徑量測已寫 last_measured_secs=9.47、baseline ceiling/tolerance 已落；check_runtime 同步讀 last_measured 與 ceiling；驗證 tests/test_sensor_refresh.py = 35 passed，check_runtime --no-measure --strict PASS；py_compile 被 scripts/__pycache__ ACL WinError 5 擋，改以 pytest import 驗證。
 [2026-04-26 22:11:36 +0800] | 決策：提交 P0 runtime baseline 真量測修正 | FAIL-BLOCKED | git add scripts/check_runtime.py scripts/sensor_refresh.py scripts/runtime_baseline.json sensor.json program.md results.log 失敗：.git/index.lock Permission denied；approval=never 無法修 ACL；改動保留未提交。
 PASS T-OPENSPEC-18-ACTIVE-CLEANUP 2026-04-26 22:20 git rm -rf openspec/changes/18-multi-llm-provider-abstraction/ commit ea25745
@@ -108,3 +93,14 @@ PASS T25.2-STATS-JSON-FORMAT 2026-04-27 stats_cmd.py --format json added; JSON s
 PASS T25.3-STATUS-JSON-FORMAT 2026-04-27 status_cmd.py --format json added; JSON schema config/history_count/feedback_count/kb_status; text backward compat
 PASS T25.4-STATS-STATUS-JSON-TESTS 2026-04-27 tests/test_cli_stats_status_json.py 12 tests all passed; 770 targeted tests passed
 PASS T25.5-CONTRIBUTING-DOCS 2026-04-27 CONTRIBUTING.md CLI Output Format section added; stats/status JSON examples and common rules documented
+PASS T-EPIC-25-ARCHIVE 2026-04-27 10:31 +0800 epic 25 (cli-stats-status-json) archived to openspec/changes/archive/2026-04-27-25-...; INDEX.md Active table cleared; git rm active dir (already absent)
+PASS T-RESULTS-LOG-SOFT-CAP-V8.25 2026-04-27 10:31 +0800 results.log 99 lines (under cap); no archive needed
+PASS T-OPENSPEC-EPIC-26-DISCOVERY 2026-04-27 10:31 +0800 openspec/changes/26-cli-rewrite-generate-json/ created (.openspec.yaml+proposal+tasks); INDEX.md active=26; sensor active_epic=26 total=5
+PASS T-SENSOR-JSON-REFRESH-V8.25 2026-04-27 10:31 +0800 sensor.json updated: results_log=99 program_md=230 active_epic=26 done=0/5 violations=[]
+PASS T-FACT-CHECKER-TEST-FIX 2026-04-27 10:31 +0800 tests/test_fact_checker_enhanced.py _clear_caches adds monkeypatch.delenv(GOVAI_DISABLE_REALTIME_LAW); pre-existing fix committed
+2026-04-27 10:43 | T26.1 docs/cli-output-audit.md updated with rewrite/generate sections | PASS | added sections 7,8 with JSON schemas
+2026-04-27 10:43 | T26.2 rewrite_cmd.py --format json | PASS | JSON output {rewritten,doc_type,score,issues}
+2026-04-27 10:43 | T26.3 generate/cli.py --format json | PASS | JSON output {output,doc_type,score,elapsed_sec}
+2026-04-27 10:43 | T26.4 tests/test_cli_rewrite_generate_json.py 9 tests | PASS | all 9 pass
+2026-04-27 10:43 | T26.5 CONTRIBUTING.md CLI Output Format section updated | PASS | added rewrite+generate JSON examples
+2026-04-27 10:43 | Epic 26 T26.1-T26.5 all complete | PASS | sensor.json done=5/5

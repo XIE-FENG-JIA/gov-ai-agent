@@ -274,6 +274,34 @@ mode emits a single-line JSON object to stdout — suitable for pipe / CI.
 `kb_status` is one of `ok | missing | error | unknown`.
 `config` is `{}` when `config.yaml` is absent or unreadable.
 
+### `gov-ai rewrite --format json`
+
+```json
+{
+  "rewritten": "（改寫後全文）",
+  "doc_type": null,
+  "score": null,
+  "issues": []
+}
+```
+
+`doc_type` and `score` are always `null` (rewrite does not run type-detection or QA scoring).
+`issues` is always `[]` (rewrite does not run lint).
+
+### `gov-ai generate --format json`
+
+```json
+{
+  "output": "（生成後全文）",
+  "doc_type": "函",
+  "score": 0.91,
+  "elapsed_sec": 1.23
+}
+```
+
+`score` is `null` when no QA scorer is configured.
+`elapsed_sec` is `null` when timing is unavailable.
+
 ### Common rules
 
 | Rule | Detail |

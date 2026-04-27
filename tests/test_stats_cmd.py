@@ -14,7 +14,7 @@ class TestStatsCommand:
         set_state_dir(None)
         monkeypatch.chdir(tmp_path)
         with patch("src.cli.stats_cmd.console") as mock_console:
-            stats()
+            stats(output_format="text")
         output = " ".join(str(c) for c in mock_console.print.call_args_list)
         assert "尚無記錄" in output
 
@@ -32,7 +32,7 @@ class TestStatsCommand:
         with patch("src.cli.stats_cmd.console") as mock_console:
             with patch("src.core.config.ConfigManager") as mock_cm:
                 mock_cm.return_value.config = {"llm": {"provider": "test", "model": "m"}}
-                stats()
+                stats(output_format="text")
         output = " ".join(str(c) for c in mock_console.print.call_args_list)
         assert "3" in output  # 總計 3 筆
 
@@ -42,7 +42,7 @@ class TestStatsCommand:
         monkeypatch.chdir(tmp_path)
         (tmp_path / ".gov-ai-history.json").write_text("not json", encoding="utf-8")
         with patch("src.cli.stats_cmd.console") as mock_console:
-            stats()
+            stats(output_format="text")
         output = " ".join(str(c) for c in mock_console.print.call_args_list)
         # JSONStore 遇到損壞 JSON 會回傳預設值 []，stats 將其視為 0 筆記錄
         assert "0 筆" in output
@@ -61,6 +61,6 @@ class TestStatsCommand:
                     "knowledge_base": {"path": str(kb_dir)},
                     "llm": {"provider": "test", "model": "m"},
                 }
-                stats()
+                stats(output_format="text")
         output = " ".join(str(c) for c in mock_console.print.call_args_list)
         assert "2" in output  # 2 個檔案

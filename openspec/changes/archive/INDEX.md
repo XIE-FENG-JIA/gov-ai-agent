@@ -29,12 +29,13 @@ This index records all completed and archived openspec change sets.
 | 22-source-adapter-health-metrics | 2026-04-27 | Source adapter health metrics（adapter_health.py probe / dry-fetch limit=3 / sensor adapter_health field / soft violation on zero-count / 6 unit tests / CONTRIBUTING docs） | T22.1–T22.6 | 100% (6/6) |
 | 23-realtime-law-disable-test-fix | 2026-04-27 | Realtime law disable test fix（`GOVAI_DISABLE_REALTIME_LAW` bypass 診斷 + `_clear_caches` monkeypatch 修復 / 48 passed） | T23.1–T23.4 | 100% (4/4) |
 | 24-cli-output-json-mode | 2026-04-27 | CLI 統一 JSON 輸出模式（lint/cite/verify/kb-search 加 `--format json` / schema 驗證 tests / CONTRIBUTING 節） | T24.1–T24.5 | 100% (5/5) |
+| 25-cli-stats-status-json | 2026-04-27 | CLI stats/status JSON 輸出模式（stats/status 加 `--format json` / schema 驗證 tests / CONTRIBUTING 補節） | T25.1–T25.5 | 100% (5/5) |
 
 ## Active Epics
 
 | ID | Created | Summary | Tasks | Status |
 |----|---------|---------|-------|--------|
-| 25-cli-stats-status-json | 2026-04-27 | CLI stats/status JSON 輸出模式（stats/status 加 `--format json` / schema 驗證 tests / CONTRIBUTING 補節） | T25.1–T25.5 | active |
+| 26-cli-rewrite-generate-json | 2026-04-27 | CLI rewrite & generate JSON 輸出（rewrite/generate 加 `--format json` / schema 驗證 tests / CONTRIBUTING 補節） | T26.1–T26.5 | active |
 
 ## Notes
 

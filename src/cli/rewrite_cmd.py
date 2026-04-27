@@ -1,4 +1,5 @@
 """gov-ai rewrite — 讀取現有公文並改寫為指定風格。"""
+import json as _json
 import os
 import typer
 from rich.console import Console
@@ -22,8 +23,13 @@ def rewrite(
     style: str = typer.Option("formal", "--style", "-s", help="改寫風格（formal/concise/elaborate）"),
     output: str = typer.Option("", "--output", "-o", help="輸出檔案路徑"),
     compare: bool = typer.Option(False, "--compare", help="顯示原始與改寫的對比"),
+    output_format: str = typer.Option("text", "--format", help="輸出格式：text（預設）或 json"),
 ):
     """讀取現有公文並改寫為指定風格。"""
+    if output_format not in {"text", "json"}:
+        console.print(f"[red]錯誤：不支援的輸出格式 '{output_format}'，請使用 text 或 json。[/red]")
+        raise typer.Exit(1)
+
     # 驗證檔案存在
     if not os.path.isfile(file):
         console.print(f"[red]找不到檔案：{file}[/red]")
@@ -65,6 +71,15 @@ def rewrite(
     except (RuntimeError, OSError, TimeoutError) as e:
         console.print(f"[red]LLM 改寫失敗：{e}[/red]")
         raise typer.Exit(code=1)
+
+    if output_format == "json":
+        print(_json.dumps({
+            "rewritten": result,
+            "doc_type": None,
+            "score": None,
+            "issues": [],
+        }, ensure_ascii=False))
+        return
 
     # 顯示字數比較
     orig_len = len(content)

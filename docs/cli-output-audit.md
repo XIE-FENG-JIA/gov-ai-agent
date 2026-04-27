@@ -160,14 +160,16 @@
 
 ## 實作狀態
 
-| 指令 | T24.1 稽核 | T24.2/T24.3/T24.4 實作 | T24.5 測試 |
-|------|-----------|----------------------|-----------|
+| 指令 | 稽核 | 實作 | 測試 |
+|------|-----|------|------|
 | `lint` | ✅ | ✅ | ✅ |
 | `cite` | ✅ | ✅ | ✅ |
 | `verify` | ✅ | ✅ | ✅ |
 | `kb search` | ✅ | ✅ | ✅ |
 | `stats` | ✅ (T25.1) | ✅ (T25.2) | ✅ (T25.4) |
 | `status` | ✅ (T25.1) | ✅ (T25.3) | ✅ (T25.4) |
+| `rewrite` | ✅ (T26.1) | ✅ (T26.2) | ✅ (T26.4) |
+| `generate` | ✅ (T26.1) | ✅ (T26.3) | ✅ (T26.4) |
 
 ---
 
@@ -227,3 +229,68 @@
 
 - `config`：`config.yaml` 原始內容（`{}`當檔案不存在或 YAML 解析失敗）
 - `kb_status`：`"ok"` | `"missing"` | `"error"` | `"unknown"`
+
+---
+
+## 7. `gov-ai rewrite`
+
+> 新增於 Epic 26（T26.1/T26.2）
+
+### 現有輸出（`--format text`，預設）
+
+| 情境 | 輸出格式 | 回傳欄位 |
+|------|---------|---------|
+| 正常 | Rich Panel（Markdown 渲染）| 改寫結果文字 |
+| 對比模式 | Rich Columns（左原始/右改寫）| 兩欄對比 |
+| 錯誤 | Rich 紅字 + exit 1 | 錯誤訊息 |
+
+**資料來源**：`--file` 讀取文字檔；LLM `generate()` 產生改寫結果
+
+### JSON 輸出（`--format json`）
+
+```json
+{
+  "rewritten": "主旨：...\n說明：...",
+  "doc_type": null,
+  "score": null,
+  "issues": []
+}
+```
+
+- `rewritten`：改寫後全文字串
+- `doc_type`：`null`（rewrite 不做類型偵測）
+- `score`：`null`（rewrite 不執行 QA 評分）
+- `issues`：`[]`（rewrite 不執行 lint）
+
+---
+
+## 8. `gov-ai generate`
+
+> 新增於 Epic 26（T26.1/T26.3）
+
+### 現有輸出（`--format text`，預設）
+
+| 情境 | 輸出格式 | 回傳欄位 |
+|------|---------|---------|
+| 正常 | Rich Panel 摘要卡片 | 公文類型/QA 分數/輸出路徑/耗時 |
+| 預覽模式 | Rich Panel 草稿全文 | 完整草稿文字 |
+| 錯誤 | Rich 紅字 + exit 1 | 錯誤訊息 |
+
+**資料來源**：`_run_core_pipeline()` 呼叫 LLM + QA Agent；`_export_document()` 輸出 .docx
+
+### JSON 輸出（`--format json`）
+
+```json
+{
+  "output": "output.docx",
+  "doc_type": "函",
+  "score": 0.92,
+  "elapsed_sec": 12.345
+}
+```
+
+- `output`：輸出 .docx 檔案路徑
+- `doc_type`：偵測到的公文類型（如 `"函"` / `"公告"`）
+- `score`：QA 報告整體分數（`null` 當 `skip_review=True`）
+- `elapsed_sec`：生成總耗時（秒）
+

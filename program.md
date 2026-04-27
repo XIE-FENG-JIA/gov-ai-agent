@@ -5,6 +5,13 @@
 > 歷史 v8.6/v8.8 P0/P1/P2 已封存：[docs/archive/program-history-202604Q.md](docs/archive/program-history-202604Q.md)（T-PROGRAM-MD-ARCHIVE-202604Q；2026-04-27）
 > 歷史 v8.10–v8.14 P0/P1/P2 已封存：[docs/archive/program-history-202604S.md](docs/archive/program-history-202604S.md)（T-PROGRAM-MD-SOFT-CAP-V8.15；2026-04-27）
 
+> **v8.25 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
+> - ✅ **T-EPIC-25-ARCHIVE** epic 25 (cli-stats-status-json) 封存至 openspec/changes/archive/2026-04-27-25-...；INDEX.md Active 清空；active dir 已無需 git rm
+> - ✅ **T-RESULTS-LOG-SOFT-CAP-V8.25** results.log 99 行（低於軟上限；無需封存）
+> - ✅ **T-OPENSPEC-EPIC-26-DISCOVERY** openspec/changes/26-cli-rewrite-generate-json/ 建立（.openspec.yaml + proposal.md + tasks.md）；INDEX.md 補 epic 26；sensor active_epic=26 total=5
+> - ✅ **T-SENSOR-JSON-REFRESH-V8.25** sensor.json live 更新（results_log=99；active_epic=26 done=0/5；violations=[]）；4079 tests PASS
+> - ✅ **T-FACT-CHECKER-TEST-FIX** `tests/test_fact_checker_enhanced.py` `_clear_caches` 補 `monkeypatch.delenv(GOVAI_DISABLE_REALTIME_LAW)`；pre-existing test 修復
+
 > **v8.24 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
 > - ✅ **T25.1-CLI-OUTPUT-AUDIT** `docs/cli-output-audit.md` 補 stats/status 條目；稽核欄位與回傳路徑
 > - ✅ **T25.2-STATS-JSON-FORMAT** `stats_cmd.py` 加 `--format {text,json}`；JSON 含 `total/success/failed/type_counts/avg_score`；text 向後相容

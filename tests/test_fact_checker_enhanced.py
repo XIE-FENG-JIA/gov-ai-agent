@@ -54,7 +54,8 @@ SAMPLE_LAWS = [
 
 
 @pytest.fixture(autouse=True)
-def _clear_caches():
+def _clear_caches(monkeypatch):
+    monkeypatch.delenv("GOVAI_DISABLE_REALTIME_LAW", raising=False)
     LawVerifier._cache = None
     yield
     LawVerifier._cache = None
