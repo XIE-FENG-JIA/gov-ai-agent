@@ -100,3 +100,9 @@ PASS T-RESULTS-LOG-SOFT-CAP-V8.26 2026-04-27 results.log trimmed 103->97; 6 line
 PASS T-OPENSPEC-EPIC-27-DISCOVERY 2026-04-27 openspec/changes/27-cli-validate-summarize-compare-json/ created (.openspec.yaml+proposal+tasks); INDEX.md updated; sensor active_epic=27 total=5
 PASS T-SENSOR-JSON-REFRESH-V8.26 2026-04-27 sensor.json updated: results_log=97 active_epic=27 done=0/5 violations=[]; 43 sensor tests passed
 PASS T-PROGRAM-MD-V8.26-HEADER 2026-04-27 v8.26 header added to program.md; 5 tasks checked [x]; results.log +5 PASS lines
+PASS T27.1-CLI-OUTPUT-AUDIT 2026-04-27 docs/cli-output-audit.md sections 9-11 added; validate/summarize/compare fields audited
+PASS T27.2-VALIDATE-JSON-FORMAT 2026-04-27 validate_cmd.py --format json; JSON schema {checks,pass_count,total,passed}; text backward compat
+PASS T27.3-SUMMARIZE-JSON-FORMAT 2026-04-27 summarize_cmd.py --format json; JSON schema {title,summary,source_file,max_length}; text backward compat
+PASS T27.4-COMPARE-JSON-FORMAT 2026-04-27 compare_cmd.py --format json; JSON schema {added,removed,identical,diff_lines}; text backward compat
+PASS T27.5-CLI-JSON-TESTS 2026-04-27 tests/test_cli_validate_summarize_compare_json.py 15 passed; CONTRIBUTING.md updated
+PASS T-SENSOR-JSON-REFRESH-V8.27 2026-04-27 sensor.json updated: active_epic=27 done=5/5 violations=[]
