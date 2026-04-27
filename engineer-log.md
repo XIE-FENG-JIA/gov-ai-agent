@@ -206,6 +206,40 @@
 
 > **底線邏輯**：v8.15–v8.19 整體節奏健康（每 epic 1–2 輪閉環），但「三型假哨兵」再次疊加——adapter_health dry_run 恆綠 ＋ recall_health skip ＋ CI integration 全 skip = sensor 全綠但覆蓋空洞；本輪唯一不可跳過：**T-PUSH-FLUSH-V8.19 + CI integration P0 強制化**，兩件不做 = 下輪回顧仍寫同一段。
 
+## 深度回顧 2026-04-27 10:45 — 技術主管近 5 輪根因分析（v8.26-REVIEW；/pua 觸發）
+
+### 近 5 輪事件摘要（v8.22 → v8.26）
+
+| 輪次  | 核心事件                                                | 結果        |
+|-------|---------------------------------------------------------|-------------|
+| v8.22 | epic 24 CLI JSON（lint/cite/verify/kb-search）全閉       | ✅ 全閉     |
+| v8.23 | epic 24 封存；epic 25（stats/status JSON）開站           | ✅ 維護批次 |
+| v8.24 | epic 25 stats/status JSON 全閉                           | ✅ 全閉     |
+| v8.25 | epic 25 封存；epic 26（rewrite/generate JSON）開；fact-checker patch | ✅ 維護批次 |
+| v8.26 | epic 26 rewrite/generate JSON 全閉；HEAD=origin ✓        | ✅ 全閉     |
+
+### 反覆失敗根因
+
+1. **CLI JSON treadmill（四連 epic 同構空轉）**：epics 24-26 三個 epic 的任務結構幾乎相同（audit→impl→test→docs→archive），全部只是在 CLI 指令上加 `--format json`。測試均以 mock 跑，無消費端存在驗收。根因：epic discovery 走快路徑，無「消費端定義」或「integration 覆蓋率門檻」前置 gate。表面 PASS 率 100%，但業務價值與投入不成比例——同一模式的第 4 次重複應觸發抽象，而非繼續複製。
+
+2. **P0 policy 反覆空轉（第 12 輪確認）**：v8.19-REVIEW 明寫「CI integration skip = P0 blocker；不解不開 epic 23」。但 epics 23、24、25、26 全在 CI gate 未解的情況下開啟並閉環。根因：policy 只落進 engineer-log，從未轉化為 sensor 硬違規欄位或 program.md gate 條件；規則無執行機制 = 無牙。
+
+3. **adapter_health 第三型假哨兵連 7 輪未清**：`status=ok` 但 latency=0/count=0；dry_run 路徑不探針 = 恆綠。v8.19-REVIEW 已識別，v8.20–v8.26 七輪未修。成本：5 行 patch；拖延成本：下輪 adapter 真失聯仍零報警。
+
+### 優先序需調整
+
+- **sensor 補 `ci_integration_skip_count` 欄位（P0 gate）**：非零即 soft violation；是讓 CI gate policy 有牙的最小實現，比再寫一段反思更有效。
+- **adapter_health 改報 `status=dry_run_only`**：5 min patch，無測試風險；第三型假哨兵持續存在是技術主管信任損耗的量化指標。
+
+### 隱藏 Blocker
+
+- **JSON output 無消費端（沉默功能債）**：epics 24-26 共為 7 個 CLI 指令加了 `--format json`，目前無 API endpoint、n8n workflow 或 benchmark 腳本讀取此輸出。若 6 個月後仍無消費端，即退化為死碼；建議 epic 27 首要任務定義消費端契約，否則先前三個 epic 的 ROI 歸零。
+- **pre-existing fix 以 `monkeypatch.delenv` 繞根（fixture scope 設計債累積）**：v8.20 realtime-lookup + v8.25 fact-checker 均走同一 bypass 路徑，未修 fixture scope 根本問題；下輪改任一同模組即有 cascade 觸發機率 ≥ 50%。
+
+> **底線邏輯**：近 5 輪 PASS 率 100% 是真資料，但本質是「選容易 epic / 跳過 CI blocker」的結構性路徑規避。三層假綠（sensor ok / CI skip / adapter dry_run）連 3 輪反思無動作 = 規則只落 log 不落機制的確鑿根證。本輪最小修：**adapter_health 5 min patch + ci_integration_skip_count sensor 欄位 15 min**；兩件不做 = 第 13 輪反思仍寫同一段。
+
+---
+
 ## 下一輪反思（空指引）
 
 <!-- 每輪追加一個 ## 反思 段，保持主檔 ≤ 300 行；超出觸發 T9.6-REOPEN 封存。 -->

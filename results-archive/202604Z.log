@@ -1,0 +1,6 @@
+[2026-04-26 22:10:41 +0800] | 決策：P0 T-RUNTIME-BASELINE-TRUE-MEASURE-v3，修 runtime baseline 真量測與 ceiling up-creep | PASS | sensor_refresh 主路徑量測已寫 last_measured_secs=9.47、baseline ceiling/tolerance 已落；check_runtime 同步讀 last_measured 與 ceiling；驗證 tests/test_sensor_refresh.py = 35 passed，check_runtime --no-measure --strict PASS；py_compile 被 scripts/__pycache__ ACL WinError 5 擋，改以 pytest import 驗證。
+[2026-04-26 22:11:36 +0800] | 決策：提交 P0 runtime baseline 真量測修正 | FAIL-BLOCKED | git add scripts/check_runtime.py scripts/sensor_refresh.py scripts/runtime_baseline.json sensor.json program.md results.log 失敗：.git/index.lock Permission denied；approval=never 無法修 ACL；改動保留未提交。
+PASS T-OPENSPEC-18-ACTIVE-CLEANUP 2026-04-26 22:20 git rm -rf openspec/changes/18-multi-llm-provider-abstraction/ commit ea25745
+PASS T-RUNTIME-BASELINE-TRUE-MEASURE-v3 2026-04-26 22:20 ceiling+tolerance+last_measured; sensor.json 50.0->80.43; 35 tests pass commit 8b8bf40
+PASS T-ENGINEER-LOG-ARCHIVE-202604N 2026-04-26 22:20 engineer-log.md 315->187; v8.5/v8.6 to docs/archive/engineer-log-202604N.md commit 2ae766e
+PASS T-OPENSPEC-EPIC-19-DISCOVERY 2026-04-26 22:20 openspec/changes/19-kb-recall-validation-pipeline/ proposal+6 tasks commit 939172b
