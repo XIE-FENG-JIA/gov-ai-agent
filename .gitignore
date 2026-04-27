@@ -106,3 +106,5 @@ codex-*.lock
 req*.json
 scripts/runtime_baseline.json
 recall_report.json
+skip-out.json
+skipreview.json

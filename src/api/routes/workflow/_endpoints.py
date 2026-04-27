@@ -115,6 +115,18 @@ async def run_meeting(request: MeetingRequest) -> MeetingResponse:
             rounds_used=rounds_used,
         )
 
+        # 2026-04-27 fire-and-forget Discord push（取代 watcher daemon 解 docx）
+        try:
+            from src.api.routes.workflow._discord_push import schedule_push
+            schedule_push(
+                session_id=session_id,
+                user_input=request.user_input,
+                output_path=output_filename,
+                qa_report=qa_report_dict,
+            )
+        except Exception as _push_err:  # noqa: BLE001
+            logger.debug("discord push skipped: %s", _push_err)
+
         return workflow.MeetingResponse(
             success=True,
             session_id=session_id,
