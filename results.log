@@ -98,3 +98,4 @@ PASS T28.4-SENSOR-DISCORD-PUSH 2026-04-27 check_discord_push() + discord_push fi
 PASS T28.5-FULL-REGRESSION 2026-04-27 4127 tests PASS
 2026-04-27 11:48 | T28.4 sensor_refresh check_discord_push() + discord_push field | PASS | sensor has discord_push:{token_set,channel_set}; 47 sensor tests pass
 2026-04-27 11:48 | T28.5 full regression 4127 tests; sensor done=5/5; commit+push | PASS | epic28 complete
+2026-04-27 12:17 | T-EPIC-28-ARCHIVE-V8.30 | PASS | moved openspec/changes/28-discord-push-integration to archive/2026-04-27-28-discord-push-integration; spectra list=0 active; sensor active_epic=''
