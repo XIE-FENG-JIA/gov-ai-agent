@@ -170,6 +170,9 @@
 | `status` | ✅ (T25.1) | ✅ (T25.3) | ✅ (T25.4) |
 | `rewrite` | ✅ (T26.1) | ✅ (T26.2) | ✅ (T26.4) |
 | `generate` | ✅ (T26.1) | ✅ (T26.3) | ✅ (T26.4) |
+| `validate` | ✅ (T27.1) | ✅ (T27.2) | ✅ (T27.5) |
+| `summarize` | ✅ (T27.1) | ✅ (T27.3) | ✅ (T27.5) |
+| `compare` | ✅ (T27.1) | ✅ (T27.4) | ✅ (T27.5) |
 
 ---
 
@@ -294,3 +297,104 @@
 - `score`：QA 報告整體分數（`null` 當 `skip_review=True`）
 - `elapsed_sec`：生成總耗時（秒）
 
+---
+
+## 9. `gov-ai validate`
+
+> 新增於 Epic 27（T27.1/T27.2）
+
+### 現有輸出（`--format text`，預設）
+
+| 情境 | 輸出格式 | 回傳欄位 |
+|------|---------|---------|
+| 正常 | Rich Table | 檢查項目/通過狀態/說明；通過比例 |
+| 全通過 | Rich Table + exit 0 | 「所有檢查通過！」 |
+| 部分失敗 | Rich Table + exit 0 | 「部分檢查未通過」 |
+| 錯誤 | Rich 紅字 + exit 1 | 錯誤訊息 |
+
+**回傳路徑**：5 個本機檢查（文件長度/公文類型/必要欄位/發文日期/發文字號）
+
+### JSON 輸出（`--format json`）
+
+```json
+{
+  "checks": [
+    {"name": "文件長度", "passed": true, "message": "12 段"},
+    {"name": "公文類型", "passed": false, "message": "無法識別公文類型"}
+  ],
+  "pass_count": 1,
+  "total": 2,
+  "passed": false
+}
+```
+
+- `passed`：`pass_count == total`
+
+---
+
+## 10. `gov-ai summarize`
+
+> 新增於 Epic 27（T27.1/T27.3）
+
+### 現有輸出（`--format text`，預設）
+
+| 情境 | 輸出格式 | 回傳欄位 |
+|------|---------|---------|
+| 正常 | Rich Panel | 主旨 + 說明摘要 |
+| 無主旨/說明 | Rich Panel | 原始內容截斷 |
+| 錯誤 | Rich 紅字 + exit 1 | 錯誤訊息 |
+
+**回傳路徑**：逐行掃「主旨：/說明：」prefix；`content[:max_length]`
+
+### JSON 輸出（`--format json`）
+
+```json
+{
+  "title": "本件辦理完畢，查照。",
+  "summary": "詳如附件。",
+  "source_file": "output.txt",
+  "max_length": 100
+}
+```
+
+- `title`：「主旨：」後的文字，無法擷取時為 `""`
+- `summary`：「說明：」後的文字（截至 `max_length`），無法擷取時為 `""`
+
+---
+
+## 11. `gov-ai compare`
+
+> 新增於 Epic 27（T27.1/T27.4）
+
+### 現有輸出（`--format text`，預設）
+
+| 情境 | 輸出格式 | 回傳欄位 |
+|------|---------|---------|
+| 完全相同 | Rich Panel | 「兩個檔案內容完全相同」 |
+| 有差異 | Rich diff Panel | 新增（綠）/刪除（紅）行；末尾統計 |
+| `--stats-only` | Rich 文字 | `+N 行新增 / -M 行刪除` |
+| 錯誤 | Rich 紅字 + exit 1 | 錯誤訊息 |
+
+**回傳路徑**：`difflib.unified_diff()`；行數統計 `startswith(+/-)` 過濾 `+++/---`
+
+### JSON 輸出（`--format json`）
+
+```json
+{
+  "added": 3,
+  "removed": 1,
+  "identical": false,
+  "diff_lines": [
+    "--- a.txt",
+    "+++ b.txt",
+    "@@ -1,2 +1,3 @@",
+    " 行一",
+    "-行二",
+    "+行三",
+    "+行四"
+  ]
+}
+```
+
+- `identical`：`true` 當兩檔案完全相同（`diff_lines` 為 `[]`）
+- `diff_lines`：`unified_diff` 原始輸出每行（已去除換行符）

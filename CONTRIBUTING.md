@@ -302,6 +302,48 @@ mode emits a single-line JSON object to stdout — suitable for pipe / CI.
 `score` is `null` when no QA scorer is configured.
 `elapsed_sec` is `null` when timing is unavailable.
 
+### `gov-ai validate --format json`
+
+```json
+{
+  "checks": [
+    {"name": "文件長度", "passed": true, "message": "12 段"},
+    {"name": "公文類型", "passed": false, "message": "無法識別公文類型"}
+  ],
+  "pass_count": 1,
+  "total": 2,
+  "passed": false
+}
+```
+
+`passed` is `true` when `pass_count == total`.
+
+### `gov-ai summarize --format json`
+
+```json
+{
+  "title": "本件辦理完畢，查照。",
+  "summary": "詳如附件。",
+  "source_file": "output.txt",
+  "max_length": 100
+}
+```
+
+`title` and `summary` are `""` when the respective fields are absent.
+
+### `gov-ai compare --format json`
+
+```json
+{
+  "added": 3,
+  "removed": 1,
+  "identical": false,
+  "diff_lines": ["--- a.txt", "+++ b.txt", "@@ -1,2 +1,3 @@", "-行二", "+行三"]
+}
+```
+
+`identical` is `true` when both files are identical (`diff_lines` is `[]`).
+
 ### Common rules
 
 | Rule | Detail |

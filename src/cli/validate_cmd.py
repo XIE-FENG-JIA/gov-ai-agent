@@ -2,6 +2,7 @@
 
 驗證現有公文 .docx 檔案是否符合格式規範。
 """
+import json as _json
 import os
 import typer
 from rich.console import Console
@@ -12,6 +13,7 @@ console = Console()
 
 def validate(
     file_path: str = typer.Argument(..., help="要驗證的 .docx 檔案路徑"),
+    output_format: str = typer.Option("text", "--format", help="輸出格式：text（預設）或 json"),
 ):
     """
     驗證現有公文 .docx 檔案是否符合格式規範。
@@ -21,22 +23,37 @@ def validate(
     範例：
 
         gov-ai validate output.docx
+        gov-ai validate output.docx --format json
     """
+    if output_format not in {"text", "json"}:
+        console.print(f"[red]錯誤：不支援的輸出格式 '{output_format}'，請使用 text 或 json。[/red]")
+        raise typer.Exit(1)
+
     if not os.path.isfile(file_path):
-        console.print(f"[red]錯誤：找不到檔案 {file_path}[/red]")
+        if output_format == "json":
+            print(_json.dumps({"error": f"找不到檔案 {file_path}"}, ensure_ascii=False))
+        else:
+            console.print(f"[red]錯誤：找不到檔案 {file_path}[/red]")
         raise typer.Exit(1)
 
     if not file_path.endswith(".docx"):
-        console.print("[red]錯誤：僅支援 .docx 檔案格式。[/red]")
+        if output_format == "json":
+            print(_json.dumps({"error": "僅支援 .docx 檔案格式"}, ensure_ascii=False))
+        else:
+            console.print("[red]錯誤：僅支援 .docx 檔案格式。[/red]")
         raise typer.Exit(1)
 
     try:
         from docx import Document
     except ImportError:
-        console.print("[red]錯誤：需要 python-docx 套件。[/red]")
+        if output_format == "json":
+            print(_json.dumps({"error": "需要 python-docx 套件"}, ensure_ascii=False))
+        else:
+            console.print("[red]錯誤：需要 python-docx 套件。[/red]")
         raise typer.Exit(1)
 
-    console.print(f"[bold cyan]正在驗證：{file_path}[/bold cyan]\n")
+    if output_format == "text":
+        console.print(f"[bold cyan]正在驗證：{file_path}[/bold cyan]\n")
 
     checks: list[tuple[str, bool, str]] = []
 
@@ -45,7 +62,10 @@ def validate(
         from zipfile import BadZipFile
         doc = Document(file_path)
     except (OSError, ValueError, PackageNotFoundError, BadZipFile) as e:
-        console.print(f"[red]無法開啟文件：{e}[/red]")
+        if output_format == "json":
+            print(_json.dumps({"error": f"無法開啟文件：{e}"}, ensure_ascii=False))
+        else:
+            console.print(f"[red]無法開啟文件：{e}[/red]")
         raise typer.Exit(1)
 
     # 1. 基本結構檢查
@@ -95,16 +115,31 @@ def validate(
         checks.append(("發文字號", False, "缺少或格式不正確"))
 
     # 輸出結果
+    pass_count = 0
+    for _, ok, _ in checks:
+        if ok:
+            pass_count += 1
+
+    if output_format == "json":
+        check_list = [
+            {"name": name, "passed": ok, "message": msg}
+            for name, ok, msg in checks
+        ]
+        print(_json.dumps({
+            "checks": check_list,
+            "pass_count": pass_count,
+            "total": len(checks),
+            "passed": pass_count == len(checks),
+        }, ensure_ascii=False))
+        return
+
     table = Table(title="驗證結果", show_lines=True)
     table.add_column("檢查項目", style="cyan", width=14)
     table.add_column("狀態", width=6, justify="center")
     table.add_column("說明", width=30)
 
-    pass_count = 0
     for name, ok, msg in checks:
         status = "[green]✓[/green]" if ok else "[red]✗[/red]"
-        if ok:
-            pass_count += 1
         table.add_row(name, status, msg)
 
     console.print(table)

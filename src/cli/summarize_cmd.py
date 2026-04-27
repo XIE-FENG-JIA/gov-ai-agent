@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import json as _json
 import typer
 from rich.console import Console
 from rich.panel import Panel
@@ -13,11 +14,19 @@ def summarize(
     file_path: str = typer.Argument(..., help="公文檔案路徑"),
     max_length: int = typer.Option(100, "--max-length", "-m", help="摘要最大字數"),
     output: str = typer.Option("", "--output", "-o", help="匯出摘要至檔案"),
+    output_format: str = typer.Option("text", "--format", help="輸出格式：text（預設）或 json"),
 ):
     """摘要公文內容，擷取主旨與說明。"""
+    if output_format not in {"text", "json"}:
+        console.print(f"[red]錯誤：不支援的輸出格式 '{output_format}'，請使用 text 或 json。[/red]")
+        raise typer.Exit(1)
+
     path = Path(file_path)
     if not path.exists():
-        console.print("[red]錯誤：找不到檔案[/red]")
+        if output_format == "json":
+            print(_json.dumps({"error": "找不到檔案"}, ensure_ascii=False))
+        else:
+            console.print("[red]錯誤：找不到檔案[/red]")
         raise typer.Exit(1)
 
     content = path.read_text(encoding="utf-8")
@@ -44,6 +53,15 @@ def summarize(
             found = True
 
     summary_body = summary_body[:max_length]
+
+    if output_format == "json":
+        print(_json.dumps({
+            "title": title,
+            "summary": summary_body,
+            "source_file": str(file_path),
+            "max_length": max_length,
+        }, ensure_ascii=False))
+        return
 
     # 組合摘要
     parts = []

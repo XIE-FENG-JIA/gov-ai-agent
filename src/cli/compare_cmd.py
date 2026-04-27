@@ -3,6 +3,7 @@
 比較兩個公文草稿檔案的差異，以 Rich 彩色輸出顯示新增與刪除的內容。
 """
 import difflib
+import json as _json
 from pathlib import Path
 
 import typer
@@ -19,6 +20,7 @@ def compare(
     file_a: str = typer.Argument(..., help="第一個草稿檔案路徑"),
     file_b: str = typer.Argument(..., help="第二個草稿檔案路徑"),
     stats_only: bool = typer.Option(False, "--stats-only", help="僅顯示差異統計"),
+    output_format: str = typer.Option("text", "--format", help="輸出格式：text（預設）或 json"),
 ):
     """
     比較兩個草稿版本的差異。
@@ -28,7 +30,12 @@ def compare(
     範例：
 
         gov-ai compare draft_v1.md draft_v2.md
+        gov-ai compare draft_v1.md draft_v2.md --format json
     """
+    if output_format not in {"text", "json"}:
+        console.print(f"[red]錯誤：不支援的輸出格式 '{output_format}'，請使用 text 或 json。[/red]")
+        raise typer.Exit(1)
+
     path_a = Path(file_a)
     path_b = Path(file_b)
 
@@ -54,6 +61,11 @@ def compare(
     )
 
     if not diff:
+        if output_format == "json":
+            print(_json.dumps({
+                "added": 0, "removed": 0, "identical": True, "diff_lines": []
+            }, ensure_ascii=False))
+            return
         console.print(
             Panel(
                 "[bold]兩個檔案內容完全相同，無差異。[/bold]",
@@ -66,6 +78,15 @@ def compare(
     # 統計差異
     added = sum(1 for line in diff if line.startswith("+") and not line.startswith("+++"))
     removed = sum(1 for line in diff if line.startswith("-") and not line.startswith("---"))
+
+    if output_format == "json":
+        print(_json.dumps({
+            "added": added,
+            "removed": removed,
+            "identical": False,
+            "diff_lines": [line.rstrip("\n") for line in diff],
+        }, ensure_ascii=False))
+        return
 
     if stats_only:
         console.print("[bold]差異統計：[/bold]")
