@@ -30,12 +30,13 @@ This index records all completed and archived openspec change sets.
 | 23-realtime-law-disable-test-fix | 2026-04-27 | Realtime law disable test fix（`GOVAI_DISABLE_REALTIME_LAW` bypass 診斷 + `_clear_caches` monkeypatch 修復 / 48 passed） | T23.1–T23.4 | 100% (4/4) |
 | 24-cli-output-json-mode | 2026-04-27 | CLI 統一 JSON 輸出模式（lint/cite/verify/kb-search 加 `--format json` / schema 驗證 tests / CONTRIBUTING 節） | T24.1–T24.5 | 100% (5/5) |
 | 25-cli-stats-status-json | 2026-04-27 | CLI stats/status JSON 輸出模式（stats/status 加 `--format json` / schema 驗證 tests / CONTRIBUTING 補節） | T25.1–T25.5 | 100% (5/5) |
+| 26-cli-rewrite-generate-json | 2026-04-27 | CLI rewrite & generate JSON 輸出（rewrite/generate 加 `--format json` / schema 驗證 tests / CONTRIBUTING 補節） | T26.1–T26.5 | 100% (5/5) |
 
 ## Active Epics
 
 | ID | Created | Summary | Tasks | Status |
 |----|---------|---------|-------|--------|
-| 26-cli-rewrite-generate-json | 2026-04-27 | CLI rewrite & generate JSON 輸出（rewrite/generate 加 `--format json` / schema 驗證 tests / CONTRIBUTING 補節） | T26.1–T26.5 | active |
+| 27-cli-validate-summarize-compare-json | 2026-04-27 | CLI validate/summarize/compare JSON 輸出（三指令加 `--format json` / schema 驗證 tests / CONTRIBUTING 補節） | T27.1–T27.5 | active |
 
 ## Notes
 
