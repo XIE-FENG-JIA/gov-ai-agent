@@ -6,7 +6,21 @@
 > 歷史 v8.10–v8.14 P0/P1/P2 已封存：[docs/archive/program-history-202604S.md](docs/archive/program-history-202604S.md)（T-PROGRAM-MD-SOFT-CAP-V8.15；2026-04-27）
 > 歷史 v8.11–v8.18 batch header 已封存：[docs/archive/program-history-202604T.md](docs/archive/program-history-202604T.md)（T-PROGRAM-MD-SOFT-CAP-V8.25；2026-04-27）
 
-> **v8.26 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
+> **v8.29 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
+> - ✅ **T28.1** `tests/test_discord_push_async.py` 5 async tests PASS（_post_discord success/4xx/timeout/http-error/no-token）
+> - ✅ **T28.2** `TestDiscordPushIntegration` 2 tests PASS（meeting success calls schedule_push；exception 仍回 success）
+> - ✅ **T28.3** `CONTRIBUTING.md` Discord Push 節完成（DISCORD_BOT_TOKEN / DISCORD_ALERT_CHANNEL_ID env vars 說明）
+> - ✅ **T28.4** `scripts/sensor_refresh.py` `check_discord_push()` + `discord_push` field + `--human` 輸出
+> - ✅ **T28.5** 全量 4127 tests PASS；sensor.json 更新；Epic 28 封存；git commit + push
+
+> **v8.28 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
+> - ✅ **T-DISCORD-PUSH-FEAT** `_discord_push.py` + endpoint 整合提交；typed except buckets；13 unit tests 全綠
+> - ✅ **T-EPIC-27-ARCHIVE** epic 27 (cli-validate-summarize-compare-json) 封存至 openspec/changes/archive/2026-04-27-27-...；INDEX.md status=100%(5/5)
+> - ✅ **T-RESULTS-LOG-SOFT-CAP-V8.28** results.log 108→95→100 行；13 行封存 results-archive/202604AB.log
+> - ✅ **T-OPENSPEC-EPIC-28-DISCOVERY** openspec/changes/28-discord-push-integration/ 建立（.openspec.yaml + proposal.md + tasks.md）；INDEX.md active=28；sensor active_epic=28 total=5
+> - ✅ **T-SENSOR-JSON-REFRESH-V8.28** sensor.json 更新（bare_except=2；active_epic=28 done=0/5；violations=[]）；sensor tests passed
+
+
 > - ✅ **T-EPIC-26-ARCHIVE** epic 26 (cli-rewrite-generate-json) 封存至 openspec/changes/archive/2026-04-27-26-...；INDEX.md Active 清空；git rm active dir
 > - ✅ **T-RESULTS-LOG-SOFT-CAP-V8.26** results.log 103→97 行；6 行封存 results-archive/202604AA.log
 > - ✅ **T-OPENSPEC-EPIC-27-DISCOVERY** openspec/changes/27-cli-validate-summarize-compare-json/ 建立（.openspec.yaml + proposal.md + tasks.md）；INDEX.md active=27；sensor active_epic=27 total=5

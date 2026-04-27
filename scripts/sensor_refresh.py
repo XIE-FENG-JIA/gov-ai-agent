@@ -86,6 +86,7 @@ class SensorReport:
     recall_health: dict = field(default_factory=lambda: {"ok": True, "detail": "no baseline (skip)"})
     pytest_runtime: dict = field(default_factory=lambda: {"status": "skip", "ceiling_s": 0.0, "last_s": 0.0})
     adapter_health: dict = field(default_factory=lambda: {"status": "skip", "adapters": []})
+    discord_push: dict = field(default_factory=lambda: {"token_set": False, "channel_set": False})
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -124,6 +125,7 @@ class SensorReport:
             "recall_health": self.recall_health,
             "pytest_runtime": self.pytest_runtime,
             "adapter_health": self.adapter_health,
+            "discord_push": self.discord_push,
         }
 
 
@@ -559,6 +561,18 @@ def check_pytest_runtime(repo: Path) -> dict:
     return {"status": "ok", "ceiling_s": ceiling_s, "last_s": last_s}
 
 
+def check_discord_push() -> dict:
+    """Check whether Discord push env vars are configured (T28.4).
+
+    Returns ``{"token_set": bool, "channel_set": bool}`` — no live HTTP call.
+    """
+    import os
+    return {
+        "token_set": bool(os.environ.get("DISCORD_BOT_TOKEN")),
+        "channel_set": bool(os.environ.get("DISCORD_ALERT_CHANNEL_ID")),
+    }
+
+
 def check_adapter_health(repo: Path) -> dict:
     """Load adapter_health_report.json and summarise health status (T22.2).
 
@@ -621,6 +635,7 @@ def build_report(repo: Path) -> SensorReport:
     r.recall_health = {"ok": _recall_ok, "detail": _recall_detail}
     r.pytest_runtime = check_pytest_runtime(repo)
     r.adapter_health = check_adapter_health(repo)
+    r.discord_push = check_discord_push()
     _ceiling, _tolerance = read_ceiling_params(repo)
 
     # Hard violations
@@ -785,6 +800,11 @@ def format_human(r: SensorReport) -> str:
     ah_status = ah.get("status", "skip")
     ah_icon = "[X]" if ah_status == "violation" else ("[OK]" if ah_status == "ok" else "[--]")
     lines.append(f"- **adapter_health**: {ah_icon} status={ah_status}")
+
+    dp = r.discord_push
+    dp_token = "✅" if dp.get("token_set") else "⬜"
+    dp_chan = "✅" if dp.get("channel_set") else "⬜"
+    lines.append(f"- **discord_push**: token={dp_token} channel={dp_chan}")
 
     if r.violations_hard:
         lines.append("")

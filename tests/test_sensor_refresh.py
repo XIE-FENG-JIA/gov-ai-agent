@@ -754,3 +754,45 @@ def test_sensor_report_includes_adapter_health_field(tmp_path: Path) -> None:
     d = r.to_dict()
     assert "adapter_health" in d
     assert "status" in d["adapter_health"]
+
+
+# ---------------------------------------------------------------------------
+# check_discord_push (T28.4)
+# ---------------------------------------------------------------------------
+
+def test_check_discord_push_both_set(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Returns token_set=True, channel_set=True when both env vars present."""
+    monkeypatch.setenv("DISCORD_BOT_TOKEN", "tok123")
+    monkeypatch.setenv("DISCORD_ALERT_CHANNEL_ID", "chan456")
+    result = _mod.check_discord_push()
+    assert result == {"token_set": True, "channel_set": True}
+
+
+def test_check_discord_push_none_set(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Returns token_set=False, channel_set=False when vars are absent."""
+    monkeypatch.delenv("DISCORD_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("DISCORD_ALERT_CHANNEL_ID", raising=False)
+    result = _mod.check_discord_push()
+    assert result == {"token_set": False, "channel_set": False}
+
+
+def test_check_discord_push_partial(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Only token set → channel_set=False."""
+    monkeypatch.setenv("DISCORD_BOT_TOKEN", "tok")
+    monkeypatch.delenv("DISCORD_ALERT_CHANNEL_ID", raising=False)
+    result = _mod.check_discord_push()
+    assert result["token_set"] is True
+    assert result["channel_set"] is False
+
+
+def test_sensor_report_includes_discord_push_field(tmp_path: Path) -> None:
+    """to_dict() includes discord_push key with token_set and channel_set."""
+    repo = _make_repo(tmp_path)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    (repo / "engineer-log.md").write_text("x\n" * 50, encoding="utf-8")
+    (repo / "program.md").write_text("x\n" * 50, encoding="utf-8")
+    r = _mod.build_report(repo)
+    d = r.to_dict()
+    assert "discord_push" in d
+    assert "token_set" in d["discord_push"]
+    assert "channel_set" in d["discord_push"]

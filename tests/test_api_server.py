@@ -4230,3 +4230,69 @@ class TestAutoKeyNoLogLeak:
         assert key_match is not None
 
         mw._auto_key_generated = False
+
+
+# ==================== Discord Push Integration ====================
+
+class TestDiscordPushIntegration:
+    """驗證 meeting endpoint 觸發 Discord push 的整合行為。"""
+
+    def test_meeting_triggers_discord_push(self, client, mock_api_deps):
+        """meeting 成功時 schedule_push 應被呼叫一次。"""
+        call_count = [0]
+
+        def side_effect(prompt, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return json.dumps({
+                    "doc_type": "函",
+                    "sender": "測試機關",
+                    "receiver": "測試單位",
+                    "subject": "測試主旨",
+                })
+            return "### 主旨\n測試公文\n### 說明\n測試說明"
+
+        mock_api_deps["llm"].generate.side_effect = side_effect
+
+        with patch(
+            "src.api.routes.workflow._discord_push.schedule_push"
+        ) as mock_push:
+            response = client.post("/api/v1/meeting", json={
+                "user_input": "寫一份函，環保局發給各學校",
+                "skip_review": True,
+                "output_docx": False,
+            })
+
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+        mock_push.assert_called_once()
+
+    def test_meeting_discord_push_error_does_not_break_response(self, client, mock_api_deps):
+        """schedule_push 拋例外時 meeting 仍應回傳 success=True。"""
+        call_count = [0]
+
+        def side_effect(prompt, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return json.dumps({
+                    "doc_type": "函",
+                    "sender": "測試機關",
+                    "receiver": "測試單位",
+                    "subject": "測試主旨",
+                })
+            return "### 主旨\n測試公文\n### 說明\n測試說明"
+
+        mock_api_deps["llm"].generate.side_effect = side_effect
+
+        with patch(
+            "src.api.routes.workflow._discord_push.schedule_push",
+            side_effect=RuntimeError("push failed"),
+        ):
+            response = client.post("/api/v1/meeting", json={
+                "user_input": "寫一份函，環保局發給各學校",
+                "skip_review": True,
+                "output_docx": False,
+            })
+
+        assert response.status_code == 200
+        assert response.json()["success"] is True

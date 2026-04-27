@@ -354,3 +354,45 @@ mode emits a single-line JSON object to stdout — suitable for pipe / CI.
 | Backward compat | `--format text` behaviour unchanged |
 
 See `docs/cli-output-audit.md` for full field reference and output path details.
+
+---
+
+## Discord Push (Meeting QA Notifications)
+
+The meeting endpoint (`POST /api/v1/meeting`) fires a Discord embed after each
+successful meeting run via `src/api/routes/workflow/_discord_push.py`.
+
+### Environment variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DISCORD_BOT_TOKEN` | optional | Discord Bot token (prefix `Bot `) |
+| `DISCORD_ALERT_CHANNEL_ID` | optional | Target channel ID (integer as string) |
+
+If either variable is absent the push is **silently skipped** — no error,
+no log at WARNING level.
+
+### Behaviour
+
+- **fire-and-forget**: `schedule_push()` creates an asyncio task; the HTTP
+  response is not delayed.
+- **error-isolated**: any exception inside `schedule_push` is caught and logged
+  at DEBUG level — the meeting response always returns `success=true`.
+- **embed content**: overall QA score, risk level, rounds used, per-reviewer
+  scores, and top HIGH/MEDIUM issues from `agent_results`.
+
+### Adding new fields to the embed
+
+Edit `_build_embed()` in `_discord_push.py`.  Keep the function pure (no I/O).
+Add a corresponding unit test in `tests/test_discord_push.py`.
+
+### Testing
+
+```bash
+# Unit tests (no live Discord call)
+python -m pytest tests/test_discord_push.py tests/test_discord_push_async.py -v
+
+# Integration test (mock schedule_push)
+python -m pytest tests/test_api_server.py::TestDiscordPushIntegration -v
+```
+
