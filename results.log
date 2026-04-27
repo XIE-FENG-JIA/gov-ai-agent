@@ -1,8 +1,3 @@
-[2026-04-26 18:12:15 +0800] | 決策：提交 P1 openspec T18.3 OpenRouterProvider | FAIL-BLOCKED | 實作與驗證 PASS（tests/test_llm.py 52 passed；OpenRouterProvider import smoke PASS），但 git add 無法建立 .git/index.lock：Permission denied；approval=never 下不能修 ACL；變更保留於工作樹，未 stash 以免丟失可用修復。
-[2026-04-26 18:32 Asia/Taipei] | P0 T-XXE-TEST-IMPORT-GRAPH-FIX | PASS | 修正 XXE inspect 型測試為 import-graph 斷言；新增 docs/abstraction-cut-sop.md；驗證 tests/test_realtime_lookup.py = 48 passed，全量 tests --ignore=tests/integration -q -x = 3972 passed；git add 被 .git/index.lock Permission denied 擋住，未 commit。
-PASS T-XXE-TEST-IMPORT-GRAPH-FIX       # 6 XXE tests pass (import-graph assertions already in working tree)
-PASS T-BARE-EXCEPT-SENSOR-TRUTH        # bare_except.total 5->1; sensor.json updated; 72 tests passed
-PASS T-CI-INTEGRATION-SECRET-GATE      # ci.yml integration job gated on secrets.OPENROUTER_API_KEY
 PASS T-RUNTIME-RATCHET-LIVE-MEASURE    # --measure-runtime flag added; 23 sensor_refresh tests passed
 PASS T-EPIC-18-T18.4-T18.6-LAND        # make_provider factory + llm.py refactor + 12 test_llm_provider tests; 3987 total passed
 [2026-04-26 18:39 +0800] | P1 active spec: close epic 18 provider abstraction | PASS | Marked T18.4-T18.6 complete after provider factory/refactor/tests verified; targeted provider tests 12 passed and full non-integration tests 3975 passed. 
@@ -103,3 +98,8 @@ PASS T-RESULTS-LOG-SOFT-CAP-V8.20 2026-04-27 results.log trimmed 110->100; 10 li
 PASS T-OPENSPEC-EPIC-23-DISCOVERY 2026-04-27 6 pre-existing realtime_lookup failures fixed (monkeypatch.delenv GOVAI_DISABLE_REALTIME_LAW); 48 passed; epic 23 openspec created
 PASS T-SENSOR-JSON-REFRESH-V8.20 2026-04-27 sensor.json live values: results_log=100 active_epic=23 done=4/4 violations=[]
 PASS T-PROGRAM-MD-V8.20-HEADER 2026-04-27 v8.20 header added to program.md; 5 tasks checked [x]; results.log +5 PASS lines
+PASS T-EPIC-23-ARCHIVE 2026-04-27 epic 23 archived to openspec/changes/archive/2026-04-27-23-realtime-law-disable-test-fix; INDEX.md status=100%(4/4); git rm active dir
+PASS T-RESULTS-LOG-SOFT-CAP-V8.21 2026-04-27 results.log 105->100 lines; 5 lines archived to results-archive/202604W.log
+PASS T-OPENSPEC-EPIC-24-DISCOVERY 2026-04-27 openspec/changes/24-cli-output-json-mode/ created (.openspec.yaml+proposal+tasks); INDEX.md updated; sensor active_epic=24 total=5
+PASS T-SENSOR-JSON-REFRESH-V8.21 2026-04-27 sensor.json live values: results_log=100 active_epic=24 done=0/5 violations=[]; 43 sensor tests passed
+PASS T-PROGRAM-MD-V8.21-HEADER 2026-04-27 v8.21 header added to program.md; 5 tasks [x]; results.log +5 PASS lines

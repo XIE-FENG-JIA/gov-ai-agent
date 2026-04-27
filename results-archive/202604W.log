@@ -1,0 +1,5 @@
+[2026-04-26 18:12:15 +0800] | 決策：提交 P1 openspec T18.3 OpenRouterProvider | FAIL-BLOCKED | 實作與驗證 PASS（tests/test_llm.py 52 passed；OpenRouterProvider import smoke PASS），但 git add 無法建立 .git/index.lock：Permission denied；approval=never 下不能修 ACL；變更保留於工作樹，未 stash 以免丟失可用修復。
+[2026-04-26 18:32 Asia/Taipei] | P0 T-XXE-TEST-IMPORT-GRAPH-FIX | PASS | 修正 XXE inspect 型測試為 import-graph 斷言；新增 docs/abstraction-cut-sop.md；驗證 tests/test_realtime_lookup.py = 48 passed，全量 tests --ignore=tests/integration -q -x = 3972 passed；git add 被 .git/index.lock Permission denied 擋住，未 commit。
+PASS T-XXE-TEST-IMPORT-GRAPH-FIX       # 6 XXE tests pass (import-graph assertions already in working tree)
+PASS T-BARE-EXCEPT-SENSOR-TRUTH        # bare_except.total 5->1; sensor.json updated; 72 tests passed
+PASS T-CI-INTEGRATION-SECRET-GATE      # ci.yml integration job gated on secrets.OPENROUTER_API_KEY

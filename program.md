@@ -5,6 +5,13 @@
 > 歷史 v8.6/v8.8 P0/P1/P2 已封存：[docs/archive/program-history-202604Q.md](docs/archive/program-history-202604Q.md)（T-PROGRAM-MD-ARCHIVE-202604Q；2026-04-27）
 > 歷史 v8.10–v8.14 P0/P1/P2 已封存：[docs/archive/program-history-202604S.md](docs/archive/program-history-202604S.md)（T-PROGRAM-MD-SOFT-CAP-V8.15；2026-04-27）
 
+> **v8.21 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
+> - ✅ **T-EPIC-23-ARCHIVE** epic 23 (realtime-law-disable-test-fix) 封存至 openspec/changes/archive/2026-04-27-23-...；INDEX.md status=100% (4/4)；git rm active dir
+> - ✅ **T-RESULTS-LOG-SOFT-CAP-V8.21** results.log 105→100 行；5 行封存 results-archive/202604W.log
+> - ✅ **T-OPENSPEC-EPIC-24-DISCOVERY** openspec/changes/24-cli-output-json-mode/ 建立（.openspec.yaml + proposal.md + tasks.md）；INDEX.md 補 epic 24；sensor active_epic=24 total=5
+> - ✅ **T-SENSOR-JSON-REFRESH-V8.21** sensor.json live 更新（results_log=100；active_epic=24 done=0/5；violations=[]）；43 sensor tests passed
+> - ✅ **T-PROGRAM-MD-V8.21-HEADER** program.md v8.21 header + 5 任務 [x]；results.log 追加 5 行 PASS；一次 commit 落版
+
 > **v8.20 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
 > - ✅ **T-EPIC-22-ARCHIVE** epic 22 (source-adapter-health-metrics) 封存至 openspec/changes/archive/2026-04-27-22-...；INDEX.md status=100% (6/6)；git rm active dir
 > - ✅ **T-RESULTS-LOG-SOFT-CAP-V8.20** results.log 110→100 行；10 行封存 results-archive/202604V.log
