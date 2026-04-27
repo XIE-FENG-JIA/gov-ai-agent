@@ -5,6 +5,13 @@
 > 歷史 v8.6/v8.8 P0/P1/P2 已封存：[docs/archive/program-history-202604Q.md](docs/archive/program-history-202604Q.md)（T-PROGRAM-MD-ARCHIVE-202604Q；2026-04-27）
 > 歷史 v8.10–v8.14 P0/P1/P2 已封存：[docs/archive/program-history-202604S.md](docs/archive/program-history-202604S.md)（T-PROGRAM-MD-SOFT-CAP-V8.15；2026-04-27）
 
+> **v8.22 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
+> - ✅ **T24.1-CLI-OUTPUT-AUDIT** `docs/cli-output-audit.md` 建立；稽核 lint/cite/verify/kb-search 四指令輸出欄位與回傳路徑
+> - ✅ **T24.2-LINT-JSON-FORMAT** `lint_cmd.py` 加 `--format {text,json}`；JSON 含 `issues/score/pass`；`text` 向後相容
+> - ✅ **T24.3-CITE-VERIFY-JSON-FORMAT** `cite_cmd.py` JSON 改 `citations/count/doc_type`；`verify_cmd.py` 加 `--format {text,json}` 含 `facts/verdict`
+> - ✅ **T24.4-KB-SEARCH-JSON-FORMAT** `src/cli/kb/corpus.py` search 加 `--format {text,json}`；JSON 含 `results[doc_id/score/snippet]/count`
+> - ✅ **T24.5-CLI-JSON-TESTS** `tests/test_cli_json_output.py` 15 tests 全綠；`test_cite_cmd.py` 更新 JSON schema assertions；4061 passed / 5 pre-existing fails
+
 > **v8.21 批次回合（2026-04-27 Copilot agent；HEAD=TBD→push）**：
 > - ✅ **T-EPIC-23-ARCHIVE** epic 23 (realtime-law-disable-test-fix) 封存至 openspec/changes/archive/2026-04-27-23-...；INDEX.md status=100% (4/4)；git rm active dir
 > - ✅ **T-RESULTS-LOG-SOFT-CAP-V8.21** results.log 105→100 行；5 行封存 results-archive/202604W.log

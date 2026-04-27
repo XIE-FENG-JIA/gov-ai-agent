@@ -1,3 +1,5 @@
+import json as _json
+
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -20,6 +22,7 @@ console = Console()
 def lint(
     file: str = typer.Option(..., "-f", "--file", help="要檢查的公文檔案路徑"),
     fix: bool = typer.Option(False, "--fix", help="自動修正口語化用詞"),
+    output_format: str = typer.Option("text", "--format", help="輸出格式：text（預設）或 json"),
 ):
     """輕量公文用語與格式檢查。"""
     import os
@@ -32,6 +35,10 @@ def lint(
             text = f.read()
     except UnicodeDecodeError:
         console.print("[red]錯誤：檔案編碼不支援，請使用 UTF-8。[/red]")
+        raise typer.Exit(1)
+
+    if output_format not in {"text", "json"}:
+        console.print(f"[red]錯誤：不支援的輸出格式 '{output_format}'，請使用 text 或 json。[/red]")
         raise typer.Exit(1)
 
     issues = _run_lint(text)
@@ -53,7 +60,15 @@ def lint(
             console.print("[green]無需修正。[/green]")
         return
 
-    # 輸出結果
+    # JSON 輸出
+    if output_format == "json":
+        score = round(max(0.0, 1.0 - len(issues) * 0.1), 2)
+        print(_json.dumps({"issues": issues, "score": score, "pass": not bool(issues)}, ensure_ascii=False))
+        if issues:
+            raise typer.Exit(1)
+        return
+
+    # 文字輸出結果
     if not issues:
         console.print("[bold green]✓ 未發現問題，公文用語與格式良好。[/bold green]")
         return

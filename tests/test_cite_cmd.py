@@ -222,7 +222,9 @@ class TestCiteCLI:
         assert result.exit_code == 0
         parsed = json.loads(result.output)
         assert "doc_type" in parsed
-        assert "applicable_regulations" in parsed
+        assert "citations" in parsed
+        assert "count" in parsed
+        assert parsed["count"] == len(parsed["citations"])
 
     def test_cli_fails_on_missing_file(self, tmp_path, mapping_yaml_file):
         result = self._run_cite(

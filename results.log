@@ -103,3 +103,8 @@ PASS T-RESULTS-LOG-SOFT-CAP-V8.21 2026-04-27 results.log 105->100 lines; 5 lines
 PASS T-OPENSPEC-EPIC-24-DISCOVERY 2026-04-27 openspec/changes/24-cli-output-json-mode/ created (.openspec.yaml+proposal+tasks); INDEX.md updated; sensor active_epic=24 total=5
 PASS T-SENSOR-JSON-REFRESH-V8.21 2026-04-27 sensor.json live values: results_log=100 active_epic=24 done=0/5 violations=[]; 43 sensor tests passed
 PASS T-PROGRAM-MD-V8.21-HEADER 2026-04-27 v8.21 header added to program.md; 5 tasks [x]; results.log +5 PASS lines
+PASS T24.1-CLI-OUTPUT-AUDIT 2026-04-27 docs/cli-output-audit.md created; lint/cite/verify/kb-search output fields audited
+PASS T24.2-LINT-JSON-FORMAT 2026-04-27 lint_cmd.py --format json added; issues/score/pass schema; text backward compat
+PASS T24.3-CITE-VERIFY-JSON-FORMAT 2026-04-27 cite_cmd.py citations/count/doc_type JSON; verify_cmd.py facts/verdict JSON
+PASS T24.4-KB-SEARCH-JSON-FORMAT 2026-04-27 kb corpus.py search --format json; results[doc_id/score/snippet]/count schema
+PASS T24.5-CLI-JSON-TESTS 2026-04-27 tests/test_cli_json_output.py 15 passed; test_cite_cmd.py updated; 4061 passed total

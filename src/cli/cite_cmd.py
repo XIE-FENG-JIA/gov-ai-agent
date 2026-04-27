@@ -197,12 +197,14 @@ def _render_rich(
 
 def _render_json(doc_type: str, applicable: list[dict], kb_results: list[dict]) -> None:
     """JSON 格式輸出（供程式解析）。"""
-    output = {
+    output: dict = {
+        "citations": applicable,
+        "count": len(applicable),
         "doc_type": doc_type,
-        "applicable_regulations": applicable,
-        "kb_semantic_results": kb_results,
     }
-    console.print_json(json.dumps(output, ensure_ascii=False, indent=2))
+    if kb_results:
+        output["kb_results"] = kb_results
+    print(json.dumps(output, ensure_ascii=False))
 
 
 def cite(
@@ -223,10 +225,10 @@ def cite(
         help="啟用知識庫語意搜尋，找出草稿最相關的具體法條（需先執行 kb ingest）",
     ),
     output_format: str = typer.Option(
-        "rich",
+        "text",
         "--format",
         "-f",
-        help="輸出格式：rich（終端機彩色）或 json（程式解析）",
+        help="輸出格式：text（預設）或 json",
     ),
     mapping: Optional[str] = typer.Option(
         None,
@@ -293,6 +295,9 @@ def cite(
             )
 
     # ── 輸出 ───────────────────────────────────────────
+    if output_format not in {"text", "json", "rich"}:
+        console.print(f"[red]錯誤：不支援的輸出格式 '{output_format}'，請使用 text 或 json。[/red]")
+        raise typer.Exit(1)
     if output_format == "json":
         _render_json(doc_type, applicable, kb_results)
     else:

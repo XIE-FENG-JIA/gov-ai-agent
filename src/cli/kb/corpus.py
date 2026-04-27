@@ -223,10 +223,15 @@ def sync(
 def search(
     query: str = typer.Argument(..., help="搜尋關鍵字（語意搜尋，不限完全匹配）"),
     limit: int = typer.Option(3, "--limit", "-n", help="回傳結果數量", min=1, max=100),
+    output_format: str = typer.Option("text", "--format", help="輸出格式：text（預設）或 json"),
 ) -> None:
     """在知識庫中搜尋相關文件（語意搜尋）。"""
     if not query.strip():
         console.print("[red]錯誤：搜尋關鍵字不可為空白。[/red]")
+        raise typer.Exit(1)
+
+    if output_format not in {"text", "json"}:
+        console.print(f"[red]錯誤：不支援的輸出格式 '{output_format}'，請使用 text 或 json。[/red]")
         raise typer.Exit(1)
 
     from . import _init_kb as init_kb
@@ -237,8 +242,26 @@ def search(
         console.print("[dim]提示：請確認知識庫路徑正確，並嘗試 'gov-ai kb ingest' 重新匯入。[/dim]")
         raise typer.Exit(1)
 
-    console.print(f"正在搜尋：[bold cyan]{query}[/bold cyan]...")
     results = kb.search_hybrid(query, n_results=limit)
+
+    if output_format == "json":
+        json_results = []
+        for result in results:
+            metadata = result.get("metadata", {})
+            content = result.get("content", "")
+            distance = result.get("distance")
+            score = round(1.0 - distance, 4) if distance is not None else None
+            doc_id = (
+                (metadata.get("title") or metadata.get("source_id") or "")
+                if isinstance(metadata, dict)
+                else ""
+            )
+            snippet = content[:200].replace("\n", " ") if content else ""
+            json_results.append({"doc_id": doc_id, "score": score, "snippet": snippet})
+        print(json.dumps({"results": json_results, "count": len(json_results)}, ensure_ascii=False))
+        return
+
+    console.print(f"正在搜尋：[bold cyan]{query}[/bold cyan]...")
     if not results:
         console.print("[yellow]找不到符合的文件。[/yellow]")
         console.print("[dim]提示：知識庫可能尚無資料，請先執行 'gov-ai kb ingest' 或 'gov-ai kb fetch-laws --ingest'。[/dim]")
